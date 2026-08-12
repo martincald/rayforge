@@ -38,7 +38,7 @@ class RuidaEncoder(OpsEncoder):
 
     Coordinates are converted from mm to micrometers (µm) internally.
     Power is converted from normalized (0.0-1.0) to percentage (0-100)
-    and then to the 14-bit value expected by Ruida (0-16384).
+    and then to the 14-bit value expected by Ruida (0-16383).
     """
 
     UM_PER_MM = 1000.0
@@ -171,15 +171,21 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle SetPowerCommand - set laser power percentage."""
+        """Handle SetPowerCommand - set min/max power for active laser."""
         power = ops.power(idx)
         self.power = power
-        power_val = self._power_to_ruida(power)
+        power14 = encode14(self._power_to_ruida(power))
         power_percent = power * 100.0
 
-        laser_cmd = {1: 0xC8, 2: 0xC1, 3: 0xC4, 4: 0xC5}
-        cmd_byte = laser_cmd.get(self.active_laser, 0xC8)
-        binary.append(bytes([cmd_byte]) + encode14(power_val))
+        laser_cmds = {
+            1: (b"\xc6\x01", b"\xc6\x02"),
+            2: (b"\xc6\x21", b"\xc6\x22"),
+            3: (b"\xc6\x05", b"\xc6\x06"),
+            4: (b"\xc6\x07", b"\xc6\x08"),
+        }
+        min_cmd, max_cmd = laser_cmds.get(self.active_laser, laser_cmds[1])
+        binary.append(min_cmd + power14)
+        binary.append(max_cmd + power14)
         text.append(f"POWER {power_percent:.1f}")
 
     def _handle_set_cut_speed(
@@ -203,12 +209,14 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle SetTravelSpeedCommand - store for move operations."""
+        """
+        Handle SetTravelSpeedCommand - track state only.
+
+        Travel speed is a controller-side setting (G0 velocity); no
+        command is emitted so the cut speed is not overwritten.
+        """
         speed = ops.rate(idx)
         self.travel_speed = speed
-        if self.travel_speed is not None:
-            speed_um = self._mm_to_um(speed)
-            binary.append(b"\xc9\x02" + encode35(speed_um))
         text.append(f"TRAVEL_SPEED {speed:.1f}")
 
     def _handle_set_frequency(
@@ -293,8 +301,8 @@ class RuidaEncoder(OpsEncoder):
         else:
             self.active_laser = laser_head.tool_number
 
-        laser_select_cmd = 0xCA + self.active_laser - 1
-        binary.append(bytes([0xCA, laser_select_cmd & 0x0F]))
+        laser_device = {1: b"\xca\x01\x10", 2: b"\xca\x01\x11"}
+        binary.append(laser_device.get(self.active_laser, b"\xca\x01\x10"))
         text.append(f"LASER {self.active_laser}")
 
     def _handle_move_to(

@@ -117,7 +117,9 @@ class TestSetPowerCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert binary == b"\xc8" + encode14(0)
+        assert binary == (
+            b"\xc6\x01" + encode14(0) + b"\xc6\x02" + encode14(0)
+        )
         assert "POWER 0.0" in result.text
 
     def test_power_half(self, encoder, mock_machine, doc):
@@ -127,8 +129,8 @@ class TestSetPowerCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        expected_val = int(0.5 * 16383)
-        assert binary == b"\xc8" + encode14(expected_val)
+        power14 = encode14(int(0.5 * 16383))
+        assert binary == b"\xc6\x01" + power14 + b"\xc6\x02" + power14
         assert "POWER 50.0" in result.text
 
     def test_power_full(self, encoder, mock_machine, doc):
@@ -138,8 +140,8 @@ class TestSetPowerCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        expected_val = 16383
-        assert binary == b"\xc8" + encode14(expected_val)
+        power14 = encode14(16383)
+        assert binary == b"\xc6\x01" + power14 + b"\xc6\x02" + power14
         assert "POWER 100.0" in result.text
 
     def test_power_precision(self, encoder, mock_machine, doc):
@@ -160,7 +162,8 @@ class TestSetPowerCommand:
         binary = b"".join(result.driver_data["commands"])
         lines = result.text.split("\n")
 
-        assert b"\xc1" in binary
+        assert b"\xc6\x21" in binary
+        assert b"\xc6\x22" in binary
         assert "LASER 2" in lines[0]
         assert "POWER 50.0" in lines[1]
 
@@ -204,15 +207,13 @@ class TestSetCutSpeedCommand:
 class TestSetTravelSpeedCommand:
     """Tests for SetTravelSpeedCommand encoding."""
 
-    def test_travel_speed_encoding(self, encoder, mock_machine, doc):
-        """Travel speed should be encoded and stored."""
+    def test_travel_speed_emits_no_command(self, encoder, mock_machine, doc):
+        """Travel speed must not overwrite the cut speed (C9 02)."""
         ops = Ops()
         ops.set_rapid_rate(500)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = b"".join(result.driver_data["commands"])
-        speed_um = 500 * 1000
-        assert b"\xc9\x02" + encode35(speed_um) in binary
+        assert result.driver_data["commands"] == []
         assert "TRAVEL_SPEED 500.0" in result.text
 
     def test_travel_speed_updates_state(self, encoder, mock_machine, doc):
@@ -289,7 +290,7 @@ class TestSetLaserCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert binary == b"\xca\n"
+        assert binary == b"\xca\x01\x10"
         assert "LASER 1" in result.text
 
     def test_select_laser_2(self, encoder, mock_machine, doc):
@@ -299,7 +300,7 @@ class TestSetLaserCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert binary == b"\xca\x0b"
+        assert binary == b"\xca\x01\x11"
         assert "LASER 2" in result.text
 
     def test_select_unknown_laser_defaults_to_1(
@@ -722,14 +723,16 @@ class TestBinaryCommandStructure:
         assert binary[0:2] == b"\xc9\x02"
 
     def test_power_command_structure(self, encoder, mock_machine, doc):
-        """Power command should have 0xC8 prefix + 2 bytes."""
+        """Power emits C6 min/max pair, 4 bytes each."""
         ops = Ops()
         ops.set_power(0.5)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = b"".join(result.driver_data["commands"])
-        assert binary[0] == 0xC8
-        assert len(binary) == 3
+        commands = result.driver_data["commands"]
+        assert len(commands) == 2
+        assert commands[0][:2] == b"\xc6\x01"
+        assert commands[1][:2] == b"\xc6\x02"
+        assert all(len(cmd) == 4 for cmd in commands)
 
 
 class TestSetFrequencyCommand:
