@@ -43,6 +43,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def build_datagrams(commands: list[bytes], max_size: int) -> list[bytes]:
+    """
+    Group whole commands into datagrams of at most max_size bytes.
+
+    A command is never split across datagrams.
+    """
+    datagrams: list[bytes] = []
+    current = bytearray()
+    for command in commands:
+        if current and len(current) + len(command) > max_size:
+            datagrams.append(bytes(current))
+            current = bytearray()
+        current.extend(command)
+    if current:
+        datagrams.append(bytes(current))
+    return datagrams
+
+
 class RuidaDriver(Driver):
     """
     Driver for Ruida laser controllers using UDP protocol.
@@ -64,8 +82,13 @@ class RuidaDriver(Driver):
     KEEPALIVE_INTERVAL = 1.0
     POSITION_POLL_INTERVAL = 0.5
     RESPONSE_PORT = 40200
-    CHUNK_SIZE = 1024
     JOG_SPEED_ADDRESS = 0x0131
+    DATAGRAM_MAX_BYTES = 1000
+    ACK_TIMEOUT = 1.0
+    SEND_RETRY_BUDGET = 4.0
+    STATUS_POLL_INTERVAL = 0.5
+    MACHINE_STATUS_ADDRESS = 0x0400
+    STATUS_JOB_RUNNING_BIT = 0x00000001
 
     def __init__(self, context: RayforgeContext, machine: "Machine"):
         super().__init__(context, machine)
@@ -82,6 +105,7 @@ class RuidaDriver(Driver):
         self._is_connected = False
         self._response_timeout = self.CONNECTION_TIMEOUT
         self._last_jog_speed: int | None = None
+        self._suppress_polling = False
 
     @property
     def machine_space_wcs(self) -> str:
@@ -308,7 +332,8 @@ class RuidaDriver(Driver):
                     current_time = asyncio.get_event_loop().time()
 
                     if (
-                        current_time - last_poll_time
+                        not self._suppress_polling
+                        and current_time - last_poll_time
                         >= self.POSITION_POLL_INTERVAL
                     ):
                         self._response_received.clear()
@@ -329,7 +354,10 @@ class RuidaDriver(Driver):
                             await self._disconnect_transports()
                             break
 
-                    if current_time - last_ref_poll_time >= 2.0:
+                    if (
+                        not self._suppress_polling
+                        and current_time - last_ref_poll_time >= 2.0
+                    ):
                         await self._poll_ref_point_mode()
                         last_ref_poll_time = current_time
 
@@ -397,19 +425,12 @@ class RuidaDriver(Driver):
         ops: "Ops",
         on_command_done: Callable[[int], None | Awaitable[None]] | None = None,
     ) -> None:
-        binary_data = encoded.driver_data.get("binary", b"")
+        commands = encoded.driver_data.get("commands", [])
         text_lines = [
             line.strip() for line in encoded.text.splitlines() if line.strip()
         ]
         op_map = encoded.op_map
-
-        if on_command_done is not None:
-            num_ops = op_map.op_count if op_map else 0
-
-            for op_index in range(num_ops):
-                result = on_command_done(op_index)
-                if inspect.isawaitable(result):
-                    await result
+        num_ops = op_map.op_count if op_map else 0
 
         logger.info(
             f"Executing {len(text_lines)} commands",
@@ -419,12 +440,74 @@ class RuidaDriver(Driver):
         for line in text_lines:
             logger.info(line, extra=self._log_extra("USER_COMMAND"))
 
-        if binary_data and self._client:
-            for i in range(0, len(binary_data), self.CHUNK_SIZE):
-                chunk = binary_data[i : i + self.CHUNK_SIZE]
-                await self._client.send_command(chunk)
+        if not commands or not self._client:
+            await self._report_ops_done(on_command_done, 0, num_ops)
+            self.job_finished.send(self)
+            return
+
+        datagrams = build_datagrams(commands, self.DATAGRAM_MAX_BYTES)
+        reported = 0
+        self._suppress_polling = True
+        try:
+            # In-flight poll replies would be mistaken for job ACKs.
+            await asyncio.sleep(0.2)
+            for i, datagram in enumerate(datagrams):
+                await self._send_datagram(datagram)
+                target = num_ops * (i + 1) // len(datagrams)
+                await self._report_ops_done(on_command_done, reported, target)
+                reported = target
+            await self._wait_for_job_completion()
+        finally:
+            self._suppress_polling = False
 
         self.job_finished.send(self)
+
+    async def _report_ops_done(
+        self,
+        on_command_done: Callable[[int], None | Awaitable[None]] | None,
+        start: int,
+        end: int,
+    ) -> None:
+        if on_command_done is None:
+            return
+        for op_index in range(start, end):
+            result = on_command_done(op_index)
+            if inspect.isawaitable(result):
+                await result
+
+    async def _send_datagram(self, datagram: bytes) -> None:
+        """
+        Send one datagram and wait for its ACK.
+
+        Retries with backoff on NAK or timeout for up to
+        SEND_RETRY_BUDGET seconds, then aborts the job.
+        """
+        assert self._client
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + self.SEND_RETRY_BUDGET
+        delay = 0.1
+        while True:
+            result = await self._client.send_command_wait_ack(
+                datagram, timeout=self.ACK_TIMEOUT
+            )
+            if result:
+                return
+            if loop.time() >= deadline:
+                raise RuntimeError(_("Controller did not accept job data"))
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 1.0)
+
+    async def _wait_for_job_completion(self) -> None:
+        """
+        Poll machine status until the job-running bit clears.
+        """
+        while self._client and self._client.is_connected:
+            status = await self._client._read_memory_wait(
+                self.MACHINE_STATUS_ADDRESS
+            )
+            if status is not None and not status & self.STATUS_JOB_RUNNING_BIT:
+                return
+            await asyncio.sleep(self.STATUS_POLL_INTERVAL)
 
     async def run_raw(self, machine_code: str) -> None:
         """

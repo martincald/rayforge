@@ -105,6 +105,7 @@ class RuidaServer:
         if cmd == 0xD7:
             self._log_command("End Of File", data[:1])
             s.program_mode = False
+            s.machine_status = 22
             return b"", 1
 
         if cmd == 0xD8:

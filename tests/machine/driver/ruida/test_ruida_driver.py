@@ -8,21 +8,32 @@ not mocks, ensuring end-to-end protocol compliance.
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from typing import cast
 
 import pytest
 import pytest_asyncio
+from blinker import Signal
 from raygeo.ops import Ops
 
 from rayforge.core.doc import Doc
 from rayforge.machine.driver.driver import Axis
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
+from rayforge.machine.driver.ruida.ruida_client import RuidaClient
+from rayforge.machine.driver.ruida.ruida_driver import (
+    RuidaDriver,
+    build_datagrams,
+)
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_simulator import RuidaSimulator
-from rayforge.machine.driver.ruida.ruida_transport import RuidaServerTransport
+from rayforge.machine.driver.ruida.ruida_transport import (
+    RuidaServerTransport,
+    RuidaTransport,
+)
+from rayforge.machine.driver.ruida.ruida_util import encode35
 from rayforge.machine.models.laser import Laser, LaserType
 from rayforge.machine.models.machine import Machine
 from rayforge.machine.transport.transport import TransportStatus
 from rayforge.machine.transport.udp_server import UdpServerTransport
+from rayforge.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
 
 logger = logging.getLogger(__name__)
 
@@ -1063,3 +1074,226 @@ def test_supports_pwm_co2_with_zero_frequency():
 
     assert driver.supports_pwm(laser) is True
     assert driver.get_pwm_params(laser) is not None
+
+
+def test_build_datagrams_respects_max_size():
+    commands = [b"\x88" + bytes(10)] * 200
+    datagrams = build_datagrams(commands, 1000)
+
+    assert all(len(d) <= 1000 for d in datagrams)
+    assert b"".join(datagrams) == b"".join(commands)
+    assert all(len(d) % 11 == 0 for d in datagrams)
+
+
+def test_build_datagrams_boundaries_align_with_commands():
+    commands = [bytes([i % 256]) * (7 + i % 13) for i in range(300)]
+    datagrams = build_datagrams(commands, 1000)
+
+    assert b"".join(datagrams) == b"".join(commands)
+    it = iter(commands)
+    for datagram in datagrams:
+        consumed = b""
+        while len(consumed) < len(datagram):
+            consumed += next(it)
+        assert consumed == datagram
+
+
+def test_build_datagrams_never_splits_oversized_command():
+    commands = [bytes(1500), b"\x88" + bytes(10)]
+    datagrams = build_datagrams(commands, 1000)
+
+    assert datagrams[0] == commands[0]
+    assert datagrams[1] == commands[1]
+
+
+class StubRuidaTransport:
+    """Minimal in-memory stand-in for RuidaTransport."""
+
+    def __init__(self):
+        self.decoded_received = Signal()
+        self.status_changed = Signal()
+        self.sent: list[bytes] = []
+        self.is_connected = True
+
+    async def connect(self):
+        pass
+
+    async def disconnect(self):
+        pass
+
+    async def send_command(self, command: bytes):
+        self.sent.append(command)
+
+
+def make_encoded(commands: list[bytes]) -> EncodedOutput:
+    return EncodedOutput(
+        text="",
+        op_map=MachineCodeOpMap.from_lists([], []),
+        driver_data={"commands": commands},
+    )
+
+
+async def wait_for_sent(
+    transport: StubRuidaTransport, count: int, timeout: float = 2.0
+) -> None:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while len(transport.sent) < count:
+        assert asyncio.get_event_loop().time() < deadline
+        await asyncio.sleep(0.02)
+
+
+STATUS_IDLE_REPLY = b"\xda\x01\x04\x00" + encode35(22)
+STATUS_RUNNING_REPLY = b"\xda\x01\x04\x00" + encode35(21)
+
+
+@pytest.mark.asyncio
+async def test_ack_pacing_no_second_datagram_before_ack(driver):
+    """The next datagram must not be sent before the first is ACKed."""
+    transport = StubRuidaTransport()
+    driver._client = RuidaClient(cast(RuidaTransport, transport))
+
+    commands = [b"\x88" + bytes(10)] * 100
+    encoded = make_encoded(commands)
+
+    task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
+    await wait_for_sent(transport, 1)
+    await asyncio.sleep(0.2)
+    assert len(transport.sent) == 1
+
+    transport.decoded_received.send(transport, data=b"\xcc")
+    await wait_for_sent(transport, 2)
+
+    transport.decoded_received.send(transport, data=b"\xcc")
+    await wait_for_sent(transport, 3)
+    assert transport.sent[2] == b"\xda\x00\x04\x00"
+
+    transport.decoded_received.send(transport, data=STATUS_IDLE_REPLY)
+    await asyncio.wait_for(task, timeout=2.0)
+
+
+@pytest.mark.asyncio
+async def test_nak_triggers_datagram_retry(driver):
+    """A NAK response must trigger a resend of the same datagram."""
+    transport = StubRuidaTransport()
+    driver._client = RuidaClient(cast(RuidaTransport, transport))
+
+    encoded = make_encoded([b"\x88" + bytes(10)])
+
+    task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
+    await wait_for_sent(transport, 1)
+
+    transport.decoded_received.send(transport, data=b"\xcf")
+    await wait_for_sent(transport, 2)
+    assert transport.sent[1] == transport.sent[0]
+
+    transport.decoded_received.send(transport, data=b"\xcc")
+    await wait_for_sent(transport, 3)
+    transport.decoded_received.send(transport, data=STATUS_IDLE_REPLY)
+    await asyncio.wait_for(task, timeout=2.0)
+
+
+@pytest.mark.asyncio
+async def test_persistent_nak_aborts_job(driver):
+    """Persistent NAKs must abort the job with an error."""
+    transport = StubRuidaTransport()
+    client = RuidaClient(cast(RuidaTransport, transport))
+    driver._client = client
+    driver.SEND_RETRY_BUDGET = 0.3
+
+    finished = []
+
+    def on_finished(sender):
+        finished.append(True)
+
+    driver.job_finished.connect(on_finished)
+
+    encoded = make_encoded([b"\x88" + bytes(10)])
+
+    async def nak_all():
+        while True:
+            transport.decoded_received.send(transport, data=b"\xcf")
+            await asyncio.sleep(0.05)
+
+    nak_task = asyncio.create_task(nak_all())
+    try:
+        with pytest.raises(RuntimeError):
+            await asyncio.wait_for(
+                driver.run(encoded, Doc(), Ops()), timeout=5.0
+            )
+    finally:
+        nak_task.cancel()
+
+    assert not finished
+
+
+@pytest.mark.asyncio
+async def test_job_finished_only_after_status_clears(driver):
+    """job_finished must not fire while the job-running bit is set."""
+    transport = StubRuidaTransport()
+    driver._client = RuidaClient(cast(RuidaTransport, transport))
+
+    finished = []
+
+    def on_finished(sender):
+        finished.append(True)
+
+    driver.job_finished.connect(on_finished)
+
+    encoded = make_encoded([b"\x88" + bytes(10)])
+
+    task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
+    await wait_for_sent(transport, 1)
+
+    transport.decoded_received.send(transport, data=b"\xcc")
+    await wait_for_sent(transport, 2)
+    assert transport.sent[1] == b"\xda\x00\x04\x00"
+
+    transport.decoded_received.send(transport, data=STATUS_RUNNING_REPLY)
+    await asyncio.sleep(0.2)
+    assert not finished
+
+    await wait_for_sent(transport, 3)
+    transport.decoded_received.send(transport, data=STATUS_IDLE_REPLY)
+    await asyncio.wait_for(task, timeout=2.0)
+    assert finished
+
+
+@pytest.mark.asyncio
+async def test_run_square_job_end_to_end(driver, ruida_simulator):
+    """A full square job runs against the simulator to completion."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    doc = Doc()
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.8)
+    ops.set_feed_rate(200)
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.line_to(10.0, 0.0, 0.0)
+    ops.line_to(10.0, 10.0, 0.0)
+    ops.line_to(0.0, 10.0, 0.0)
+    ops.line_to(0.0, 0.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+
+    encoded = driver.get_encoder().encode(ops, driver._machine, doc)
+
+    assert await wait_for_connection(driver)
+
+    finished = []
+
+    def on_finished(sender):
+        finished.append(True)
+
+    driver.job_finished.connect(on_finished)
+
+    await driver.run(encoded, doc, ops)
+
+    assert sim.x == 0
+    assert sim.y == 0
+    assert sim.program_mode is False
+    assert sim.machine_status == 22
+    assert finished
+
+    await driver.cleanup()

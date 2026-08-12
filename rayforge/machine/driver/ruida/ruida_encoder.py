@@ -42,7 +42,7 @@ class RuidaEncoder(OpsEncoder):
     """
 
     UM_PER_MM = 1000.0
-    POWER_SCALE = 16384.0
+    POWER_SCALE = 16383.0
 
     def __init__(self):
         self.power: float | None = None
@@ -64,8 +64,8 @@ class RuidaEncoder(OpsEncoder):
             doc: The document being processed
 
         Returns:
-            EncodedOutput with binary in driver_data["binary"],
-            text representation, and op_map
+            EncodedOutput with one complete command per entry in
+            driver_data["commands"], text representation, and op_map
         """
         self._reset_state()
 
@@ -78,8 +78,6 @@ class RuidaEncoder(OpsEncoder):
             self._handle_command(ops, i, machine, binary_chunks, text_lines)
             end_line = len(text_lines)
             line_spans.append((start_line, end_line - start_line))
-
-        binary_data = b"".join(binary_chunks)
 
         if text_lines and not text_lines[-1]:
             text_lines = text_lines[:-1]
@@ -94,7 +92,7 @@ class RuidaEncoder(OpsEncoder):
         return EncodedOutput(
             text="\n".join(text_lines),
             op_map=op_map,
-            driver_data={"binary": binary_data},
+            driver_data={"commands": binary_chunks},
         )
 
     def _reset_state(self) -> None:
@@ -112,7 +110,7 @@ class RuidaEncoder(OpsEncoder):
 
     def _power_to_ruida(self, power_normalized: float) -> int:
         """Convert normalized power (0.0-1.0) to Ruida 14-bit value."""
-        return int(power_normalized * self.POWER_SCALE) & 0x3FFF
+        return int(power_normalized * self.POWER_SCALE)
 
     def _handle_command(
         self,
@@ -154,7 +152,7 @@ class RuidaEncoder(OpsEncoder):
             self._handle_scan_line(ops, idx, binary, text)
             self.current_pos = ops.endpoint(idx)
         elif ct == CommandType.JOB_START:
-            self._handle_job_start(machine, binary, text)
+            self._handle_job_start(ops, machine, binary, text)
         elif ct == CommandType.JOB_END:
             self._handle_job_end(binary, text)
         elif ct == CommandType.LAYER_START:
@@ -372,14 +370,114 @@ class RuidaEncoder(OpsEncoder):
             elif sub_ct == CommandType.SET_POWER:
                 self._handle_set_power(sub_ops, j, binary, text)
 
+    def _collect_job_info(
+        self, ops: Ops
+    ) -> tuple[tuple[int, int, int, int], list[dict]]:
+        """
+        Pre-scan ops for the job prologue.
+
+        Returns job bounds in micrometers and one entry per layer with
+        the layer's speed (mm/s), power (normalized) and bounds (um).
+        Jobs without layer markers yield a single implicit layer.
+        """
+        min_x, min_y, max_x, max_y = ops.rect()
+        bounds = (
+            self._mm_to_um(min_x),
+            self._mm_to_um(min_y),
+            self._mm_to_um(max_x),
+            self._mm_to_um(max_y),
+        )
+
+        cutting = (
+            CommandType.LINE_TO,
+            CommandType.ARC_TO,
+            CommandType.SCAN_LINE,
+        )
+        motion = cutting + (CommandType.MOVE_TO,)
+
+        layers: list[dict] = []
+        current: dict | None = None
+        cur_speed: float | None = None
+        cur_power: float | None = None
+        pos: tuple[float, float] | None = None
+
+        for i in range(ops.len()):
+            ct = ops.command_type(i)
+            if ct == CommandType.LAYER_START:
+                current = {
+                    "speed": cur_speed,
+                    "power": cur_power,
+                    "bounds": None,
+                    "explicit_speed": False,
+                    "explicit_power": False,
+                }
+                layers.append(current)
+            elif ct == CommandType.LAYER_END:
+                current = None
+            elif ct == CommandType.SET_FEED_RATE:
+                cur_speed = ops.rate(i)
+                if current is not None and not current["explicit_speed"]:
+                    current["speed"] = cur_speed
+                    current["explicit_speed"] = True
+            elif ct == CommandType.SET_POWER:
+                cur_power = ops.power(i)
+                if current is not None and not current["explicit_power"]:
+                    current["power"] = cur_power
+                    current["explicit_power"] = True
+            elif ct in motion:
+                end = ops.endpoint(i)
+                if ct in cutting and current is not None:
+                    points = [end] if pos is None else [pos, end]
+                    lb = current["bounds"]
+                    for px, py in ((p[0], p[1]) for p in points):
+                        if lb is None:
+                            lb = [px, py, px, py]
+                        else:
+                            lb[0] = min(lb[0], px)
+                            lb[1] = min(lb[1], py)
+                            lb[2] = max(lb[2], px)
+                            lb[3] = max(lb[3], py)
+                    current["bounds"] = lb
+                pos = (end[0], end[1])
+
+        if not layers:
+            layers.append(
+                {
+                    "speed": cur_speed,
+                    "power": cur_power,
+                    "bounds": None,
+                }
+            )
+
+        result = []
+        for layer in layers:
+            lb = layer["bounds"]
+            if lb is None:
+                layer_bounds = bounds
+            else:
+                layer_bounds = tuple(self._mm_to_um(v) for v in lb)
+            result.append(
+                {
+                    "speed": layer["speed"] or 0.0,
+                    "power": layer["power"] or 0.0,
+                    "bounds": layer_bounds,
+                }
+            )
+        return bounds, result
+
     def _handle_job_start(
         self,
+        ops: Ops,
         machine: "Machine",
         binary: list[bytes],
         text: list[str],
     ) -> None:
         """
-        Handle JobStartCommand - select reference point and mark job start.
+        Handle JobStartCommand - emit the Ruida job prologue.
+
+        The prologue is ported from Meerk40t's rdjob write_header():
+        reference point selection, absolute mode, process start, job
+        and document bounds, then per-layer part settings.
 
         Raises:
             ValueError: If active_wcs is not a valid Ruida reference point
@@ -390,7 +488,57 @@ class RuidaEncoder(OpsEncoder):
                 f"Unknown WCS slot '{active_wcs}'. "
                 f"Valid options: {', '.join(REF_POINT_COMMANDS.keys())}"
             )
+
+        bounds, layers = self._collect_job_info(ops)
+        min_x, min_y, max_x, max_y = bounds
+
         binary.append(REF_POINT_COMMANDS[active_wcs])
+        binary.append(b"\xe6\x01")
+        binary.append(b"\xf0")
+        binary.append(b"\xd8\x00")
+        binary.append(b"\xe7\x06" + encode35(0) + encode35(0))
+        binary.append(b"\xe7\x38\x00")
+        binary.append(b"\xe7\x03" + encode35(min_x) + encode35(min_y))
+        binary.append(b"\xe7\x07" + encode35(max_x) + encode35(max_y))
+        binary.append(b"\xe7\x50" + encode35(min_x) + encode35(min_y))
+        binary.append(b"\xe7\x51" + encode35(max_x) + encode35(max_y))
+        binary.append(
+            b"\xe7\x04" + encode14(1) + encode14(1) + encode14(0) * 5
+        )
+        binary.append(b"\xe7\x05\x00")
+
+        for part, layer in enumerate(layers):
+            part_b = bytes([part])
+            speed_um = self._mm_to_um(layer["speed"])
+            power14 = encode14(self._power_to_ruida(layer["power"]))
+            lmin_x, lmin_y, lmax_x, lmax_y = layer["bounds"]
+            binary.append(b"\xc9\x04" + part_b + encode35(speed_um))
+            binary.append(b"\xc6\x31" + part_b + power14)
+            binary.append(b"\xc6\x32" + part_b + power14)
+            binary.append(b"\xc6\x41" + part_b + power14)
+            binary.append(b"\xc6\x42" + part_b + power14)
+            binary.append(b"\xca\x05" + encode35(0))
+            binary.append(b"\xca\x02" + part_b)
+            binary.append(b"\xca\x41" + part_b + b"\x00")
+            binary.append(
+                b"\xe7\x52" + part_b + encode35(lmin_x) + encode35(lmin_y)
+            )
+            binary.append(
+                b"\xe7\x53" + part_b + encode35(lmax_x) + encode35(lmax_y)
+            )
+            binary.append(
+                b"\xe7\x61" + part_b + encode35(lmin_x) + encode35(lmin_y)
+            )
+            binary.append(
+                b"\xe7\x62" + part_b + encode35(lmax_x) + encode35(lmax_y)
+            )
+
+        binary.append(b"\xca\x22" + bytes([len(layers) - 1]))
+        binary.append(b"\xe7\x54\x00" + encode35(0))
+        binary.append(b"\xe7\x54\x01" + encode35(0))
+        binary.append(b"\xe7\x55\x00" + encode35(0))
+        binary.append(b"\xe7\x55\x01" + encode35(0))
+        binary.append(b"\xf1\x03" + encode35(0) + encode35(0))
         text.append(f"; Job Start - Ref Point: {active_wcs}")
 
     def _handle_job_end(

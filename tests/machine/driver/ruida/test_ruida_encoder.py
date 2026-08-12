@@ -67,24 +67,27 @@ class TestRuidaEncoderBasics:
         assert isinstance(result.driver_data, dict)
 
     def test_empty_ops_produces_empty_output(self, encoder, mock_machine, doc):
-        """Empty Ops should produce empty binary and text."""
+        """Empty Ops should produce empty commands and text."""
         ops = Ops()
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert result.driver_data["binary"] == b""
+        assert result.driver_data["commands"] == []
         assert result.text == ""
         assert result.op_map.op_count == 0
         assert result.op_map.line_count == 0
 
-    def test_binary_in_driver_data(self, encoder, mock_machine, doc):
-        """Binary output should be stored in driver_data['binary']."""
+    def test_commands_in_driver_data(self, encoder, mock_machine, doc):
+        """Commands should be stored in driver_data['commands']."""
         ops = Ops()
         ops.set_power(0.5)
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert "binary" in result.driver_data
-        assert isinstance(result.driver_data["binary"], bytes)
-        assert len(result.driver_data["binary"]) > 0
+        assert "commands" in result.driver_data
+        assert isinstance(result.driver_data["commands"], list)
+        assert all(
+            isinstance(cmd, bytes) for cmd in result.driver_data["commands"]
+        )
+        assert len(result.driver_data["commands"]) > 0
 
     def test_encoder_state_resets_between_encodes(
         self, encoder, mock_machine, doc
@@ -113,18 +116,18 @@ class TestSetPowerCommand:
         ops.set_power(0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary == b"\xc8" + encode14(0)
         assert "POWER 0.0" in result.text
 
     def test_power_half(self, encoder, mock_machine, doc):
-        """50% power should encode to 8192 (half of 16384)."""
+        """50% power should encode to 8191 (half of 16383)."""
         ops = Ops()
         ops.set_power(0.5)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
-        expected_val = int(0.5 * 16384)
+        binary = b"".join(result.driver_data["commands"])
+        expected_val = int(0.5 * 16383)
         assert binary == b"\xc8" + encode14(expected_val)
         assert "POWER 50.0" in result.text
 
@@ -134,8 +137,8 @@ class TestSetPowerCommand:
         ops.set_power(1.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
-        expected_val = int(1.0 * 16384) & 0x3FFF
+        binary = b"".join(result.driver_data["commands"])
+        expected_val = 16383
         assert binary == b"\xc8" + encode14(expected_val)
         assert "POWER 100.0" in result.text
 
@@ -154,7 +157,7 @@ class TestSetPowerCommand:
         ops.set_power(0.5)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         lines = result.text.split("\n")
 
         assert b"\xc1" in binary
@@ -171,7 +174,7 @@ class TestSetCutSpeedCommand:
         ops.set_feed_rate(100)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         speed_um = 100 * 1000
         assert binary == b"\xc9\x02" + encode35(speed_um)
         assert "SPEED 100.0" in result.text
@@ -182,7 +185,7 @@ class TestSetCutSpeedCommand:
         ops.set_feed_rate(50)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         speed_um = 50 * 1000
         assert binary == b"\xc9\x02" + encode35(speed_um)
         assert "SPEED 50.0" in result.text
@@ -193,7 +196,7 @@ class TestSetCutSpeedCommand:
         ops.set_feed_rate(0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary == b"\xc9\x02" + encode35(0)
         assert "SPEED 0.0" in result.text
 
@@ -207,7 +210,7 @@ class TestSetTravelSpeedCommand:
         ops.set_rapid_rate(500)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         speed_um = 500 * 1000
         assert b"\xc9\x02" + encode35(speed_um) in binary
         assert "TRAVEL_SPEED 500.0" in result.text
@@ -230,7 +233,7 @@ class TestAirAssistCommands:
         ops.set_air_assist(AirAssistMode.ON)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert b"\xca\x13" in binary
         assert "AIR_ASSIST ON" in result.text
 
@@ -241,7 +244,7 @@ class TestAirAssistCommands:
         ops.set_air_assist(AirAssistMode.OFF)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert b"\xca\x13" in binary
         assert b"\xca\x12" in binary
         lines = result.text.split("\n")
@@ -258,7 +261,7 @@ class TestAirAssistCommands:
         ops.set_air_assist(AirAssistMode.ON)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         on_count = binary.count(b"\xca\x13")
         assert on_count == 1
 
@@ -271,7 +274,7 @@ class TestAirAssistCommands:
         ops.set_air_assist(AirAssistMode.OFF)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary.count(b"\xca\x13") == 1
         assert binary.count(b"\xca\x12") == 1
 
@@ -285,7 +288,7 @@ class TestSetLaserCommand:
         ops.set_head("laser-1")
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary == b"\xca\n"
         assert "LASER 1" in result.text
 
@@ -295,7 +298,7 @@ class TestSetLaserCommand:
         ops.set_head("laser-2")
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary == b"\xca\x0b"
         assert "LASER 2" in result.text
 
@@ -320,7 +323,7 @@ class TestMoveToCommand:
         ops.move_to(0.0, 0.0, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         x_um = int(0.0 * 1000)
         y_um = int(0.0 * 1000)
         assert binary == b"\x88" + encode35(x_um) + encode35(y_um)
@@ -332,7 +335,7 @@ class TestMoveToCommand:
         ops.move_to(100.5, 200.25, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         x_um = int(100.5 * 1000)
         y_um = int(200.25 * 1000)
         assert binary == b"\x88" + encode35(x_um) + encode35(y_um)
@@ -442,12 +445,17 @@ class TestJobMarkers:
     """Tests for job start/end markers."""
 
     def test_job_start(self, encoder, mock_machine, doc):
-        """Job start should emit reference point selection command."""
+        """Job start should emit the job prologue."""
         ops = Ops()
         ops.job_start()
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert result.driver_data["binary"] == b"\xd8\x10"
+        commands = result.driver_data["commands"]
+        assert commands[0] == b"\xd8\x10"
+        assert commands[1] == b"\xe6\x01"
+        assert commands[2] == b"\xf0"
+        assert commands[3] == b"\xd8\x00"
+        assert commands[-1] == b"\xf1\x03" + encode35(0) + encode35(0)
         assert "; Job Start - Ref Point: MACHINE" in result.text
 
     def test_job_end(self, encoder, mock_machine, doc):
@@ -456,7 +464,7 @@ class TestJobMarkers:
         ops.job_end()
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert result.driver_data["binary"] == b"\xd7"
+        assert b"".join(result.driver_data["commands"]) == b"\xd7"
         assert "; Job End" in result.text
 
     def test_full_job_structure(self, encoder, mock_machine, doc):
@@ -472,8 +480,8 @@ class TestJobMarkers:
         lines = result.text.split("\n")
         assert "Job Start" in lines[0]
         assert lines[-1] == "; Job End"
-        assert result.driver_data["binary"].startswith(b"\xd8\x10")
-        assert result.driver_data["binary"].endswith(b"\xd7")
+        assert b"".join(result.driver_data["commands"]).startswith(b"\xd8\x10")
+        assert b"".join(result.driver_data["commands"]).endswith(b"\xd7")
 
 
 class TestLayerMarkers:
@@ -485,7 +493,7 @@ class TestLayerMarkers:
         ops.layer_start("test-layer-123")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert b"\xca\x00" in result.driver_data["binary"]
+        assert b"\xca\x00" in b"".join(result.driver_data["commands"])
         assert "; --- Layer test-lay ---" in result.text
 
     def test_layer_end(self, encoder, mock_machine, doc):
@@ -494,7 +502,7 @@ class TestLayerMarkers:
         ops.layer_end("test-layer-456")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert b"\xca\x00" in result.driver_data["binary"]
+        assert b"\xca\x00" in b"".join(result.driver_data["commands"])
         assert "; --- End Layer ---" in result.text
 
 
@@ -507,7 +515,7 @@ class TestWorkpieceMarkers:
         ops.workpiece_start("workpiece-abc")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert result.driver_data["binary"] == b""
+        assert b"".join(result.driver_data["commands"]) == b""
         assert "; --- Workpiece workpiec ---" in result.text
 
     def test_workpiece_end(self, encoder, mock_machine, doc):
@@ -516,7 +524,7 @@ class TestWorkpieceMarkers:
         ops.workpiece_end("workpiece-xyz")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert result.driver_data["binary"] == b""
+        assert b"".join(result.driver_data["commands"]) == b""
         assert "; --- End Workpiece ---" in result.text
 
 
@@ -648,7 +656,7 @@ class TestCoordinateConversion:
         ops.move_to(1.0, 1.0, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         x_um = int(1.0 * 1000)
         y_um = int(1.0 * 1000)
         assert encode35(x_um) in binary
@@ -660,7 +668,7 @@ class TestCoordinateConversion:
         ops.move_to(1000.0, 2000.0, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         x_um = int(1000.0 * 1000)
         y_um = int(2000.0 * 1000)
         assert encode35(x_um) in binary
@@ -672,7 +680,7 @@ class TestCoordinateConversion:
         ops.move_to(0.001, 0.001, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         x_um = int(0.001 * 1000)
         y_um = int(0.001 * 1000)
         assert encode35(x_um) in binary
@@ -688,7 +696,7 @@ class TestBinaryCommandStructure:
         ops.move_to(100.0, 200.0, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[0] == 0x88
         assert len(binary) == 11
 
@@ -699,7 +707,7 @@ class TestBinaryCommandStructure:
         ops.line_to(50.0, 75.0, 0.0)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         cut_cmd = binary[11:]
         assert cut_cmd[0] == 0xA8
         assert len(cut_cmd) == 11
@@ -710,7 +718,7 @@ class TestBinaryCommandStructure:
         ops.set_feed_rate(100)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[0:2] == b"\xc9\x02"
 
     def test_power_command_structure(self, encoder, mock_machine, doc):
@@ -719,7 +727,7 @@ class TestBinaryCommandStructure:
         ops.set_power(0.5)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[0] == 0xC8
         assert len(binary) == 3
 
@@ -732,7 +740,7 @@ class TestSetFrequencyCommand:
         ops.set_frequency(1000)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[:2] == b"\xc6\x60"
         assert binary[2] == 1  # laser 1
         assert binary[3] == 0  # part 0
@@ -745,7 +753,7 @@ class TestSetFrequencyCommand:
         ops.set_frequency(5000)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         freq_cmd = binary[binary.index(0xC6) + 1 :]
         assert freq_cmd[1] == 2  # laser 2
         assert "FREQUENCY 5000" in result.text
@@ -755,7 +763,7 @@ class TestSetFrequencyCommand:
         ops.set_frequency(2000)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[0] == 0xC6
         assert binary[1] == 0x60
         assert len(binary) == 9
@@ -769,7 +777,7 @@ class TestSetPulseWidthCommand:
         ops.set_pulse_width(50)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[:2] == b"\xc6\x10"
         assert binary[2] == 1  # laser 1
         assert binary[3] == 0  # part 0
@@ -782,7 +790,7 @@ class TestSetPulseWidthCommand:
         ops.set_pulse_width(100)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         pulse_cmd = binary[binary.index(bytes([0xC6, 0x10])) + 2 :]
         assert pulse_cmd[0] == 2  # laser 2
 
@@ -791,10 +799,95 @@ class TestSetPulseWidthCommand:
         ops.set_pulse_width(25)
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert binary[0] == 0xC6
         assert binary[1] == 0x10
         assert len(binary) == 9
+
+
+class TestJobPrologue:
+    """Golden-bytes tests for the job prologue."""
+
+    def test_one_layer_job_prologue_bytes(self, encoder, mock_machine, doc):
+        """The prologue for a minimal one-layer job is byte-exact."""
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(100)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(10.0, 20.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.job_end()
+        result = encoder.encode(ops, mock_machine, doc)
+
+        z5 = encode35(0)
+        power14 = encode14(int(0.5 * 16383))
+        expected = [
+            b"\xd8\x10",
+            b"\xe6\x01",
+            b"\xf0",
+            b"\xd8\x00",
+            b"\xe7\x06" + z5 + z5,
+            b"\xe7\x38\x00",
+            b"\xe7\x03" + z5 + z5,
+            b"\xe7\x07" + encode35(10000) + encode35(20000),
+            b"\xe7\x50" + z5 + z5,
+            b"\xe7\x51" + encode35(10000) + encode35(20000),
+            b"\xe7\x04" + encode14(1) + encode14(1) + encode14(0) * 5,
+            b"\xe7\x05\x00",
+            b"\xc9\x04\x00" + encode35(100000),
+            b"\xc6\x31\x00" + power14,
+            b"\xc6\x32\x00" + power14,
+            b"\xc6\x41\x00" + power14,
+            b"\xc6\x42\x00" + power14,
+            b"\xca\x05" + z5,
+            b"\xca\x02\x00",
+            b"\xca\x41\x00\x00",
+            b"\xe7\x52\x00" + z5 + z5,
+            b"\xe7\x53\x00" + encode35(10000) + encode35(20000),
+            b"\xe7\x61\x00" + z5 + z5,
+            b"\xe7\x62\x00" + encode35(10000) + encode35(20000),
+            b"\xca\x22\x00",
+            b"\xe7\x54\x00" + z5,
+            b"\xe7\x54\x01" + z5,
+            b"\xe7\x55\x00" + z5,
+            b"\xe7\x55\x01" + z5,
+            b"\xf1\x03" + z5 + z5,
+        ]
+
+        commands = result.driver_data["commands"]
+        assert commands[: len(expected)] == expected
+        assert commands[-1] == b"\xd7"
+
+    def test_multi_layer_prologue_has_one_part_per_layer(
+        self, encoder, mock_machine, doc
+    ):
+        """Each layer gets its own part settings in the prologue."""
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(100)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(10.0, 0.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.layer_start("layer-2")
+        ops.set_power(1.0)
+        ops.set_feed_rate(50)
+        ops.move_to(0.0, 10.0, 0.0)
+        ops.line_to(10.0, 10.0, 0.0)
+        ops.layer_end("layer-2")
+        ops.job_end()
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        speeds = [c for c in commands if c.startswith(b"\xc9\x04")]
+        assert speeds == [
+            b"\xc9\x04\x00" + encode35(100000),
+            b"\xc9\x04\x01" + encode35(50000),
+        ]
+        assert b"\xca\x22\x01" in commands
 
 
 class TestFrequencyAndPulseWidthInJob:
@@ -812,7 +905,7 @@ class TestFrequencyAndPulseWidthInJob:
         ops.job_end()
         result = encoder.encode(ops, mock_machine, doc)
 
-        binary = result.driver_data["binary"]
+        binary = b"".join(result.driver_data["commands"])
         assert b"\xc6\x60" in binary
         assert b"\xc6\x10" in binary
         text = result.text

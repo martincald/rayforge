@@ -51,6 +51,7 @@ class RuidaClient:
         self._jog_transport = jog_transport
         self.state = state or RuidaState()
         self._pending_mem_reads: dict[int, asyncio.Future] = {}
+        self._pending_acks: list[asyncio.Future] = []
         self._ref_point_mode: str | None = "MACHINE"
         self.position_updated = Signal()
         self.state_changed = Signal()
@@ -74,6 +75,15 @@ class RuidaClient:
         """
         pending = list(self._pending_mem_reads.keys())
         logger.debug(f"handle_response: {data.hex()} (pending: {pending})")
+        if (
+            len(data) == 1
+            and data[0] in (0xCC, 0xC6, 0xCF)
+            and self._pending_acks
+        ):
+            future = self._pending_acks.pop(0)
+            if not future.done():
+                future.set_result(data[0] != 0xCF)
+
         if len(data) >= 9 and data[0] == 0xDA and data[1] == 0x01:
             mem_address = (data[2] << 8) | data[3]
             value = decode35(data[4:9])
@@ -126,6 +136,31 @@ class RuidaClient:
             command: Raw command bytes (will be swizzled and framed)
         """
         await self._transport.send_command(command)
+
+    async def send_command_wait_ack(
+        self, command: bytes, timeout: float = 1.0
+    ) -> bool | None:
+        """
+        Send a command and wait for the controller's acknowledgement.
+
+        Args:
+            command: Raw command bytes (will be swizzled and framed)
+            timeout: Maximum time to wait for the response in seconds
+
+        Returns:
+            True on ACK (0xCC or 0xC6), False on NAK (0xCF),
+            None on timeout
+        """
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future = loop.create_future()
+        self._pending_acks.append(future)
+        try:
+            await self.send_command(command)
+            return await asyncio.wait_for(future, timeout)
+        except asyncio.TimeoutError:
+            if future in self._pending_acks:
+                self._pending_acks.remove(future)
+            return None
 
     async def send_jog_command(self, command: bytes) -> None:
         """
