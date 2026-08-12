@@ -59,11 +59,13 @@ class RuidaDriver(Driver):
     maturity = DriverMaturity.KNOWN_BUGGY
     native_overscan = True
     CONNECTION_TIMEOUT = 2.0
+    HOMING_TIMEOUT = 40.0
     RECONNECT_INTERVAL = 5.0
     KEEPALIVE_INTERVAL = 1.0
     POSITION_POLL_INTERVAL = 0.5
     RESPONSE_PORT = 40200
     CHUNK_SIZE = 1024
+    JOG_SPEED_ADDRESS = 0x0131
 
     def __init__(self, context: RayforgeContext, machine: "Machine"):
         super().__init__(context, machine)
@@ -78,6 +80,8 @@ class RuidaDriver(Driver):
         self._connection_task: asyncio.Task | None = None
         self._keep_running = False
         self._is_connected = False
+        self._response_timeout = self.CONNECTION_TIMEOUT
+        self._last_jog_speed: int | None = None
 
     @property
     def machine_space_wcs(self) -> str:
@@ -314,7 +318,7 @@ class RuidaDriver(Driver):
                         try:
                             await asyncio.wait_for(
                                 self._response_received.wait(),
-                                timeout=self.CONNECTION_TIMEOUT,
+                                timeout=self._response_timeout,
                             )
                         except asyncio.TimeoutError:
                             logger.warning(
@@ -454,15 +458,30 @@ class RuidaDriver(Driver):
         assert self._client
         if axes is None:
             logger.info("Home All", extra=self._log_extra("MACHINE_EVENT"))
+            home_xy = True
+            home_z = False
         else:
             cmd_parts = []
-            if axes & (Axis.X | Axis.Y):
+            home_xy = bool(axes & (Axis.X | Axis.Y))
+            home_z = bool(axes & Axis.Z)
+            if home_xy:
                 cmd_parts.append("XY")
-            if axes & Axis.Z:
+            if home_z:
                 cmd_parts.append("Z")
             cmd_name = f"Home {'/'.join(cmd_parts)}"
             logger.info(cmd_name, extra=self._log_extra("MACHINE_EVENT"))
-        await self._rapid_move_to(0, 0)
+
+        self._response_timeout = self.HOMING_TIMEOUT
+        try:
+            if home_xy:
+                await self._client.home_xy()
+            if home_z:
+                await self._client.home_z()
+            await self._client._read_memory_wait(
+                0x0421, timeout=self.HOMING_TIMEOUT
+            )
+        finally:
+            self._response_timeout = self.CONNECTION_TIMEOUT
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         assert self._client
@@ -476,14 +495,7 @@ class RuidaDriver(Driver):
 
     async def _rapid_move_to(self, target_x: int, target_y: int) -> None:
         assert self._client
-        cur_x = await self._client._read_memory_wait(0x0421)
-        cur_y = await self._client._read_memory_wait(0x0431)
-        dx = target_x - (cur_x or 0)
-        dy = target_y - (cur_y or 0)
-        if dx != 0:
-            await self._client.rapid_move_axis(0x00, dx)
-        if dy != 0:
-            await self._client.rapid_move_axis(0x01, dy)
+        await self._client.move_abs(target_x, target_y)
 
     async def select_tool(self, tool_number: int) -> None:
         pass
@@ -516,6 +528,12 @@ class RuidaDriver(Driver):
 
     async def jog(self, speed: int, **deltas: float) -> None:
         assert self._client
+        speed_um_s = int(speed * 1000 / 60)
+        if speed_um_s != self._last_jog_speed:
+            await self._client._write_memory(
+                self.JOG_SPEED_ADDRESS, speed_um_s
+            )
+            self._last_jog_speed = speed_um_s
         for axis_name, delta in deltas.items():
             axis_lower = axis_name.lower()
             delta_um = int(delta * 1000)

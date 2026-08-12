@@ -194,17 +194,19 @@ async def test_home_xy_resets_position(driver, ruida_simulator):
 
 @pytest.mark.asyncio
 async def test_home_z_axis(driver, ruida_simulator):
-    """Test that home command with Z only does not move axes."""
+    """Test that home command with Z only homes the Z axis."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
 
+    sim.x = 100000
     sim.z = 30000
 
     await driver.home(Axis.Z)
     await asyncio.sleep(0.2)
 
-    assert sim.z == 30000
+    assert sim.z == 0
+    assert sim.x == 100000
 
     await driver.cleanup()
 
@@ -351,6 +353,137 @@ async def test_jog_negative_direction(driver, ruida_simulator):
     await asyncio.sleep(0.2)
 
     assert sim.x == 50000
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_move_to_is_absolute(driver, ruida_simulator):
+    """Test that move_to reaches the target regardless of start position."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    sim.x = 99000
+    sim.y = 88000
+
+    await driver.move_to(10.0, 20.0)
+    await asyncio.sleep(0.2)
+
+    assert sim.x == 10000
+    assert sim.y == 20000
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_move_to_sends_single_move_abs(driver, ruida_simulator):
+    """Test that move_to sends one 0x88 move, not per-axis rapids."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    commands: list[str] = []
+    sim._server.on_command = lambda desc, data: commands.append(desc)
+
+    await driver.move_to(10.0, 20.0)
+    await asyncio.sleep(0.2)
+
+    moves = [c for c in commands if c.startswith("Move Abs")]
+    rapids = [c for c in commands if c.startswith("Rapid move")]
+    assert len(moves) == 1
+    assert not rapids
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_home_sends_home_xy_command(driver, ruida_simulator):
+    """Test that home() sends the D8 2A Home XY command."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    commands: list[str] = []
+    sim._server.on_command = lambda desc, data: commands.append(desc)
+
+    await driver.home()
+    await asyncio.sleep(0.2)
+
+    assert "Home XY" in commands
+    assert "Home Z" not in commands
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_home_z_sends_home_z_command(driver, ruida_simulator):
+    """Test that home(Axis.Z) sends the D8 2C Home Z command."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    commands: list[str] = []
+    sim._server.on_command = lambda desc, data: commands.append(desc)
+
+    await driver.home(Axis.Z)
+    await asyncio.sleep(0.2)
+
+    assert "Home Z" in commands
+    assert "Home XY" not in commands
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_home_restores_response_timeout(driver, ruida_simulator):
+    """Test that home() restores the response timeout afterwards."""
+    assert await wait_for_connection(driver)
+
+    await driver.home()
+
+    assert driver._response_timeout == driver.CONNECTION_TIMEOUT
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_jog_writes_speed_register(driver, ruida_simulator):
+    """Test that jog writes speed in um/s to Manual Fast Speed."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    await driver.jog(6000, x=10.0)
+    await asyncio.sleep(0.2)
+
+    assert sim.state.memory_values[0x0131] == 100000
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_jog_speed_write_skipped_when_unchanged(driver, ruida_simulator):
+    """Test that the jog speed register is written only on change."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    commands: list[str] = []
+    sim._server.on_command = lambda desc, data: commands.append(desc)
+
+    await driver.jog(3000, x=1.0)
+    await driver.jog(3000, y=1.0)
+    await asyncio.sleep(0.2)
+
+    writes = [c for c in commands if "Manual Fast Speed" in c and "=" in c]
+    assert len(writes) == 1
+
+    await driver.jog(6000, x=1.0)
+    await asyncio.sleep(0.2)
+
+    writes = [c for c in commands if "Manual Fast Speed" in c and "=" in c]
+    assert len(writes) == 2
 
     await driver.cleanup()
 
