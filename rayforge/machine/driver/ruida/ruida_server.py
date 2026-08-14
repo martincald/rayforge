@@ -346,11 +346,11 @@ class RuidaServer:
             y = decode35(data[8:13])
             opt_desc = get_opt_desc(opts)
             self._log_command(
-                f"Rapid move {opt_desc} XY: ({x:+d}um, {y:+d}um) (rel)",
+                f"Rapid move {opt_desc} XY: ({x}um, {y}um) (abs)",
                 data[:13],
             )
-            s.x += x
-            s.y += y
+            s.x = x
+            s.y = y
             return b"", 13
 
         if subcmd == 0x11:

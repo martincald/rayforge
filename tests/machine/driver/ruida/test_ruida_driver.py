@@ -28,7 +28,7 @@ from rayforge.machine.driver.ruida.ruida_transport import (
     RuidaServerTransport,
     RuidaTransport,
 )
-from rayforge.machine.driver.ruida.ruida_util import encode35
+from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
 from rayforge.machine.models.laser import Laser, LaserType
 from rayforge.machine.models.machine import Machine
 from rayforge.machine.transport.transport import TransportStatus
@@ -46,6 +46,24 @@ async def wait_for_connection(
     deadline = asyncio.get_event_loop().time() + timeout
     while asyncio.get_event_loop().time() < deadline:
         if driver.is_connected:
+            return True
+        await asyncio.sleep(0.05)
+    return False
+
+
+async def wait_for_cached_position(
+    driver: RuidaDriver,
+    x_um: int | None = None,
+    y_um: int | None = None,
+    timeout: float = 10.0,
+) -> bool:
+    """Wait for the driver's polled position cache to match."""
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        pos = driver.state.machine_pos
+        x_ok = x_um is None or int((pos[0] or 0.0) * 1000) == x_um
+        y_ok = y_um is None or int((pos[1] or 0.0) * 1000) == y_um
+        if x_ok and y_ok:
             return True
         await asyncio.sleep(0.05)
     return False
@@ -341,6 +359,7 @@ async def test_jog_both_axes(driver, ruida_simulator):
 
     sim.x = 10000
     sim.y = 20000
+    assert await wait_for_cached_position(driver, x_um=10000, y_um=20000)
 
     await driver.jog(4000, x=-10.0, y=5.0)
     await asyncio.sleep(0.2)
@@ -359,6 +378,7 @@ async def test_jog_negative_direction(driver, ruida_simulator):
     assert await wait_for_connection(driver)
 
     sim.x = 100000
+    assert await wait_for_cached_position(driver, x_um=100000)
 
     await driver.jog(6000, x=-50.0)
     await asyncio.sleep(0.2)
@@ -388,22 +408,55 @@ async def test_move_to_is_absolute(driver, ruida_simulator):
 
 
 @pytest.mark.asyncio
-async def test_move_to_sends_single_move_abs(driver, ruida_simulator):
-    """Test that move_to sends one 0x88 move, not per-axis rapids."""
+async def test_move_to_sends_single_rapid_move(driver, ruida_simulator):
+    """Test that move_to sends one D9 10 rapid, not a job-stream 0x88."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
 
-    commands: list[str] = []
-    sim._server.on_command = lambda desc, data: commands.append(desc)
+    commands: list[tuple[str, bytes]] = []
+    sim._server.on_command = lambda desc, data: commands.append((desc, data))
 
     await driver.move_to(10.0, 20.0)
     await asyncio.sleep(0.2)
 
-    moves = [c for c in commands if c.startswith("Move Abs")]
-    rapids = [c for c in commands if c.startswith("Rapid move")]
-    assert len(moves) == 1
-    assert not rapids
+    moves = [d for desc, d in commands if desc.startswith("Move Abs")]
+    rapids = [d for desc, d in commands if desc.startswith("Rapid move")]
+    assert not moves
+    assert len(rapids) == 1
+    assert rapids[0][:2] == b"\xd9\x10"
+    assert decode35(rapids[0][3:8]) == 10000
+    assert decode35(rapids[0][8:13]) == 20000
+
+    await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_jog_sends_single_rapid_move_xy(driver, ruida_simulator):
+    """Test that jog emits one D9 10 datagram with the absolute target."""
+    sim, _host, _port, _jog_port = ruida_simulator
+
+    assert await wait_for_connection(driver)
+
+    sim.x = 30000
+    sim.y = 40000
+    assert await wait_for_cached_position(driver, x_um=30000, y_um=40000)
+
+    motion: list[bytes] = []
+
+    def on_command(desc: str, data: bytes) -> None:
+        if desc.startswith(("Rapid move", "Move Abs")):
+            motion.append(data)
+
+    sim._server.on_command = on_command
+
+    await driver.jog(4000, x=-10.0, y=5.0)
+    await asyncio.sleep(0.2)
+
+    assert len(motion) == 1
+    assert motion[0][:2] == b"\xd9\x10"
+    assert decode35(motion[0][3:8]) == 20000
+    assert decode35(motion[0][8:13]) == 45000
 
     await driver.cleanup()
 

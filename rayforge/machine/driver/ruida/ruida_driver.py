@@ -106,6 +106,7 @@ class RuidaDriver(Driver):
         self._response_timeout = self.CONNECTION_TIMEOUT
         self._last_jog_speed: int | None = None
         self._suppress_polling = False
+        self._has_position = False
 
     @property
     def machine_space_wcs(self) -> str:
@@ -578,7 +579,7 @@ class RuidaDriver(Driver):
 
     async def _rapid_move_to(self, target_x: int, target_y: int) -> None:
         assert self._client
-        await self._client.move_abs(target_x, target_y)
+        await self._client.rapid_move_xy(target_x, target_y)
 
     async def select_tool(self, tool_number: int) -> None:
         pass
@@ -617,13 +618,31 @@ class RuidaDriver(Driver):
                 self.JOG_SPEED_ADDRESS, speed_um_s
             )
             self._last_jog_speed = speed_um_s
+        if not self._has_position:
+            await self._client._read_memory_wait(0x0421)
+            await self._client._read_memory_wait(0x0431)
+        pos = self.state.machine_pos
+        x_um = int((pos[0] or 0.0) * 1000)
+        y_um = int((pos[1] or 0.0) * 1000)
         for axis_name, delta in deltas.items():
             axis_lower = axis_name.lower()
             delta_um = int(delta * 1000)
             if axis_lower == "x":
-                await self._client.rapid_move_axis(0x00, delta_um)
+                x_um += delta_um
             elif axis_lower == "y":
-                await self._client.rapid_move_axis(0x01, delta_um)
+                y_um += delta_um
+        bed_w_mm, bed_h_mm = self._machine.axis_extents
+        x_um = max(0, min(x_um, int(bed_w_mm * 1000)))
+        y_um = max(0, min(y_um, int(bed_h_mm * 1000)))
+        await self._client.rapid_move_xy(x_um, y_um)
+        # Track the commanded target so back-to-back jogs do not
+        # compute from a stale polled position.
+        z_mm = self.state.machine_pos[2]
+        self.state = replace(
+            self.state,
+            machine_pos=(x_um / 1000.0, y_um / 1000.0, z_mm),
+        )
+        self.state_changed.send(self, state=self.state)
 
     async def set_wcs_offset(
         self, wcs_slot: str, x: float, y: float, z: float
@@ -721,6 +740,7 @@ class RuidaDriver(Driver):
 
     def _on_position_updated(self, sender, axis: str, value_um: int) -> None:
         """Handle position update from client."""
+        self._has_position = True
         pos_mm = value_um / 1000.0
         current_pos = self.state.machine_pos
 

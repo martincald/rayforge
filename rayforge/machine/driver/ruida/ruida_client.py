@@ -52,6 +52,7 @@ class RuidaClient:
         self.state = state or RuidaState()
         self._pending_mem_reads: dict[int, asyncio.Future] = {}
         self._pending_acks: list[asyncio.Future] = []
+        self._send_lock = asyncio.Lock()
         self._ref_point_mode: str | None = "MACHINE"
         self.position_updated = Signal()
         self.state_changed = Signal()
@@ -132,10 +133,15 @@ class RuidaClient:
         """
         Send a raw command to the controller.
 
+        Sends are serialized behind a lock so that ACKs elicited by
+        keepalive or status commands cannot resolve a pending
+        job-chunk ACK future.
+
         Args:
             command: Raw command bytes (will be swizzled and framed)
         """
-        await self._transport.send_command(command)
+        async with self._send_lock:
+            await self._transport.send_command(command)
 
     async def send_command_wait_ack(
         self, command: bytes, timeout: float = 1.0
@@ -152,15 +158,16 @@ class RuidaClient:
             None on timeout
         """
         loop = asyncio.get_event_loop()
-        future: asyncio.Future = loop.create_future()
-        self._pending_acks.append(future)
-        try:
-            await self.send_command(command)
-            return await asyncio.wait_for(future, timeout)
-        except asyncio.TimeoutError:
-            if future in self._pending_acks:
-                self._pending_acks.remove(future)
-            return None
+        async with self._send_lock:
+            future: asyncio.Future = loop.create_future()
+            self._pending_acks.append(future)
+            try:
+                await self._transport.send_command(command)
+                return await asyncio.wait_for(future, timeout)
+            except asyncio.TimeoutError:
+                if future in self._pending_acks:
+                    self._pending_acks.remove(future)
+                return None
 
     async def send_jog_command(self, command: bytes) -> None:
         """
@@ -172,7 +179,7 @@ class RuidaClient:
         Args:
             command: Raw command bytes
         """
-        await self._transport.send_command(command)
+        await self.send_command(command)
 
     async def move_abs(self, x: int, y: int) -> None:
         """
@@ -254,11 +261,14 @@ class RuidaClient:
         self, x: int, y: int, origin: bool = False, light: bool = False
     ) -> None:
         """
-        Rapid move XY by relative offset.
+        Rapid move to absolute XY position (D9 10).
+
+        This is the interactive motion command used by real Ruida
+        hardware; job streams use move_abs (0x88) instead.
 
         Args:
-            x: X delta in micrometers
-            y: Y delta in micrometers
+            x: Absolute X coordinate in micrometers
+            y: Absolute Y coordinate in micrometers
             origin: Move relative to stored origin point
             light: Enable laser pointer during move
         """
