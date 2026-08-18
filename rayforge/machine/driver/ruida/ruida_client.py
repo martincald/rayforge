@@ -257,22 +257,19 @@ class RuidaClient:
         """
         await self.send_command(self._build_cut_rel_y(dy))
 
-    async def rapid_move_xy(
-        self, x: int, y: int, origin: bool = False, light: bool = False
-    ) -> None:
+    async def rapid_move_xy(self, x_um: int, y_um: int) -> None:
         """
-        Rapid move to absolute XY position (D9 10).
+        Rapid move to absolute XY position (D9 10, options 0x00).
 
         This is the interactive motion command used by real Ruida
-        hardware; job streams use move_abs (0x88) instead.
+        hardware; job streams use move_abs (0x88) instead. D9 10
+        with the ORIGIN options byte takes absolute coordinates.
 
         Args:
-            x: Absolute X coordinate in micrometers
-            y: Absolute Y coordinate in micrometers
-            origin: Move relative to stored origin point
-            light: Enable laser pointer during move
+            x_um: Absolute X coordinate in micrometers
+            y_um: Absolute Y coordinate in micrometers
         """
-        await self.send_command(self._build_rapid_move_xy(x, y, origin, light))
+        await self.send_command(self._build_rapid_move_xy(x_um, y_um))
 
     async def rapid_move_axis(
         self,
@@ -403,6 +400,18 @@ class RuidaClient:
         """
         await self.send_command(self._build_power_end(laser, power_percent))
 
+    async def set_travel_speed(self, um_per_s: int) -> None:
+        """
+        Set interactive travel speed (C9 02, speed_laser_1).
+
+        Streamed immediately before an interactive rapid move; real
+        hardware has no persistent jog-speed register.
+
+        Args:
+            um_per_s: Speed in micrometers per second
+        """
+        await self.send_command(b"\xc9\x02" + encode35(um_per_s))
+
     async def set_speed(self, speed_mm_s: float) -> None:
         """
         Set movement speed.
@@ -453,11 +462,8 @@ class RuidaClient:
     def _build_cut_rel_y(self, dy: int) -> bytes:
         return b"\xab" + encode14(dy)
 
-    def _build_rapid_move_xy(
-        self, x: int, y: int, origin: bool = False, light: bool = False
-    ) -> bytes:
-        opts = self._build_move_opts(origin, light)
-        return b"\xd9\x10" + bytes([opts]) + encode35(x) + encode35(y)
+    def _build_rapid_move_xy(self, x: int, y: int) -> bytes:
+        return b"\xd9\x10\x00" + encode35(x) + encode35(y)
 
     def _build_rapid_move_axis(
         self,

@@ -409,7 +409,7 @@ async def test_move_to_is_absolute(driver, ruida_simulator):
 
 @pytest.mark.asyncio
 async def test_move_to_sends_single_rapid_move(driver, ruida_simulator):
-    """Test that move_to sends one D9 10 rapid, not a job-stream 0x88."""
+    """Test that move_to streams C9 02 then one absolute D9 10."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
@@ -421,12 +421,28 @@ async def test_move_to_sends_single_rapid_move(driver, ruida_simulator):
     await asyncio.sleep(0.2)
 
     moves = [d for desc, d in commands if desc.startswith("Move Abs")]
-    rapids = [d for desc, d in commands if desc.startswith("Rapid move")]
+    speeds = [
+        (i, d)
+        for i, (desc, d) in enumerate(commands)
+        if desc.startswith("Speed Laser 1")
+    ]
+    rapids = [
+        (i, d)
+        for i, (desc, d) in enumerate(commands)
+        if desc.startswith("Rapid move")
+    ]
     assert not moves
+    assert len(speeds) == 1
     assert len(rapids) == 1
-    assert rapids[0][:2] == b"\xd9\x10"
-    assert decode35(rapids[0][3:8]) == 10000
-    assert decode35(rapids[0][8:13]) == 20000
+    speed_index, speed = speeds[0]
+    rapid_index, rapid = rapids[0]
+    assert speed_index < rapid_index
+    assert speed[:2] == b"\xc9\x02"
+    # Machine default is 3000 mm/min = 50000 um/s.
+    assert decode35(speed[2:7]) == 50000
+    assert rapid[:3] == b"\xd9\x10\x00"
+    assert decode35(rapid[3:8]) == 10000
+    assert decode35(rapid[8:13]) == 20000
 
     await driver.cleanup()
 
@@ -454,7 +470,7 @@ async def test_jog_sends_single_rapid_move_xy(driver, ruida_simulator):
     await asyncio.sleep(0.2)
 
     assert len(motion) == 1
-    assert motion[0][:2] == b"\xd9\x10"
+    assert motion[0][:3] == b"\xd9\x10\x00"
     assert decode35(motion[0][3:8]) == 20000
     assert decode35(motion[0][8:13]) == 45000
 
@@ -512,23 +528,50 @@ async def test_home_restores_response_timeout(driver, ruida_simulator):
 
 
 @pytest.mark.asyncio
-async def test_jog_writes_speed_register(driver, ruida_simulator):
-    """Test that jog writes speed in um/s to Manual Fast Speed."""
+async def test_jog_single_axis_streams_speed_then_relative(
+    driver, ruida_simulator
+):
+    """Test single-axis jog: C9 02 speed, then relative D9 00."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
 
+    sim.x = 30000
+
+    commands: list[tuple[str, bytes]] = []
+    sim._server.on_command = lambda desc, data: commands.append((desc, data))
+
     await driver.jog(6000, x=10.0)
     await asyncio.sleep(0.2)
 
-    assert sim.state.memory_values[0x0131] == 100000
+    speeds = [
+        (i, d)
+        for i, (desc, d) in enumerate(commands)
+        if desc.startswith("Speed Laser 1")
+    ]
+    rapids = [
+        (i, d)
+        for i, (desc, d) in enumerate(commands)
+        if desc.startswith("Rapid move")
+    ]
+    assert len(speeds) == 1
+    assert len(rapids) == 1
+    speed_index, speed = speeds[0]
+    rapid_index, rapid = rapids[0]
+    assert speed_index < rapid_index
+    assert speed[:2] == b"\xc9\x02"
+    # 6000 mm/min = 100000 um/s.
+    assert decode35(speed[2:7]) == 100000
+    assert rapid[:3] == b"\xd9\x00\x02"
+    assert decode35(rapid[3:8]) == 10000
+    assert sim.x == 40000
 
     await driver.cleanup()
 
 
 @pytest.mark.asyncio
-async def test_jog_speed_write_skipped_when_unchanged(driver, ruida_simulator):
-    """Test that the jog speed register is written only on change."""
+async def test_jog_never_writes_speed_register(driver, ruida_simulator):
+    """Test that jog streams C9 02 each time, no register writes."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
@@ -540,14 +583,10 @@ async def test_jog_speed_write_skipped_when_unchanged(driver, ruida_simulator):
     await driver.jog(3000, y=1.0)
     await asyncio.sleep(0.2)
 
-    writes = [c for c in commands if "Manual Fast Speed" in c and "=" in c]
-    assert len(writes) == 1
-
-    await driver.jog(6000, x=1.0)
-    await asyncio.sleep(0.2)
-
-    writes = [c for c in commands if "Manual Fast Speed" in c and "=" in c]
-    assert len(writes) == 2
+    writes = [c for c in commands if "Manual Fast Speed" in c]
+    assert not writes
+    speeds = [c for c in commands if c.startswith("Speed Laser 1")]
+    assert len(speeds) == 2
 
     await driver.cleanup()
 

@@ -82,7 +82,7 @@ class RuidaDriver(Driver):
     KEEPALIVE_INTERVAL = 1.0
     POSITION_POLL_INTERVAL = 0.5
     RESPONSE_PORT = 40200
-    JOG_SPEED_ADDRESS = 0x0131
+    DEFAULT_TRAVEL_SPEED = 3000  # mm/min
     DATAGRAM_MAX_BYTES = 1000
     ACK_TIMEOUT = 1.0
     SEND_RETRY_BUDGET = 4.0
@@ -104,9 +104,8 @@ class RuidaDriver(Driver):
         self._keep_running = False
         self._is_connected = False
         self._response_timeout = self.CONNECTION_TIMEOUT
-        self._last_jog_speed: int | None = None
         self._suppress_polling = False
-        self._has_position = False
+        self._last_known_pos: tuple[int, int] | None = None
 
     @property
     def machine_space_wcs(self) -> str:
@@ -579,6 +578,10 @@ class RuidaDriver(Driver):
 
     async def _rapid_move_to(self, target_x: int, target_y: int) -> None:
         assert self._client
+        speed_mm_min = (
+            self._machine.max_travel_speed or self.DEFAULT_TRAVEL_SPEED
+        )
+        await self._client.set_travel_speed(int(speed_mm_min * 1000 / 60))
         await self._client.rapid_move_xy(target_x, target_y)
 
     async def select_tool(self, tool_number: int) -> None:
@@ -612,37 +615,43 @@ class RuidaDriver(Driver):
 
     async def jog(self, speed: int, **deltas: float) -> None:
         assert self._client
-        speed_um_s = int(speed * 1000 / 60)
-        if speed_um_s != self._last_jog_speed:
-            await self._client._write_memory(
-                self.JOG_SPEED_ADDRESS, speed_um_s
-            )
-            self._last_jog_speed = speed_um_s
-        if not self._has_position:
-            await self._client._read_memory_wait(0x0421)
-            await self._client._read_memory_wait(0x0431)
-        pos = self.state.machine_pos
-        x_um = int((pos[0] or 0.0) * 1000)
-        y_um = int((pos[1] or 0.0) * 1000)
+        await self._client.set_travel_speed(int(speed * 1000 / 60))
+
+        dx_um = 0
+        dy_um = 0
         for axis_name, delta in deltas.items():
             axis_lower = axis_name.lower()
             delta_um = int(delta * 1000)
             if axis_lower == "x":
-                x_um += delta_um
+                dx_um += delta_um
             elif axis_lower == "y":
-                y_um += delta_um
+                dy_um += delta_um
+
+        if not (dx_um and dy_um):
+            # Single-axis jog: D9 00/D9 01 take relative deltas.
+            if not (dx_um or dy_um):
+                return
+            axis = 0x00 if dx_um else 0x01
+            await self._client.rapid_move_axis(axis, dx_um or dy_um)
+            if self._last_known_pos is not None:
+                px, py = self._last_known_pos
+                self._last_known_pos = (px + dx_um, py + dy_um)
+            return
+
+        # Two-axis jog: D9 10 takes an absolute target.
+        if self._last_known_pos is None:
+            await self._client._read_memory_wait(0x0421, timeout=1.0)
+            await self._client._read_memory_wait(0x0431, timeout=1.0)
+        pos_x, pos_y = self._last_known_pos or (0, 0)
+        x_um = pos_x + dx_um
+        y_um = pos_y + dy_um
         bed_w_mm, bed_h_mm = self._machine.axis_extents
         x_um = max(0, min(x_um, int(bed_w_mm * 1000)))
         y_um = max(0, min(y_um, int(bed_h_mm * 1000)))
         await self._client.rapid_move_xy(x_um, y_um)
         # Track the commanded target so back-to-back jogs do not
         # compute from a stale polled position.
-        z_mm = self.state.machine_pos[2]
-        self.state = replace(
-            self.state,
-            machine_pos=(x_um / 1000.0, y_um / 1000.0, z_mm),
-        )
-        self.state_changed.send(self, state=self.state)
+        self._last_known_pos = (x_um, y_um)
 
     async def set_wcs_offset(
         self, wcs_slot: str, x: float, y: float, z: float
@@ -740,14 +749,16 @@ class RuidaDriver(Driver):
 
     def _on_position_updated(self, sender, axis: str, value_um: int) -> None:
         """Handle position update from client."""
-        self._has_position = True
         pos_mm = value_um / 1000.0
         current_pos = self.state.machine_pos
+        last_x, last_y = self._last_known_pos or (0, 0)
 
         if axis == "x":
             new_pos = (pos_mm, current_pos[1], current_pos[2])
+            self._last_known_pos = (value_um, last_y)
         elif axis == "y":
             new_pos = (current_pos[0], pos_mm, current_pos[2])
+            self._last_known_pos = (last_x, value_um)
         elif axis == "z":
             new_pos = (current_pos[0], current_pos[1], pos_mm)
         else:

@@ -2,6 +2,7 @@
 Tests for RuidaClient command generation and sending.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -408,6 +409,22 @@ class TestRuidaClientSpeedCommands:
         sent = self.mock_transport.send_command.call_args[0][0]
         assert sent[0:2] == b"\xc9\x03"
 
+    @pytest.mark.asyncio
+    async def test_set_travel_speed(self):
+        """Test set_travel_speed emits C9 02 with um/s value."""
+        await self.client.set_travel_speed(100000)
+        self.mock_transport.send_command.assert_called_once()
+        sent = self.mock_transport.send_command.call_args[0][0]
+        assert sent == b"\xc9\x02" + encode35(100000)
+
+    @pytest.mark.asyncio
+    async def test_rapid_move_xy(self):
+        """Test rapid_move_xy emits absolute D9 10 with options 0x00."""
+        await self.client.rapid_move_xy(10000, 20000)
+        self.mock_transport.send_command.assert_called_once()
+        sent = self.mock_transport.send_command.call_args[0][0]
+        assert sent == b"\xd9\x10\x00" + encode35(10000) + encode35(20000)
+
 
 class TestRuidaClientEndOfFile:
     """Tests for end of file command."""
@@ -478,3 +495,54 @@ class TestRuidaClientEndOfFile:
         result = self.client._build_pulse_width(3, 200)
         assert result[2] == 3
         assert result[4:] == encode35(200)
+
+
+class TestRuidaClientAckSerialization:
+    """Tests for ACK future isolation between senders."""
+
+    def setup_method(self):
+        self.mock_transport = MagicMock(
+            spec=[
+                "connect",
+                "disconnect",
+                "send",
+                "send_command",
+                "is_connected",
+                "received",
+                "decoded_received",
+                "status_changed",
+            ]
+        )
+        self.mock_transport.connect = AsyncMock()
+        self.mock_transport.disconnect = AsyncMock()
+        self.mock_transport.send = AsyncMock()
+        self.mock_transport.send_command = AsyncMock()
+        self.mock_transport.is_connected = False
+        self.mock_transport.received = MagicMock()
+        self.mock_transport.received.connect = MagicMock()
+        self.mock_transport.decoded_received = MagicMock()
+        self.mock_transport.decoded_received.connect = MagicMock()
+        self.mock_transport.status_changed = MagicMock()
+        self.mock_transport.status_changed.connect = MagicMock()
+
+        self.client = RuidaClient(self.mock_transport)
+
+    @pytest.mark.asyncio
+    async def test_keepalive_ack_cannot_resolve_chunk_future(self):
+        """A keepalive is held back while a chunk ACK is pending."""
+        chunk_task = asyncio.create_task(
+            self.client.send_command_wait_ack(b"\x88\x00", timeout=1.0)
+        )
+        await asyncio.sleep(0.01)
+        assert self.mock_transport.send_command.call_count == 1
+
+        keepalive_task = asyncio.create_task(self.client.keep_alive())
+        await asyncio.sleep(0.01)
+        # The keepalive must not go out while the chunk ACK is
+        # pending, so its ACK can never resolve the chunk future.
+        assert self.mock_transport.send_command.call_count == 1
+
+        self.client._handle_response(None, b"\xcc")
+        assert await chunk_task is True
+        await keepalive_task
+        assert self.mock_transport.send_command.call_count == 2
