@@ -10,6 +10,8 @@ Tests cover:
 - Serialization of EncodedOutput
 """
 
+from pathlib import Path
+
 import pytest
 from raygeo.ops import Ops
 from raygeo.ops.state import AirAssistMode
@@ -19,6 +21,8 @@ from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_util import encode14, encode35
 from rayforge.machine.models.laser import Laser
 from rayforge.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
+
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "rdworks_reference.rd"
 
 
 @pytest.fixture
@@ -235,7 +239,7 @@ class TestAirAssistCommands:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert b"\xca\x13" in binary
+        assert b"\xca\x01\x13" in binary
         assert "AIR_ASSIST ON" in result.text
 
     def test_disable_air_assist(self, encoder, mock_machine, doc):
@@ -246,8 +250,8 @@ class TestAirAssistCommands:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert b"\xca\x13" in binary
-        assert b"\xca\x12" in binary
+        assert b"\xca\x01\x13" in binary
+        assert b"\xca\x01\x12" in binary
         lines = result.text.split("\n")
         assert "AIR_ASSIST ON" in lines[0]
         assert "AIR_ASSIST OFF" in lines[1]
@@ -263,7 +267,7 @@ class TestAirAssistCommands:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        on_count = binary.count(b"\xca\x13")
+        on_count = binary.count(b"\xca\x01\x13")
         assert on_count == 1
 
     def test_air_assist_state_tracking(self, encoder, mock_machine, doc):
@@ -276,8 +280,8 @@ class TestAirAssistCommands:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        assert binary.count(b"\xca\x13") == 1
-        assert binary.count(b"\xca\x12") == 1
+        assert binary.count(b"\xca\x01\x13") == 1
+        assert binary.count(b"\xca\x01\x12") == 1
 
 
 class TestSetLaserCommand:
@@ -453,19 +457,30 @@ class TestJobMarkers:
 
         commands = result.driver_data["commands"]
         assert commands[0] == b"\xd8\x10"
-        assert commands[1] == b"\xe6\x01"
+        assert commands[1] == bytes.fromhex("e73201502024100150202410")
         assert commands[2] == b"\xf0"
-        assert commands[3] == b"\xd8\x00"
-        assert commands[-1] == b"\xf1\x03" + encode35(0) + encode35(0)
+        assert commands[3] == b"\xf1\x02\x00"
+        assert commands[4] == b"\xe7\x3b\x41"
+        assert commands[5] == b"\xd8\x00"
+        assert commands[-1] == (
+            b"\xe7\x08" + encode14(1) + encode14(1) + encode35(0) + encode35(0)
+        )
         assert "; Job Start - Ref Point: MACHINE" in result.text
 
     def test_job_end(self, encoder, mock_machine, doc):
-        """Job end should emit EOF marker."""
+        """Job end should emit the tail with checksum and EOF marker."""
         ops = Ops()
         ops.job_end()
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert b"".join(result.driver_data["commands"]) == b"\xd7"
+        commands = result.driver_data["commands"]
+        assert commands[0] == b"\xe4"
+        assert commands[1] == b"\xeb"
+        assert commands[2] == b"\xe7\x00"
+        assert commands[3][:4] == b"\xda\x01\x06\x20"
+        prior_sum = sum(sum(c) for c in commands[:4])
+        assert commands[4] == b"\xe5\x05" + encode35(prior_sum + 0xD7)
+        assert commands[-1] == b"\xd7"
         assert "; Job End" in result.text
 
     def test_full_job_structure(self, encoder, mock_machine, doc):
@@ -489,21 +504,26 @@ class TestLayerMarkers:
     """Tests for layer start/end markers."""
 
     def test_layer_start(self, encoder, mock_machine, doc):
-        """Layer start should emit binary and text marker."""
+        """Layer start should emit the body block and text marker."""
         ops = Ops()
         ops.layer_start("test-layer-123")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert b"\xca\x00" in b"".join(result.driver_data["commands"])
+        commands = result.driver_data["commands"]
+        assert commands[0] == b"\xca\x01\x00"
+        assert commands[1] == b"\xca\x02\x00"
+        binary = b"".join(commands)
+        assert b"\xc9\x02" in binary
+        assert b"\xca\x10\x00" in binary
         assert "; --- Layer test-lay ---" in result.text
 
     def test_layer_end(self, encoder, mock_machine, doc):
-        """Layer end should emit binary and text marker."""
+        """Layer end should emit a text marker only."""
         ops = Ops()
         ops.layer_end("test-layer-456")
         result = encoder.encode(ops, mock_machine, doc)
 
-        assert b"\xca\x00" in b"".join(result.driver_data["commands"])
+        assert result.driver_data["commands"] == []
         assert "; --- End Layer ---" in result.text
 
 
@@ -825,38 +845,64 @@ class TestJobPrologue:
         result = encoder.encode(ops, mock_machine, doc)
 
         z5 = encode35(0)
+        one14 = encode14(1)
         power14 = encode14(int(0.5 * 16383))
+        w35 = encode35(10000)
+        h35 = encode35(20000)
+        neg_w35 = encode35(-10000)
         expected = [
             b"\xd8\x10",
-            b"\xe6\x01",
+            bytes.fromhex("e73201502024100150202410"),
             b"\xf0",
+            b"\xf1\x02\x00",
+            b"\xe7\x3b\x41",
             b"\xd8\x00",
             b"\xe7\x06" + z5 + z5,
             b"\xe7\x38\x00",
             b"\xe7\x03" + z5 + z5,
-            b"\xe7\x07" + encode35(10000) + encode35(20000),
+            b"\xe7\x07" + w35 + h35,
             b"\xe7\x50" + z5 + z5,
-            b"\xe7\x51" + encode35(10000) + encode35(20000),
-            b"\xe7\x04" + encode14(1) + encode14(1) + encode14(0) * 5,
+            b"\xe7\x51" + w35 + h35,
+            b"\xe7\x04" + one14 + one14 + encode14(0) * 5,
             b"\xe7\x05\x00",
             b"\xc9\x04\x00" + encode35(100000),
+            b"\xc6\x65\x00\x3d",
             b"\xc6\x31\x00" + power14,
             b"\xc6\x32\x00" + power14,
             b"\xc6\x41\x00" + power14,
             b"\xc6\x42\x00" + power14,
-            b"\xca\x05" + z5,
-            b"\xca\x02\x00",
+            b"\xca\x06\x00" + z5,
             b"\xca\x41\x00\x00",
             b"\xe7\x52\x00" + z5 + z5,
-            b"\xe7\x53\x00" + encode35(10000) + encode35(20000),
+            b"\xe7\x53\x00" + w35 + h35,
             b"\xe7\x61\x00" + z5 + z5,
-            b"\xe7\x62\x00" + encode35(10000) + encode35(20000),
+            b"\xe7\x62\x00" + w35 + h35,
             b"\xca\x22\x00",
             b"\xe7\x54\x00" + z5,
             b"\xe7\x54\x01" + z5,
             b"\xe7\x55\x00" + z5,
             b"\xe7\x55\x01" + z5,
             b"\xf1\x03" + z5 + z5,
+            b"\xf1\x00\x00",
+            b"\xf1\x01\x00",
+            b"\xf2\x00\x00",
+            b"\xf2\x03" + z5 + z5,
+            b"\xf2\x04" + w35 + h35,
+            b"\xf2\x05" + one14 + one14 + neg_w35 + h35,
+            b"\xf2\x06" + z5 + z5,
+            b"\xf2\x07\x00",
+            b"\xf2\x08" + neg_w35 + h35,
+            b"\xe7\x0a" + z5,
+            b"\xea\x00",
+            b"\xe7\x60\x00\x00",
+            b"\xe3",
+            b"\xe7\x0b\x00",
+            b"\xe7\x13" + z5 + z5,
+            b"\xe7\x17" + w35 + h35,
+            b"\xe7\x23" + z5 + z5,
+            b"\xe7\x24\x00",
+            b"\xe7\x37" + neg_w35 + h35,
+            b"\xe7\x08" + one14 + one14 + neg_w35 + h35,
         ]
 
         commands = result.driver_data["commands"]
@@ -891,6 +937,180 @@ class TestJobPrologue:
             b"\xc9\x04\x01" + encode35(50000),
         ]
         assert b"\xca\x22\x01" in commands
+
+
+def _unswizzle_byte(b: int) -> int:
+    """Unswizzle one byte with magic 0x88 (independent of ruida_util)."""
+    b = (b - 1) & 0xFF
+    b ^= 0x88
+    b ^= b >> 7
+    b ^= (b << 7) & 0xFF
+    b ^= b >> 7
+    return b
+
+
+def _split_commands(data: bytes) -> list[bytes]:
+    """Split a decoded stream into commands (MSB-set byte starts one)."""
+    cmds: list[bytes] = []
+    cur = bytearray()
+    for b in data:
+        if b >= 0x80 and cur:
+            cmds.append(bytes(cur))
+            cur = bytearray()
+        cur.append(b)
+    if cur:
+        cmds.append(bytes(cur))
+    return cmds
+
+
+def _reference_commands() -> list[bytes]:
+    """Decode the RDWorks ground-truth file into a command list."""
+    raw = FIXTURE_PATH.read_bytes()
+    return _split_commands(bytes(_unswizzle_byte(b) for b in raw))
+
+
+def _decode_u35(data: bytes) -> int:
+    value = 0
+    for b in data:
+        value = (value << 7) | (b & 0x7F)
+    return value
+
+
+_MOVE_OPS = {0x88, 0x89, 0x8A, 0x8B}
+_CUT_OPS = {0xA8, 0xA9, 0xAA, 0xAB}
+_SUB_OPS = {0xC6, 0xC9, 0xCA, 0xD8, 0xDA, 0xE5, 0xE7, 0xF1, 0xF2}
+
+
+def _command_tokens(cmds: list[bytes]) -> list[str]:
+    """
+    Map commands to type tokens (opcode + sub-opcode).
+
+    Motion commands are normalized to MOVE/CUT and consecutive runs
+    collapsed, since the fixture's geometry differs from the test
+    job's; everything else keeps opcode and sub-opcode (plus the
+    argument byte for CA 01 prop commands).
+    """
+    tokens: list[str] = []
+    for cmd in cmds:
+        op = cmd[0]
+        if op in _MOVE_OPS:
+            token = "MOVE"
+        elif op in _CUT_OPS:
+            token = "CUT"
+        elif op == 0xCA and len(cmd) >= 3 and cmd[1] == 0x01:
+            token = f"CA 01 {cmd[2]:02X}"
+        elif op in _SUB_OPS and len(cmd) >= 2:
+            token = f"{op:02X} {cmd[1]:02X}"
+        else:
+            token = f"{op:02X}"
+        if token in ("MOVE", "CUT") and tokens and tokens[-1] == token:
+            continue
+        tokens.append(token)
+    return tokens
+
+
+def _equivalent_job_ops() -> Ops:
+    """A one-layer job equivalent to the fixture: ~20x20mm square,
+    10 mm/s, 60% power, air assist on, offset from the origin so the
+    job-local translation is exercised."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.6)
+    ops.set_feed_rate(10)
+    ops.set_air_assist(AirAssistMode.ON)
+    ops.move_to(60.0, 40.0, 0.0)
+    ops.line_to(80.0, 40.0, 0.0)
+    ops.line_to(80.0, 60.0, 0.0)
+    ops.line_to(60.0, 60.0, 0.0)
+    ops.line_to(60.0, 40.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class TestRDWorksGroundTruth:
+    """Golden tests against the RDWorks reference file."""
+
+    def test_fixture_checksum_formula(self):
+        """The fixture's E5 05 equals byte-sum-before plus 0xD7."""
+        cmds = _reference_commands()
+        e5_idx = next(i for i, c in enumerate(cmds) if c[:2] == b"\xe5\x05")
+        stored = _decode_u35(cmds[e5_idx][2:7])
+        sum_before = sum(sum(c) for c in cmds[:e5_idx])
+        assert stored == sum_before + 0xD7
+        assert cmds[-1] == b"\xd7"
+
+    def test_command_type_sequence_matches_fixture(
+        self, encoder, mock_machine, doc
+    ):
+        """Encoder output has the fixture's command-type sequence."""
+        mock_machine.active_wcs = "REF0"
+        result = encoder.encode(_equivalent_job_ops(), mock_machine, doc)
+        ours = _command_tokens(result.driver_data["commands"])
+        reference = _command_tokens(_reference_commands())
+        assert ours == reference
+
+    def test_job_local_bounds(self, encoder, mock_machine, doc):
+        """Bounds and motion are translated so the job min is 0,0."""
+        result = encoder.encode(_equivalent_job_ops(), mock_machine, doc)
+        commands = result.driver_data["commands"]
+
+        e7_03 = next(c for c in commands if c[:2] == b"\xe7\x03")
+        e7_07 = next(c for c in commands if c[:2] == b"\xe7\x07")
+        assert e7_03[2:] == encode35(0) + encode35(0)
+        assert e7_07[2:] == encode35(20000) + encode35(20000)
+
+        e7_52 = next(c for c in commands if c[:2] == b"\xe7\x52")
+        e7_53 = next(c for c in commands if c[:2] == b"\xe7\x53")
+        assert e7_52[2:] == b"\x00" + encode35(0) + encode35(0)
+        assert e7_53[2:] == b"\x00" + encode35(20000) + encode35(20000)
+
+        move = next(c for c in commands if c[0] == 0x88)
+        assert move[1:] == encode35(0) + encode35(0)
+
+    def test_own_stream_checksum(self, encoder, mock_machine, doc):
+        """E5 05 arithmetic holds on the encoder's own stream."""
+        result = encoder.encode(_equivalent_job_ops(), mock_machine, doc)
+        commands = result.driver_data["commands"]
+        e5_idx = next(
+            i for i, c in enumerate(commands) if c[:2] == b"\xe5\x05"
+        )
+        stored = _decode_u35(commands[e5_idx][2:7])
+        sum_before = sum(sum(c) for c in commands[:e5_idx])
+        assert stored == sum_before + 0xD7
+        assert commands[e5_idx + 1] == b"\xd7"
+        assert commands[-1] == b"\xd7"
+
+    def test_multi_layer_checksum(self, encoder, mock_machine, doc):
+        """Independent sum matches E5 05 for a multi-layer job."""
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(100)
+        ops.set_air_assist(AirAssistMode.ON)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(10.0, 0.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.layer_start("layer-2")
+        ops.set_power(1.0)
+        ops.set_feed_rate(50)
+        ops.set_air_assist(AirAssistMode.OFF)
+        ops.move_to(0.0, 10.0, 0.0)
+        ops.line_to(10.0, 10.0, 0.0)
+        ops.layer_end("layer-2")
+        ops.job_end()
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        e5_cmds = [c for c in commands if c[:2] == b"\xe5\x05"]
+        assert len(e5_cmds) == 1
+        e5_idx = commands.index(e5_cmds[0])
+        stored = _decode_u35(e5_cmds[0][2:7])
+        sum_before = sum(sum(c) for c in commands[:e5_idx])
+        assert stored == sum_before + 0xD7
+        assert commands[-1] == b"\xd7"
 
 
 class TestFrequencyAndPulseWidthInJob:

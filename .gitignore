@@ -44,3 +44,5 @@ external/
 # macOS icon build artifacts
 Assets.car
 rayforge.icns
+# Large vendor archive (exceeds GitHub 100MB limit)
+RDWorksV8.zip

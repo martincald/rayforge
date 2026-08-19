@@ -27,6 +27,18 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Constant payloads replayed verbatim from the RDWorks ground-truth
+# file (tests/machine/driver/ruida/fixtures/rdworks_reference.rd).
+# Their meaning is unknown; they are emitted only when
+# follow_reference is enabled.
+_REF_E7_32 = bytes.fromhex("e73201502024100150202410")
+_REF_E7_3B = b"\xe7\x3b\x41"
+_REF_C6_65_VALUE = b"\x3d"
+_REF_CA_03 = b"\xca\x03\x3d"
+_REF_DA_01_0620 = b"\xda\x01\x06\x20" + encode35(73) + encode35(73)
+
+_LASER_DEVICE_CMDS = {1: b"\xca\x01\x10", 2: b"\xca\x01\x11"}
+
 
 class RuidaEncoder(OpsEncoder):
     """
@@ -44,13 +56,18 @@ class RuidaEncoder(OpsEncoder):
     UM_PER_MM = 1000.0
     POWER_SCALE = 16383.0
 
-    def __init__(self):
+    def __init__(self, follow_reference: bool = True):
+        self.follow_reference = follow_reference
         self.power: float | None = None
         self.cut_speed: float | None = None
         self.travel_speed: float | None = None
         self.air_assist: bool = False
         self.current_pos: Point3D = (0.0, 0.0, 0.0)
         self.active_laser: int = 1
+        self.origin_um: tuple[int, int] = (0, 0)
+        self._layers: list[dict] = []
+        self._part: int = -1
+        self._laser_selected: int | None = None
 
     def encode(
         self, ops: Ops, machine: "Machine", doc: "Doc"
@@ -103,6 +120,10 @@ class RuidaEncoder(OpsEncoder):
         self.air_assist = False
         self.current_pos = (0.0, 0.0, 0.0)
         self.active_laser = 1
+        self.origin_um = (0, 0)
+        self._layers = []
+        self._part = -1
+        self._laser_selected = None
 
     def _mm_to_um(self, mm: float) -> int:
         """Convert millimeters to micrometers."""
@@ -173,9 +194,12 @@ class RuidaEncoder(OpsEncoder):
     ) -> None:
         """Handle SetPowerCommand - set min/max power for active laser."""
         power = ops.power(idx)
+        power_percent = power * 100.0
+        if self.power is not None and power == self.power:
+            text.append(f"POWER {power_percent:.1f}")
+            return
         self.power = power
         power14 = encode14(self._power_to_ruida(power))
-        power_percent = power * 100.0
 
         laser_cmds = {
             1: (b"\xc6\x01", b"\xc6\x02"),
@@ -197,6 +221,9 @@ class RuidaEncoder(OpsEncoder):
     ) -> None:
         """Handle SetCutSpeedCommand - set cutting speed in mm/s."""
         speed = ops.rate(idx)
+        if self.cut_speed is not None and speed == self.cut_speed:
+            text.append(f"SPEED {speed:.1f}")
+            return
         self.cut_speed = speed
         speed_um = self._mm_to_um(speed)
         binary.append(b"\xc9\x02" + encode35(speed_um))
@@ -260,12 +287,12 @@ class RuidaEncoder(OpsEncoder):
         if mode == AirAssistMode.ON:
             if not self.air_assist:
                 self.air_assist = True
-                binary.append(b"\xca\x13")
+                binary.append(b"\xca\x01\x13")
                 text.append("AIR_ASSIST ON")
         else:
             if self.air_assist:
                 self.air_assist = False
-                binary.append(b"\xca\x12")
+                binary.append(b"\xca\x01\x12")
                 text.append("AIR_ASSIST OFF")
 
     def _handle_coolant(
@@ -301,8 +328,11 @@ class RuidaEncoder(OpsEncoder):
         else:
             self.active_laser = laser_head.tool_number
 
-        laser_device = {1: b"\xca\x01\x10", 2: b"\xca\x01\x11"}
-        binary.append(laser_device.get(self.active_laser, b"\xca\x01\x10"))
+        if self._laser_selected != self.active_laser:
+            self._laser_selected = self.active_laser
+            binary.append(
+                _LASER_DEVICE_CMDS.get(self.active_laser, b"\xca\x01\x10")
+            )
         text.append(f"LASER {self.active_laser}")
 
     def _handle_move_to(
@@ -312,12 +342,19 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle MoveToCommand - rapid move with laser off."""
+        """Handle MoveToCommand - rapid move with laser off.
+
+        Coordinates are translated to job-local space (job minimum
+        maps to 0,0), matching the RDWorks reference file.
+        """
         end = ops.endpoint(idx)
-        x_um = self._mm_to_um(end[0])
-        y_um = self._mm_to_um(end[1])
+        x_um = self._mm_to_um(end[0]) - self.origin_um[0]
+        y_um = self._mm_to_um(end[1]) - self.origin_um[1]
         binary.append(b"\x88" + encode35(x_um) + encode35(y_um))
-        text.append(f"MOVE_ABS X:{end[0]:.3f} Y:{end[1]:.3f}")
+        text.append(
+            f"MOVE_ABS X:{x_um / self.UM_PER_MM:.3f} "
+            f"Y:{y_um / self.UM_PER_MM:.3f}"
+        )
 
     def _handle_line_to(
         self,
@@ -326,12 +363,19 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle LineToCommand - cutting move with laser on."""
+        """Handle LineToCommand - cutting move with laser on.
+
+        Coordinates are translated to job-local space (job minimum
+        maps to 0,0), matching the RDWorks reference file.
+        """
         end = ops.endpoint(idx)
-        x_um = self._mm_to_um(end[0])
-        y_um = self._mm_to_um(end[1])
+        x_um = self._mm_to_um(end[0]) - self.origin_um[0]
+        y_um = self._mm_to_um(end[1]) - self.origin_um[1]
         binary.append(b"\xa8" + encode35(x_um) + encode35(y_um))
-        text.append(f"CUT_ABS X:{end[0]:.3f} Y:{end[1]:.3f}")
+        text.append(
+            f"CUT_ABS X:{x_um / self.UM_PER_MM:.3f} "
+            f"Y:{y_um / self.UM_PER_MM:.3f}"
+        )
 
     def _handle_arc_to(
         self,
@@ -384,16 +428,18 @@ class RuidaEncoder(OpsEncoder):
         """
         Pre-scan ops for the job prologue.
 
-        Returns job bounds in micrometers and one entry per layer with
-        the layer's speed (mm/s), power (normalized) and bounds (um).
+        Returns job bounds in job-local micrometers (job minimum maps
+        to 0,0) and one entry per layer with the layer's speed (mm/s),
+        power (normalized), air assist state and bounds (um).
         Jobs without layer markers yield a single implicit layer.
         """
         min_x, min_y, max_x, max_y = ops.rect()
+        ox, oy = self.origin_um
         bounds = (
-            self._mm_to_um(min_x),
-            self._mm_to_um(min_y),
-            self._mm_to_um(max_x),
-            self._mm_to_um(max_y),
+            self._mm_to_um(min_x) - ox,
+            self._mm_to_um(min_y) - oy,
+            self._mm_to_um(max_x) - ox,
+            self._mm_to_um(max_y) - oy,
         )
 
         cutting = (
@@ -407,6 +453,7 @@ class RuidaEncoder(OpsEncoder):
         current: dict | None = None
         cur_speed: float | None = None
         cur_power: float | None = None
+        cur_air: bool = False
         pos: tuple[float, float] | None = None
 
         for i in range(ops.len()):
@@ -415,9 +462,11 @@ class RuidaEncoder(OpsEncoder):
                 current = {
                     "speed": cur_speed,
                     "power": cur_power,
+                    "air": cur_air,
                     "bounds": None,
                     "explicit_speed": False,
                     "explicit_power": False,
+                    "explicit_air": False,
                 }
                 layers.append(current)
             elif ct == CommandType.LAYER_END:
@@ -432,6 +481,11 @@ class RuidaEncoder(OpsEncoder):
                 if current is not None and not current["explicit_power"]:
                     current["power"] = cur_power
                     current["explicit_power"] = True
+            elif ct == CommandType.SET_AIR_ASSIST:
+                cur_air = ops.air_assist(i) == AirAssistMode.ON
+                if current is not None and not current["explicit_air"]:
+                    current["air"] = cur_air
+                    current["explicit_air"] = True
             elif ct in motion:
                 end = ops.endpoint(i)
                 if ct in cutting and current is not None:
@@ -453,6 +507,7 @@ class RuidaEncoder(OpsEncoder):
                 {
                     "speed": cur_speed,
                     "power": cur_power,
+                    "air": cur_air,
                     "bounds": None,
                 }
             )
@@ -463,11 +518,17 @@ class RuidaEncoder(OpsEncoder):
             if lb is None:
                 layer_bounds = bounds
             else:
-                layer_bounds = tuple(self._mm_to_um(v) for v in lb)
+                layer_bounds = (
+                    self._mm_to_um(lb[0]) - ox,
+                    self._mm_to_um(lb[1]) - oy,
+                    self._mm_to_um(lb[2]) - ox,
+                    self._mm_to_um(lb[3]) - oy,
+                )
             result.append(
                 {
                     "speed": layer["speed"] or 0.0,
                     "power": layer["power"] or 0.0,
+                    "air": layer["air"],
                     "bounds": layer_bounds,
                 }
             )
@@ -483,9 +544,12 @@ class RuidaEncoder(OpsEncoder):
         """
         Handle JobStartCommand - emit the Ruida job prologue.
 
-        The prologue is ported from Meerk40t's rdjob write_header():
-        reference point selection, absolute mode, process start, job
-        and document bounds, then per-layer part settings.
+        The prologue structurally matches the RDWorks ground-truth
+        file for this controller: reference point selection, process
+        start, job-local bounds (job minimum maps to 0,0), then
+        per-layer part settings. Commands with unknown meaning are
+        replayed with the reference file's constant payloads when
+        follow_reference is enabled.
 
         Raises:
             ValueError: If active_wcs is not a valid Ruida reference point
@@ -497,14 +561,26 @@ class RuidaEncoder(OpsEncoder):
                 f"Valid options: {', '.join(REF_POINT_COMMANDS.keys())}"
             )
 
+        rect = ops.rect()
+        self.origin_um = (
+            self._mm_to_um(rect[0]),
+            self._mm_to_um(rect[1]),
+        )
         bounds, layers = self._collect_job_info(ops)
         min_x, min_y, max_x, max_y = bounds
+        self._layers = layers
+        self._part = -1
 
+        z5 = encode35(0)
         binary.append(REF_POINT_COMMANDS[active_wcs])
-        binary.append(b"\xe6\x01")
+        if self.follow_reference:
+            binary.append(_REF_E7_32)
         binary.append(b"\xf0")
+        binary.append(b"\xf1\x02\x00")
+        if self.follow_reference:
+            binary.append(_REF_E7_3B)
         binary.append(b"\xd8\x00")
-        binary.append(b"\xe7\x06" + encode35(0) + encode35(0))
+        binary.append(b"\xe7\x06" + z5 + z5)
         binary.append(b"\xe7\x38\x00")
         binary.append(b"\xe7\x03" + encode35(min_x) + encode35(min_y))
         binary.append(b"\xe7\x07" + encode35(max_x) + encode35(max_y))
@@ -521,32 +597,62 @@ class RuidaEncoder(OpsEncoder):
             power14 = encode14(self._power_to_ruida(layer["power"]))
             lmin_x, lmin_y, lmax_x, lmax_y = layer["bounds"]
             binary.append(b"\xc9\x04" + part_b + encode35(speed_um))
+            if self.follow_reference:
+                binary.append(b"\xc6\x65" + part_b + _REF_C6_65_VALUE)
             binary.append(b"\xc6\x31" + part_b + power14)
             binary.append(b"\xc6\x32" + part_b + power14)
             binary.append(b"\xc6\x41" + part_b + power14)
             binary.append(b"\xc6\x42" + part_b + power14)
-            binary.append(b"\xca\x05" + encode35(0))
-            binary.append(b"\xca\x02" + part_b)
-            binary.append(b"\xca\x41" + part_b + b"\x00")
+            binary.append(b"\xca\x06" + part_b + z5)
+            if self.follow_reference:
+                binary.append(b"\xca\x41" + part_b + b"\x00")
             binary.append(
                 b"\xe7\x52" + part_b + encode35(lmin_x) + encode35(lmin_y)
             )
             binary.append(
                 b"\xe7\x53" + part_b + encode35(lmax_x) + encode35(lmax_y)
             )
-            binary.append(
-                b"\xe7\x61" + part_b + encode35(lmin_x) + encode35(lmin_y)
-            )
-            binary.append(
-                b"\xe7\x62" + part_b + encode35(lmax_x) + encode35(lmax_y)
-            )
+            if self.follow_reference:
+                binary.append(
+                    b"\xe7\x61" + part_b + encode35(lmin_x) + encode35(lmin_y)
+                )
+                binary.append(
+                    b"\xe7\x62" + part_b + encode35(lmax_x) + encode35(lmax_y)
+                )
 
         binary.append(b"\xca\x22" + bytes([len(layers) - 1]))
-        binary.append(b"\xe7\x54\x00" + encode35(0))
-        binary.append(b"\xe7\x54\x01" + encode35(0))
-        binary.append(b"\xe7\x55\x00" + encode35(0))
-        binary.append(b"\xe7\x55\x01" + encode35(0))
-        binary.append(b"\xf1\x03" + encode35(0) + encode35(0))
+        binary.append(b"\xe7\x54\x00" + z5)
+        binary.append(b"\xe7\x54\x01" + z5)
+        binary.append(b"\xe7\x55\x00" + z5)
+        binary.append(b"\xe7\x55\x01" + z5)
+
+        if self.follow_reference:
+            one14 = encode14(1)
+            w35 = encode35(max_x)
+            h35 = encode35(max_y)
+            neg_w35 = encode35(-max_x)
+            binary.append(b"\xf1\x03" + z5 + z5)
+            binary.append(b"\xf1\x00\x00")
+            binary.append(b"\xf1\x01\x00")
+            binary.append(b"\xf2\x00\x00")
+            binary.append(b"\xf2\x03" + z5 + z5)
+            binary.append(b"\xf2\x04" + w35 + h35)
+            binary.append(b"\xf2\x05" + one14 + one14 + neg_w35 + h35)
+            binary.append(b"\xf2\x06" + z5 + z5)
+            binary.append(b"\xf2\x07\x00")
+            binary.append(b"\xf2\x08" + neg_w35 + h35)
+            binary.append(b"\xe7\x0a" + z5)
+            binary.append(b"\xea\x00")
+            binary.append(b"\xe7\x60\x00\x00")
+            binary.append(b"\xe3")
+            binary.append(b"\xe7\x0b\x00")
+            binary.append(b"\xe7\x13" + z5 + z5)
+            binary.append(b"\xe7\x17" + w35 + h35)
+            binary.append(b"\xe7\x23" + z5 + z5)
+            binary.append(b"\xe7\x24\x00")
+            binary.append(b"\xe7\x37" + neg_w35 + h35)
+            binary.append(b"\xe7\x08" + one14 + one14 + neg_w35 + h35)
+
         text.append(f"; Job Start - Ref Point: {active_wcs}")
 
     def _handle_job_end(
@@ -554,7 +660,22 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle JobEndCommand - send end-of-file marker."""
+        """
+        Handle JobEndCommand - emit the Ruida job tail.
+
+        Matches the RDWorks ground-truth file: EB, E7 00, then the
+        E5 05 file checksum (sum of every payload byte of every
+        command before the E5 05 command itself, plus 0xD7), then the
+        D7 end-of-file marker.
+        """
+        if self.follow_reference:
+            binary.append(b"\xe4")
+        binary.append(b"\xeb")
+        binary.append(b"\xe7\x00")
+        if self.follow_reference:
+            binary.append(_REF_DA_01_0620)
+        running_sum = sum(sum(chunk) for chunk in binary)
+        binary.append(b"\xe5\x05" + encode35(running_sum + 0xD7))
         binary.append(b"\xd7")
         text.append("; Job End")
 
@@ -565,9 +686,49 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle LayerStartCommand - mark layer beginning."""
+        """
+        Handle LayerStartCommand - emit the per-layer body block.
+
+        Matches the RDWorks ground-truth file: layer prop commands,
+        part index, laser device, air assist, speed, delays and
+        powers, then CA 03 / CA 10 before the first motion command.
+        Layer settings come from the job pre-scan so the block is
+        complete before any motion.
+        """
         uid = ops.layer_uid(idx)
-        binary.append(b"\xca\x00")
+        self._part += 1
+        part = self._part
+        if part < len(self._layers):
+            layer = self._layers[part]
+        else:
+            layer = {"speed": 0.0, "power": 0.0, "air": False}
+        part_b = bytes([part & 0xFF])
+        speed_um = self._mm_to_um(layer["speed"])
+        power14 = encode14(self._power_to_ruida(layer["power"]))
+
+        binary.append(b"\xca\x01\x00")
+        binary.append(b"\xca\x02" + part_b)
+        binary.append(b"\xca\x01\x30")
+        binary.append(
+            _LASER_DEVICE_CMDS.get(self.active_laser, b"\xca\x01\x10")
+        )
+        binary.append(b"\xca\x01\x13" if layer["air"] else b"\xca\x01\x12")
+        binary.append(b"\xc9\x02" + encode35(speed_um))
+        binary.append(b"\xc6\x12" + encode35(0))
+        binary.append(b"\xc6\x13" + encode35(0))
+        binary.append(b"\xc6\x50" + encode14(0x1FFF))
+        binary.append(b"\xc6\x51" + encode14(0x1FFF))
+        binary.append(b"\xc6\x01" + power14)
+        binary.append(b"\xc6\x02" + power14)
+        binary.append(b"\xc6\x21" + power14)
+        binary.append(b"\xc6\x22" + power14)
+        binary.append(_REF_CA_03)
+        binary.append(b"\xca\x10" + bytes([self.active_laser - 1]))
+
+        self.cut_speed = layer["speed"]
+        self.power = layer["power"]
+        self.air_assist = layer["air"]
+        self._laser_selected = self.active_laser
         text.append(f"; --- Layer {uid[:8]} ---")
 
     def _handle_layer_end(
@@ -577,8 +738,11 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle LayerEndCommand - mark layer end."""
-        binary.append(b"\xca\x00")
+        """Handle LayerEndCommand - text marker only.
+
+        The reference file has no command between a layer's last cut
+        and the next layer's body block (or the job tail).
+        """
         text.append("; --- End Layer ---")
 
     def _handle_workpiece_start(

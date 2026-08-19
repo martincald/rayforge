@@ -9,7 +9,8 @@ from ..icons import get_icon
 
 _GAP = 12
 _SPACING = 6
-_MAX_HEIGHT = 4 * 60 + 3 * _SPACING
+_ROWS = 5
+_MAX_HEIGHT = _ROWS * 60 + (_ROWS - 1) * _SPACING
 
 
 class JogWidget(Gtk.Widget):
@@ -35,7 +36,7 @@ class JogWidget(Gtk.Widget):
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self.jog_speed = 1000
+        self.jog_speed = 6000
         self.jog_distance = 10.0
         self._buttons = []
 
@@ -118,6 +119,20 @@ class JogWidget(Gtk.Widget):
         self.home_z_btn.connect("clicked", self._on_home_z_clicked)
         self._jog_grid.attach(self.home_z_btn, 2, 3, 1, 1)
 
+        # Row 4: jog speed (mm/min)
+        adjustment = Gtk.Adjustment(
+            value=self.jog_speed,
+            lower=100,
+            upper=60000,
+            step_increment=100,
+            page_increment=1000,
+        )
+        self.speed_spin = Gtk.SpinButton(adjustment=adjustment)
+        self.speed_spin.set_tooltip_text(_("Jog speed (mm/min)"))
+        self.speed_spin.set_valign(Gtk.Align.CENTER)
+        self.speed_spin.connect("value-changed", self._on_jog_speed_changed)
+        self._jog_grid.attach(self.speed_spin, 0, 4, 3, 1)
+
         # Action column (separate grid for extra gap)
         self.send_btn = create_button("send-symbolic", _("Send to machine"))
         self.send_btn.add_css_class("suggested-action")
@@ -151,7 +166,7 @@ class JogWidget(Gtk.Widget):
 
     @staticmethod
     def _calc_grid_widths(height):
-        cell_h = (height - 3 * _SPACING) / 4
+        cell_h = (height - (_ROWS - 1) * _SPACING) / _ROWS
         jog_w = 3 * cell_h + 2 * _SPACING
         act_w = cell_h
         return jog_w, act_w
@@ -377,6 +392,10 @@ class JogWidget(Gtk.Widget):
             self.south_east_btn.add_css_class("warning")
         if exceeds(JogDirection.WEST, JogDirection.SOUTH):
             self.south_west_btn.add_css_class("warning")
+
+    def _on_jog_speed_changed(self, spin):
+        """Handle jog speed spin button changes (mm/min)."""
+        self.jog_speed = int(spin.get_value())
 
     def _on_machine_state_changed(self, machine, state):
         """Handle machine state changes to update limit status."""
