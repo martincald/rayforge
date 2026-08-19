@@ -28,7 +28,7 @@ from ..driver import (
     PWMParams,
 )
 from .ruida_client import RuidaClient
-from .ruida_encoder import RuidaEncoder
+from .ruida_encoder import RuidaEncoder, commands_to_rd_bytes
 from .ruida_transport import RuidaTransport
 
 if TYPE_CHECKING:
@@ -41,24 +41,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-def build_datagrams(commands: list[bytes], max_size: int) -> list[bytes]:
-    """
-    Group whole commands into datagrams of at most max_size bytes.
-
-    A command is never split across datagrams.
-    """
-    datagrams: list[bytes] = []
-    current = bytearray()
-    for command in commands:
-        if current and len(current) + len(command) > max_size:
-            datagrams.append(bytes(current))
-            current = bytearray()
-        current.extend(command)
-    if current:
-        datagrams.append(bytes(current))
-    return datagrams
 
 
 class RuidaDriver(Driver):
@@ -83,9 +65,6 @@ class RuidaDriver(Driver):
     POSITION_POLL_INTERVAL = 0.5
     RESPONSE_PORT = 40200
     DEFAULT_TRAVEL_SPEED = 3000  # mm/min
-    DATAGRAM_MAX_BYTES = 1000
-    ACK_TIMEOUT = 1.0
-    SEND_RETRY_BUDGET = 4.0
     STATUS_POLL_INTERVAL = 0.5
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
@@ -445,17 +424,14 @@ class RuidaDriver(Driver):
             self.job_finished.send(self)
             return
 
-        datagrams = build_datagrams(commands, self.DATAGRAM_MAX_BYTES)
-        reported = 0
+        blob = commands_to_rd_bytes(commands)
         self._suppress_polling = True
         try:
-            # In-flight poll replies would be mistaken for job ACKs.
+            # The proven sender had no concurrent traffic: keepalive
+            # and position polling stay suspended for the whole send.
             await asyncio.sleep(0.2)
-            for i, datagram in enumerate(datagrams):
-                await self._send_datagram(datagram)
-                target = num_ops * (i + 1) // len(datagrams)
-                await self._report_ops_done(on_command_done, reported, target)
-                reported = target
+            await self._client.send_job(blob)
+            await self._report_ops_done(on_command_done, 0, num_ops)
             await self._wait_for_job_completion()
         finally:
             self._suppress_polling = False
@@ -474,28 +450,6 @@ class RuidaDriver(Driver):
             result = on_command_done(op_index)
             if inspect.isawaitable(result):
                 await result
-
-    async def _send_datagram(self, datagram: bytes) -> None:
-        """
-        Send one datagram and wait for its ACK.
-
-        Retries with backoff on NAK or timeout for up to
-        SEND_RETRY_BUDGET seconds, then aborts the job.
-        """
-        assert self._client
-        loop = asyncio.get_event_loop()
-        deadline = loop.time() + self.SEND_RETRY_BUDGET
-        delay = 0.1
-        while True:
-            result = await self._client.send_command_wait_ack(
-                datagram, timeout=self.ACK_TIMEOUT
-            )
-            if result:
-                return
-            if loop.time() >= deadline:
-                raise RuntimeError(_("Controller did not accept job data"))
-            await asyncio.sleep(delay)
-            delay = min(delay * 2, 1.0)
 
     async def _wait_for_job_completion(self) -> None:
         """

@@ -8,9 +8,11 @@ from rayforge.machine.models.machine import Machine, Origin
 from rayforge.machine.models.machine_panel import PanelOrientation
 from rayforge.machine.transport import TransportStatus
 
-# Jog distance and speed for testing
+# Jog distance and speed for testing (speed in mm/s; the widget
+# converts to mm/min when calling machine_cmd.jog)
 JOG_DISTANCE = 10.0
-JOG_SPEED = 1000
+JOG_SPEED = 100
+JOG_SPEED_MM_MIN = JOG_SPEED * 60
 
 # (button, axis, origin, reversed, expectation)
 JOG_BUTTON_SCENARIOS = [
@@ -126,7 +128,7 @@ def test_jog_button_direction(
 
     # 5. Verify the jog command was called with expected distance
     mock_jog.assert_called_once_with(
-        machine, {expected_axis: expectation}, JOG_SPEED
+        machine, {expected_axis: expectation}, JOG_SPEED_MM_MIN
     )
 
 
@@ -184,7 +186,9 @@ def test_jog_button_direction_with_rotated_workspace(
     button.emit("clicked")
 
     # 5. Verify the jog command was called with the rotated deltas
-    mock_jog.assert_called_once_with(machine, expected_deltas, JOG_SPEED)
+    mock_jog.assert_called_once_with(
+        machine, expected_deltas, JOG_SPEED_MM_MIN
+    )
 
 
 LIMIT_SCENARIOS = [

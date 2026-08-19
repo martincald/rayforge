@@ -17,11 +17,11 @@ from raygeo.ops import Ops
 
 from rayforge.core.doc import Doc
 from rayforge.machine.driver.driver import Axis
-from rayforge.machine.driver.ruida.ruida_client import RuidaClient
-from rayforge.machine.driver.ruida.ruida_driver import (
-    RuidaDriver,
+from rayforge.machine.driver.ruida.ruida_client import (
+    RuidaClient,
     build_datagrams,
 )
+from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_simulator import RuidaSimulator
 from rayforge.machine.driver.ruida.ruida_transport import (
@@ -1290,7 +1290,6 @@ async def test_persistent_nak_aborts_job(driver):
     transport = StubRuidaTransport()
     client = RuidaClient(cast(RuidaTransport, transport))
     driver._client = client
-    driver.SEND_RETRY_BUDGET = 0.3
 
     finished = []
 

@@ -1970,6 +1970,30 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._run_sanity_check_and_proceed(_proceed)
 
+    def on_export_rd_clicked(self, action, param=None):
+        def _proceed():
+            initial_name = None
+            if self.doc_editor.file_path:
+                initial_name = f"{self.doc_editor.file_path.stem}.rd"
+            file_dialogs.show_export_rd_dialog(
+                self, self._on_export_rd_response, initial_name
+            )
+
+        self._run_sanity_check_and_proceed(_proceed)
+
+    def _on_export_rd_response(self, dialog, result, user_data):
+        try:
+            file = dialog.save_finish(result)
+            if not file:
+                return
+            file_path = Path(file.get_path())
+        except GLib.Error as e:
+            logger.error(f"Error saving file: {e.message}")
+            return
+
+        # This is a non-blocking call.
+        self.doc_editor.file.export_rd_to_path(file_path)
+
     def on_export_document_clicked(self, action, param=None):
         initial_name = "document.svg"
         if self.doc_editor.file_path:

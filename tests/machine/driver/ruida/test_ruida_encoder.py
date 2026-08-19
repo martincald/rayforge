@@ -17,7 +17,12 @@ from raygeo.ops import Ops
 from raygeo.ops.state import AirAssistMode
 
 from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from rayforge.machine.driver.ruida.ruida_encoder import (
+    RuidaEncoder,
+    build_rd_bytes,
+    commands_to_rd_bytes,
+    export_rd,
+)
 from rayforge.machine.driver.ruida.ruida_util import encode14, encode35
 from rayforge.machine.models.laser import Laser
 from rayforge.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
@@ -1111,6 +1116,67 @@ class TestRDWorksGroundTruth:
         sum_before = sum(sum(c) for c in commands[:e5_idx])
         assert stored == sum_before + 0xD7
         assert commands[-1] == b"\xd7"
+
+
+def _square_job_ops() -> Ops:
+    """A one-layer square job for whole-blob tests."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.8)
+    ops.set_feed_rate(200)
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.line_to(10.0, 0.0, 0.0)
+    ops.line_to(10.0, 10.0, 0.0)
+    ops.line_to(0.0, 10.0, 0.0)
+    ops.line_to(0.0, 0.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class TestBuildRdBytes:
+    """Tests for the complete swizzled .rd blob builder."""
+
+    def test_blob_is_swizzled_command_stream(self, mock_machine, doc):
+        """The blob is the encoder's command stream, swizzled whole."""
+        ops = _square_job_ops()
+        blob = build_rd_bytes(ops, mock_machine, doc)
+        encoded = RuidaEncoder().encode(ops, mock_machine, doc)
+        commands = encoded.driver_data["commands"]
+
+        assert blob == commands_to_rd_bytes(commands)
+        unswizzled = bytes(_unswizzle_byte(b) for b in blob)
+        assert unswizzled == b"".join(commands)
+
+    def test_one_layer_square_structure_and_checksum(self, mock_machine, doc):
+        """Unswizzled blob has the fixture structure; E5 05 matches an
+        independently computed sum."""
+        blob = build_rd_bytes(_square_job_ops(), mock_machine, doc)
+        cmds = _split_commands(bytes(_unswizzle_byte(b) for b in blob))
+
+        assert cmds[0] == b"\xd8\x10"
+        assert cmds[-1] == b"\xd7"
+        e5_idx = next(i for i, c in enumerate(cmds) if c[:2] == b"\xe5\x05")
+        stored = _decode_u35(cmds[e5_idx][2:7])
+        sum_before = sum(sum(c) for c in cmds[:e5_idx])
+        assert stored == sum_before + 0xD7
+        assert cmds[e5_idx + 1] == b"\xd7"
+
+    def test_command_type_sequence_matches_fixture(self, mock_machine, doc):
+        """Unswizzled blob keeps the fixture's command-type sequence."""
+        mock_machine.active_wcs = "REF0"
+        blob = build_rd_bytes(_equivalent_job_ops(), mock_machine, doc)
+        cmds = _split_commands(bytes(_unswizzle_byte(b) for b in blob))
+        assert _command_tokens(cmds) == _command_tokens(_reference_commands())
+
+    def test_export_rd_writes_send_job_blob(self, tmp_path, mock_machine, doc):
+        """export_rd writes exactly the blob send_job would transmit."""
+        ops = _square_job_ops()
+        path = tmp_path / "job.rd"
+        export_rd(ops, mock_machine, doc, path)
+
+        assert path.read_bytes() == build_rd_bytes(ops, mock_machine, doc)
 
 
 class TestFrequencyAndPulseWidthInJob:

@@ -6,6 +6,7 @@ text representation for UI display.
 """
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from raygeo.geo.types import Point3D
@@ -19,7 +20,7 @@ from ....pipeline.encoder.base import (
     OpsEncoder,
 )
 from .ruida_maps import REF_POINT_COMMANDS
-from .ruida_util import encode14, encode35
+from .ruida_util import build_swizzle_lut, encode14, encode35
 
 if TYPE_CHECKING:
     from ....core.doc import Doc
@@ -38,6 +39,47 @@ _REF_CA_03 = b"\xca\x03\x3d"
 _REF_DA_01_0620 = b"\xda\x01\x06\x20" + encode35(73) + encode35(73)
 
 _LASER_DEVICE_CMDS = {1: b"\xca\x01\x10", 2: b"\xca\x01\x11"}
+
+# Swizzle magic used for complete .rd job files.
+RD_MAGIC = 0x88
+
+
+def commands_to_rd_bytes(commands: list[bytes]) -> bytes:
+    """
+    Swizzle a complete command list into final .rd file bytes.
+
+    Args:
+        commands: The complete unswizzled command list, including the
+            E5 05 checksum and D7 end-of-file marker.
+
+    Returns:
+        The whole command stream swizzled with RD_MAGIC.
+    """
+    swizzle_lut, _ = build_swizzle_lut(RD_MAGIC)
+    return bytes(swizzle_lut[b] for b in b"".join(commands))
+
+
+def build_rd_bytes(ops: Ops, machine: "Machine", doc: "Doc") -> bytes:
+    """
+    Encode ops into a complete swizzled Ruida .rd job blob.
+
+    The unswizzled command list remains available via
+    RuidaEncoder.encode() (driver_data["commands"]).
+    """
+    encoded = RuidaEncoder().encode(ops, machine, doc)
+    return commands_to_rd_bytes(encoded.driver_data["commands"])
+
+
+def export_rd(
+    ops: Ops, machine: "Machine", doc: "Doc", path: Path | str
+) -> None:
+    """
+    Write ops as a Ruida .rd file.
+
+    The file contains exactly the blob RuidaClient.send_job would
+    transmit for the same ops.
+    """
+    Path(path).write_bytes(build_rd_bytes(ops, machine, doc))
 
 
 class RuidaEncoder(OpsEncoder):

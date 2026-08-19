@@ -246,6 +246,7 @@ class ActionManager:
         )
         self._add_action("import", self.win.on_menu_import)
         self._add_action("export", self.win.on_export_clicked)
+        self._add_action("export-rd", self.win.on_export_rd_clicked)
         self._add_action("export-object", self.win.on_export_object_clicked)
         self._add_action("about", self.win.show_about_dialog)
         self._add_action("donate", self.win.on_donate_clicked)

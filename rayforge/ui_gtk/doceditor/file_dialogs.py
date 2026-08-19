@@ -99,6 +99,38 @@ def show_export_gcode_dialog(
     dialog.save(win, None, callback, win)
 
 
+def show_export_rd_dialog(
+    win: "MainWindow",
+    callback: Callable,
+    initial_name: str | None = None,
+):
+    """
+    Shows the save file dialog for exporting a Ruida .rd job.
+
+    Args:
+        win: The parent Gtk.Window.
+        callback: The function to call with (dialog, result, user_data) upon
+                  response. The window instance is passed as user_data.
+        initial_name: Optional initial file name for the dialog.
+    """
+    initial_name = initial_name or "output.rd"
+    dialog = Gtk.FileDialog.new()
+    dialog.set_title(_("Save Ruida Job File"))
+
+    dialog.set_initial_name(initial_name)
+
+    filter_list = Gio.ListStore.new(Gtk.FileFilter)
+    rd_filter = Gtk.FileFilter()
+    rd_filter.set_name(_("Ruida job files"))
+    rd_filter.add_pattern("*.rd")
+    filter_list.append(rd_filter)
+
+    dialog.set_filters(filter_list)
+    dialog.set_default_filter(rd_filter)
+
+    dialog.save(win, None, callback, win)
+
+
 def show_export_object_dialog(
     win: "MainWindow",
     callback: Callable,

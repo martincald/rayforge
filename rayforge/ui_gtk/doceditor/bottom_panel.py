@@ -449,7 +449,8 @@ class BottomPanel(Gtk.Box):
 
     def _on_speed_changed(self, row):
         speed_mm_min = int(self.speed_row.get_value_in_base_units())
-        self.jog_widget.jog_speed = speed_mm_min
+        # JogWidget stores jog speed in mm/s.
+        self.jog_widget.jog_speed = max(1, round(speed_mm_min / 60))
 
     def _on_distance_changed(self, row):
         self.jog_widget.jog_distance = (

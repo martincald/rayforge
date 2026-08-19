@@ -46,6 +46,7 @@ from ..image.base_exporter import Exporter
 from ..image.dxf.exporter import GeometryDxfExporter
 from ..image.structures import ImportPayload, ImportResult, ParsingResult
 from ..image.svg.exporter import GeometrySvgExporter
+from ..machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from .layout.align import PositionAtStrategy
@@ -998,6 +999,62 @@ class FileCmd:
             except Exception as e:
                 logger.error(
                     f"G-code export to {file_path} failed.", exc_info=e
+                )
+                self._editor.notification_requested.send(
+                    self, message=_("Export failed: {error}").format(error=e)
+                )
+
+        self.assemble_job_in_background(when_done=_on_export_assembly_done)
+
+    def export_rd_to_path(self, file_path: Path):
+        """
+        Asynchronously generates and exports a Ruida .rd job to a
+        specific path. This is a non-blocking, fire-and-forget method
+        for the UI. The written blob is byte-identical to what the
+        Ruida driver would send to the machine.
+        """
+        artifact_store = self._editor.pipeline.artifact_store
+
+        def _on_export_assembly_done(
+            handle: BaseArtifactHandle | None,
+            error: Exception | None,
+        ):
+            try:
+                if error:
+                    raise error
+
+                with artifact_store.checkout_handle(handle) as artifact:
+                    if not artifact:
+                        raise ValueError(
+                            "Assembly process returned no artifact."
+                        )
+                    if not isinstance(artifact, JobArtifact):
+                        raise TypeError("Expected a JobArtifact for export.")
+                    encoded = artifact.encoded_output
+                    commands = (
+                        encoded.driver_data.get("commands")
+                        if encoded
+                        else None
+                    )
+                    if not commands:
+                        raise ValueError(
+                            "The current machine does not produce "
+                            "Ruida job data."
+                        )
+
+                    file_path.write_bytes(commands_to_rd_bytes(commands))
+
+                    logger.info(
+                        f"Successfully exported Ruida job to {file_path}"
+                    )
+                    msg = _("Export successful: {name}").format(
+                        name=file_path.name
+                    )
+                    self._editor.notification_requested.send(self, message=msg)
+
+            except Exception as e:
+                logger.error(
+                    f"Ruida job export to {file_path} failed.", exc_info=e
                 )
                 self._editor.notification_requested.send(
                     self, message=_("Export failed: {error}").format(error=e)

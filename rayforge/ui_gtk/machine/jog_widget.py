@@ -36,7 +36,7 @@ class JogWidget(Gtk.Widget):
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self.jog_speed = 6000
+        self.jog_speed = 100  # mm/s
         self.jog_distance = 10.0
         self._buttons = []
 
@@ -119,16 +119,16 @@ class JogWidget(Gtk.Widget):
         self.home_z_btn.connect("clicked", self._on_home_z_clicked)
         self._jog_grid.attach(self.home_z_btn, 2, 3, 1, 1)
 
-        # Row 4: jog speed (mm/min)
+        # Row 4: jog speed (mm/s)
         adjustment = Gtk.Adjustment(
             value=self.jog_speed,
-            lower=100,
-            upper=60000,
-            step_increment=100,
-            page_increment=1000,
+            lower=1,
+            upper=1000,
+            step_increment=1,
+            page_increment=10,
         )
         self.speed_spin = Gtk.SpinButton(adjustment=adjustment)
-        self.speed_spin.set_tooltip_text(_("Jog speed (mm/min)"))
+        self.speed_spin.set_tooltip_text(_("Jog speed (mm/s)"))
         self.speed_spin.set_valign(Gtk.Align.CENTER)
         self.speed_spin.connect("value-changed", self._on_jog_speed_changed)
         self._jog_grid.attach(self.speed_spin, 0, 4, 3, 1)
@@ -394,7 +394,7 @@ class JogWidget(Gtk.Widget):
             self.south_west_btn.add_css_class("warning")
 
     def _on_jog_speed_changed(self, spin):
-        """Handle jog speed spin button changes (mm/min)."""
+        """Handle jog speed spin button changes (mm/s)."""
         self.jog_speed = int(spin.get_value())
 
     def _on_machine_state_changed(self, machine, state):
@@ -414,7 +414,8 @@ class JogWidget(Gtk.Widget):
             return
 
         if deltas:
-            self.machine_cmd.jog(self.machine, deltas, self.jog_speed)
+            # jog_speed is mm/s; the Driver.jog contract is mm/min.
+            self.machine_cmd.jog(self.machine, deltas, self.jog_speed * 60)
 
     def _perform_visual_jog(self, *directions: JogDirection):
         """Jog according to one or more visual directions."""

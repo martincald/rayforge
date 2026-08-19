@@ -18,12 +18,73 @@ from .ruida_maps import (
     REF_POINT_OFFSET_ADDRESSES,
 )
 from .ruida_protocol import RuidaResponse, RuidaState
-from .ruida_util import decode35, encode14, encode35
+from .ruida_util import (
+    build_swizzle_lut,
+    decode35,
+    encode14,
+    encode35,
+    unswizzle_byte,
+)
 
 if TYPE_CHECKING:
     from .ruida_transport import RuidaTransport
 
 logger = logging.getLogger(__name__)
+
+# Job-stream sending parameters, ported from the proven working
+# sender (send_fixture_test.py).
+JOB_MAGIC = 0x88
+JOB_CHUNK_MAX_BYTES = 1000
+JOB_ACK_TIMEOUT = 4.0
+JOB_SEND_ATTEMPTS = 4
+
+# A single-byte job-chunk reply is an ACK when the byte, raw or
+# unswizzled, is 0xCC or 0xC6, and a NAK for 0xCF or 0xCD. The client
+# receives transport-unswizzled bytes, so the raw-byte cases map back
+# through unswizzle.
+_JOB_ACK_BYTES = frozenset(
+    {0xCC, 0xC6} | {unswizzle_byte(b, JOB_MAGIC) for b in (0xCC, 0xC6)}
+)
+_JOB_NAK_BYTES = frozenset(
+    {0xCF, 0xCD} | {unswizzle_byte(b, JOB_MAGIC) for b in (0xCF, 0xCD)}
+)
+
+
+def split_commands(data: bytes) -> list[bytes]:
+    """
+    Split an unswizzled command stream into whole commands.
+
+    A byte with the MSB set starts a new command; payload bytes are
+    all 7-bit.
+    """
+    commands: list[bytes] = []
+    current = bytearray()
+    for byte in data:
+        if byte >= 0x80 and current:
+            commands.append(bytes(current))
+            current = bytearray()
+        current.append(byte)
+    if current:
+        commands.append(bytes(current))
+    return commands
+
+
+def build_datagrams(commands: list[bytes], max_size: int) -> list[bytes]:
+    """
+    Group whole commands into datagrams of at most max_size bytes.
+
+    A command is never split across datagrams.
+    """
+    datagrams: list[bytes] = []
+    current = bytearray()
+    for command in commands:
+        if current and len(current) + len(command) > max_size:
+            datagrams.append(bytes(current))
+            current = bytearray()
+        current.extend(command)
+    if current:
+        datagrams.append(bytes(current))
+    return datagrams
 
 
 class RuidaClient:
@@ -52,6 +113,7 @@ class RuidaClient:
         self.state = state or RuidaState()
         self._pending_mem_reads: dict[int, asyncio.Future] = {}
         self._pending_acks: list[asyncio.Future] = []
+        self._pending_job_acks: list[asyncio.Future] = []
         self._send_lock = asyncio.Lock()
         self._ref_point_mode: str | None = "MACHINE"
         self.position_updated = Signal()
@@ -76,7 +138,12 @@ class RuidaClient:
         """
         pending = list(self._pending_mem_reads.keys())
         logger.debug(f"handle_response: {data.hex()} (pending: {pending})")
-        if (
+        if len(data) == 1 and self._pending_job_acks:
+            if data[0] in _JOB_ACK_BYTES or data[0] in _JOB_NAK_BYTES:
+                future = self._pending_job_acks.pop(0)
+                if not future.done():
+                    future.set_result(data[0] in _JOB_ACK_BYTES)
+        elif (
             len(data) == 1
             and data[0] in (0xCC, 0xC6, 0xCF)
             and self._pending_acks
@@ -168,6 +235,59 @@ class RuidaClient:
                 if future in self._pending_acks:
                     self._pending_acks.remove(future)
                 return None
+
+    async def send_job(self, blob: bytes) -> None:
+        """
+        Send a complete swizzled .rd job blob to the controller.
+
+        Ported from the proven working sender: the blob is unswizzled
+        to find command boundaries, whole commands are grouped into
+        chunks of at most JOB_CHUNK_MAX_BYTES, and each chunk is
+        swizzled and framed with a 16-bit big-endian checksum by the
+        transport. The caller must suspend keepalive and position
+        polling for the whole send.
+
+        Args:
+            blob: The complete job as final swizzled .rd file bytes.
+
+        Raises:
+            RuntimeError: If a chunk is not acknowledged after
+                JOB_SEND_ATTEMPTS attempts.
+        """
+        _, unswizzle_lut = build_swizzle_lut(JOB_MAGIC)
+        commands = split_commands(bytes(unswizzle_lut[b] for b in blob))
+        chunks = build_datagrams(commands, JOB_CHUNK_MAX_BYTES)
+        for i, chunk in enumerate(chunks):
+            if not await self._send_job_chunk(chunk):
+                raise RuntimeError(
+                    f"Controller did not acknowledge job chunk "
+                    f"{i + 1}/{len(chunks)} after "
+                    f"{JOB_SEND_ATTEMPTS} attempts"
+                )
+
+    async def _send_job_chunk(self, chunk: bytes) -> bool:
+        """
+        Send one job chunk and wait for its ACK, retrying on NAK or
+        timeout up to JOB_SEND_ATTEMPTS times.
+
+        Returns:
+            True once the chunk is acknowledged, False otherwise.
+        """
+        loop = asyncio.get_event_loop()
+        for _ in range(JOB_SEND_ATTEMPTS):
+            async with self._send_lock:
+                future: asyncio.Future = loop.create_future()
+                self._pending_job_acks.append(future)
+                try:
+                    await self._transport.send_command(chunk)
+                    result = await asyncio.wait_for(future, JOB_ACK_TIMEOUT)
+                except asyncio.TimeoutError:
+                    if future in self._pending_job_acks:
+                        self._pending_job_acks.remove(future)
+                    continue
+            if result:
+                return True
+        return False
 
     async def send_jog_command(self, command: bytes) -> None:
         """
