@@ -942,3 +942,92 @@ def test_mixed_lines_and_bezier(mock_progress_context):
         if ops.command_type(i) == CommandType.LINE_TO
     ]
     assert len(line_indices) == 2
+
+
+def _square(x: float, y: float, size: float) -> list[tuple]:
+    """The four segments of a closed square, in corner order."""
+    corners = [
+        (x, y, 0.0),
+        (x + size, y, 0.0),
+        (x + size, y + size, 0.0),
+        (x, y + size, 0.0),
+    ]
+    return [(corners[i], corners[(i + 1) % 4]) for i in range(4)]
+
+
+def _scattered_squares() -> Ops:
+    """
+    Four squares in an order that makes travel deliberately bad.
+
+    Document order zig-zags across the bed; the optimizer should be
+    able to do strictly better.
+    """
+    ops = Ops()
+    ops.set_power(1.0)
+    origins = [(0.0, 0.0), (100.0, 100.0), (0.0, 100.0), (100.0, 0.0)]
+    for x, y in origins:
+        for start, end in _square(x, y, 10.0):
+            ops.move_to(*start)
+            ops.line_to(*end)
+    return ops
+
+
+def _geometry_set(ops: Ops) -> set:
+    """
+    Every cut segment, as an unordered set of undirected endpoints.
+
+    Reordering and reversing segments must leave this untouched; only
+    a change to the geometry itself can move it.
+    """
+    segments = set()
+    previous = None
+    for i in range(ops.len()):
+        endpoint = ops.endpoint(i)
+        if ops.command_type(i) == CommandType.LINE_TO and previous:
+            a = tuple(round(v, 6) for v in previous)
+            b = tuple(round(v, 6) for v in endpoint)
+            segments.add(frozenset((a, b)))
+        if endpoint is not None:
+            previous = endpoint
+    return segments
+
+
+def test_scattered_squares_travel_beats_document_order(
+    mock_progress_context,
+):
+    """Four scattered squares must cost less rapid travel when
+    reordered."""
+    before = _scattered_squares()
+    after = _scattered_squares()
+
+    _apply(Optimize(), after, mock_progress_context)
+
+    assert _travel_distance(after) < _travel_distance(before)
+
+
+def test_scattered_squares_geometry_is_unchanged(mock_progress_context):
+    """Only order and direction may change, never the geometry."""
+    before = _scattered_squares()
+    after = _scattered_squares()
+
+    _apply(Optimize(), after, mock_progress_context)
+
+    assert _geometry_set(after) == _geometry_set(before)
+    assert _count_cuts(after) == _count_cuts(before)
+
+
+def test_optimization_is_deterministic(mock_progress_context):
+    """The same input must always produce the same ordering."""
+    first = _scattered_squares()
+    second = _scattered_squares()
+
+    _apply(Optimize(), first, mock_progress_context)
+    _apply(Optimize(), second, mock_progress_context)
+
+    assert _cut_endpoints(first) == _cut_endpoints(second)
+
+
+def test_optimize_is_enabled_by_default():
+    """The layer settings toggle defaults to on."""
+    assert Optimize().enabled is True
+    assert Optimize().to_dict()["enabled"] is True

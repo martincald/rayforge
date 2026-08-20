@@ -45,6 +45,19 @@ class TestContourStep:
         step = ContourStep.create(mock_context, optimize=False)
         assert len(step.per_workpiece_transformers_dicts) == 4
 
+    def test_optimize_is_on_by_default(self, mock_context):
+        """Cut layers reorder paths to shorten travel unless told
+        otherwise; the toggle is in the layer's post-processing
+        settings."""
+        step = ContourStep.create(mock_context)
+        per_wp = {
+            t.get("name"): t for t in step.per_workpiece_transformers_dicts
+        }
+        per_step = {t.get("name"): t for t in step.per_step_transformers_dicts}
+
+        assert per_wp["Optimize"]["enabled"] is True
+        assert per_step["Optimize"]["enabled"] is True
+
     def test_serialization_includes_step_type(self):
         step = ContourStep(name="Test")
         data = step.to_dict()
