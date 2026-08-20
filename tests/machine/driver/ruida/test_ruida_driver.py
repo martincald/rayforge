@@ -7,7 +7,9 @@ not mocks, ensuring end-to-end protocol compliance.
 
 import asyncio
 import logging
+import tempfile
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -17,12 +19,18 @@ from raygeo.ops import Ops
 
 from rayforge.core.doc import Doc
 from rayforge.machine.driver.driver import Axis
+from rayforge.machine.driver.ruida import ruida_driver as driver_mod
 from rayforge.machine.driver.ruida.ruida_client import (
     RuidaClient,
     build_datagrams,
 )
 from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from rayforge.machine.driver.ruida.ruida_encoder import (
+    RuidaEncoder,
+    build_rd_bytes,
+    commands_to_rd_bytes,
+    export_rd,
+)
 from rayforge.machine.driver.ruida.ruida_simulator import RuidaSimulator
 from rayforge.machine.driver.ruida.ruida_transport import (
     RuidaServerTransport,
@@ -1217,12 +1225,59 @@ class StubRuidaTransport:
         self.sent.append(command)
 
 
-def make_encoded(commands: list[bytes]) -> EncodedOutput:
+def make_encoded() -> EncodedOutput:
+    """An EncodedOutput as the pipeline delivers it: no driver_data."""
     return EncodedOutput(
         text="",
         op_map=MachineCodeOpMap.from_lists([], []),
-        driver_data={"commands": commands},
+        driver_data={},
     )
+
+
+def stub_job_blob(monkeypatch, commands: list[bytes]) -> bytes:
+    """Force run() to build the given commands as its job blob."""
+    blob = commands_to_rd_bytes(commands)
+    monkeypatch.setattr(
+        driver_mod, "build_rd_bytes", lambda ops, machine, doc: blob
+    )
+    return blob
+
+
+def square_job_ops() -> Ops:
+    """A small closed square job with power and feed rate set."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.8)
+    ops.set_feed_rate(200)
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.line_to(10.0, 0.0, 0.0)
+    ops.line_to(10.0, 10.0, 0.0)
+    ops.line_to(0.0, 10.0, 0.0)
+    ops.line_to(0.0, 0.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class StubJobClient:
+    """Captures the blob run() hands to send_job."""
+
+    def __init__(self):
+        self.blobs: list[bytes] = []
+        self.is_connected = False
+        self.state_changed = Signal()
+        self.position_updated = Signal()
+
+    async def disconnect(self):
+        pass
+
+    async def send_job(self, blob, on_start=None, on_chunk=None):
+        self.blobs.append(blob)
+        if on_start:
+            on_start(len(blob), 1)
+        if on_chunk:
+            on_chunk(1, 1, len(blob), 1)
 
 
 async def wait_for_sent(
@@ -1239,13 +1294,13 @@ STATUS_RUNNING_REPLY = b"\xda\x01\x04\x00" + encode35(21)
 
 
 @pytest.mark.asyncio
-async def test_ack_pacing_no_second_datagram_before_ack(driver):
+async def test_ack_pacing_no_second_datagram_before_ack(driver, monkeypatch):
     """The next datagram must not be sent before the first is ACKed."""
     transport = StubRuidaTransport()
     driver._client = RuidaClient(cast(RuidaTransport, transport))
 
-    commands = [b"\x88" + bytes(10)] * 100
-    encoded = make_encoded(commands)
+    stub_job_blob(monkeypatch, [b"\x88" + bytes(10)] * 100)
+    encoded = make_encoded()
 
     task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
     await wait_for_sent(transport, 1)
@@ -1264,12 +1319,13 @@ async def test_ack_pacing_no_second_datagram_before_ack(driver):
 
 
 @pytest.mark.asyncio
-async def test_nak_triggers_datagram_retry(driver):
+async def test_nak_triggers_datagram_retry(driver, monkeypatch):
     """A NAK response must trigger a resend of the same datagram."""
     transport = StubRuidaTransport()
     driver._client = RuidaClient(cast(RuidaTransport, transport))
 
-    encoded = make_encoded([b"\x88" + bytes(10)])
+    stub_job_blob(monkeypatch, [b"\x88" + bytes(10)])
+    encoded = make_encoded()
 
     task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
     await wait_for_sent(transport, 1)
@@ -1285,7 +1341,7 @@ async def test_nak_triggers_datagram_retry(driver):
 
 
 @pytest.mark.asyncio
-async def test_persistent_nak_aborts_job(driver):
+async def test_persistent_nak_aborts_job(driver, monkeypatch):
     """Persistent NAKs must abort the job with an error."""
     transport = StubRuidaTransport()
     client = RuidaClient(cast(RuidaTransport, transport))
@@ -1298,7 +1354,8 @@ async def test_persistent_nak_aborts_job(driver):
 
     driver.job_finished.connect(on_finished)
 
-    encoded = make_encoded([b"\x88" + bytes(10)])
+    stub_job_blob(monkeypatch, [b"\x88" + bytes(10)])
+    encoded = make_encoded()
 
     async def nak_all():
         while True:
@@ -1318,7 +1375,7 @@ async def test_persistent_nak_aborts_job(driver):
 
 
 @pytest.mark.asyncio
-async def test_job_finished_only_after_status_clears(driver):
+async def test_job_finished_only_after_status_clears(driver, monkeypatch):
     """job_finished must not fire while the job-running bit is set."""
     transport = StubRuidaTransport()
     driver._client = RuidaClient(cast(RuidaTransport, transport))
@@ -1330,7 +1387,8 @@ async def test_job_finished_only_after_status_clears(driver):
 
     driver.job_finished.connect(on_finished)
 
-    encoded = make_encoded([b"\x88" + bytes(10)])
+    stub_job_blob(monkeypatch, [b"\x88" + bytes(10)])
+    encoded = make_encoded()
 
     task = asyncio.create_task(driver.run(encoded, Doc(), Ops()))
     await wait_for_sent(transport, 1)
@@ -1388,3 +1446,75 @@ async def test_run_square_job_end_to_end(driver, ruida_simulator):
     assert finished
 
     await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_run_builds_blob_from_ops_when_driver_data_empty(driver):
+    """
+    The pipeline strips driver_data, so run() must build the job from
+    ops. An empty driver_data must still produce a real transmission.
+    """
+    client = StubJobClient()
+    driver._client = cast(RuidaClient, client)
+
+    doc = Doc()
+    ops = square_job_ops()
+
+    await driver.run(make_encoded(), doc, ops)
+
+    assert client.blobs
+    assert client.blobs[0]
+
+
+@pytest.mark.asyncio
+async def test_run_blob_matches_encoder_and_export(driver, tmp_path):
+    """The sent blob equals build_rd_bytes and what export_rd writes."""
+    client = StubJobClient()
+    driver._client = cast(RuidaClient, client)
+
+    doc = Doc()
+    ops = square_job_ops()
+    expected = build_rd_bytes(ops, driver._machine, doc)
+    exported = tmp_path / "job.rd"
+    export_rd(ops, driver._machine, doc, exported)
+
+    await driver.run(make_encoded(), doc, ops)
+
+    assert client.blobs[0] == expected
+    assert client.blobs[0] == exported.read_bytes()
+
+
+@pytest.mark.asyncio
+async def test_run_dumps_sent_blob_to_temp_file(driver):
+    """Every run leaves the exact sent blob in the temp directory."""
+    client = StubJobClient()
+    driver._client = cast(RuidaClient, client)
+
+    doc = Doc()
+    ops = square_job_ops()
+
+    await driver.run(make_encoded(), doc, ops)
+
+    dump = Path(tempfile.gettempdir()) / "rayforge_last_job.rd"
+    assert dump.read_bytes() == client.blobs[0]
+
+
+@pytest.mark.asyncio
+async def test_run_warns_and_finishes_on_empty_ops(driver, caplog):
+    """Genuinely empty ops must warn and send nothing."""
+    client = StubJobClient()
+    driver._client = cast(RuidaClient, client)
+
+    finished = []
+
+    def on_finished(sender):
+        finished.append(True)
+
+    driver.job_finished.connect(on_finished)
+
+    with caplog.at_level(logging.WARNING):
+        await driver.run(make_encoded(), Doc(), Ops())
+
+    assert not client.blobs
+    assert finished
+    assert "no machine commands" in caplog.text

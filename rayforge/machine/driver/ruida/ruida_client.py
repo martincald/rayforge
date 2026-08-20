@@ -7,6 +7,7 @@ sending them via transport, and parsing of responses.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Optional
 
 from blinker import Signal
@@ -142,7 +143,7 @@ class RuidaClient:
             if data[0] in _JOB_ACK_BYTES or data[0] in _JOB_NAK_BYTES:
                 future = self._pending_job_acks.pop(0)
                 if not future.done():
-                    future.set_result(data[0] in _JOB_ACK_BYTES)
+                    future.set_result(data[0])
         elif (
             len(data) == 1
             and data[0] in (0xCC, 0xC6, 0xCF)
@@ -236,7 +237,12 @@ class RuidaClient:
                     self._pending_acks.remove(future)
                 return None
 
-    async def send_job(self, blob: bytes) -> None:
+    async def send_job(
+        self,
+        blob: bytes,
+        on_start: Callable[[int, int], None] | None = None,
+        on_chunk: Callable[[int, int, int, int], None] | None = None,
+    ) -> None:
         """
         Send a complete swizzled .rd job blob to the controller.
 
@@ -249,6 +255,10 @@ class RuidaClient:
 
         Args:
             blob: The complete job as final swizzled .rd file bytes.
+            on_start: Called once before the first chunk with
+                (blob_size, chunk_count).
+            on_chunk: Called after each acknowledged chunk with
+                (index, chunk_count, chunk_size, attempts).
 
         Raises:
             RuntimeError: If a chunk is not acknowledged after
@@ -257,37 +267,56 @@ class RuidaClient:
         _, unswizzle_lut = build_swizzle_lut(JOB_MAGIC)
         commands = split_commands(bytes(unswizzle_lut[b] for b in blob))
         chunks = build_datagrams(commands, JOB_CHUNK_MAX_BYTES)
+        if on_start:
+            on_start(len(blob), len(chunks))
         for i, chunk in enumerate(chunks):
-            if not await self._send_job_chunk(chunk):
+            attempts = await self._send_job_chunk(chunk)
+            if not attempts:
                 raise RuntimeError(
                     f"Controller did not acknowledge job chunk "
                     f"{i + 1}/{len(chunks)} after "
                     f"{JOB_SEND_ATTEMPTS} attempts"
                 )
+            if on_chunk:
+                on_chunk(i + 1, len(chunks), len(chunk), attempts)
 
-    async def _send_job_chunk(self, chunk: bytes) -> bool:
+    async def _send_job_chunk(self, chunk: bytes) -> int:
         """
         Send one job chunk and wait for its ACK, retrying on NAK or
         timeout up to JOB_SEND_ATTEMPTS times.
 
         Returns:
-            True once the chunk is acknowledged, False otherwise.
+            The number of attempts used once the chunk is
+            acknowledged, or 0 if it never was.
         """
         loop = asyncio.get_event_loop()
-        for _ in range(JOB_SEND_ATTEMPTS):
+        for attempt in range(1, JOB_SEND_ATTEMPTS + 1):
             async with self._send_lock:
                 future: asyncio.Future = loop.create_future()
                 self._pending_job_acks.append(future)
                 try:
                     await self._transport.send_command(chunk)
-                    result = await asyncio.wait_for(future, JOB_ACK_TIMEOUT)
+                    reply = await asyncio.wait_for(future, JOB_ACK_TIMEOUT)
                 except asyncio.TimeoutError:
                     if future in self._pending_job_acks:
                         self._pending_job_acks.remove(future)
+                    logger.debug(
+                        f"job chunk attempt {attempt}/"
+                        f"{JOB_SEND_ATTEMPTS}: no reply in "
+                        f"{JOB_ACK_TIMEOUT}s"
+                    )
                     continue
-            if result:
-                return True
-        return False
+            if reply in _JOB_ACK_BYTES:
+                logger.debug(
+                    f"job chunk attempt {attempt}/{JOB_SEND_ATTEMPTS}: "
+                    f"ack 0x{reply:02x}"
+                )
+                return attempt
+            logger.debug(
+                f"job chunk attempt {attempt}/{JOB_SEND_ATTEMPTS}: "
+                f"nak 0x{reply:02x}"
+            )
+        return 0
 
     async def send_jog_command(self, command: bytes) -> None:
         """

@@ -1,9 +1,11 @@
 import asyncio
 import inspect
 import logging
+import tempfile
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from gettext import gettext as _
+from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -28,7 +30,7 @@ from ..driver import (
     PWMParams,
 )
 from .ruida_client import RuidaClient
-from .ruida_encoder import RuidaEncoder, commands_to_rd_bytes
+from .ruida_encoder import RuidaEncoder, build_rd_bytes
 from .ruida_transport import RuidaTransport
 
 if TYPE_CHECKING:
@@ -404,39 +406,87 @@ class RuidaDriver(Driver):
         ops: "Ops",
         on_command_done: Callable[[int], None | Awaitable[None]] | None = None,
     ) -> None:
-        commands = encoded.driver_data.get("commands", [])
-        text_lines = [
-            line.strip() for line in encoded.text.splitlines() if line.strip()
-        ]
+        # The pipeline rebuilds EncodedOutput from
+        # EncodeOutput.MachineCode, which carries only text and op_map,
+        # so encoded.driver_data never reaches the driver. Build the
+        # blob from ops here; encoded serves UI progress mapping only.
         op_map = encoded.op_map
         num_ops = op_map.op_count if op_map else 0
+        blob = build_rd_bytes(ops, self._machine, doc)
 
         logger.info(
-            f"Executing {len(text_lines)} commands",
+            f"Job encoded: {num_ops} ops, {len(blob)} bytes",
             extra=self._log_extra("USER_COMMAND"),
         )
 
-        for line in text_lines:
-            logger.info(line, extra=self._log_extra("USER_COMMAND"))
-
-        if not commands or not self._client:
+        if not blob or not self._client:
+            reason = (
+                "ops produced no machine commands"
+                if not blob
+                else "no client connection"
+            )
+            logger.warning(
+                f"Job not sent: {reason}",
+                extra=self._log_extra("USER_COMMAND"),
+            )
             await self._report_ops_done(on_command_done, 0, num_ops)
             self.job_finished.send(self)
             return
 
-        blob = commands_to_rd_bytes(commands)
+        self._dump_job_blob(blob)
+
         self._suppress_polling = True
         try:
             # The proven sender had no concurrent traffic: keepalive
             # and position polling stay suspended for the whole send.
             await asyncio.sleep(0.2)
-            await self._client.send_job(blob)
+            await self._client.send_job(
+                blob,
+                on_start=self._log_send_start,
+                on_chunk=self._log_chunk_acked,
+            )
+            logger.info(
+                "Upload complete, waiting for job to finish",
+                extra=self._log_extra("USER_COMMAND"),
+            )
             await self._report_ops_done(on_command_done, 0, num_ops)
             await self._wait_for_job_completion()
         finally:
             self._suppress_polling = False
 
+        logger.info("Job finished", extra=self._log_extra("USER_COMMAND"))
         self.job_finished.send(self)
+
+    def _dump_job_blob(self, blob: bytes) -> None:
+        """
+        Write the blob about to be sent to a temp file, so every run
+        leaves a diagnostic artifact identical to the transmission.
+        """
+        path = Path(tempfile.gettempdir()) / "rayforge_last_job.rd"
+        try:
+            path.write_bytes(blob)
+        except OSError as err:
+            logger.warning(f"Could not write job dump to {path}: {err}")
+            return
+        logger.info(
+            f"Job blob written to {path}",
+            extra=self._log_extra("USER_COMMAND"),
+        )
+
+    def _log_send_start(self, total_bytes: int, chunk_count: int) -> None:
+        logger.info(
+            f"Sending {total_bytes} bytes in {chunk_count} chunks",
+            extra=self._log_extra("USER_COMMAND"),
+        )
+
+    def _log_chunk_acked(
+        self, index: int, count: int, size: int, attempts: int
+    ) -> None:
+        logger.info(
+            f"chunk {index}/{count} acked, {size} bytes, "
+            f"{attempts} attempt(s)",
+            extra=self._log_extra("USER_COMMAND"),
+        )
 
     async def _report_ops_done(
         self,
