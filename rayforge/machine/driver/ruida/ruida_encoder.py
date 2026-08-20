@@ -40,6 +40,13 @@ _REF_DA_01_0620 = b"\xda\x01\x06\x20" + encode35(73) + encode35(73)
 
 _LASER_DEVICE_CMDS = {1: b"\xca\x01\x10", 2: b"\xca\x01\x11"}
 
+# Immediate power opcode per laser, used for scanline modulation.
+_IMD_POWER_CMDS = {1: 0xC7, 2: 0xC0, 3: 0xC2, 4: 0xC3}
+
+# Relative motion commands carry signed 14-bit two's complement
+# deltas; both |dx| and |dy| must stay below this to use them.
+_REL_LIMIT_UM = 0x2000
+
 # Swizzle magic used for complete .rd job files.
 RD_MAGIC = 0x88
 
@@ -110,6 +117,8 @@ class RuidaEncoder(OpsEncoder):
         self._layers: list[dict] = []
         self._part: int = -1
         self._laser_selected: int | None = None
+        self._last_pos_um: tuple[int, int] | None = None
+        self._imd_power: int | None = None
 
     def encode(
         self, ops: Ops, machine: "Machine", doc: "Doc"
@@ -166,6 +175,8 @@ class RuidaEncoder(OpsEncoder):
         self._layers = []
         self._part = -1
         self._laser_selected = None
+        self._last_pos_um = None
+        self._imd_power = None
 
     def _mm_to_um(self, mm: float) -> int:
         """Convert millimeters to micrometers."""
@@ -283,6 +294,9 @@ class RuidaEncoder(OpsEncoder):
 
         Travel speed is a controller-side setting (G0 velocity); no
         command is emitted so the cut speed is not overwritten.
+        Per-primitive C9 03/C9 05 travel speed was audited and is
+        intentionally not emitted: the RDWorks reference file
+        contains neither.
         """
         speed = ops.rate(idx)
         self.travel_speed = speed
@@ -389,6 +403,25 @@ class RuidaEncoder(OpsEncoder):
             )
         text.append(f"LASER {self.active_laser}")
 
+    def _job_local_um(self, ops: Ops, idx: int) -> tuple[int, int]:
+        """Command endpoint in job-local micrometers."""
+        end = ops.endpoint(idx)
+        return (
+            self._mm_to_um(end[0]) - self.origin_um[0],
+            self._mm_to_um(end[1]) - self.origin_um[1],
+        )
+
+    def _rel_deltas(self, x_um: int, y_um: int) -> tuple[int, int] | None:
+        """Deltas from the last emitted position, if encodable as
+        signed 14-bit relative motion; None forces an absolute move."""
+        if self._last_pos_um is None:
+            return None
+        dx = x_um - self._last_pos_um[0]
+        dy = y_um - self._last_pos_um[1]
+        if abs(dx) < _REL_LIMIT_UM and abs(dy) < _REL_LIMIT_UM:
+            return dx, dy
+        return None
+
     def _handle_move_to(
         self,
         ops: Ops,
@@ -399,16 +432,33 @@ class RuidaEncoder(OpsEncoder):
         """Handle MoveToCommand - rapid move with laser off.
 
         Coordinates are translated to job-local space (job minimum
-        maps to 0,0), matching the RDWorks reference file.
+        maps to 0,0), matching the RDWorks reference file. Short
+        moves are emitted relative (89/8A/8B, encode14 two's
+        complement deltas); anything else is an absolute 88.
         """
-        end = ops.endpoint(idx)
-        x_um = self._mm_to_um(end[0]) - self.origin_um[0]
-        y_um = self._mm_to_um(end[1]) - self.origin_um[1]
-        binary.append(b"\x88" + encode35(x_um) + encode35(y_um))
-        text.append(
-            f"MOVE_ABS X:{x_um / self.UM_PER_MM:.3f} "
-            f"Y:{y_um / self.UM_PER_MM:.3f}"
-        )
+        x_um, y_um = self._job_local_um(ops, idx)
+        deltas = self._rel_deltas(x_um, y_um)
+        if deltas is not None:
+            dx, dy = deltas
+            if dx == 0 and dy == 0:
+                binary.append(b"\x89" + encode14(0) + encode14(0))
+            elif dx == 0:
+                binary.append(b"\x8b" + encode14(dy))
+            elif dy == 0:
+                binary.append(b"\x8a" + encode14(dx))
+            else:
+                binary.append(b"\x89" + encode14(dx) + encode14(dy))
+            text.append(
+                f"MOVE_REL dX:{dx / self.UM_PER_MM:.3f} "
+                f"dY:{dy / self.UM_PER_MM:.3f}"
+            )
+        else:
+            binary.append(b"\x88" + encode35(x_um) + encode35(y_um))
+            text.append(
+                f"MOVE_ABS X:{x_um / self.UM_PER_MM:.3f} "
+                f"Y:{y_um / self.UM_PER_MM:.3f}"
+            )
+        self._last_pos_um = (x_um, y_um)
 
     def _handle_line_to(
         self,
@@ -420,16 +470,35 @@ class RuidaEncoder(OpsEncoder):
         """Handle LineToCommand - cutting move with laser on.
 
         Coordinates are translated to job-local space (job minimum
-        maps to 0,0), matching the RDWorks reference file.
+        maps to 0,0), matching the RDWorks reference file. Short
+        cuts are emitted relative (A9/AA/AB, encode14 two's
+        complement deltas); anything else is an absolute A8. A
+        zero-delta cut emits nothing.
         """
-        end = ops.endpoint(idx)
-        x_um = self._mm_to_um(end[0]) - self.origin_um[0]
-        y_um = self._mm_to_um(end[1]) - self.origin_um[1]
-        binary.append(b"\xa8" + encode35(x_um) + encode35(y_um))
-        text.append(
-            f"CUT_ABS X:{x_um / self.UM_PER_MM:.3f} "
-            f"Y:{y_um / self.UM_PER_MM:.3f}"
-        )
+        x_um, y_um = self._job_local_um(ops, idx)
+        deltas = self._rel_deltas(x_um, y_um)
+        if deltas is not None:
+            dx, dy = deltas
+            if dx == 0 and dy == 0:
+                text.append("CUT_REL dX:0.000 dY:0.000")
+                return
+            if dx == 0:
+                binary.append(b"\xab" + encode14(dy))
+            elif dy == 0:
+                binary.append(b"\xaa" + encode14(dx))
+            else:
+                binary.append(b"\xa9" + encode14(dx) + encode14(dy))
+            text.append(
+                f"CUT_REL dX:{dx / self.UM_PER_MM:.3f} "
+                f"dY:{dy / self.UM_PER_MM:.3f}"
+            )
+        else:
+            binary.append(b"\xa8" + encode35(x_um) + encode35(y_um))
+            text.append(
+                f"CUT_ABS X:{x_um / self.UM_PER_MM:.3f} "
+                f"Y:{y_um / self.UM_PER_MM:.3f}"
+            )
+        self._last_pos_um = (x_um, y_um)
 
     def _handle_arc_to(
         self,
@@ -460,7 +529,12 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle ScanLinePowerCommand - linearize to power/line segments."""
+        """Handle ScanLinePowerCommand - linearize to power/line segments.
+
+        Per-sample power uses a single immediate-power command
+        (C7 for laser 1) instead of the C6 01 + C6 02 min/max pair;
+        the layer-start C6 01/02 min/max stay unchanged.
+        """
         end = ops.endpoint(idx)
         power_mv = ops.scanline_data(idx)
         text.append(
@@ -474,7 +548,24 @@ class RuidaEncoder(OpsEncoder):
             if sub_ct == CommandType.LINE_TO:
                 self._handle_line_to(sub_ops, j, binary, text)
             elif sub_ct == CommandType.SET_POWER:
-                self._handle_set_power(sub_ops, j, binary, text)
+                self._emit_immediate_power(sub_ops, j, binary, text)
+
+    def _emit_immediate_power(
+        self,
+        ops: Ops,
+        idx: int,
+        binary: list[bytes],
+        text: list[str],
+    ) -> None:
+        """Emit a single immediate-power command for the active laser."""
+        power = ops.power(idx)
+        text.append(f"POWER {power * 100.0:.1f}")
+        power_val = self._power_to_ruida(power)
+        if self._imd_power == power_val:
+            return
+        self._imd_power = power_val
+        opcode = _IMD_POWER_CMDS.get(self.active_laser, 0xC7)
+        binary.append(bytes([opcode]) + encode14(power_val))
 
     def _collect_job_info(
         self, ops: Ops
@@ -783,6 +874,10 @@ class RuidaEncoder(OpsEncoder):
         self.power = layer["power"]
         self.air_assist = layer["air"]
         self._laser_selected = self.active_laser
+        # Layer boundary: first motion of a layer must be absolute
+        # and immediate power must be re-emitted.
+        self._last_pos_um = None
+        self._imd_power = None
         text.append(f"; --- Layer {uid[:8]} ---")
 
     def _handle_layer_end(

@@ -412,7 +412,7 @@ class TestArcToCommand:
 
         lines = result.text.split("\n")
         assert any("; ARC" in line for line in lines)
-        cut_lines = [line for line in lines if "CUT_ABS" in line]
+        cut_lines = [line for line in lines if "CUT_" in line]
         assert len(cut_lines) >= 1
 
     def test_arc_updates_position(self, encoder, mock_machine, doc):
@@ -449,6 +449,20 @@ class TestScanLinePowerCommand:
         encoder.encode(ops, mock_machine, doc)
 
         assert encoder.current_pos == (2.0, 0.0, 0.0)
+
+    def test_scan_line_emits_immediate_power(self, encoder, mock_machine, doc):
+        """Per-sample power uses C7 immediate power, not C6 01/02."""
+        ops = Ops()
+        ops.move_to(0.0, 0.0, 0.0)
+        power_values = bytearray([0, 128, 255])
+        ops.scan_to(3.0, 0.0, 0.0, power_values)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        imd = [c for c in commands if c[0] == 0xC7]
+        assert imd
+        assert all(len(c) == 3 for c in imd)
+        assert not any(c[:2] in (b"\xc6\x01", b"\xc6\x02") for c in commands)
 
 
 class TestJobMarkers:
@@ -758,6 +772,123 @@ class TestBinaryCommandStructure:
         assert commands[0][:2] == b"\xc6\x01"
         assert commands[1][:2] == b"\xc6\x02"
         assert all(len(cmd) == 4 for cmd in commands)
+
+
+class TestRelativeMotionEncoding:
+    """Golden tests for relative/absolute motion command selection."""
+
+    def test_signed14_matches_fixture_example(self):
+        """Fixture ground truth: a9 7b 4f 00 15 has dx=-561um."""
+        assert encode14(-561) == b"\x7b\x4f"
+
+    def test_small_square_uses_relative_cuts(self, encoder, mock_machine, doc):
+        """A <8mm square yields AA/AB axis cuts and A9 diagonals."""
+        ops = Ops()
+        ops.move_to(10.0, 10.0, 0.0)
+        ops.line_to(15.0, 10.0, 0.0)
+        ops.line_to(15.0, 15.0, 0.0)
+        ops.line_to(10.0, 10.0, 0.0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        assert commands[0] == b"\x88" + encode35(10000) + encode35(10000)
+        assert commands[1] == b"\xaa" + encode14(5000)
+        assert commands[2] == b"\xab" + encode14(5000)
+        assert commands[3] == b"\xa9" + encode14(-5000) + encode14(-5000)
+
+    def test_long_segment_uses_absolute_cut(self, encoder, mock_machine, doc):
+        """A segment over 8.192mm falls back to absolute A8."""
+        ops = Ops()
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(8.3, 0.0, 0.0)
+        ops.line_to(8.3, 1.0, 0.0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        assert commands[1] == b"\xa8" + encode35(8300) + encode35(0)
+        # After the absolute emission, relative tracking resumes.
+        assert commands[2] == b"\xab" + encode14(1000)
+
+    def test_relative_travel_moves(self, encoder, mock_machine, doc):
+        """Short travels use 89/8A/8B; zero-delta is 89 with zeros."""
+        ops = Ops()
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.move_to(5.0, 0.0, 0.0)
+        ops.move_to(5.0, 3.0, 0.0)
+        ops.move_to(2.0, 1.0, 0.0)
+        ops.move_to(2.0, 1.0, 0.0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        assert commands[0] == b"\x88" + encode35(0) + encode35(0)
+        assert commands[1] == b"\x8a" + encode14(5000)
+        assert commands[2] == b"\x8b" + encode14(3000)
+        assert commands[3] == b"\x89" + encode14(-3000) + encode14(-2000)
+        assert commands[4] == b"\x89" + encode14(0) + encode14(0)
+
+    def test_zero_delta_cut_emits_nothing(self, encoder, mock_machine, doc):
+        """A cut to the current position emits no binary command."""
+        ops = Ops()
+        ops.move_to(1.0, 1.0, 0.0)
+        ops.line_to(1.0, 1.0, 0.0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        assert result.driver_data["commands"] == [
+            b"\x88" + encode35(1000) + encode35(1000)
+        ]
+
+    def test_layer_start_forces_absolute_motion(
+        self, encoder, mock_machine, doc
+    ):
+        """The first motion of every layer is absolute."""
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(100)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(1.0, 0.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.layer_start("layer-2")
+        ops.set_power(1.0)
+        ops.set_feed_rate(50)
+        ops.move_to(1.0, 1.0, 0.0)
+        ops.line_to(2.0, 1.0, 0.0)
+        ops.layer_end("layer-2")
+        ops.job_end()
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        moves = [c for c in commands if c[0] in (0x88, 0x89, 0x8A, 0x8B)]
+        assert [c[0] for c in moves] == [0x88, 0x88]
+
+    def test_mixed_abs_rel_checksum(self, encoder, mock_machine, doc):
+        """E5 05 stays correct with mixed abs/rel motion streams."""
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(100)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(5.0, 0.0, 0.0)
+        ops.line_to(5.0, 9.0, 0.0)
+        ops.line_to(4.0, 8.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.job_end()
+        result = encoder.encode(ops, mock_machine, doc)
+
+        commands = result.driver_data["commands"]
+        opcodes = [c[0] for c in commands]
+        assert 0xAA in opcodes
+        assert 0xA8 in opcodes
+        assert 0xA9 in opcodes
+        e5_idx = next(
+            i for i, c in enumerate(commands) if c[:2] == b"\xe5\x05"
+        )
+        stored = _decode_u35(commands[e5_idx][2:7])
+        sum_before = sum(sum(c) for c in commands[:e5_idx])
+        assert stored == sum_before + 0xD7
+        assert commands[-1] == b"\xd7"
 
 
 class TestSetFrequencyCommand:
