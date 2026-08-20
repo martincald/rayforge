@@ -698,7 +698,7 @@ class RuidaEncoder(OpsEncoder):
             binary.append(b"\xe7\x0a" + z5)
             binary.append(b"\xea\x00")
             binary.append(b"\xe7\x60\x00\x00")
-            binary.append(b"\xe3")
+            binary.append(b"\xe3\x00")
             binary.append(b"\xe7\x0b\x00")
             binary.append(b"\xe7\x13" + z5 + z5)
             binary.append(b"\xe7\x17" + w35 + h35)

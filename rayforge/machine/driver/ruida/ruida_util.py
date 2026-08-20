@@ -169,6 +169,69 @@ def validate_packet(data: bytes) -> tuple[bool, bytes, int, int]:
     )
 
 
+# Per-subcommand command lengths (opcode byte included), matching the
+# vendor DLL and verified against the RDWorks ground-truth file
+# (tests/machine/driver/ruida/fixtures/rdworks_reference.rd).
+_C6_LENGTHS: dict[int, int] = {
+    0x01: 4,
+    0x02: 4,
+    0x05: 4,
+    0x06: 4,
+    0x07: 4,
+    0x08: 4,
+    0x21: 4,
+    0x22: 4,
+    0x50: 4,
+    0x51: 4,
+    0x65: 4,
+    0x31: 5,
+    0x32: 5,
+    0x41: 5,
+    0x42: 5,
+    0x10: 7,
+    0x12: 7,
+    0x13: 7,
+    0x60: 9,
+}
+
+_E7_LENGTHS: dict[int, int] = {
+    0x00: 2,
+    0x05: 3,
+    0x0B: 3,
+    0x24: 3,
+    0x38: 3,
+    0x3B: 3,
+    0x60: 4,
+    0x0A: 7,
+    0x54: 8,
+    0x55: 8,
+    0x03: 12,
+    0x06: 12,
+    0x07: 12,
+    0x13: 12,
+    0x17: 12,
+    0x23: 12,
+    0x32: 12,
+    0x37: 12,
+    0x50: 12,
+    0x51: 12,
+    0x52: 13,
+    0x53: 13,
+    0x61: 13,
+    0x62: 13,
+    0x04: 16,
+    0x08: 16,
+}
+
+_F2_LENGTHS: dict[int, int] = {
+    0x03: 12,
+    0x04: 12,
+    0x06: 12,
+    0x08: 12,
+    0x05: 16,
+}
+
+
 def estimate_packet_length(payload: bytes) -> int:
     """
     Estimate the expected packet length from the payload.
@@ -184,16 +247,29 @@ def estimate_packet_length(payload: bytes) -> int:
 
     cmd = payload[0]
 
-    if cmd == 0xCC or cmd == 0xCD or cmd == 0xCE:
+    if cmd in (0xCC, 0xCD, 0xCE, 0xD7, 0xE4, 0xEB, 0xF0):
         return 1
+
+    if cmd in (0xE3, 0xEA):
+        return 2
+
+    if cmd in (0x88, 0xA8):
+        return 11
+
+    if cmd in (0x89, 0xA9):
+        return 5
+
+    if cmd in (0x8A, 0x8B, 0xAA, 0xAB):
+        return 3
+
+    # Immediate/end power for lasers 1-4: opcode + encode14.
+    if cmd in (0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC7, 0xC8):
+        return 3
 
     if cmd == 0xD0:
         if len(payload) < 2:
             return -1
         return 2
-
-    if cmd == 0xD7:
-        return 1
 
     if cmd == 0xD8:
         if len(payload) < 2:
@@ -203,20 +279,10 @@ def estimate_packet_length(payload: bytes) -> int:
     if cmd == 0xD9:
         if len(payload) < 2:
             return -1
-        return 2
-
-    if cmd == 0xD9:
-        if len(payload) < 2:
-            return -1
-        sub = payload[1]
-        if sub in (0x00, 0x01, 0x02, 0x03, 0x50, 0x51, 0x52, 0x53):
-            return 8
-        if sub == 0x0F:
-            return 8
-        if sub in (0x10, 0x60):
+        # D9 10 <opts> + two encode35 (rapid move XY); other forms
+        # are D9 <axis> <opts> + one encode35.
+        if payload[1] == 0x10:
             return 13
-        if sub in (0x30, 0x70):
-            return 18
         return 8
 
     if cmd == 0xDA:
@@ -226,7 +292,8 @@ def estimate_packet_length(payload: bytes) -> int:
         if sub == 0x00:
             return 4
         if sub == 0x01:
-            return 4
+            # Memory write: DA 01 <addr> + doubled encode35 value.
+            return 14
         if sub == 0x04:
             if len(payload) < 7:
                 return -1
@@ -270,30 +337,55 @@ def estimate_packet_length(payload: bytes) -> int:
     if cmd == 0xA7:
         return 2
 
-    if cmd in (0xC3, 0xC6, 0xC7):
-        if len(payload) < 5:
+    if cmd == 0xC6:
+        if len(payload) < 2:
             return -1
-        extra = decode14(payload[3:])
-        return 5 + extra
+        return _C6_LENGTHS.get(payload[1], 4)
+
+    if cmd == 0xC9:
+        if len(payload) < 2:
+            return -1
+        # C9 04 carries a part byte before the encode35 speed.
+        if payload[1] == 0x04:
+            return 8
+        return 7
 
     if cmd == 0xCA:
-        if len(payload) < 11:
+        if len(payload) < 2:
             return -1
-        return 11
+        if payload[1] == 0x06:
+            return 8
+        if payload[1] == 0x41:
+            return 4
+        return 3
 
-    if cmd in (0xE5, 0xE7, 0xE8):
+    if cmd == 0xE5:
+        if len(payload) < 2:
+            return -1
+        if payload[1] == 0x05:
+            return 7
+        return 2
+
+    if cmd == 0xE7:
+        if len(payload) < 2:
+            return -1
+        return _E7_LENGTHS.get(payload[1], 2)
+
+    if cmd == 0xE8:
         if len(payload) < 2:
             return -1
         return 2
 
-    if cmd == 0x88:
-        if len(payload) < 11:
+    if cmd == 0xF1:
+        if len(payload) < 2:
             return -1
-        return 11
+        if payload[1] == 0x03:
+            return 12
+        return 3
 
-    if cmd == 0x89:
-        if len(payload) < 5:
+    if cmd == 0xF2:
+        if len(payload) < 2:
             return -1
-        return 5
+        return _F2_LENGTHS.get(payload[1], 3)
 
     return len(payload)

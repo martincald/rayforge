@@ -2,8 +2,14 @@
 Tests for Ruida protocol utility functions.
 """
 
-import pytest
+from pathlib import Path
 
+import pytest
+from raygeo.ops import Ops
+from raygeo.ops.state import AirAssistMode
+
+from rayforge.core.doc import Doc
+from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_util import (
     UM_PER_MM,
     build_swizzle_lut,
@@ -361,3 +367,70 @@ class TestEstimatePacketLength:
 
     def test_unknown_command_returns_len(self):
         assert estimate_packet_length(b"\xfe\x00\x00") == 3
+
+
+FIXTURE_PATH = Path(__file__).parent / "fixtures" / "rdworks_reference.rd"
+
+
+def _split_commands(data: bytes) -> list[bytes]:
+    """Split a decoded stream into commands (MSB-set byte starts one)."""
+    cmds: list[bytes] = []
+    cur = bytearray()
+    for b in data:
+        if b >= 0x80 and cur:
+            cmds.append(bytes(cur))
+            cur = bytearray()
+        cur.append(b)
+    if cur:
+        cmds.append(bytes(cur))
+    return cmds
+
+
+def _fixture_commands() -> list[bytes]:
+    """Decode the RDWorks ground-truth file into a command list."""
+    raw = FIXTURE_PATH.read_bytes()
+    return _split_commands(bytes(unswizzle_byte(b, 0x88) for b in raw))
+
+
+class TestPacketLengthOracle:
+    """estimate_packet_length agrees with real command lengths."""
+
+    def test_fixture_command_lengths(self):
+        """Every command in the reference file has the estimated
+        length. Sole exception: RDWorks pads the file's final Cut_Rel
+        with a stray NUL byte; trailing zero padding is tolerated."""
+        cmds = _fixture_commands()
+        assert len(cmds) > 100
+        for i, cmd in enumerate(cmds):
+            est = estimate_packet_length(cmd)
+            if est == len(cmd):
+                continue
+            assert 0 < est < len(cmd), (i, cmd.hex(" "))
+            assert set(cmd[est:]) == {0}, (i, cmd.hex(" "))
+
+    def test_synthetic_job_command_lengths(self, isolated_machine):
+        """Every command the encoder emits has the estimated length."""
+        isolated_machine.active_wcs = "MACHINE"
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.6)
+        ops.set_feed_rate(10)
+        ops.set_air_assist(AirAssistMode.ON)
+        ops.set_frequency(20000)
+        ops.set_pulse_width(60)
+        ops.move_to(60.0, 40.0, 0.0)
+        ops.line_to(80.0, 40.0, 0.0)
+        ops.line_to(80.0, 60.0, 0.0)
+        ops.line_to(60.0, 60.0, 0.0)
+        ops.line_to(60.0, 40.0, 0.0)
+        power_values = bytearray([0, 128, 255, 128, 0])
+        ops.scan_to(65.0, 40.0, 0.0, power_values)
+        ops.layer_end("layer-1")
+        ops.job_end()
+
+        result = RuidaEncoder().encode(ops, isolated_machine, Doc())
+        commands = result.driver_data["commands"]
+        assert len(commands) > 50
+        for cmd in commands:
+            assert estimate_packet_length(cmd) == len(cmd), cmd.hex(" ")

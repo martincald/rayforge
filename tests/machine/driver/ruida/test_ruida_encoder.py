@@ -904,7 +904,7 @@ class TestJobPrologue:
             b"\xe7\x0a" + z5,
             b"\xea\x00",
             b"\xe7\x60\x00\x00",
-            b"\xe3",
+            b"\xe3\x00",
             b"\xe7\x0b\x00",
             b"\xe7\x13" + z5 + z5,
             b"\xe7\x17" + w35 + h35,
