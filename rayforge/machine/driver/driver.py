@@ -552,6 +552,37 @@ class Driver(ABC):
         """
         raise NotImplementedError
 
+    def can_trace_frame(self) -> bool:
+        """
+        Check if this device can trace a job outline with its pointer.
+
+        Returns:
+            True if the device supports :meth:`trace_frame`.
+        """
+        return False
+
+    async def trace_frame(self, width_mm: float, height_mm: float) -> None:
+        """
+        Trace a rectangle of the given size around the job origin.
+
+        This is an alignment aid, not a job: the head traverses the
+        outline with the pointer on and the laser off.
+
+        Drivers that report :meth:`can_trace_frame` must override this.
+
+        Args:
+            width_mm: Outline width in mm.
+            height_mm: Outline height in mm.
+        """
+        raise NotImplementedError
+
+    async def cancel_frame(self) -> None:
+        """
+        Stop a running :meth:`trace_frame` after the current move.
+
+        The head parks where it is; no further outline moves are sent.
+        """
+
     @abstractmethod
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         """

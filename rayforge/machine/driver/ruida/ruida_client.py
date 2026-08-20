@@ -431,19 +431,23 @@ class RuidaClient:
         """
         await self.send_command(self._build_cut_rel_y(dy))
 
-    async def rapid_move_xy(self, x_um: int, y_um: int) -> None:
+    async def rapid_move_xy(
+        self, x_um: int, y_um: int, light: bool = False
+    ) -> None:
         """
-        Rapid move to absolute XY position (D9 10, options 0x00).
+        Rapid move to a position relative to the stored anchor (D9 10).
 
         This is the interactive motion command used by real Ruida
-        hardware; job streams use move_abs (0x88) instead. D9 10
-        with the ORIGIN options byte takes absolute coordinates.
+        hardware; job streams use move_abs (0x88) instead. The move is
+        a traversal: the laser never fires.
 
         Args:
-            x_um: Absolute X coordinate in micrometers
-            y_um: Absolute Y coordinate in micrometers
+            x_um: X coordinate in micrometers, relative to the anchor
+            y_um: Y coordinate in micrometers, relative to the anchor
+            light: Switch the red pointer on for the move
         """
-        await self.send_command(self._build_rapid_move_xy(x_um, y_um))
+        opts = self._build_move_opts(origin=True, light=light)
+        await self.send_command(self._build_rapid_move_xy(x_um, y_um, opts))
 
     async def rapid_move_axis(
         self,
@@ -724,8 +728,8 @@ class RuidaClient:
     def _build_cut_rel_y(self, dy: int) -> bytes:
         return b"\xab" + encode14(dy)
 
-    def _build_rapid_move_xy(self, x: int, y: int) -> bytes:
-        return b"\xd9\x10\x00" + encode35(x) + encode35(y)
+    def _build_rapid_move_xy(self, x: int, y: int, opts: int = 0x00) -> bytes:
+        return b"\xd9\x10" + bytes([opts]) + encode35(x) + encode35(y)
 
     def _build_rapid_move_axis(
         self,

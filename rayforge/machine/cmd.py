@@ -361,6 +361,67 @@ class MachineCmd:
             lambda ctx: machine.jog(deltas, speed)
         )
 
+    @property
+    def has_job_ops(self) -> bool:
+        """Whether the document has anything to run on the machine."""
+        return self._editor.doc.has_result()
+
+    @property
+    def document_settled(self) -> Signal:
+        """Signal UI can watch to re-evaluate document-driven actions."""
+        return self._editor.document_settled
+
+    def trace_frame(
+        self,
+        machine: Machine,
+        on_done: Callable[[], None] | None = None,
+    ):
+        """
+        Adds a task to trace the job outline with the machine's pointer.
+
+        Args:
+            machine: The machine to trace on.
+            on_done: Optional callback, run on the main thread once the
+                trace finishes, is cancelled, or fails.
+        """
+
+        def when_done(task):
+            if on_done is not None:
+                self._scheduler(on_done)
+
+        self._editor.task_manager.add_coroutine(
+            lambda ctx: self._trace_frame(machine),
+            key="trace-frame",
+            when_done=when_done,
+        )
+
+    async def _trace_frame(self, machine: Machine):
+        """Measure the job outline, then hand it to the driver."""
+        driver = machine.driver
+        if not driver:
+            return
+
+        handle = await self._editor.pipeline.generate_job_artifact_async()
+        if not handle:
+            logger.warning("Frame job has no operations.")
+            return
+
+        artifact_store = self._editor.pipeline.artifact_store
+        with artifact_store.checkout_handle(handle) as artifact:
+            if not isinstance(artifact, JobArtifact):
+                raise TypeError("Frame job did not produce a JobArtifact")
+            min_x, min_y, max_x, max_y = artifact.ops.rect()
+
+        await driver.trace_frame(max_x - min_x, max_y - min_y)
+
+    def cancel_frame(self, machine: Machine):
+        """Adds a task to stop a running outline trace."""
+        driver = machine.driver
+        if driver:
+            self._editor.task_manager.add_coroutine(
+                lambda ctx: driver.cancel_frame(), key="cancel-frame"
+            )
+
     def jog_key_down(self, machine: Machine, axis: str, direction: int):
         """
         Adds a task to start a press-and-hold jog on one axis.

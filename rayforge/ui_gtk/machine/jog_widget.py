@@ -49,6 +49,7 @@ class JogWidget(Gtk.Widget):
         self.jog_speed = 100  # mm/s
         self.jog_distance = 10.0
         self._buttons = []
+        self._framing = False
         self._keys_down: set[tuple[str, int]] = set()
         self._button_directions: dict[
             Gtk.Button, tuple[JogDirection, ...]
@@ -142,18 +143,15 @@ class JogWidget(Gtk.Widget):
         )
         self._jog_grid.attach(self.south_east_btn, 2, 2, 1, 1)
 
-        # Row 3: home x - home y - home z
-        self.home_x_btn = create_button("home-x-symbolic", _("Home X"))
-        self.home_x_btn.connect("clicked", self._on_home_x_clicked)
-        self._jog_grid.attach(self.home_x_btn, 0, 3, 1, 1)
-
-        self.home_y_btn = create_button("home-y-symbolic", _("Home Y"))
-        self.home_y_btn.connect("clicked", self._on_home_y_clicked)
-        self._jog_grid.attach(self.home_y_btn, 1, 3, 1, 1)
-
-        self.home_z_btn = create_button("home-z-symbolic", _("Home Z"))
-        self.home_z_btn.connect("clicked", self._on_home_z_clicked)
-        self._jog_grid.attach(self.home_z_btn, 2, 3, 1, 1)
+        # Row 3: Frame. Homing stays reachable from the action column.
+        self.frame_btn = create_button(
+            "frame-symbolic",
+            _("Trace job outline with the pointer"),
+            label=_("Frame"),
+        )
+        self._frame_caption = self._button_caption(self.frame_btn)
+        self.frame_btn.connect("clicked", self._on_frame_clicked)
+        self._jog_grid.attach(self.frame_btn, 0, 3, 3, 1)
 
         # Row 4: jog speed (mm/s)
         adjustment = Gtk.Adjustment(
@@ -209,6 +207,12 @@ class JogWidget(Gtk.Widget):
         self.connect("unmap", self._on_unmapped)
 
         self._update_button_sensitivity()
+
+    @staticmethod
+    def _button_caption(button) -> Gtk.Label:
+        """The caption label of a button built with a label."""
+        box = button.get_child()
+        return next(c for c in box if isinstance(c, Gtk.Label))
 
     def _attach_hold(self, button, *directions: JogDirection):
         """
@@ -292,11 +296,19 @@ class JogWidget(Gtk.Widget):
                 self._on_connection_status_changed
             )
             self.machine.changed.disconnect(self._on_machine_changed)
+        if self.machine_cmd:
+            self.machine_cmd.document_settled.disconnect(
+                self._on_document_settled
+            )
 
         self._release_all_jog_keys()
 
         self.machine = machine
         self.machine_cmd = machine_cmd
+        if self.machine_cmd:
+            self.machine_cmd.document_settled.connect(
+                self._on_document_settled
+            )
 
         if self.machine:
             self.machine.state_changed.connect(self._on_machine_state_changed)
@@ -346,10 +358,8 @@ class JogWidget(Gtk.Widget):
         self.south_west_btn.set_sensitive(False)
         self.z_plus_btn.set_sensitive(False)
         self.z_minus_btn.set_sensitive(False)
-        self.home_x_btn.set_sensitive(False)
-        self.home_y_btn.set_sensitive(False)
-        self.home_z_btn.set_sensitive(False)
         self.home_all_btn.set_sensitive(False)
+        self.frame_btn.set_sensitive(False)
         self.origin_btn.set_sensitive(False)
         self.send_btn.set_sensitive(False)
         self.cancel_btn.set_sensitive(False)
@@ -384,32 +394,17 @@ class JogWidget(Gtk.Widget):
             self._can_jog_direction(JogDirection.DOWN)
         )
 
-        # Home buttons - only enable if single axis homing is supported
-        single_axis_homing = machine.single_axis_homing_enabled
-        self.home_x_btn.set_sensitive(
-            machine.can_home(Axis.X) and single_axis_homing
-        )
-        self.home_y_btn.set_sensitive(
-            machine.can_home(Axis.Y) and single_axis_homing
-        )
-        self.home_z_btn.set_sensitive(
-            machine.can_home(Axis.Z) and single_axis_homing
-        )
         self.home_all_btn.set_sensitive(True)
 
-        # Origin is driver-specific; only offer it where supported.
+        # Origin and Frame are driver-specific; only offer them where
+        # they are supported.
         driver = machine.driver
         self.origin_btn.set_sensitive(bool(driver) and driver.can_set_origin())
+        self._update_frame_button()
 
         # Send and Cancel buttons - always enabled when connected
         self.send_btn.set_sensitive(True)
         self.cancel_btn.set_sensitive(True)
-
-        # Hide home buttons if single axis homing is not supported
-        home_visible = single_axis_homing
-        self.home_x_btn.set_visible(home_visible)
-        self.home_y_btn.set_visible(home_visible)
-        self.home_z_btn.set_visible(home_visible)
 
         self._update_limit_status()
 
@@ -653,6 +648,53 @@ class JogWidget(Gtk.Widget):
         """Handle Left-Toward diagonal button click."""
         self._perform_visual_jog(JogDirection.WEST, JogDirection.SOUTH)
 
+    def _can_trace_frame(self) -> bool:
+        """Whether an outline trace could be started right now."""
+        if not self.machine or not self.machine.is_connected():
+            return False
+        if not self.machine_cmd or not self.machine_cmd.has_job_ops:
+            return False
+        driver = self.machine.driver
+        return bool(driver) and driver.can_trace_frame()
+
+    def _update_frame_button(self):
+        """Reflect framing state in the Frame button."""
+        if self._framing:
+            self._frame_caption.set_label(_("Stop"))
+            self.frame_btn.set_tooltip_text(_("Stop tracing the outline"))
+            self.frame_btn.add_css_class("destructive-action")
+            self.frame_btn.set_sensitive(True)
+            return
+
+        self._frame_caption.set_label(_("Frame"))
+        self.frame_btn.set_tooltip_text(
+            _("Trace job outline with the pointer")
+        )
+        self.frame_btn.remove_css_class("destructive-action")
+        self.frame_btn.set_sensitive(self._can_trace_frame())
+
+    def _on_frame_clicked(self, button):
+        """Handle Frame button click: start, or stop while running."""
+        if not self.machine or not self.machine_cmd:
+            return
+
+        if self._framing:
+            self.machine_cmd.cancel_frame(self.machine)
+            return
+
+        self._framing = True
+        self._update_frame_button()
+        self.machine_cmd.trace_frame(self.machine, on_done=self._on_frame_done)
+
+    def _on_frame_done(self):
+        """The outline trace finished, was cancelled, or failed."""
+        self._framing = False
+        self._update_frame_button()
+
+    def _on_document_settled(self, sender, **kwargs):
+        """A document with no ops has no outline to trace."""
+        self._update_frame_button()
+
     def _on_origin_clicked(self, button):
         """Handle Origin button click."""
         if self.machine and self.machine_cmd:
@@ -662,21 +704,6 @@ class JogWidget(Gtk.Widget):
         """Handle Home machine button click."""
         if self.machine and self.machine_cmd:
             self.machine_cmd.home(self.machine)
-
-    def _on_home_x_clicked(self, button):
-        """Handle Home X button click."""
-        if self.machine and self.machine_cmd:
-            self.machine_cmd.home(self.machine, Axis.X)
-
-    def _on_home_y_clicked(self, button):
-        """Handle Home Y button click."""
-        if self.machine and self.machine_cmd:
-            self.machine_cmd.home(self.machine, Axis.Y)
-
-    def _on_home_z_clicked(self, button):
-        """Handle Home Z button click."""
-        if self.machine and self.machine_cmd:
-            self.machine_cmd.home(self.machine, Axis.Z)
 
     def _on_send_clicked(self, button):
         """Handle Send button click."""

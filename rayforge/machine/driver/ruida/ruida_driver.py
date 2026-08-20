@@ -76,6 +76,12 @@ class RuidaDriver(Driver):
     # stays user-selectable; this only picks the initial slot.
     DEFAULT_WCS = "REF0"
     STATUS_POLL_INTERVAL = 0.5
+    # Framing traces the job outline with the pointer at a moderate,
+    # fixed speed: it is an alignment aid, not a job.
+    FRAME_SPEED_MM_S = 100
+    FRAME_CORNER_TOLERANCE_UM = 1000
+    FRAME_CORNER_TIMEOUT = 15.0
+    FRAME_POLL_INTERVAL = 0.2
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
 
@@ -97,6 +103,7 @@ class RuidaDriver(Driver):
         self._last_known_pos: tuple[int, int] | None = None
         self._origin_pos: tuple[int, int] | None = None
         self._jog_keys_down: set[tuple[str, int]] = set()
+        self._frame_cancelled = False
 
     @property
     def machine_space_wcs(self) -> str:
@@ -619,6 +626,105 @@ class RuidaDriver(Driver):
         logger.info(
             f"Origin set at x={pos[0]}um y={pos[1]}um",
             extra=self._log_extra("MACHINE_EVENT"),
+        )
+
+    def can_trace_frame(self) -> bool:
+        return True
+
+    async def trace_frame(self, width_mm: float, height_mm: float) -> None:
+        assert self._client
+        width_um = int(width_mm * 1000)
+        height_um = int(height_mm * 1000)
+        corners = [
+            (0, 0),
+            (width_um, 0),
+            (width_um, height_um),
+            (0, height_um),
+            (0, 0),
+        ]
+        logger.info(
+            f"Frame: tracing {width_mm:.1f} x {height_mm:.1f} mm "
+            f"from the anchor",
+            extra=self._log_extra("USER_COMMAND"),
+        )
+
+        self._frame_cancelled = False
+        # Corner arrival is judged against the anchor. _origin_pos is
+        # only set when the origin was pressed in this session; falling
+        # back to the current position gives the polling a reference
+        # without affecting where the head actually goes, since the
+        # controller resolves ORIGIN-relative targets itself.
+        anchor = self._origin_pos or await self._client.read_position()
+
+        self._suppress_polling = True
+        try:
+            await self._client.set_travel_speed(self.FRAME_SPEED_MM_S * 1000)
+            for x_um, y_um in corners:
+                if self._frame_cancelled:
+                    logger.info(
+                        "Frame cancelled",
+                        extra=self._log_extra("USER_COMMAND"),
+                    )
+                    return
+                # Pointer on, relative to the anchor. No power command
+                # is ever sent, so the laser cannot fire.
+                await self._client.rapid_move_xy(x_um, y_um, light=True)
+                await self._wait_for_frame_corner(anchor, x_um, y_um)
+
+            if self._frame_cancelled:
+                return
+            # Pointer off, back to the anchor.
+            await self._client.rapid_move_xy(0, 0)
+        finally:
+            self._suppress_polling = False
+            self._frame_cancelled = False
+
+    async def cancel_frame(self) -> None:
+        """
+        Stop a running frame trace after the current move.
+
+        The head parks wherever it is; no further corners are sent.
+        """
+        self._frame_cancelled = True
+
+    async def _wait_for_frame_corner(
+        self,
+        anchor: tuple[int, int] | None,
+        target_x: int,
+        target_y: int,
+    ) -> None:
+        """
+        Poll the head position until it reaches a frame corner.
+
+        Args:
+            anchor: Absolute position the corners are relative to, or
+                None when it could not be read.
+            target_x: Corner X in micrometers, relative to the anchor.
+            target_y: Corner Y in micrometers, relative to the anchor.
+        """
+        assert self._client
+        if anchor is None:
+            await asyncio.sleep(self.FRAME_CORNER_TIMEOUT)
+            return
+
+        want_x = anchor[0] + target_x
+        want_y = anchor[1] + target_y
+        deadline = asyncio.get_event_loop().time() + self.FRAME_CORNER_TIMEOUT
+        while asyncio.get_event_loop().time() < deadline:
+            if self._frame_cancelled:
+                return
+            pos = await self._client.read_position()
+            if pos is not None and (
+                abs(pos[0] - want_x) <= self.FRAME_CORNER_TOLERANCE_UM
+                and abs(pos[1] - want_y) <= self.FRAME_CORNER_TOLERANCE_UM
+            ):
+                return
+            await asyncio.sleep(self.FRAME_POLL_INTERVAL)
+
+        logger.warning(
+            f"Frame: corner ({target_x}, {target_y}) um not reached "
+            f"within {self.FRAME_CORNER_TIMEOUT}s, continuing",
+            extra=self._log_extra("USER_COMMAND"),
         )
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:

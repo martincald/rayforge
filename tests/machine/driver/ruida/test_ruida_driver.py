@@ -1689,3 +1689,151 @@ def _recorder(sink: list):
         sink.append((axis, direction))
 
     return record
+
+
+class _FrameClientSpy:
+    """Records the frame moves a driver makes, and reports arrival."""
+
+    def __init__(self, position=(0, 0)):
+        self.commands: list[bytes] = []
+        self.position = position
+        # Enough of the client surface for the driver's teardown.
+        self.state_changed = Signal()
+        self.position_updated = Signal()
+
+    async def disconnect(self):
+        pass
+
+    async def set_travel_speed(self, um_per_s: int):
+        self.commands.append(b"\xc9\x02" + encode35(um_per_s))
+
+    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
+        opts = 0x01 if light else 0x00
+        self.commands.append(
+            b"\xd9\x10" + bytes([opts]) + encode35(x_um) + encode35(y_um)
+        )
+        self.position = (x_um, y_um)
+
+    async def read_position(self, timeout: float = 2.0):
+        return self.position
+
+
+def _frame_moves(commands: list[bytes]) -> list[tuple[int, int, int]]:
+    """Decode the D9 10 commands into (options, x_um, y_um)."""
+    moves = []
+    for cmd in commands:
+        if cmd[:2] != b"\xd9\x10":
+            continue
+        moves.append((cmd[2], decode35(cmd[3:8]), decode35(cmd[8:13])))
+    return moves
+
+
+class TestTraceFrame:
+    """The Frame action traces the job outline with the pointer."""
+
+    @pytest.mark.asyncio
+    async def test_driver_reports_frame_support(self, driver):
+        assert driver.can_trace_frame() is True
+
+    @pytest.mark.asyncio
+    async def test_five_lit_corners_in_order(self, driver):
+        """(0,0) (w,0) (w,h) (0,h) (0,0), pointer on, anchor-relative."""
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        await driver.trace_frame(30.0, 20.0)
+
+        lit = [m for m in _frame_moves(spy.commands) if m[0] == 0x01]
+        assert lit == [
+            (0x01, 0, 0),
+            (0x01, 30000, 0),
+            (0x01, 30000, 20000),
+            (0x01, 0, 20000),
+            (0x01, 0, 0),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_finishes_with_the_pointer_off_at_the_anchor(self, driver):
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        await driver.trace_frame(30.0, 20.0)
+
+        assert _frame_moves(spy.commands)[-1] == (0x00, 0, 0)
+
+    @pytest.mark.asyncio
+    async def test_travel_speed_is_set_before_the_first_corner(self, driver):
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        await driver.trace_frame(10.0, 10.0)
+
+        expected = encode35(RuidaDriver.FRAME_SPEED_MM_S * 1000)
+        assert spy.commands[0] == b"\xc9\x02" + expected
+
+    @pytest.mark.asyncio
+    async def test_no_power_command_is_ever_sent(self, driver):
+        """The laser must not fire while framing."""
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        await driver.trace_frame(10.0, 10.0)
+
+        power_opcodes = {0xC7, 0xC0, 0xC2, 0xC3, 0xC6}
+        assert not [c for c in spy.commands if c[0] in power_opcodes]
+
+    @pytest.mark.asyncio
+    async def test_corners_are_offset_from_a_non_zero_anchor(self, driver):
+        """Arrival is judged against the anchor, not machine zero."""
+        spy = _FrameClientSpy(position=(0, 0))
+        driver._client = spy
+        driver._origin_pos = (50000, 70000)
+
+        # The spy reports the commanded anchor-relative position, so a
+        # non-zero anchor means no corner ever compares equal; the
+        # trace still completes, on the per-corner timeout.
+        driver.FRAME_CORNER_TIMEOUT = 0.05
+        driver.FRAME_POLL_INTERVAL = 0.01
+        await driver.trace_frame(10.0, 10.0)
+
+        assert len(_frame_moves(spy.commands)) == 6
+
+    @pytest.mark.asyncio
+    async def test_cancel_stops_before_the_next_corner(self, driver):
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        original = spy.rapid_move_xy
+
+        async def cancel_after_second(x_um, y_um, light=False):
+            await original(x_um, y_um, light=light)
+            if len(_frame_moves(spy.commands)) == 2:
+                await driver.cancel_frame()
+
+        spy.rapid_move_xy = cancel_after_second
+
+        await driver.trace_frame(30.0, 20.0)
+
+        # Two lit corners went out, then nothing: no park move either,
+        # the head stays where the cancel caught it.
+        assert _frame_moves(spy.commands) == [
+            (0x01, 0, 0),
+            (0x01, 30000, 0),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_cancel_flag_is_cleared_for_the_next_trace(self, driver):
+        spy = _FrameClientSpy()
+        driver._client = spy
+        driver._origin_pos = (0, 0)
+
+        await driver.cancel_frame()
+        await driver.trace_frame(10.0, 10.0)
+
+        assert driver._frame_cancelled is False
+        assert len(_frame_moves(spy.commands)) == 6
