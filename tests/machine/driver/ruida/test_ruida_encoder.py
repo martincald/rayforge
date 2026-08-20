@@ -475,7 +475,7 @@ class TestJobMarkers:
         result = encoder.encode(ops, mock_machine, doc)
 
         commands = result.driver_data["commands"]
-        assert commands[0] == b"\xd8\x10"
+        assert commands[0] == b"\xd8\x12"
         assert commands[1] == bytes.fromhex("e73201502024100150202410")
         assert commands[2] == b"\xf0"
         assert commands[3] == b"\xf1\x02\x00"
@@ -484,7 +484,7 @@ class TestJobMarkers:
         assert commands[-1] == (
             b"\xe7\x08" + encode14(1) + encode14(1) + encode35(0) + encode35(0)
         )
-        assert "; Job Start - Ref Point: MACHINE" in result.text
+        assert "; Job Start - Ref Point: REF0" in result.text
 
     def test_job_end(self, encoder, mock_machine, doc):
         """Job end should emit the tail with checksum and EOF marker."""
@@ -515,7 +515,7 @@ class TestJobMarkers:
         lines = result.text.split("\n")
         assert "Job Start" in lines[0]
         assert lines[-1] == "; Job End"
-        assert b"".join(result.driver_data["commands"]).startswith(b"\xd8\x10")
+        assert b"".join(result.driver_data["commands"]).startswith(b"\xd8\x12")
         assert b"".join(result.driver_data["commands"]).endswith(b"\xd7")
 
 
@@ -991,7 +991,7 @@ class TestJobPrologue:
         h35 = encode35(20000)
         neg_w35 = encode35(-10000)
         expected = [
-            b"\xd8\x10",
+            b"\xd8\x12",
             bytes.fromhex("e73201502024100150202410"),
             b"\xf0",
             b"\xf1\x02\x00",
@@ -1290,7 +1290,7 @@ class TestBuildRdBytes:
         blob = build_rd_bytes(_square_job_ops(), mock_machine, doc)
         cmds = _split_commands(bytes(_unswizzle_byte(b) for b in blob))
 
-        assert cmds[0] == b"\xd8\x10"
+        assert cmds[0] == b"\xd8\x12"
         assert cmds[-1] == b"\xd7"
         e5_idx = next(i for i, c in enumerate(cmds) if c[:2] == b"\xe5\x05")
         stored = _decode_u35(cmds[e5_idx][2:7])

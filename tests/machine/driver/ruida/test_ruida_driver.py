@@ -1551,14 +1551,18 @@ class TestDefaultRefPoint:
 
         assert encoded.driver_data["commands"][0] == b"\xd8\x12"
 
-    def test_explicit_wcs_still_honoured(self, driver):
-        """The WCS setting stays functional; only the default moved."""
+    def test_stale_machine_wcs_still_emits_d8_12(self, driver):
+        """A profile stuck on MACHINE must not put D8 10 in the job."""
         driver._machine.active_wcs = "MACHINE"
         encoded = RuidaEncoder().encode(
             _origin_job_ops(), driver._machine, Doc()
         )
 
-        assert encoded.driver_data["commands"][0] == b"\xd8\x10"
+        assert encoded.driver_data["commands"][0] == b"\xd8\x12"
+
+    def test_setup_seeds_the_clients_tracked_ref_point_mode(self, driver):
+        """The mode poller must not push MACHINE back onto the profile."""
+        assert driver._client._ref_point_mode == "REF0"
 
     def test_setup_preserves_a_saved_wcs(self, lite_context, ruida_simulator):
         """A machine that already names a valid slot keeps it."""

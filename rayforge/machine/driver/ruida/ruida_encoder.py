@@ -50,6 +50,11 @@ _REL_LIMIT_UM = 0x2000
 # Swizzle magic used for complete .rd job files.
 RD_MAGIC = 0x88
 
+# Jobs always select the anchor reference point (D8 12), matching the
+# RDWorks ground-truth file, so a cut starts where the operator set the
+# origin. The stored machine WCS never picks the job's reference point.
+JOB_REF_POINT = "REF0"
+
 
 def commands_to_rd_bytes(commands: list[bytes]) -> bytes:
     """
@@ -696,15 +701,13 @@ class RuidaEncoder(OpsEncoder):
         replayed with the reference file's constant payloads when
         follow_reference is enabled.
 
-        Raises:
-            ValueError: If active_wcs is not a valid Ruida reference point
+        The reference point is always the anchor (D8 12), independent
+        of the machine's stored WCS.
         """
-        active_wcs = machine.active_wcs
-        if active_wcs not in REF_POINT_COMMANDS:
-            raise ValueError(
-                f"Unknown WCS slot '{active_wcs}'. "
-                f"Valid options: {', '.join(REF_POINT_COMMANDS.keys())}"
-            )
+        ref_point_cmd = REF_POINT_COMMANDS[JOB_REF_POINT]
+        logger.info(
+            f"Job ref point: {JOB_REF_POINT} (D8 {ref_point_cmd[1]:02X})"
+        )
 
         rect = ops.rect()
         self.origin_um = (
@@ -717,7 +720,7 @@ class RuidaEncoder(OpsEncoder):
         self._part = -1
 
         z5 = encode35(0)
-        binary.append(REF_POINT_COMMANDS[active_wcs])
+        binary.append(ref_point_cmd)
         if self.follow_reference:
             binary.append(_REF_E7_32)
         binary.append(b"\xf0")
@@ -798,7 +801,7 @@ class RuidaEncoder(OpsEncoder):
             binary.append(b"\xe7\x37" + neg_w35 + h35)
             binary.append(b"\xe7\x08" + one14 + one14 + neg_w35 + h35)
 
-        text.append(f"; Job Start - Ref Point: {active_wcs}")
+        text.append(f"; Job Start - Ref Point: {JOB_REF_POINT}")
 
     def _handle_job_end(
         self,

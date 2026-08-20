@@ -502,6 +502,10 @@ class RuidaClient:
         """
         if self._jog_transport is None:
             raise RuntimeError("No jog transport configured")
+        logger.info(
+            f"Origin key: {ORIGIN_KEY_DOWN.hex(' ')} / "
+            f"{ORIGIN_KEY_UP.hex(' ')} on the jog channel"
+        )
         await self._jog_transport.send(ORIGIN_KEY_DOWN)
         await self._jog_transport.send(ORIGIN_KEY_UP)
 
@@ -846,6 +850,26 @@ class RuidaClient:
         await self._read_memory(0x0441)
         return (self.state.x, self.state.y, self.state.z)
 
+    async def read_position(
+        self, timeout: float = 2.0
+    ) -> tuple[int, int] | None:
+        """
+        Read current X and Y from the controller, waiting for both.
+
+        Unlike get_position(), this does not return stale cached state.
+
+        Args:
+            timeout: Maximum time to wait per register, in seconds.
+
+        Returns:
+            Tuple of (x_um, y_um), or None if either read timed out.
+        """
+        x_um = await self._read_memory_wait(0x0421, timeout)
+        y_um = await self._read_memory_wait(0x0431, timeout)
+        if x_um is None or y_um is None:
+            return None
+        return (x_um, y_um)
+
     def _build_write_memory(self, mem_address: int, value: int) -> bytes:
         """
         Build command to write to controller memory.
@@ -958,6 +982,18 @@ class RuidaClient:
             raise ValueError(f"Unknown reference point: {ref_point}")
         await self.send_command(REF_POINT_COMMANDS[ref_point])
         self._ref_point_mode = ref_point
+
+    def set_tracked_ref_point_mode(self, mode: str | None) -> None:
+        """
+        Seed the locally tracked reference point mode.
+
+        The controller cannot report its mode, so the driver seeds it
+        from the machine profile rather than assuming MACHINE.
+
+        Args:
+            mode: "MACHINE", "REF0", "REF1", or None.
+        """
+        self._ref_point_mode = mode
 
     async def get_ref_point_mode(self) -> str | None:
         """

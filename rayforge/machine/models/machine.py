@@ -1652,6 +1652,16 @@ class Machine:
         ma.dialect_migrated = migrated
         ma.dialect_uid = dialect_uid
         ma.active_wcs = ma_data.get("active_wcs", ma.active_wcs)
+        if ma.driver_name == "RuidaDriver" and ma.active_wcs == "MACHINE":
+            # Profiles saved before Ruida jobs defaulted to the anchor
+            # reference point still carry MACHINE. Rewrite them once so
+            # the UI agrees with the D8 12 the encoder emits.
+            logger.info(
+                "Migrating Ruida machine '%s' from the MACHINE reference"
+                " point to the anchor (REF0).",
+                ma.name,
+            )
+            ma.active_wcs = "REF0"
         if "coordinate_systems" in ma_data:
             ma.coordinate_systems = {}
             for cs_data in ma_data["coordinate_systems"]:

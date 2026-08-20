@@ -29,7 +29,11 @@ from ..driver import (
     Pos,
     PWMParams,
 )
-from .ruida_client import RuidaClient
+from .ruida_client import (
+    ORIGIN_KEY_DOWN,
+    ORIGIN_KEY_UP,
+    RuidaClient,
+)
 from .ruida_encoder import RuidaEncoder, build_rd_bytes
 from .ruida_transport import RuidaTransport
 
@@ -91,6 +95,7 @@ class RuidaDriver(Driver):
         self._response_timeout = self.CONNECTION_TIMEOUT
         self._suppress_polling = False
         self._last_known_pos: tuple[int, int] | None = None
+        self._origin_pos: tuple[int, int] | None = None
 
     @property
     def machine_space_wcs(self) -> str:
@@ -219,6 +224,13 @@ class RuidaDriver(Driver):
         if m.active_wcs not in new_systems:
             default = self.DEFAULT_WCS
             m.active_wcs = default if default in new_systems else supported[0]
+
+        # The controller cannot report its ref point mode, so seed the
+        # client's tracked value from the profile. Otherwise the mode
+        # poller would push its "MACHINE" placeholder back onto the
+        # machine within seconds of connecting.
+        if self._client:
+            self._client.set_tracked_ref_point_mode(m.active_wcs)
 
     async def cleanup(self):
         self._keep_running = False
@@ -580,8 +592,27 @@ class RuidaDriver(Driver):
 
     async def set_origin(self) -> None:
         assert self._client
-        logger.info("Set Origin", extra=self._log_extra("MACHINE_EVENT"))
+        logger.info(
+            f"Set Origin: {ORIGIN_KEY_DOWN.hex(' ')} then "
+            f"{ORIGIN_KEY_UP.hex(' ')} (raw, jog channel)",
+            extra=self._log_extra("MACHINE_EVENT"),
+        )
         await self._client.set_origin()
+
+        # The anchor the controller just stored is the head position, so
+        # cache it for the Scan feature.
+        pos = await self._client.read_position()
+        if pos is None:
+            logger.warning(
+                "Origin set, but the head position could not be read",
+                extra=self._log_extra("MACHINE_EVENT"),
+            )
+            return
+        self._origin_pos = pos
+        logger.info(
+            f"Origin set at x={pos[0]}um y={pos[1]}um",
+            extra=self._log_extra("MACHINE_EVENT"),
+        )
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         assert self._client

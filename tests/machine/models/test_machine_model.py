@@ -826,3 +826,44 @@ class TestSetDriverEmitsChanged:
         machine.changed.connect(handler)
         machine.set_driver(TestDriver3, {"port": "/dev/null"})
         assert len(signals) == 0
+
+
+class TestRuidaRefPointMigration:
+    """Stale Ruida profiles must not keep selecting machine space."""
+
+    def test_stale_machine_wcs_is_migrated_to_the_anchor(
+        self, lite_context, caplog
+    ):
+        data = {
+            "machine": {
+                "driver": "RuidaDriver",
+                "active_wcs": "MACHINE",
+            }
+        }
+        with caplog.at_level(logging.INFO):
+            machine = Machine.from_dict(data, context=lite_context)
+
+        assert machine.active_wcs == "REF0"
+        assert "anchor" in caplog.text
+
+    def test_other_ruida_ref_points_are_left_alone(self, lite_context):
+        data = {
+            "machine": {
+                "driver": "RuidaDriver",
+                "active_wcs": "REF1",
+            }
+        }
+        machine = Machine.from_dict(data, context=lite_context)
+
+        assert machine.active_wcs == "REF1"
+
+    def test_non_ruida_drivers_keep_their_wcs(self, lite_context):
+        data = {
+            "machine": {
+                "driver": "GrblNetworkDriver",
+                "active_wcs": "MACHINE",
+            }
+        }
+        machine = Machine.from_dict(data, context=lite_context)
+
+        assert machine.active_wcs == "MACHINE"
