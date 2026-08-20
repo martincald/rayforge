@@ -14,6 +14,7 @@ from rayforge.machine.driver.ruida.ruida_client import (
 )
 from rayforge.machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
 from rayforge.machine.driver.ruida.ruida_util import (
+    encode14,
     encode35,
     swizzle_byte,
     unswizzle_byte,
@@ -162,7 +163,7 @@ class TestRuidaClientAirAssist:
         await self.client.air_assist_on()
         self.mock_transport.send_command.assert_called_once()
         sent = self.mock_transport.send_command.call_args[0][0]
-        assert sent == b"\xca\x13"
+        assert sent == b"\xca\x01\x13"
 
     @pytest.mark.asyncio
     async def test_air_assist_off(self):
@@ -170,7 +171,7 @@ class TestRuidaClientAirAssist:
         await self.client.air_assist_off()
         self.mock_transport.send_command.assert_called_once()
         sent = self.mock_transport.send_command.call_args[0][0]
-        assert sent == b"\xca\x12"
+        assert sent == b"\xca\x01\x12"
 
 
 class TestRuidaClientSelectLayer:
@@ -371,6 +372,13 @@ class TestRuidaClientPowerCommands:
         with pytest.raises(ValueError, match="Invalid laser"):
             await self.client.set_power_end(5, 50.0)
 
+    def test_power_100_percent_encodes_full_scale(self):
+        """Exactly 100.0% must encode to 0x3FFF, not wrap to 0."""
+        imd = self.client._build_power_immediate(1, 100.0)
+        end = self.client._build_power_end(1, 100.0)
+        assert imd[1:] == encode14(0x3FFF)
+        assert end[1:] == encode14(0x3FFF)
+
 
 class TestRuidaClientSpeedCommands:
     """Tests for speed commands."""
@@ -484,26 +492,22 @@ class TestRuidaClientEndOfFile:
     def test_build_frequency(self):
         result = self.client._build_frequency(1, 1000)
         assert result[:2] == b"\xc6\x60"
-        assert result[2] == 1
-        assert result[3] == 0
+        assert result[2] == 0  # laser index, zero-based
+        assert result[3] == 0  # layer
         assert result[4:] == encode35(1000)
+        assert len(result) == 9
 
-    def test_build_frequency_laser_2(self):
-        result = self.client._build_frequency(2, 5000)
-        assert result[2] == 2
+    def test_build_frequency_laser_2_layer_3(self):
+        result = self.client._build_frequency(2, 5000, layer=3)
+        assert result[2] == 1  # laser index, zero-based
+        assert result[3] == 3  # layer
         assert result[4:] == encode35(5000)
 
     def test_build_pulse_width(self):
-        result = self.client._build_pulse_width(1, 50)
+        result = self.client._build_pulse_width(50)
         assert result[:2] == b"\xc6\x10"
-        assert result[2] == 1
-        assert result[3] == 0
-        assert result[4:] == encode35(50)
-
-    def test_build_pulse_width_laser_3(self):
-        result = self.client._build_pulse_width(3, 200)
-        assert result[2] == 3
-        assert result[4:] == encode35(200)
+        assert result[2:] == encode35(50)
+        assert len(result) == 7
 
 
 class TestRuidaClientAckSerialization:

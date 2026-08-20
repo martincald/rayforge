@@ -295,12 +295,19 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle SetFrequencyCommand - emit 0xC6 0x60 frequency."""
+        """Handle SetFrequencyCommand - emit 0xC6 0x60 frequency.
+
+        Layout: C6 60 <laser index, zero-based> <layer & 0x7F> +
+        encode35(freq). Emitted only when a frequency is explicitly
+        configured; the reference file contains no C6 60.
+        """
         freq = ops.frequency(idx)
-        binary.append(
-            b"\xc6\x60" + bytes([self.active_laser, 0]) + encode35(freq)
-        )
         text.append(f"FREQUENCY {freq}")
+        if not freq:
+            return
+        laser = self.active_laser - 1
+        layer = max(self._part, 0) & 0x7F
+        binary.append(b"\xc6\x60" + bytes([laser, layer]) + encode35(freq))
 
     def _handle_set_pulse_width(
         self,
@@ -309,13 +316,18 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle SetPulseWidthCommand - emit 0xC6 0x10 interval."""
+        """Handle SetPulseWidthCommand - emit 0xC6 0x10 interval.
+
+        Wire format: C6 10 + encode35 (7 bytes total). Emitted only
+        when a pulse width is explicitly configured; the reference
+        file contains no C6 10.
+        """
         pw = ops.pulse_width(idx)
         pulse_us = int(pw)
-        binary.append(
-            b"\xc6\x10" + bytes([self.active_laser, 0]) + encode35(pulse_us)
-        )
         text.append(f"PULSE_WIDTH {pw:.1f}")
+        if not pulse_us:
+            return
+        binary.append(b"\xc6\x10" + encode35(pulse_us))
 
     def _handle_air_assist(
         self,

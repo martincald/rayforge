@@ -770,8 +770,8 @@ class TestSetFrequencyCommand:
 
         binary = b"".join(result.driver_data["commands"])
         assert binary[:2] == b"\xc6\x60"
-        assert binary[2] == 1  # laser 1
-        assert binary[3] == 0  # part 0
+        assert binary[2] == 0  # laser 1, zero-based
+        assert binary[3] == 0  # layer 0
         assert binary[4:] == encode35(1000)
         assert "FREQUENCY 1000" in result.text
 
@@ -782,8 +782,8 @@ class TestSetFrequencyCommand:
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        freq_cmd = binary[binary.index(0xC6) + 1 :]
-        assert freq_cmd[1] == 2  # laser 2
+        freq_cmd = binary[binary.index(b"\xc6\x60") :]
+        assert freq_cmd[2] == 1  # laser 2, zero-based
         assert "FREQUENCY 5000" in result.text
 
     def test_frequency_command_structure(self, encoder, mock_machine, doc):
@@ -796,6 +796,14 @@ class TestSetFrequencyCommand:
         assert binary[1] == 0x60
         assert len(binary) == 9
 
+    def test_frequency_zero_emits_nothing(self, encoder, mock_machine, doc):
+        """An unconfigured (zero) frequency emits no C6 60."""
+        ops = Ops()
+        ops.set_frequency(0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        assert result.driver_data["commands"] == []
+
 
 class TestSetPulseWidthCommand:
     """Tests for SetPulseWidthCommand encoding."""
@@ -807,20 +815,8 @@ class TestSetPulseWidthCommand:
 
         binary = b"".join(result.driver_data["commands"])
         assert binary[:2] == b"\xc6\x10"
-        assert binary[2] == 1  # laser 1
-        assert binary[3] == 0  # part 0
-        assert binary[4:] == encode35(50)
+        assert binary[2:] == encode35(50)
         assert "PULSE_WIDTH 50.0" in result.text
-
-    def test_pulse_width_with_laser_2(self, encoder, mock_machine, doc):
-        ops = Ops()
-        ops.set_head("laser-2")
-        ops.set_pulse_width(100)
-        result = encoder.encode(ops, mock_machine, doc)
-
-        binary = b"".join(result.driver_data["commands"])
-        pulse_cmd = binary[binary.index(bytes([0xC6, 0x10])) + 2 :]
-        assert pulse_cmd[0] == 2  # laser 2
 
     def test_pulse_width_command_structure(self, encoder, mock_machine, doc):
         ops = Ops()
@@ -830,7 +826,15 @@ class TestSetPulseWidthCommand:
         binary = b"".join(result.driver_data["commands"])
         assert binary[0] == 0xC6
         assert binary[1] == 0x10
-        assert len(binary) == 9
+        assert len(binary) == 7
+
+    def test_pulse_width_zero_emits_nothing(self, encoder, mock_machine, doc):
+        """An unconfigured (zero) pulse width emits no C6 10."""
+        ops = Ops()
+        ops.set_pulse_width(0)
+        result = encoder.encode(ops, mock_machine, doc)
+
+        assert result.driver_data["commands"] == []
 
 
 class TestJobPrologue:

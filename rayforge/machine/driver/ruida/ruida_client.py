@@ -664,14 +664,14 @@ class RuidaClient:
     def _build_power_immediate(
         self, laser: int, power_percent: float
     ) -> bytes:
-        power_val = int(power_percent * 163.84)
+        power_val = int(power_percent / 100.0 * 16383.0)
         laser_map = {1: 0xC7, 2: 0xC0, 3: 0xC2, 4: 0xC3}
         if laser not in laser_map:
             raise ValueError(f"Invalid laser: {laser}")
         return bytes([laser_map[laser]]) + encode14(power_val)
 
     def _build_power_end(self, laser: int, power_percent: float) -> bytes:
-        power_val = int(power_percent * 163.84)
+        power_val = int(power_percent / 100.0 * 16383.0)
         laser_map = {1: 0xC8, 2: 0xC1, 3: 0xC4, 4: 0xC5}
         if laser not in laser_map:
             raise ValueError(f"Invalid laser: {laser}")
@@ -681,11 +681,19 @@ class RuidaClient:
         speed_val = int(speed_mm_s * 1000)
         return b"\xc9\x02" + encode35(speed_val)
 
-    def _build_frequency(self, laser: int, frequency: int) -> bytes:
-        return b"\xc6\x60" + bytes([laser, 0]) + encode35(frequency)
+    def _build_frequency(
+        self, laser: int, frequency: int, layer: int = 0
+    ) -> bytes:
+        """C6 60 <laser index, zero-based> <layer & 0x7F> + encode35."""
+        return (
+            b"\xc6\x60"
+            + bytes([laser - 1, layer & 0x7F])
+            + encode35(frequency)
+        )
 
-    def _build_pulse_width(self, laser: int, pulse_width_us: int) -> bytes:
-        return b"\xc6\x10" + bytes([laser, 0]) + encode35(pulse_width_us)
+    def _build_pulse_width(self, pulse_width_us: int) -> bytes:
+        """C6 10 + encode35 (7 bytes total)."""
+        return b"\xc6\x10" + encode35(pulse_width_us)
 
     def _build_axis_speed(self, speed_mm_s: float) -> bytes:
         speed_val = int(speed_mm_s * 1000)
@@ -705,11 +713,11 @@ class RuidaClient:
 
     async def air_assist_on(self) -> None:
         """Enable air assist."""
-        await self.send_command(b"\xca\x13")
+        await self.send_command(b"\xca\x01\x13")
 
     async def air_assist_off(self) -> None:
         """Disable air assist."""
-        await self.send_command(b"\xca\x12")
+        await self.send_command(b"\xca\x01\x12")
 
     async def select_layer(self, layer_index: int) -> None:
         """
