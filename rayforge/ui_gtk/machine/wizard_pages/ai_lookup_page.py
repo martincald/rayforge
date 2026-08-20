@@ -31,6 +31,7 @@ from ....machine.device.profile import DeviceProfile, MachineConfig
 from ....machine.models.machine import Origin
 from ....shared.tasker import Task, task_mgr
 from ....shared.tasker.context import ExecutionContext
+from ....shared.units.formatter import format_value
 from . import WizardPage, _makePreferencesGroup
 
 if TYPE_CHECKING:
@@ -41,14 +42,15 @@ if TYPE_CHECKING:
 # kind). ``kind`` is one of:
 #   "tuple2"    — pair of floats (axis_extents, spot_size_mm)
 #   "int"       — integer scalar
+#   "speed"     — integer speed in base units, shown in the user's unit
 #   "bool"      — boolean
 #   "string"    — string scalar (origin)
 #   "head_laser"  — head field, laser family
 #   "head_spindle" — head field, spindle family
 _FIELD_SPEC: list[tuple[str, str, str]] = [
     ("axis_extents", _("Work area (X, Y)"), "tuple2_mm"),
-    ("max_travel_speed", _("Max travel speed"), "int"),
-    ("max_cut_speed", _("Max cut speed"), "int"),
+    ("max_travel_speed", _("Max travel speed"), "speed"),
+    ("max_cut_speed", _("Max cut speed"), "speed"),
     ("acceleration", _("Acceleration"), "int"),
     ("origin", _("Coordinate origin"), "string"),
     ("head_type", _("Head type"), "head_kind"),
@@ -65,6 +67,8 @@ _FIELD_SPEC: list[tuple[str, str, str]] = [
 def _format_value(value: Any, kind: str) -> str:
     if value is None:
         return ""
+    if kind == "speed":
+        return format_value(float(value), "speed")
     if kind == "tuple2_mm":
         a, b = value
         return f"{a} × {b}"

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from ...machine.models.machine import Origin
+from ...shared.units.formatter import format_value
 from .profile import (
     DeviceMeta,
     DeviceProfile,
@@ -107,7 +108,8 @@ class ImportSummary:
             lines.append(f"\u2022 Home on start: {self.home_on_start}")
         if self.max_travel_speed is not None:
             lines.append(
-                f"\u2022 Max travel speed: {self.max_travel_speed} mm/min"
+                "\u2022 Max travel speed: "
+                + format_value(float(self.max_travel_speed), "speed")
             )
         if self.origin:
             lines.append(f"\u2022 Origin: {self.origin}")
@@ -139,7 +141,10 @@ class ImportSummary:
             items.append((_("Home on start"), str(self.home_on_start)))
         if self.max_travel_speed is not None:
             items.append(
-                (_("Max travel speed"), f"{self.max_travel_speed} mm/min")
+                (
+                    _("Max travel speed"),
+                    format_value(float(self.max_travel_speed), "speed"),
+                )
             )
         if self.origin:
             items.append((_("Origin"), self.origin))

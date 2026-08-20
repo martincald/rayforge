@@ -5,7 +5,13 @@ from raygeo.ops.axis import Axis
 
 from ...machine.cmd import MachineCmd
 from ...machine.models.machine import JogDirection, Machine
+from ...shared.units.definitions import Unit, get_unit
 from ..icons import get_icon
+
+# The jog spin button is a plain SpinButton (not a unit-aware pref row),
+# so it pins the display unit the rest of the speed UI defaults to.
+_JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
+_JOG_SPEED_UNIT_LABEL = _JOG_SPEED_UNIT.label
 
 _GAP = 12
 _SPACING = 6
@@ -42,12 +48,22 @@ class JogWidget(Gtk.Widget):
 
         self.set_focusable(True)
 
-        def create_button(icon_name, tooltip):
+        def create_button(icon_name, tooltip, label=None):
             button = Gtk.Button()
             button.set_size_request(60, 60)
             button.set_tooltip_text(tooltip)
             icon = get_icon(icon_name)
-            button.set_child(icon)
+            if label is None:
+                button.set_child(icon)
+            else:
+                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                box.set_halign(Gtk.Align.CENTER)
+                box.set_valign(Gtk.Align.CENTER)
+                caption = Gtk.Label(label=label)
+                caption.add_css_class("caption")
+                box.append(icon)
+                box.append(caption)
+                button.set_child(box)
             button.set_hexpand(True)
             button.set_vexpand(True)
             self._buttons.append(button)
@@ -77,9 +93,13 @@ class JogWidget(Gtk.Widget):
         self.west_btn.connect("clicked", self._on_x_minus_clicked)
         self._jog_grid.attach(self.west_btn, 0, 1, 1, 1)
 
-        self.home_all_btn = create_button("home-symbolic", _("Home All"))
-        self.home_all_btn.connect("clicked", self._on_home_all_clicked)
-        self._jog_grid.attach(self.home_all_btn, 1, 1, 1, 1)
+        self.origin_btn = create_button(
+            "zero-here-symbolic",
+            _("Set job origin to current position"),
+            label=_("Origin"),
+        )
+        self.origin_btn.connect("clicked", self._on_origin_clicked)
+        self._jog_grid.attach(self.origin_btn, 1, 1, 1, 1)
 
         self.east_btn = create_button(
             "arrow-east-symbolic", _("Move East (Right)")
@@ -128,7 +148,9 @@ class JogWidget(Gtk.Widget):
             page_increment=10,
         )
         self.speed_spin = Gtk.SpinButton(adjustment=adjustment)
-        self.speed_spin.set_tooltip_text(_("Jog speed (mm/s)"))
+        self.speed_spin.set_tooltip_text(
+            _("Jog speed in {unit}").format(unit=_JOG_SPEED_UNIT_LABEL)
+        )
         self.speed_spin.set_valign(Gtk.Align.CENTER)
         self.speed_spin.connect("value-changed", self._on_jog_speed_changed)
         self._jog_grid.attach(self.speed_spin, 0, 4, 3, 1)
@@ -157,6 +179,10 @@ class JogWidget(Gtk.Widget):
         self.cancel_btn.add_css_class("destructive-action")
         self.cancel_btn.connect("clicked", self._on_cancel_clicked)
         self._action_grid.attach(self.cancel_btn, 0, 3, 1, 1)
+
+        self.home_all_btn = create_button("home-symbolic", _("Home machine"))
+        self.home_all_btn.connect("clicked", self._on_home_all_clicked)
+        self._action_grid.attach(self.home_all_btn, 0, 4, 1, 1)
 
         key_controller = Gtk.EventControllerKey()
         key_controller.connect("key-pressed", self._on_key_pressed)
@@ -278,6 +304,7 @@ class JogWidget(Gtk.Widget):
         self.home_y_btn.set_sensitive(False)
         self.home_z_btn.set_sensitive(False)
         self.home_all_btn.set_sensitive(False)
+        self.origin_btn.set_sensitive(False)
         self.send_btn.set_sensitive(False)
         self.cancel_btn.set_sensitive(False)
 
@@ -323,6 +350,10 @@ class JogWidget(Gtk.Widget):
             machine.can_home(Axis.Z) and single_axis_homing
         )
         self.home_all_btn.set_sensitive(True)
+
+        # Origin is driver-specific; only offer it where supported.
+        driver = machine.driver
+        self.origin_btn.set_sensitive(bool(driver) and driver.can_set_origin())
 
         # Send and Cancel buttons - always enabled when connected
         self.send_btn.set_sensitive(True)
@@ -414,8 +445,13 @@ class JogWidget(Gtk.Widget):
             return
 
         if deltas:
-            # jog_speed is mm/s; the Driver.jog contract is mm/min.
-            self.machine_cmd.jog(self.machine, deltas, self.jog_speed * 60)
+            # jog_speed is in display units; Driver.jog takes base
+            # units.
+            self.machine_cmd.jog(
+                self.machine,
+                deltas,
+                int(_JOG_SPEED_UNIT.to_base(self.jog_speed)),
+            )
 
     def _perform_visual_jog(self, *directions: JogDirection):
         """Jog according to one or more visual directions."""
@@ -463,8 +499,13 @@ class JogWidget(Gtk.Widget):
         """Handle Left-Toward diagonal button click."""
         self._perform_visual_jog(JogDirection.WEST, JogDirection.SOUTH)
 
+    def _on_origin_clicked(self, button):
+        """Handle Origin button click."""
+        if self.machine and self.machine_cmd:
+            self.machine_cmd.set_origin(self.machine)
+
     def _on_home_all_clicked(self, button):
-        """Handle Home All button click."""
+        """Handle Home machine button click."""
         if self.machine and self.machine_cmd:
             self.machine_cmd.home(self.machine)
 

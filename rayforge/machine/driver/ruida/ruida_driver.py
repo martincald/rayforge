@@ -67,6 +67,10 @@ class RuidaDriver(Driver):
     POSITION_POLL_INTERVAL = 0.5
     RESPONSE_PORT = 40200
     DEFAULT_TRAVEL_SPEED = 3000  # mm/min
+    # Jobs default to the anchor ref point (D8 12), matching RDWorks, so
+    # cuts start at the origin the user set on the panel. The WCS itself
+    # stays user-selectable; this only picks the initial slot.
+    DEFAULT_WCS = "REF0"
     STATUS_POLL_INTERVAL = 0.5
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
@@ -213,7 +217,8 @@ class RuidaDriver(Driver):
 
         m.coordinate_systems = new_systems
         if m.active_wcs not in new_systems:
-            m.active_wcs = supported[0]
+            default = self.DEFAULT_WCS
+            m.active_wcs = default if default in new_systems else supported[0]
 
     async def cleanup(self):
         self._keep_running = False
@@ -569,6 +574,14 @@ class RuidaDriver(Driver):
             )
         finally:
             self._response_timeout = self.CONNECTION_TIMEOUT
+
+    def can_set_origin(self) -> bool:
+        return True
+
+    async def set_origin(self) -> None:
+        assert self._client
+        logger.info("Set Origin", extra=self._log_extra("MACHINE_EVENT"))
+        await self._client.set_origin()
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         assert self._client

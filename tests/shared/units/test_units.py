@@ -66,12 +66,20 @@ def test_speed_units():
     units = get_units_for_quantity("speed")
     print(f"Found {len(units)} speed units")
 
-    # Test that we have the expected units
-    expected_units = ["mm/min", "mm/s", "in/min", "in/s"]
+    # Test that we have the expected selectable units. mm/min is the
+    # storage base only: it stays registered but is never offered.
+    expected_units = ["mm/s", "in/min", "in/s"]
     unit_names = [u.name for u in units]
 
     for expected in expected_units:
         assert expected in unit_names, f"Expected unit {expected} not found"
+
+    assert "mm/min" not in unit_names, (
+        "mm/min must not be offered as a display unit"
+    )
+    assert get_unit("mm/min") is not None, (
+        "mm/min must stay registered as the storage base"
+    )
 
     # Test base unit
     base_unit = get_base_unit_for_quantity("speed")
@@ -159,8 +167,8 @@ def test_config_integration():
     assert config.unit_preferences["length"] == "mm", (
         f"Expected mm, got {config.unit_preferences['length']}"
     )
-    assert config.unit_preferences["speed"] == "mm/min", (
-        f"Expected mm/min, got {config.unit_preferences['speed']}"
+    assert config.unit_preferences["speed"] == "mm/s", (
+        f"Expected mm/s, got {config.unit_preferences['speed']}"
     )
     assert config.unit_preferences["acceleration"] == "mm/s²", (
         f"Expected mm/s², got {config.unit_preferences['acceleration']}"

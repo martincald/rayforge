@@ -181,7 +181,7 @@ class TestImportSummary:
         assert pairs.get("Driver") == "GrblSerialDriver"
         assert pairs.get("Baud rate") == "115200"
         assert pairs.get("Home on start") == "True"
-        assert pairs.get("Max travel speed") == "500 mm/min"
+        assert pairs.get("Max travel speed") == "8.3 mm/s"
         assert pairs.get("Origin") == "top_left"
         assert pairs.get("Mirror X") == "False"
         assert pairs.get("Mirror Y") == "True"
@@ -514,7 +514,7 @@ class TestRealLBDevAsset:
         assert pairs["Driver"] == "GrblSerialDriver"
         assert pairs["Baud rate"] == "115200"
         assert pairs["Home on start"] == "False"
-        assert pairs["Max travel speed"] == "400 mm/min"
+        assert pairs["Max travel speed"] == "6.7 mm/s"
         assert pairs["Origin"] == "bottom_left"
 
     def test_install_real_asset(self, tmp_path):

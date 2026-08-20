@@ -18,9 +18,8 @@ class PowerRow(SliderRow):
             _("Laser power as a percentage"),
             0.0,
             1.0,
-            0.01,
+            1.0,
             1,
+            display_scale=100.0,
+            suffix="%",
         )
-
-    def _format(self, value: float) -> str:
-        return f"{value * 100:.0f}%"

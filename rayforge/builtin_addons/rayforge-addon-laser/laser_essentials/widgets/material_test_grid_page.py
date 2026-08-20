@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from rayforge.machine.models.laser import LaserHead
-from rayforge.ui_gtk.shared.pref_rows import SpinRow
+from rayforge.ui_gtk.shared.pref_rows import SpeedSpinRow, SpinRow
 from rayforge.ui_gtk.shared.slider import create_slider_row
 
 from ..material_test_helpers import GridMode
@@ -164,14 +164,13 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         machine_max_speed = self.step.max_cut_speed
 
         # Fixed Speed (used in Power vs Passes mode)
-        self.fixed_speed_row = SpinRow(
+        self.fixed_speed_row = SpeedSpinRow(
             _("Fixed Speed"),
-            _("Constant speed for all cells (mm/min)"),
+            _("Constant speed for all cells"),
             lower=1.0,
             upper=machine_max_speed,
-            step_increment=10.0,
             digits=0,
-            value=min(self.step.fixed_speed, machine_max_speed),
+            value_in_base=min(self.step.fixed_speed, machine_max_speed),
         )
         self._add(group, self.fixed_speed_row)
         self.fixed_speed_row.value_changed.connect(
@@ -234,25 +233,23 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         machine_max_speed = self.step.max_cut_speed
         min_speed = min(min_speed, machine_max_speed)
         max_speed = min(max_speed, machine_max_speed)
-        self.speed_min_row = SpinRow(
+        self.speed_min_row = SpeedSpinRow(
             _("Minimum Speed"),
-            _("Starting speed (mm/min)"),
+            _("Starting speed"),
             lower=1.0,
             upper=machine_max_speed,
-            step_increment=10.0,
             digits=0,
-            value=min_speed,
+            value_in_base=min_speed,
         )
         self._add(group, self.speed_min_row)
 
-        self.speed_max_row = SpinRow(
+        self.speed_max_row = SpeedSpinRow(
             _("Maximum Speed"),
-            _("Ending speed (mm/min)"),
+            _("Ending speed"),
             lower=1.0,
             upper=machine_max_speed,
-            step_increment=10.0,
             digits=0,
-            value=max_speed,
+            value_in_base=max_speed,
         )
         self._add(group, self.speed_max_row)
 
@@ -340,14 +337,13 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         )
         self._add(group, self.label_power_row)
 
-        self.label_speed_row = SpinRow(
+        self.label_speed_row = SpeedSpinRow(
             _("Label Engrave Speed"),
-            _("Speed for engraving labels (mm/min)"),
+            _("Speed for engraving labels"),
             lower=1.0,
             upper=machine_max_speed,
-            step_increment=10.0,
             digits=0,
-            value=min(self.step.label_speed, machine_max_speed),
+            value_in_base=min(self.step.label_speed, machine_max_speed),
         )
         self._add(group, self.label_speed_row)
         self.label_speed_row.value_changed.connect(
@@ -479,8 +475,8 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         min_speed = min(speed_range[0], machine_max_speed)
         max_speed = min(speed_range[1], machine_max_speed)
 
-        self.speed_min_row.set_value(min_speed)
-        self.speed_max_row.set_value(max_speed)
+        self.speed_min_row.set_value_in_base_units(min_speed)
+        self.speed_max_row.set_value_in_base_units(max_speed)
         self.min_power_adj.set_value(power_range[0])
         self.max_power_adj.set_value(power_range[1])
 
@@ -508,13 +504,13 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             self._update_param("test_type", test_type_text)
 
     def _on_speed_min_changed(self, spin_row):
-        min_speed = spin_row.get_value()
-        max_speed = self.speed_max_row.get_value()
+        min_speed = spin_row.get_value_in_base_units()
+        max_speed = self.speed_max_row.get_value_in_base_units()
         self._update_range_param("speed_range", (min_speed, max_speed))
 
     def _on_speed_max_changed(self, spin_row):
-        min_speed = self.speed_min_row.get_value()
-        max_speed = spin_row.get_value()
+        min_speed = self.speed_min_row.get_value_in_base_units()
+        max_speed = spin_row.get_value_in_base_units()
         self._update_range_param("speed_range", (min_speed, max_speed))
 
     def _commit_power_range_change(self):
@@ -587,7 +583,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         self._update_param("label_power_percent", val)
 
     def _on_label_speed_changed(self, spin_row):
-        self._update_param("label_speed", spin_row.get_value())
+        self._update_param("label_speed", spin_row.get_value_in_base_units())
 
     def _on_grid_mode_changed(self, row: Adw.ComboRow, _pspec):
         selected_idx = row.get_selected()
@@ -620,7 +616,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         self._update_param("line_interval_mm", 0.5)
 
     def _on_fixed_speed_changed(self, spin_row):
-        self._update_param("fixed_speed", spin_row.get_value())
+        self._update_param("fixed_speed", spin_row.get_value_in_base_units())
 
     def _on_fixed_power_changed(self, scale: Gtk.Scale):
         self._update_param("fixed_power", scale.get_value())

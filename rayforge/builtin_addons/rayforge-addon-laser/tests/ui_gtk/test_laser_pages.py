@@ -9,7 +9,7 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw
+from gi.repository import Adw, Gtk
 from laser_essentials.widgets.contour_page import (
     ContourStepSettingsPage,
     ThresholdRow,
@@ -166,3 +166,90 @@ def test_dialog_initial_laser_page(editor, laser_machine, ui_context):
     assert dialog._extra_buttons[0].get_active() is True
     assert dialog.btn_step_settings.get_active() is False
     dialog.close()
+
+
+@pytest.mark.ui
+def test_speed_rows_display_mm_per_second(editor, laser_machine, ui_context):
+    """Cut/travel speed are stored in mm/min and shown in mm/s."""
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    cut = _find(laser_page, CutSpeedRow)
+    travel = _find(laser_page, TravelSpeedRow)
+
+    step.cut_speed = 600
+    step.travel_speed = 3000
+    step.updated.send(step)
+
+    assert cut.widget.get_value_in_base_units() == pytest.approx(600)
+    assert cut.widget.get_value() == pytest.approx(10.0)
+    assert travel.widget.get_value_in_base_units() == pytest.approx(3000)
+    assert travel.widget.get_value() == pytest.approx(50.0)
+
+
+@pytest.mark.ui
+def test_speed_row_input_is_stored_in_base_units(
+    editor, laser_machine, ui_context
+):
+    """Typing mm/s writes mm/min back to the step."""
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    cut = _find(laser_page, CutSpeedRow)
+
+    cut.widget.get_spin_button().set_value(25.0)
+
+    assert cut.widget.get_value_in_base_units() == pytest.approx(1500)
+
+
+@pytest.mark.ui
+def test_power_row_has_a_spin_button_on_the_slider_adjustment(
+    editor, laser_machine, ui_context
+):
+    """The numeric entry and the slider share one adjustment."""
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    power = _find(laser_page, PowerRow)
+
+    assert isinstance(power._spin, Gtk.SpinButton)
+    assert power._spin.get_adjustment() is power._scale.get_adjustment()
+
+
+@pytest.mark.ui
+def test_power_row_spans_zero_to_one_hundred_percent(
+    editor, laser_machine, ui_context
+):
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    power = _find(laser_page, PowerRow)
+    adj = power._spin.get_adjustment()
+
+    assert adj.get_lower() == pytest.approx(0.0)
+    assert adj.get_upper() == pytest.approx(100.0)
+    assert adj.get_step_increment() == pytest.approx(1.0)
+    assert power._spin.get_digits() == 1
+
+
+@pytest.mark.ui
+def test_power_row_shows_the_attribute_as_a_percentage(
+    editor, laser_machine, ui_context
+):
+    """A 0.0-1.0 attribute renders on a 0-100 scale."""
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    power = _find(laser_page, PowerRow)
+
+    step.power = 0.42
+    step.updated.send(step)
+
+    assert power._spin.get_value() == pytest.approx(42.0)
+
+
+@pytest.mark.ui
+def test_typing_power_moves_the_slider(editor, laser_machine, ui_context):
+    """Typing and sliding stay in sync via the shared adjustment."""
+    step = _contour_step(ui_context)
+    laser_page = ContourStepSettingsPage(editor, step).laser_page()
+    power = _find(laser_page, PowerRow)
+
+    power._spin.set_value(75.0)
+
+    assert power._scale.get_value() == pytest.approx(75.0)

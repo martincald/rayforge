@@ -16,6 +16,9 @@ class Unit:
     quantity: str  # Physical quantity measured (e.g., "speed", "length")
     description: str | None = None  # Translatable tooltip
     precision: int = 2  # Suggested decimal places for display
+    # Whether the unit may be picked as a display unit. A base unit that
+    # exists only to carry stored values is registered but not offered.
+    selectable: bool = True
 
     def to_base(self, value: float) -> float:
         """Converts a value from this unit to the application's base unit."""
@@ -61,8 +64,12 @@ def set_base_unit(quantity: str, unit_name: str):
 
 
 def get_units_for_quantity(quantity: str) -> list[Unit]:
-    """Returns all registered units for a specific physical quantity."""
-    units = [u for u in _UNIT_REGISTRY.values() if u.quantity == quantity]
+    """Returns the selectable registered units for a physical quantity."""
+    units = [
+        u
+        for u in _UNIT_REGISTRY.values()
+        if u.quantity == quantity and u.selectable
+    ]
     # Sort by label for consistent UI presentation
     return sorted(units, key=lambda u: u.label)
 
@@ -79,10 +86,17 @@ def get_base_unit_for_quantity(quantity: str) -> Unit | None:
 
 
 # --- Define and Register Speed Units ---
-# Application base unit for speed is mm/min.
+# Application base unit for speed is mm/min. It is not selectable: the
+# UI speaks mm/s, and mm/min exists only as the stored representation.
 
 register_unit(
-    Unit(name="mm/min", label=_("mm/min"), quantity="speed", precision=0)
+    Unit(
+        name="mm/min",
+        label=_("mm/min"),
+        quantity="speed",
+        precision=0,
+        selectable=False,
+    )
 )
 register_unit(
     Unit(name="mm/s", label=_("mm/s"), quantity="speed", precision=1)

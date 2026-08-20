@@ -533,6 +533,25 @@ class Driver(ABC):
                 using binary operators (e.g. Axis.X|Axis.Y)
         """
 
+    def can_set_origin(self) -> bool:
+        """
+        Check if this device can anchor the job origin at the current
+        position.
+
+        Returns:
+            True if the device supports setting the origin, False
+            otherwise.
+        """
+        return False
+
+    async def set_origin(self) -> None:
+        """
+        Sets the job origin to the machine's current position.
+
+        Drivers that report :meth:`can_set_origin` must override this.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         """

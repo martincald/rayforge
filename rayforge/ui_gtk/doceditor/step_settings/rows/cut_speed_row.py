@@ -26,9 +26,10 @@ class CutSpeedRow(SpinRow):
             _("Speed of the cutting operation"),
             1.0,
             float(getattr(step, "max_cut_speed", 10000.0)),
-            10.0,
+            1.0,
             0,
             is_int=True,
+            quantity="speed",
         )
 
     def _sync_dependencies(self):

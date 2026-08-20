@@ -24,7 +24,7 @@ class SpeedRowAdapter(RowAdapter):
     """
     Adapts a SpeedSpinRow for speed values with unit conversion.
 
-    Values are always read/written in base units (mm/min).
+    Values are always read/written in application base units.
     """
 
     def __init__(self, row: SpeedSpinRow) -> None:

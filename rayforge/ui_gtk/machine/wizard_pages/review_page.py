@@ -15,6 +15,7 @@ from gi.repository import Adw
 from ....machine.device.profile import DeviceProfile
 from ....machine.driver import get_driver_cls
 from ....machine.models.machine import Origin
+from ....shared.units.formatter import format_value
 from ....shared.units.system import UnitSystem
 from . import WizardPage, _makePreferencesGroup
 
@@ -34,6 +35,13 @@ def _format(value) -> str:
     if isinstance(value, bool):
         return _("Yes") if value else _("No")
     return str(value)
+
+
+def _format_speed(value) -> str:
+    """Speed stored in base units, shown in the preferred unit."""
+    if value is None:
+        return _("—")
+    return format_value(float(value), "speed")
 
 
 def _format_bool(value) -> str:
@@ -164,8 +172,8 @@ class ReviewPage(WizardPage):
             (_("Work Area X×Y"), _format_tuple(mc.axis_extents)),
             (_("Origin"), origin_label),
             (_("Unit System"), unit_system_label),
-            (_("Max Travel Speed"), _format(mc.max_travel_speed)),
-            (_("Max Cut Speed"), _format(mc.max_cut_speed)),
+            (_("Max Travel Speed"), _format_speed(mc.max_travel_speed)),
+            (_("Max Cut Speed"), _format_speed(mc.max_cut_speed)),
             (_("Acceleration"), _format(mc.acceleration)),
             (_("Home on Start"), _format_bool(mc.home_on_start)),
             (_("Heads"), str(len(mc.heads or []))),

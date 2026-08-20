@@ -172,7 +172,7 @@ class HardwarePage(WizardPage):
         # Speeds / accel.
         speed_group = _makePreferencesGroup(
             title=_("Speeds"),
-            description=_("Limits in machine units per minute."),
+            description=_("Limits in machine units per second."),
         )
         self.content.append(speed_group)
 
@@ -180,7 +180,6 @@ class HardwarePage(WizardPage):
             _("Max Travel Speed"),
             _("Maximum rapid movement speed"),
             upper=60000,
-            step_increment=100,
             digits=0,
         )
         speed_group.add(self.travel_speed_row)
@@ -189,7 +188,6 @@ class HardwarePage(WizardPage):
             _("Max Cut Speed"),
             _("Maximum cutting speed"),
             upper=60000,
-            step_increment=100,
             digits=0,
         )
         speed_group.add(self.cut_speed_row)

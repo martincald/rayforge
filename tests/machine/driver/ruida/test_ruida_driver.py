@@ -1518,3 +1518,59 @@ async def test_run_warns_and_finishes_on_empty_ops(driver, caplog):
     assert not client.blobs
     assert finished
     assert "no machine commands" in caplog.text
+
+
+def _origin_job_ops() -> Ops:
+    """A minimal one-layer job for prologue inspection."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.8)
+    ops.set_feed_rate(200)
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.line_to(10.0, 0.0, 0.0)
+    ops.line_to(10.0, 10.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class TestDefaultRefPoint:
+    """The default WCS anchors jobs at the user-set panel origin."""
+
+    def test_setup_defaults_active_wcs_to_anchor(self, driver):
+        """A freshly set up driver selects REF0, not machine space."""
+        assert driver._machine.active_wcs == "REF0"
+        assert RuidaDriver.DEFAULT_WCS == "REF0"
+
+    def test_job_first_command_is_d8_12(self, driver):
+        """With the default WCS the job opens with the D8 12 ref point."""
+        encoded = RuidaEncoder().encode(
+            _origin_job_ops(), driver._machine, Doc()
+        )
+
+        assert encoded.driver_data["commands"][0] == b"\xd8\x12"
+
+    def test_explicit_wcs_still_honoured(self, driver):
+        """The WCS setting stays functional; only the default moved."""
+        driver._machine.active_wcs = "MACHINE"
+        encoded = RuidaEncoder().encode(
+            _origin_job_ops(), driver._machine, Doc()
+        )
+
+        assert encoded.driver_data["commands"][0] == b"\xd8\x10"
+
+    def test_setup_preserves_a_saved_wcs(self, lite_context, ruida_simulator):
+        """A machine that already names a valid slot keeps it."""
+        _sim, host, port, jog_port = ruida_simulator
+        machine = Machine(lite_context)
+        machine.driver_name = "RuidaDriver"
+        machine.active_wcs = "REF1"
+        lite_context.machine_mgr.add_machine(machine)
+
+        drv = RuidaDriver(lite_context, machine)
+        drv._setup_implementation(
+            host=host, port=port, jog_port=jog_port, response_port=0
+        )
+
+        assert machine.active_wcs == "REF1"

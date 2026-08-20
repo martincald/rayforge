@@ -9,6 +9,7 @@ import yaml
 from blinker import Signal
 
 from ..machine.models.machine import Machine
+from ..shared.units.definitions import get_unit
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ class Config:
         # unit name.
         self.unit_preferences: dict[str, str] = {
             "length": "mm",
-            "speed": "mm/min",
+            "speed": "mm/s",
             "acceleration": "mm/s²",
         }
         # Startup behavior: "none", "last_project", or "specific_project"
@@ -256,13 +257,20 @@ class Config:
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {
             "length": "mm",
-            "speed": "mm/min",
+            "speed": "mm/s",
             "acceleration": "mm/s²",
         }
         loaded_prefs = data.get("unit_preferences", default_prefs)
         # Ensure all default keys are present
-        default_prefs.update(loaded_prefs)
-        config.unit_preferences = default_prefs
+        merged = dict(default_prefs)
+        merged.update(loaded_prefs)
+        # A preference naming a unit the UI no longer offers (e.g. the
+        # mm/min speed base) falls back to that quantity's default.
+        for quantity, unit_name in list(merged.items()):
+            unit = get_unit(unit_name)
+            if unit is None or not unit.selectable:
+                merged[quantity] = default_prefs.get(quantity, unit_name)
+        config.unit_preferences = merged
 
         # Load startup behavior
         default_behavior = StartupBehavior.NONE.value
