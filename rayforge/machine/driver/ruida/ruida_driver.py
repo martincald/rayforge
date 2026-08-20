@@ -96,6 +96,7 @@ class RuidaDriver(Driver):
         self._suppress_polling = False
         self._last_known_pos: tuple[int, int] | None = None
         self._origin_pos: tuple[int, int] | None = None
+        self._jog_keys_down: set[tuple[str, int]] = set()
 
     @property
     def machine_space_wcs(self) -> str:
@@ -233,6 +234,9 @@ class RuidaDriver(Driver):
             self._client.set_tracked_ref_point_mode(m.active_wcs)
 
     async def cleanup(self):
+        # A held jog key outlives the UI, so release before tearing the
+        # transports down.
+        await self.release_all_jog_keys()
         self._keep_running = False
         self._is_connected = False
 
@@ -376,6 +380,9 @@ class RuidaDriver(Driver):
         logger.debug("Exiting Ruida connection loop")
 
     async def _disconnect_transports(self) -> None:
+        # Last chance to stop a held jog key; the socket may already be
+        # dead, which release_all_jog_keys tolerates.
+        await self.release_all_jog_keys()
         if self._client:
             try:
                 await self._client.disconnect()
@@ -660,6 +667,51 @@ class RuidaDriver(Driver):
 
     def can_jog(self, axis: Axis | None = None) -> bool:
         return True
+
+    def can_hold_jog(self) -> bool:
+        return True
+
+    async def jog_key_down(self, axis: str, direction: int) -> None:
+        assert self._client
+        key = (axis.lower(), direction)
+        if key in self._jog_keys_down:
+            return
+        self._jog_keys_down.add(key)
+        logger.debug(f"Jog key down: {key[0]}{direction:+d}")
+        await self._client.press_jog_key(*key)
+
+    async def jog_key_up(self, axis: str, direction: int) -> None:
+        assert self._client
+        key = (axis.lower(), direction)
+        self._jog_keys_down.discard(key)
+        logger.debug(f"Jog key up: {key[0]}{direction:+d}")
+        # Sent even when the key was not tracked: an extra key-up is
+        # harmless, a missed one leaves the head moving.
+        await self._client.release_jog_key(*key)
+
+    async def release_all_jog_keys(self) -> None:
+        keys = sorted(self._jog_keys_down)
+        self._jog_keys_down.clear()
+        if not keys or not self._client:
+            return
+        logger.info(
+            f"Releasing {len(keys)} held jog key(s)",
+            extra=self._log_extra("MACHINE_EVENT"),
+        )
+        for axis, direction in keys:
+            try:
+                await self._client.release_jog_key(axis, direction)
+            except (OSError, RuntimeError) as e:
+                logger.warning(f"Could not release jog key {axis}: {e}")
+
+    async def set_jog_speed(self, speed: int) -> None:
+        assert self._client
+        um_per_s = int(speed * 1000 / 60)
+        logger.info(
+            f"Keypad jog speed: {um_per_s} um/s",
+            extra=self._log_extra("MACHINE_EVENT"),
+        )
+        await self._client.set_manual_jog_speed(um_per_s)
 
     async def jog(self, speed: int, **deltas: float) -> None:
         assert self._client

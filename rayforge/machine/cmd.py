@@ -361,6 +361,44 @@ class MachineCmd:
             lambda ctx: machine.jog(deltas, speed)
         )
 
+    def jog_key_down(self, machine: Machine, axis: str, direction: int):
+        """
+        Adds a task to start a press-and-hold jog on one axis.
+
+        These tasks are deliberately unkeyed: a keyed task replaces the
+        pending one with the same key, which could swallow a key-up and
+        leave the head moving.
+        """
+        driver = machine.driver
+        if driver:
+            self._editor.task_manager.add_coroutine(
+                lambda ctx: driver.jog_key_down(axis, direction)
+            )
+
+    def jog_key_up(self, machine: Machine, axis: str, direction: int):
+        """Adds a task to end a press-and-hold jog on one axis."""
+        driver = machine.driver
+        if driver:
+            self._editor.task_manager.add_coroutine(
+                lambda ctx: driver.jog_key_up(axis, direction)
+            )
+
+    def release_all_jog_keys(self, machine: Machine):
+        """Adds a task to release every jog key still held down."""
+        driver = machine.driver
+        if driver:
+            self._editor.task_manager.add_coroutine(
+                lambda ctx: driver.release_all_jog_keys()
+            )
+
+    def set_jog_speed(self, machine: Machine, speed: int):
+        """Adds a task to set the press-and-hold jog speed in mm/min."""
+        driver = machine.driver
+        if driver:
+            self._editor.task_manager.add_coroutine(
+                lambda ctx: driver.set_jog_speed(speed), key="set-jog-speed"
+            )
+
     def execute_macro_by_uid(self, machine: Machine, macro_uid: str):
         """Finds a macro by UID, expands it, and runs it on the machine."""
         macro = machine.macros.get(macro_uid)

@@ -122,9 +122,12 @@ def test_jog_button_direction(
     jog_widget.jog_distance = JOG_DISTANCE
     jog_widget.jog_speed = JOG_SPEED
 
-    # 4. Get the button by name and click it
+    # 4. Get the button by name and release a press on it. Without a
+    # driver that jogs while held, a release is a step jog.
     button = getattr(jog_widget, f"{button_name}_btn")
-    button.emit("clicked")
+    jog_widget._on_jog_released(
+        None, 1, 0.0, 0.0, jog_widget._button_directions[button]
+    )
 
     # 5. Verify the jog command was called with expected distance
     mock_jog.assert_called_once_with(
@@ -181,9 +184,12 @@ def test_jog_button_direction_with_rotated_workspace(
     jog_widget.jog_distance = JOG_DISTANCE
     jog_widget.jog_speed = JOG_SPEED
 
-    # 4. Get the button by name and click it
+    # 4. Get the button by name and release a press on it. Without a
+    # driver that jogs while held, a release is a step jog.
     button = getattr(jog_widget, f"{button_name}_btn")
-    button.emit("clicked")
+    jog_widget._on_jog_released(
+        None, 1, 0.0, 0.0, jog_widget._button_directions[button]
+    )
 
     # 5. Verify the jog command was called with the rotated deltas
     mock_jog.assert_called_once_with(

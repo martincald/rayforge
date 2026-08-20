@@ -632,6 +632,63 @@ class Driver(ABC):
                       (e.g. 'x', 'y') and the value is the distance in mm.
         """
 
+    def can_hold_jog(self) -> bool:
+        """
+        Check if this device jogs for as long as a key is held down.
+
+        Devices that report True move continuously between
+        :meth:`jog_key_down` and :meth:`jog_key_up`, instead of taking a
+        fixed step per :meth:`jog`.
+
+        Returns:
+            True if the device supports press-and-hold jogging.
+        """
+        return False
+
+    async def jog_key_down(self, axis: str, direction: int) -> None:
+        """
+        Start jogging an axis and keep going until the key is released.
+
+        Drivers that report :meth:`can_hold_jog` must override this.
+
+        Args:
+            axis: Axis name, lower case (e.g. 'x').
+            direction: 1 for positive, -1 for negative.
+        """
+        raise NotImplementedError
+
+    async def jog_key_up(self, axis: str, direction: int) -> None:
+        """
+        Stop the motion started by :meth:`jog_key_down`.
+
+        Drivers that report :meth:`can_hold_jog` must override this.
+
+        Args:
+            axis: Axis name, lower case (e.g. 'x').
+            direction: 1 for positive, -1 for negative.
+        """
+        raise NotImplementedError
+
+    async def release_all_jog_keys(self) -> None:
+        """
+        Release every jog key the driver believes is still held down.
+
+        This is the safety net behind press-and-hold jogging: a held key
+        that never sees its key-up leaves the head moving. Callers
+        invoke it whenever the UI can no longer guarantee a release.
+        """
+
+    async def set_jog_speed(self, speed: int) -> None:
+        """
+        Set the speed used by press-and-hold jogging.
+
+        Drivers that report :meth:`can_hold_jog` must override this.
+
+        Args:
+            speed: The jog speed in mm/min.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     async def set_wcs_offset(
         self, wcs_slot: str, x: float, y: float, z: float

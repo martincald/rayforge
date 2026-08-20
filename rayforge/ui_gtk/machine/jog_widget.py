@@ -1,6 +1,6 @@
 from gettext import gettext as _
 
-from gi.repository import Gdk, Graphene, Gsk, Gtk
+from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk
 from raygeo.ops.axis import Axis
 
 from ...machine.cmd import MachineCmd
@@ -12,6 +12,10 @@ from ..icons import get_icon
 # so it pins the display unit the rest of the speed UI defaults to.
 _JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
 _JOG_SPEED_UNIT_LABEL = _JOG_SPEED_UNIT.label
+
+# Keypad jog speed lives in a controller register, so it is written
+# when the control settles rather than on every keypress.
+_JOG_SPEED_DEBOUNCE_MS = 300
 
 _GAP = 12
 _SPACING = 6
@@ -45,6 +49,12 @@ class JogWidget(Gtk.Widget):
         self.jog_speed = 100  # mm/s
         self.jog_distance = 10.0
         self._buttons = []
+        self._keys_down: set[tuple[str, int]] = set()
+        self._button_directions: dict[
+            Gtk.Button, tuple[JogDirection, ...]
+        ] = {}
+        self._jog_speed_timeout_id: int | None = None
+        self._root_active_handler: int | None = None
 
         self.set_focusable(True)
 
@@ -73,24 +83,28 @@ class JogWidget(Gtk.Widget):
         self.north_west_btn = create_button(
             "arrow-north-west-symbolic", _("Move North-West")
         )
-        self.north_west_btn.connect("clicked", self._on_x_minus_y_plus_clicked)
+        self._attach_hold(
+            self.north_west_btn, JogDirection.WEST, JogDirection.NORTH
+        )
         self._jog_grid.attach(self.north_west_btn, 0, 0, 1, 1)
 
         self.north_btn = create_button("arrow-north-symbolic", _("Move North"))
-        self.north_btn.connect("clicked", self._on_y_plus_clicked)
+        self._attach_hold(self.north_btn, JogDirection.NORTH)
         self._jog_grid.attach(self.north_btn, 1, 0, 1, 1)
 
         self.north_east_btn = create_button(
             "arrow-north-east-symbolic", _("Move North-East")
         )
-        self.north_east_btn.connect("clicked", self._on_x_plus_y_plus_clicked)
+        self._attach_hold(
+            self.north_east_btn, JogDirection.EAST, JogDirection.NORTH
+        )
         self._jog_grid.attach(self.north_east_btn, 2, 0, 1, 1)
 
         # Row 1: W - Home - E
         self.west_btn = create_button(
             "arrow-west-symbolic", _("Move West (Left)")
         )
-        self.west_btn.connect("clicked", self._on_x_minus_clicked)
+        self._attach_hold(self.west_btn, JogDirection.WEST)
         self._jog_grid.attach(self.west_btn, 0, 1, 1, 1)
 
         self.origin_btn = create_button(
@@ -104,26 +118,28 @@ class JogWidget(Gtk.Widget):
         self.east_btn = create_button(
             "arrow-east-symbolic", _("Move East (Right)")
         )
-        self.east_btn.connect("clicked", self._on_x_plus_clicked)
+        self._attach_hold(self.east_btn, JogDirection.EAST)
         self._jog_grid.attach(self.east_btn, 2, 1, 1, 1)
 
         # Row 2: SW - S - SE
         self.south_west_btn = create_button(
             "arrow-south-west-symbolic", _("Move South-West")
         )
-        self.south_west_btn.connect(
-            "clicked", self._on_x_minus_y_minus_clicked
+        self._attach_hold(
+            self.south_west_btn, JogDirection.WEST, JogDirection.SOUTH
         )
         self._jog_grid.attach(self.south_west_btn, 0, 2, 1, 1)
 
         self.south_btn = create_button("arrow-south-symbolic", _("Move South"))
-        self.south_btn.connect("clicked", self._on_y_minus_clicked)
+        self._attach_hold(self.south_btn, JogDirection.SOUTH)
         self._jog_grid.attach(self.south_btn, 1, 2, 1, 1)
 
         self.south_east_btn = create_button(
             "arrow-south-east-symbolic", _("Move South-East")
         )
-        self.south_east_btn.connect("clicked", self._on_x_plus_y_minus_clicked)
+        self._attach_hold(
+            self.south_east_btn, JogDirection.EAST, JogDirection.SOUTH
+        )
         self._jog_grid.attach(self.south_east_btn, 2, 2, 1, 1)
 
         # Row 3: home x - home y - home z
@@ -164,13 +180,13 @@ class JogWidget(Gtk.Widget):
         self.z_plus_btn = create_button(
             "arrow-z-up-symbolic", _("Increase Z-Distance")
         )
-        self.z_plus_btn.connect("clicked", self._on_z_plus_clicked)
+        self._attach_hold(self.z_plus_btn, JogDirection.UP)
         self._action_grid.attach(self.z_plus_btn, 0, 1, 1, 1)
 
         self.z_minus_btn = create_button(
             "arrow-z-down-symbolic", _("Decrease Z-Distance")
         )
-        self.z_minus_btn.connect("clicked", self._on_z_minus_clicked)
+        self._attach_hold(self.z_minus_btn, JogDirection.DOWN)
         self._action_grid.attach(self.z_minus_btn, 0, 2, 1, 1)
 
         self.cancel_btn = create_button(
@@ -188,7 +204,35 @@ class JogWidget(Gtk.Widget):
         key_controller.connect("key-pressed", self._on_key_pressed)
         self.add_controller(key_controller)
 
+        # A held jog key must never outlive the widget being usable.
+        self.connect("map", self._on_mapped)
+        self.connect("unmap", self._on_unmapped)
+
         self._update_button_sensitivity()
+
+    def _attach_hold(self, button, *directions: JogDirection):
+        """
+        Drive a jog button by press and release instead of by click.
+
+        The button's own "clicked" signal is left unconnected: a click
+        would double up with the gesture. Drivers without press-and-hold
+        support fall back to a step jog on release.
+        """
+        self._button_directions[button] = directions
+
+        gesture = Gtk.GestureClick()
+        # Capture phase, so the press is seen before the button's own
+        # internal click gesture can claim the sequence.
+        gesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        gesture.connect("pressed", self._on_jog_pressed, directions)
+        gesture.connect("released", self._on_jog_released, directions)
+        gesture.connect("cancel", self._on_jog_cancelled, directions)
+        button.add_controller(gesture)
+
+        # Dragging off the button must stop the motion too.
+        motion = Gtk.EventControllerMotion()
+        motion.connect("leave", self._on_jog_leave, directions)
+        button.add_controller(motion)
 
     @staticmethod
     def _calc_grid_widths(height):
@@ -248,6 +292,8 @@ class JogWidget(Gtk.Widget):
                 self._on_connection_status_changed
             )
             self.machine.changed.disconnect(self._on_machine_changed)
+
+        self._release_all_jog_keys()
 
         self.machine = machine
         self.machine_cmd = machine_cmd
@@ -424,9 +470,113 @@ class JogWidget(Gtk.Widget):
         if exceeds(JogDirection.WEST, JogDirection.SOUTH):
             self.south_west_btn.add_css_class("warning")
 
+    def _hold_jog_supported(self) -> bool:
+        """Whether the connected driver jogs while a key is held."""
+        if not self.machine or not self.machine.is_connected():
+            return False
+        driver = self.machine.driver
+        return bool(driver) and driver.can_hold_jog()
+
+    def _jog_keys(self, *directions: JogDirection) -> list[tuple[str, int]]:
+        """Native axis/sign pairs for one or more visual directions."""
+        keys = []
+        for axis, delta in self._jog_deltas(*directions).items():
+            if delta and axis.name:
+                keys.append((axis.name.lower(), 1 if delta > 0 else -1))
+        return keys
+
+    def _press_jog_key(self, key: tuple[str, int]):
+        if key in self._keys_down:
+            return
+        if not self.machine or not self.machine_cmd:
+            return
+        self._keys_down.add(key)
+        self.machine_cmd.jog_key_down(self.machine, key[0], key[1])
+
+    def _release_jog_key(self, key: tuple[str, int]):
+        if key not in self._keys_down:
+            return
+        self._keys_down.discard(key)
+        if self.machine and self.machine_cmd:
+            self.machine_cmd.jog_key_up(self.machine, key[0], key[1])
+
+    def _release_all_jog_keys(self):
+        """
+        Release every key this widget believes is held down.
+
+        Called from every path where a key-up could otherwise be lost:
+        pointer leave, gesture cancel, unmap, and window focus loss.
+        """
+        keys = sorted(self._keys_down)
+        self._keys_down.clear()
+        if not self.machine or not self.machine_cmd:
+            return
+        for axis, direction in keys:
+            self.machine_cmd.jog_key_up(self.machine, axis, direction)
+        # Sweep whatever the driver still believes is held, in case the
+        # two views of the keypad ever drift apart.
+        self.machine_cmd.release_all_jog_keys(self.machine)
+
+    def _on_jog_pressed(self, gesture, n_press, x, y, directions):
+        if not self._hold_jog_supported():
+            return
+        for key in self._jog_keys(*directions):
+            self._press_jog_key(key)
+
+    def _on_jog_released(self, gesture, n_press, x, y, directions):
+        if not self._hold_jog_supported():
+            # Step jog keeps working for drivers without hold support.
+            self._perform_visual_jog(*directions)
+            return
+        for key in self._jog_keys(*directions):
+            self._release_jog_key(key)
+
+    def _on_jog_cancelled(self, gesture, sequence, directions):
+        for key in self._jog_keys(*directions):
+            self._release_jog_key(key)
+
+    def _on_jog_leave(self, controller, directions):
+        for key in self._jog_keys(*directions):
+            self._release_jog_key(key)
+
+    def _on_mapped(self, widget):
+        root = self.get_root()
+        if not isinstance(root, Gtk.Window):
+            return
+        if self._root_active_handler is None:
+            self._root_active_handler = root.connect(
+                "notify::is-active", self._on_root_active_changed
+            )
+
+    def _on_unmapped(self, widget):
+        root = self.get_root()
+        if isinstance(root, Gtk.Window) and self._root_active_handler:
+            root.disconnect(self._root_active_handler)
+        self._root_active_handler = None
+        self._release_all_jog_keys()
+
+    def _on_root_active_changed(self, root, pspec):
+        if not root.is_active():
+            self._release_all_jog_keys()
+
     def _on_jog_speed_changed(self, spin):
         """Handle jog speed spin button changes (mm/s)."""
         self.jog_speed = int(spin.get_value())
+        if self._jog_speed_timeout_id is not None:
+            GLib.source_remove(self._jog_speed_timeout_id)
+        self._jog_speed_timeout_id = GLib.timeout_add(
+            _JOG_SPEED_DEBOUNCE_MS, self._commit_jog_speed
+        )
+
+    def _commit_jog_speed(self):
+        """Write the settled jog speed to the controller."""
+        self._jog_speed_timeout_id = None
+        if self._hold_jog_supported() and self.machine and self.machine_cmd:
+            self.machine_cmd.set_jog_speed(
+                self.machine,
+                int(_JOG_SPEED_UNIT.to_base(self.jog_speed)),
+            )
+        return GLib.SOURCE_REMOVE
 
     def _on_machine_state_changed(self, machine, state):
         """Handle machine state changes to update limit status."""
@@ -434,6 +584,10 @@ class JogWidget(Gtk.Widget):
 
     def _on_connection_status_changed(self, sender, **kwargs):
         """Handle connection status changes to update button sensitivity."""
+        if self.machine and not self.machine.is_connected():
+            # Nothing can be sent any more; the driver releases its own
+            # held keys as it tears the transports down.
+            self._keys_down.clear()
         self._update_button_sensitivity()
 
     def _perform_jog(self, deltas: dict[Axis, float]):

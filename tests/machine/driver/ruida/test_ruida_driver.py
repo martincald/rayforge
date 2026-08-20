@@ -1578,3 +1578,114 @@ class TestDefaultRefPoint:
         )
 
         assert machine.active_wcs == "REF1"
+
+
+class TestHoldJogKeys:
+    """Press-and-hold jog, and the releases that must never be lost."""
+
+    @pytest.mark.asyncio
+    async def test_driver_reports_hold_jog_support(self, driver):
+        assert driver.can_hold_jog() is True
+
+    @pytest.mark.asyncio
+    async def test_key_down_sends_one_key_and_tracks_it(self, driver):
+        sent = []
+        driver._client.press_jog_key = _recorder(sent)
+
+        await driver.jog_key_down("x", 1)
+
+        assert sent == [("x", 1)]
+        assert driver._jog_keys_down == {("x", 1)}
+
+    @pytest.mark.asyncio
+    async def test_repeated_key_down_sends_only_once(self, driver):
+        sent = []
+        driver._client.press_jog_key = _recorder(sent)
+
+        await driver.jog_key_down("x", 1)
+        await driver.jog_key_down("x", 1)
+
+        assert sent == [("x", 1)]
+
+    @pytest.mark.asyncio
+    async def test_key_up_sends_the_release_and_forgets_the_key(self, driver):
+        released = []
+        driver._client.press_jog_key = _recorder([])
+        driver._client.release_jog_key = _recorder(released)
+
+        await driver.jog_key_down("y", -1)
+        await driver.jog_key_up("y", -1)
+
+        assert released == [("y", -1)]
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_untracked_key_up_is_still_sent(self, driver):
+        """A stuck head is worse than a redundant key-up."""
+        released = []
+        driver._client.release_jog_key = _recorder(released)
+
+        await driver.jog_key_up("z", 1)
+
+        assert released == [("z", 1)]
+
+    @pytest.mark.asyncio
+    async def test_release_all_releases_every_held_key(self, driver):
+        released = []
+        driver._client.press_jog_key = _recorder([])
+        driver._client.release_jog_key = _recorder(released)
+
+        await driver.jog_key_down("x", 1)
+        await driver.jog_key_down("y", -1)
+        await driver.release_all_jog_keys()
+
+        assert sorted(released) == [("x", 1), ("y", -1)]
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_release_all_survives_a_dead_transport(self, driver):
+        """Disconnect must not leave the key set populated."""
+
+        async def boom(axis, direction):
+            raise OSError("socket gone")
+
+        driver._client.press_jog_key = _recorder([])
+        driver._client.release_jog_key = boom
+
+        await driver.jog_key_down("x", 1)
+        await driver.release_all_jog_keys()
+
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_disconnect_releases_held_keys(self, driver):
+        released = []
+        driver._client.press_jog_key = _recorder([])
+        driver._client.release_jog_key = _recorder(released)
+
+        await driver.jog_key_down("x", -1)
+        await driver._disconnect_transports()
+
+        assert released == [("x", -1)]
+
+    @pytest.mark.asyncio
+    async def test_set_jog_speed_converts_mm_min_to_um_per_s(self, driver):
+        written = []
+
+        async def record(um_per_s):
+            written.append(um_per_s)
+
+        driver._client.set_manual_jog_speed = record
+
+        await driver.set_jog_speed(6000)
+
+        assert written == [100000]
+
+
+def _recorder(sink: list):
+    """An async stand-in that records the (axis, direction) it got."""
+
+    async def record(axis, direction):
+        sink.append((axis, direction))
+
+    return record
