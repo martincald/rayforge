@@ -224,9 +224,11 @@ _E7_LENGTHS: dict[int, int] = {
 }
 
 _F2_LENGTHS: dict[int, int] = {
+    0x00: 3,
     0x03: 12,
     0x04: 12,
     0x06: 12,
+    0x07: 3,
     0x08: 12,
     0x05: 16,
 }
@@ -327,7 +329,7 @@ def estimate_packet_length(payload: bytes) -> int:
             return 5
         if sub in DA_VARIABLE_4_BYTE_SUBCOMMANDS:
             return 4
-        return 4
+        return -1
 
     if cmd == 0xA5:
         if len(payload) < 3:
@@ -340,7 +342,7 @@ def estimate_packet_length(payload: bytes) -> int:
     if cmd == 0xC6:
         if len(payload) < 2:
             return -1
-        return _C6_LENGTHS.get(payload[1], 4)
+        return _C6_LENGTHS.get(payload[1], -1)
 
     if cmd == 0xC9:
         if len(payload) < 2:
@@ -357,19 +359,21 @@ def estimate_packet_length(payload: bytes) -> int:
             return 8
         if payload[1] == 0x41:
             return 4
-        return 3
+        if payload[1] in (0x01, 0x02, 0x03, 0x10, 0x22):
+            return 3
+        return -1
 
     if cmd == 0xE5:
         if len(payload) < 2:
             return -1
         if payload[1] == 0x05:
             return 7
-        return 2
+        return -1
 
     if cmd == 0xE7:
         if len(payload) < 2:
             return -1
-        return _E7_LENGTHS.get(payload[1], 2)
+        return _E7_LENGTHS.get(payload[1], -1)
 
     if cmd == 0xE8:
         if len(payload) < 2:
@@ -381,11 +385,13 @@ def estimate_packet_length(payload: bytes) -> int:
             return -1
         if payload[1] == 0x03:
             return 12
-        return 3
+        if payload[1] in (0x00, 0x01, 0x02):
+            return 3
+        return -1
 
     if cmd == 0xF2:
         if len(payload) < 2:
             return -1
-        return _F2_LENGTHS.get(payload[1], 3)
+        return _F2_LENGTHS.get(payload[1], -1)
 
-    return len(payload)
+    return -1

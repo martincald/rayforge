@@ -1,4 +1,3 @@
-import struct
 from collections.abc import Callable
 
 from ...machine.driver.ruida.ruida_util import (
@@ -7,6 +6,7 @@ from ...machine.driver.ruida.ruida_util import (
     decode35,
     decode_abs_coords,
     decode_rel_coords,
+    decodeu14,
     unswizzle_byte,
 )
 from .job import RuidaGeoCommand, RuidaJob, RuidaLayer
@@ -105,20 +105,19 @@ class RuidaParser:
         self.current_color = payload[0]
 
     def _handle_set_speed(self, job: RuidaJob, payload: bytes) -> None:
-        color_index = payload[0]
-        speed = struct.unpack("<f", payload[1:5])[0]
-        self._ensure_layer(job, color_index).speed = speed
+        layer_index = payload[0]
+        speed = decode35(payload[1:6]) / UM_PER_MM
+        self._ensure_layer(job, layer_index).speed = speed
 
     def _handle_set_power(self, job: RuidaJob, payload: bytes) -> None:
-        color_index = payload[0]
-        # Power is a short, scaled by 10
-        power = struct.unpack("<H", payload[1:3])[0] / 10.0
-        self._ensure_layer(job, color_index).power = power
+        layer_index = payload[0]
+        power = decodeu14(payload[1:3]) / 16383.0 * 100.0
+        self._ensure_layer(job, layer_index).power = power
 
     def _handle_set_frequency(self, job: RuidaJob, payload: bytes) -> None:
-        color_index = payload[0]
+        layer_index = payload[1]
         frequency = decode35(payload[2:7])
-        self._ensure_layer(job, color_index).frequency = frequency
+        self._ensure_layer(job, layer_index).frequency = frequency
 
     def _handle_move_abs(self, job: RuidaJob, payload: bytes) -> None:
         self.x, self.y = decode_abs_coords(payload)
@@ -184,8 +183,8 @@ class RuidaParser:
             0xAB: (2, self._handle_cut_rel_y),
             0xD7: (0, self._handle_end),
             # Nested commands
-            0xCA: {0x06: (5, self._handle_set_color)},
-            0xC9: {0x04: (5, self._handle_set_speed)},
+            0xCA: {0x06: (6, self._handle_set_color)},
+            0xC9: {0x04: (6, self._handle_set_speed)},
             0xC6: {
                 0x32: (3, self._handle_set_power),
                 0x60: (7, self._handle_set_frequency),

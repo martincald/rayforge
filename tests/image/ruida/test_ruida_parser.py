@@ -1,11 +1,10 @@
-import struct
 from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
 
 from rayforge.image.ruida.parser import RuidaParser
-from rayforge.machine.driver.ruida.ruida_util import encode35
+from rayforge.machine.driver.ruida.ruida_util import encode14, encode35
 
 
 def _scramble(byte_val: int) -> int:
@@ -15,6 +14,17 @@ def _scramble(byte_val: int) -> int:
     result = (byte_val & 0x7E) | (b0 << 7) | b7
     result ^= 0x88
     return (result + 1) & 0xFF
+
+
+def _encode_speed(layer: int, speed_mm_s: float) -> bytes:
+    """Builds a C9 04 command: layer byte + encode35 speed in um/s."""
+    return b"\xc9\x04" + bytes([layer]) + encode35(int(speed_mm_s * 1000))
+
+
+def _encode_power(layer: int, power_pct: float) -> bytes:
+    """Builds a C6 32 command: layer byte + encode14 power fraction."""
+    power_val = int(power_pct / 100.0 * 16383)
+    return b"\xc6\x32" + bytes([layer]) + encode14(power_val)
 
 
 def _encode_abs_coords(x_mm: float, y_mm: float) -> bytes:
@@ -50,9 +60,9 @@ def create_test_rd_file(filepath: Path) -> None:
     Generates a simple binary .rd file for a 10mm square at 20mm/s, 50% pwr.
     """
     content = bytearray()
-    content += b"\xc9\x04" + (b"\x00" + struct.pack("<f", 20.0))
-    content += b"\xc6\x32" + (b"\x00" + struct.pack("<H", 500))
-    content += b"\xca\x06" + (b"\x00\x00\x00\x00\x00")
+    content += _encode_speed(0, 20.0)
+    content += _encode_power(0, 50.0)
+    content += b"\xca\x06" + bytes(6)
     content += b"\x88" + _encode_abs_coords(0, 0)
     content += b"\xa8" + _encode_abs_coords(10, 0)
     content += b"\xa8" + _encode_abs_coords(10, 10)
@@ -89,7 +99,7 @@ def test_parser_on_simple_square(
     assert len(job.layers) == 1
     layer0 = job.layers[0]
     assert layer0.speed == pytest.approx(20.0)
-    assert layer0.power == pytest.approx(50.0)
+    assert layer0.power == pytest.approx(50.0, abs=0.1)
 
     # Verify that RuidaGeoCommand was called with the correct arguments
     calls = mock_cmd_cls.call_args_list
@@ -124,10 +134,10 @@ def test_parser_on_simple_square(
 
 def test_parser_extracts_frequency(tmp_path: Path):
     content = bytearray()
-    content += b"\xc9\x04" + (b"\x00" + struct.pack("<f", 20.0))
-    content += b"\xc6\x32" + (b"\x00" + struct.pack("<H", 500))
+    content += _encode_speed(0, 20.0)
+    content += _encode_power(0, 50.0)
     content += b"\xc6\x60" + b"\x00\x00" + encode35(1000)
-    content += b"\xca\x06" + (b"\x00\x00\x00\x00\x00")
+    content += b"\xca\x06" + bytes(6)
     content += b"\x88" + _encode_abs_coords(0, 0)
     content += b"\xa8" + _encode_abs_coords(10, 0)
     content += b"\xd7"
@@ -144,9 +154,9 @@ def test_parser_extracts_frequency(tmp_path: Path):
 
 def test_parser_no_frequency_defaults_zero(tmp_path: Path):
     content = bytearray()
-    content += b"\xc9\x04" + (b"\x00" + struct.pack("<f", 20.0))
-    content += b"\xc6\x32" + (b"\x00" + struct.pack("<H", 500))
-    content += b"\xca\x06" + (b"\x00\x00\x00\x00\x00")
+    content += _encode_speed(0, 20.0)
+    content += _encode_power(0, 50.0)
+    content += b"\xca\x06" + bytes(6)
     content += b"\x88" + _encode_abs_coords(0, 0)
     content += b"\xd7"
     scrambled = b"RDWORKV8.01" + bytes([_scramble(b) for b in content])
@@ -157,6 +167,30 @@ def test_parser_no_frequency_defaults_zero(tmp_path: Path):
     job = parser.parse()
 
     assert job.layers[0].frequency == 0
+
+
+FIXTURE_PATH = (
+    Path(__file__).parent.parent.parent
+    / "machine"
+    / "driver"
+    / "ruida"
+    / "fixtures"
+    / "rdworks_reference.rd"
+)
+
+
+def test_parser_round_trip_on_rdworks_fixture():
+    """Parses the RDWorks ground-truth .rd file and checks the decoded
+    layer settings and surviving geometry command count."""
+    data = FIXTURE_PATH.read_bytes()
+    parser = RuidaParser(data)
+    job = parser.parse()
+
+    assert 0 in job.layers
+    layer0 = job.layers[0]
+    assert layer0.speed == pytest.approx(10.0, abs=0.1)
+    assert layer0.power == pytest.approx(60.0, abs=0.1)
+    assert len(job.commands) >= 102
 
 
 TEST_FILES_DIR = Path(__file__).parent

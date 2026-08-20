@@ -520,6 +520,26 @@ class RuidaClient:
         """
         await self.send_command(self._build_power_end(laser, power_percent))
 
+    async def set_frequency(self, laser: int, layer: int, hz: int) -> None:
+        """
+        Set laser PWM frequency for a layer.
+
+        Args:
+            laser: Laser number (1-based)
+            layer: Layer index
+            hz: Frequency in Hz
+        """
+        await self.send_command(self._build_frequency(laser, hz, layer))
+
+    async def set_pulse_width(self, pulse_width_us: int) -> None:
+        """
+        Set laser pulse width.
+
+        Args:
+            pulse_width_us: Pulse width in microseconds
+        """
+        await self.send_command(self._build_pulse_width(pulse_width_us))
+
     async def set_travel_speed(self, um_per_s: int) -> None:
         """
         Set interactive travel speed (C9 02, speed_laser_1).
@@ -685,9 +705,10 @@ class RuidaClient:
         self, laser: int, frequency: int, layer: int = 0
     ) -> bytes:
         """C6 60 <laser index, zero-based> <layer & 0x7F> + encode35."""
+        laser_index = min(max(laser - 1, 0), 5)
         return (
             b"\xc6\x60"
-            + bytes([laser - 1, layer & 0x7F])
+            + bytes([laser_index, layer & 0x7F])
             + encode35(frequency)
         )
 

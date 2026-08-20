@@ -365,8 +365,8 @@ class TestEstimatePacketLength:
     def test_a7_command(self):
         assert estimate_packet_length(b"\xa7\x01") == 2
 
-    def test_unknown_command_returns_len(self):
-        assert estimate_packet_length(b"\xfe\x00\x00") == 3
+    def test_unknown_command_returns_negative_one(self):
+        assert estimate_packet_length(b"\xfe\x00\x00") == -1
 
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "rdworks_reference.rd"
@@ -434,3 +434,7 @@ class TestPacketLengthOracle:
         assert len(commands) > 50
         for cmd in commands:
             assert estimate_packet_length(cmd) == len(cmd), cmd.hex(" ")
+
+        # An opcode absent from the whole protocol table must fail
+        # loudly instead of silently guessing a family default length.
+        assert estimate_packet_length(b"\x9f\x00\x00\x00") == -1
