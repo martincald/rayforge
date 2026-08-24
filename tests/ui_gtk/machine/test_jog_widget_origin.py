@@ -1,7 +1,7 @@
-"""UI tests for the jog widget's Origin button.
+"""UI tests for the jog widget's Home button and Set origin action.
 
-The centre of the jog pad is the Origin action ("anchor the job here").
-Homing is still reachable, demoted to the secondary action column.
+The centre of the jog pad homes the machine. Setting the job origin is
+still reachable, demoted to a compact button beside the pad.
 """
 
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -30,42 +30,39 @@ def _widget(ui_context_initializer, machine_cmd):
 
 
 @pytest.mark.ui
-def test_origin_button_replaces_home_all_in_the_pad(ui_context_initializer):
-    """The jog pad centre is Origin; Home All no longer sits there."""
+def test_home_button_occupies_the_pad_centre(ui_context_initializer):
     widget, _machine = _widget(ui_context_initializer, MagicMock())
 
-    assert widget.origin_btn.get_parent() is widget._jog_grid
-    assert widget.home_all_btn.get_parent() is widget._action_grid
+    column, row, width, height = widget._jog_grid.query_child(
+        widget.home_all_btn
+    )
+
+    assert (column, row, width, height) == (1, 1, 1, 1)
 
 
 @pytest.mark.ui
-def test_origin_button_has_a_tooltip(ui_context_initializer):
+def test_home_button_carries_a_visible_label(ui_context_initializer):
     widget, _machine = _widget(ui_context_initializer, MagicMock())
 
+    box = widget.home_all_btn.get_child()
+    assert isinstance(box, Gtk.Box)
+    captions = [c.get_label() for c in box if isinstance(c, Gtk.Label)]
+
+    assert captions == ["Home"]
+
+
+@pytest.mark.ui
+def test_set_origin_is_a_compact_action_beside_the_pad(
+    ui_context_initializer,
+):
+    widget, _machine = _widget(ui_context_initializer, MagicMock())
+
+    assert widget.origin_btn.get_label() == "Set origin"
     assert (
         widget.origin_btn.get_tooltip_text()
         == "Set job origin to current position"
     )
-
-
-@pytest.mark.ui
-def test_origin_button_carries_a_visible_label(ui_context_initializer):
-    """Icon plus caption, so the one distinguished pad action reads."""
-    widget, _machine = _widget(ui_context_initializer, MagicMock())
-
-    box = widget.origin_btn.get_child()
-    assert isinstance(box, Gtk.Box)
-    captions = [c.get_label() for c in box if isinstance(c, Gtk.Label)]
-
-    assert captions == ["Origin"]
-
-
-@pytest.mark.ui
-def test_home_machine_stays_reachable(ui_context_initializer):
-    """Homing is demoted, not removed."""
-    widget, _machine = _widget(ui_context_initializer, MagicMock())
-
-    assert widget.home_all_btn.get_tooltip_text() == "Home machine"
+    assert widget.origin_btn.has_css_class("flat")
 
 
 @pytest.mark.ui

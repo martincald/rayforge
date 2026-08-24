@@ -219,19 +219,19 @@ def test_disconnect_drops_the_held_key_set(ui_context_initializer):
 
 
 @pytest.mark.ui
-def test_speed_change_is_debounced_then_written(ui_context_initializer):
-    """One register write when the control settles, not per keypress."""
+def test_speed_change_is_debounced_then_pushed(ui_context_initializer):
+    """One push when the control settles, not per keypress."""
     machine_cmd = MagicMock()
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget.speed_spin.set_value(50)
-        widget.speed_spin.set_value(80)
+        widget.set_jog_speed(50)
+        widget.set_jog_speed(80)
         machine_cmd.set_jog_speed.assert_not_called()
 
         widget._commit_jog_speed()
 
-    # 80 mm/s displayed, written in the mm/min base unit.
+    # 80 mm/s set, pushed in the mm/min base unit.
     machine_cmd.set_jog_speed.assert_called_once_with(machine, 4800)
 
 

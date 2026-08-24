@@ -414,6 +414,105 @@ class MachineCmd:
 
         await driver.trace_frame(max_x - min_x, max_y - min_y)
 
+    def first_layer_power(self) -> float:
+        """
+        The power of the first step that has one, normalized 0-1.
+
+        Used as the default for a scale cut, so the rectangle burns
+        like the job it frames. Falls back to full power.
+        """
+        for layer in self._editor.doc.layers:
+            workflow = layer.workflow
+            if not workflow:
+                continue
+            for step in workflow.steps:
+                power = getattr(step, "power", None)
+                if power is not None:
+                    return float(power)
+        return 1.0
+
+    def run_go_scale(
+        self,
+        machine: Machine,
+        on_done: Callable[[], None] | None = None,
+    ):
+        """
+        Adds a task to traverse the job's bounding box, laser off.
+
+        The rectangle goes out as a normal job, so the controller
+        anchors it exactly where the real job would start.
+        """
+
+        def build(width: float, height: float) -> Ops:
+            return _go_scale_ops(machine, width, height)
+
+        self._run_scale_job(machine, build, "go scale", on_done)
+
+    def run_cut_scale(
+        self,
+        machine: Machine,
+        speed: int,
+        power: float,
+        on_done: Callable[[], None] | None = None,
+    ):
+        """
+        Adds a task to cut the job's bounding box as a rectangle.
+
+        Args:
+            machine: The machine to cut on.
+            speed: Cut speed in mm/min.
+            power: Cut power, normalized 0-1. Min power equals it.
+            on_done: Optional callback, run on the main thread once the
+                cut finishes, is cancelled, or fails.
+        """
+
+        def build(width: float, height: float) -> Ops:
+            return _cut_scale_ops(machine, width, height, speed, power)
+
+        self._run_scale_job(machine, build, "cut scale", on_done)
+
+    def _run_scale_job(
+        self,
+        machine: Machine,
+        build_ops: Callable[[float, float], Ops],
+        job_name: str,
+        on_done: Callable[[], None] | None,
+    ):
+        """Schedule a job built from the current job's bounding box."""
+
+        def when_done(task):
+            if on_done is not None:
+                self._scheduler(on_done)
+
+        self._editor.task_manager.add_coroutine(
+            lambda ctx: self._scale_job(machine, build_ops, job_name),
+            key=job_name.replace(" ", "-"),
+            when_done=when_done,
+        )
+
+    async def _scale_job(
+        self,
+        machine: Machine,
+        build_ops: Callable[[float, float], Ops],
+        job_name: str,
+    ):
+        """Measure the job outline, then run a job around it."""
+        handle = await self._editor.pipeline.generate_job_artifact_async()
+        if not handle:
+            logger.warning(f"{job_name.capitalize()} has no operations.")
+            return
+
+        artifact_store = self._editor.pipeline.artifact_store
+        with artifact_store.checkout_handle(handle) as artifact:
+            if not isinstance(artifact, JobArtifact):
+                raise TypeError(f"{job_name} did not produce a JobArtifact")
+            min_x, min_y, max_x, max_y = artifact.ops.rect()
+
+        ops = build_ops(max_x - min_x, max_y - min_y)
+        encoder = _create_driver_encoder(machine)
+        encoded = encoder.encode(ops, machine, self._editor.doc)
+        await self._execute_monitored_job(ops, machine, encoded=encoded)
+
     def cancel_frame(self, machine: Machine):
         """Adds a task to stop a running outline trace."""
         driver = machine.driver
@@ -556,6 +655,58 @@ class MachineCmd:
             self._editor.task_manager.add_coroutine(
                 lambda ctx: driver.move_to(x, y), key="move-to"
             )
+
+
+def _rect_corners(width: float, height: float) -> list[tuple[float, float]]:
+    """The closed bounding-box loop, starting and ending at (0, 0)."""
+    return [
+        (0.0, 0.0),
+        (width, 0.0),
+        (width, height),
+        (0.0, height),
+        (0.0, 0.0),
+    ]
+
+
+def _go_scale_ops(machine: Machine, width: float, height: float) -> Ops:
+    """
+    Build a job that only traverses the bounding box.
+
+    No layer is opened and no power is ever set, so the stream carries
+    travel moves alone and the laser cannot fire.
+    """
+    ops = Ops()
+    ops.job_start()
+    ops.set_feed_rate(machine.max_travel_speed)
+    for x, y in _rect_corners(width, height):
+        ops.move_to(x, y, 0.0)
+    ops.job_end()
+    return ops
+
+
+def _cut_scale_ops(
+    machine: Machine,
+    width: float,
+    height: float,
+    speed: int,
+    power: float,
+) -> Ops:
+    """Build a one-layer job that cuts the bounding box."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("cut-scale")
+    head = machine.get_default_laser_head()
+    if head is not None:
+        ops.set_head(head.uid)
+    ops.set_power(power)
+    ops.set_feed_rate(speed)
+    corners = _rect_corners(width, height)
+    ops.move_to(corners[0][0], corners[0][1], 0.0)
+    for x, y in corners[1:]:
+        ops.line_to(x, y, 0.0)
+    ops.layer_end("cut-scale")
+    ops.job_end()
+    return ops
 
 
 def _create_driver_encoder(machine: Machine):

@@ -260,9 +260,9 @@
     "semantic_hash": "ef0a2b63fc8a7e13a01d6cf14d65a61a"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/core/config.py": {
-    "mtime": 1786563208.9344723,
-    "ast_hash": "e66a43f97e6dfc90dad62a2be6d0f49a",
-    "semantic_hash": "e66a43f97e6dfc90dad62a2be6d0f49a"
+    "mtime": 1787251810.561805,
+    "ast_hash": "cbd52f17c8ee4d2ab40ae4b8cf0892f8",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/core/vectorization_spec.py": {
     "mtime": 1786563208.9417784,
@@ -775,9 +775,9 @@
     "semantic_hash": "7da12cec0c66470900d2f941ae0884e7"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/shared/units/definitions.py": {
-    "mtime": 1786563209.0203893,
-    "ast_hash": "f38da424e31950eed661caa1dd330ebb",
-    "semantic_hash": "f38da424e31950eed661caa1dd330ebb"
+    "mtime": 1787251795.2360787,
+    "ast_hash": "a664b022fdb0405a018b897dee0a345c",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/shared/units/__init__.py": {
     "mtime": 1786563209.0202649,
@@ -1070,9 +1070,9 @@
     "semantic_hash": "a0a77196e7fa0f508074f2396c0d861d"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/image/ruida/parser.py": {
-    "mtime": 1786563208.9513965,
-    "ast_hash": "71f76165f3f002c31d4ad8f84e7476d3",
-    "semantic_hash": "71f76165f3f002c31d4ad8f84e7476d3"
+    "mtime": 1787220305.8771563,
+    "ast_hash": "22f35e72bdb08f988127aed79823e331",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/image/dxf/importer.py": {
     "mtime": 1786563208.9478116,
@@ -1155,9 +1155,9 @@
     "semantic_hash": "0ee169a132e9b309a27e0d388eb119e7"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/main_menu.py": {
-    "mtime": 1786563209.0445611,
-    "ast_hash": "a1093b46b26f55d63302c3ef64580fc8",
-    "semantic_hash": "a1093b46b26f55d63302c3ef64580fc8"
+    "mtime": 1787177395.9801314,
+    "ast_hash": "bebcfbca0cff1002c6522d62f9648f86",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/icons.py": {
     "mtime": 1786563209.0391974,
@@ -1165,9 +1165,9 @@
     "semantic_hash": "1648d06443b0d87a78a2fa2118ca0fe1"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/actions.py": {
-    "mtime": 1786563209.023699,
-    "ast_hash": "03e6c9a5d4dbd05e45efb487734a2fff",
-    "semantic_hash": "03e6c9a5d4dbd05e45efb487734a2fff"
+    "mtime": 1787177394.1722848,
+    "ast_hash": "2b275e865ddcab90502a2a4164199726",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/__init__.py": {
     "mtime": 1786563209.023297,
@@ -1180,9 +1180,9 @@
     "semantic_hash": "79f55563b199c6a872187f09bcda81f3"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/mainwindow.py": {
-    "mtime": 1786563209.0448165,
-    "ast_hash": "c6606b175a3bb7dfc568db8a1151b6d2",
-    "semantic_hash": "c6606b175a3bb7dfc568db8a1151b6d2"
+    "mtime": 1787177409.9990094,
+    "ast_hash": "6a1a9232984d060d9d96af4cc5d0c83a",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/toolbar.py": {
     "mtime": 1786563209.0563245,
@@ -1395,9 +1395,9 @@
     "semantic_hash": "c39809f8d12337e0bd6e4129a410fae0"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/varset/adapter/speed.py": {
-    "mtime": 1786563209.0576446,
-    "ast_hash": "b05ded0083db4811b5c5e4a5d09b9aba",
-    "semantic_hash": "b05ded0083db4811b5c5e4a5d09b9aba"
+    "mtime": 1787251835.9345992,
+    "ast_hash": "d8cc6bc28526293bd93017bdeba6863b",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/varset/adapter/length.py": {
     "mtime": 1786563209.0570786,
@@ -1760,9 +1760,9 @@
     "semantic_hash": "85cd9294bd9bbe2b48a2742583c2172a"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/shared/pref_rows/speed_spin_row.py": {
-    "mtime": 1786563209.0494852,
-    "ast_hash": "15f212dbb6f8b9ecbcb94eb0005dd55a",
-    "semantic_hash": "15f212dbb6f8b9ecbcb94eb0005dd55a"
+    "mtime": 1787251835.9341645,
+    "ast_hash": "99c2d524f260b66c367ed0dfdf8c46b1",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/shared/pref_rows/length_choice_spin_row.py": {
     "mtime": 1786563209.0493119,
@@ -1880,9 +1880,9 @@
     "semantic_hash": "e94aa84a4fa9b911baeb3b67c4dbbcf1"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/jog_widget.py": {
-    "mtime": 1786563209.0411766,
-    "ast_hash": "2c6d349ba39bc10c1069a12c74937351",
-    "semantic_hash": "2c6d349ba39bc10c1069a12c74937351"
+    "mtime": 1787252828.7269368,
+    "ast_hash": "d1ca875127441509e96587aa19874d27",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/capabilities_page.py": {
     "mtime": 1786563209.039522,
@@ -2010,9 +2010,9 @@
     "semantic_hash": "950c0ee7f9bb44ff135b9250b986456b"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/general_preferences_page.py": {
-    "mtime": 1786563209.0405374,
-    "ast_hash": "a98b07be295b787bc4738d5b64cd0cce",
-    "semantic_hash": "a98b07be295b787bc4738d5b64cd0cce"
+    "mtime": 1787251835.9353027,
+    "ast_hash": "55683c6fef4c73e21d90c0b5421cfac3",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/hook_list.py": {
     "mtime": 1786563209.0409832,
@@ -2025,9 +2025,9 @@
     "semantic_hash": "edcb6739613f2872b6279be8a5817180"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/wizard_pages/hardware_page.py": {
-    "mtime": 1786563209.0437455,
-    "ast_hash": "8ffb04bb81ccbc5ac22501ee692d0466",
-    "semantic_hash": "8ffb04bb81ccbc5ac22501ee692d0466"
+    "mtime": 1787251835.9358573,
+    "ast_hash": "086c9f84b7fcbb47f655212c9d95e70b",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/wizard_pages/profile_page.py": {
     "mtime": 1786563209.044098,
@@ -2050,9 +2050,9 @@
     "semantic_hash": "583b3ab81ec50e80f89442421cf70b87"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/wizard_pages/ai_lookup_page.py": {
-    "mtime": 1786563209.0432558,
-    "ast_hash": "202bb55331e12249c562924435ac5ca2",
-    "semantic_hash": "202bb55331e12249c562924435ac5ca2"
+    "mtime": 1787251982.474584,
+    "ast_hash": "bc8bc3adb076c6fa7afe09f52c4750d9",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/wizard_pages/controller_page.py": {
     "mtime": 1786563209.043601,
@@ -2080,9 +2080,9 @@
     "semantic_hash": "6d450167a75ec882abbc0ea8b94225d1"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/machine/wizard_pages/review_page.py": {
-    "mtime": 1786563209.0443165,
-    "ast_hash": "63ec36b594fb732306ca01bbe1fe95b9",
-    "semantic_hash": "63ec36b594fb732306ca01bbe1fe95b9"
+    "mtime": 1787251863.8809216,
+    "ast_hash": "f4113e43e93c121254e76a02007cbe82",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/layer_settings_dialog.py": {
     "mtime": 1786563209.033335,
@@ -2165,9 +2165,9 @@
     "semantic_hash": "08f89b1a71eae628a8569f153bb66e18"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/file_dialogs.py": {
-    "mtime": 1786563209.0323172,
-    "ast_hash": "e9bf8621e1fcaf80c6d60a96de86828a",
-    "semantic_hash": "e9bf8621e1fcaf80c6d60a96de86828a"
+    "mtime": 1787177414.3363729,
+    "ast_hash": "c6fb49417dada001127e9686c2584097",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/item_properties.py": {
     "mtime": 1786563209.0329854,
@@ -2200,9 +2200,9 @@
     "semantic_hash": "516aca7d719ce98210691fcedf90fa67"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/bottom_panel.py": {
-    "mtime": 1786563209.0321984,
-    "ast_hash": "71de760343c96aea2fa674b90271ec34",
-    "semantic_hash": "71de760343c96aea2fa674b90271ec34"
+    "mtime": 1787177381.0263906,
+    "ast_hash": "a8fc86712f17578a46dcca31c4372a42",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/property_providers/__init__.py": {
     "mtime": 1786563209.034893,
@@ -2270,9 +2270,9 @@
     "semantic_hash": "52f21932f0c0970d80b19460fa046665"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/cut_speed_row.py": {
-    "mtime": 1786563209.0379298,
-    "ast_hash": "480c5d72f67758e0d20baa492bfff158",
-    "semantic_hash": "480c5d72f67758e0d20baa492bfff158"
+    "mtime": 1787251846.2428627,
+    "ast_hash": "688d2ba4107d2899d9dbfdc4f9b59f40",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/switch_row.py": {
     "mtime": 1786563209.0384135,
@@ -2280,9 +2280,9 @@
     "semantic_hash": "00540fa2a7df154d46b0cf89ec7149c8"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/travel_speed_row.py": {
-    "mtime": 1786563209.0385158,
-    "ast_hash": "eddeb41f73e208234514acfeaccd635b",
-    "semantic_hash": "eddeb41f73e208234514acfeaccd635b"
+    "mtime": 1787251846.2434883,
+    "ast_hash": "3b0569373054a5d6e6d2080323f479b6",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/combo_row.py": {
     "mtime": 1786563209.0377598,
@@ -2290,9 +2290,9 @@
     "semantic_hash": "54111bec54d747e7555db1a1784f67fa"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/slider_row.py": {
-    "mtime": 1786563209.0381224,
-    "ast_hash": "e5ca4a0d05fc32d1c2d28fcfd211c209",
-    "semantic_hash": "e5ca4a0d05fc32d1c2d28fcfd211c209"
+    "mtime": 1787251982.4423943,
+    "ast_hash": "178bae37517f6620f0eaa995f07a31c2",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/ui_gtk/doceditor/step_settings/rows/head_row.py": {
     "mtime": 1786563209.0380304,
@@ -3945,9 +3945,9 @@
     "semantic_hash": "b5481b1e96fd3099de1651cc86917c26"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/tests/ui_gtk/test_laser_pages.py": {
-    "mtime": 1786563208.8843064,
-    "ast_hash": "6678435f06a5ac235af7f04694122d3e",
-    "semantic_hash": "6678435f06a5ac235af7f04694122d3e"
+    "mtime": 1787252539.4451652,
+    "ast_hash": "95ee472065c010b878e8ec33c94afe5c",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/tests/steps/test_contour_step.py": {
     "mtime": 1786563208.882968,
@@ -4075,9 +4075,9 @@
     "semantic_hash": "dd10292425f2f7146ffdb4b85bd2970e"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/material_test_grid_page.py": {
-    "mtime": 1786563208.8791726,
-    "ast_hash": "1db3e3b6e037586a90bda3f08cc10a74",
-    "semantic_hash": "1db3e3b6e037586a90bda3f08cc10a74"
+    "mtime": 1787251982.4421022,
+    "ast_hash": "3ada72e433b09ea300ac2f895b004952",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/frame_page.py": {
     "mtime": 1786563208.8790429,
@@ -4110,9 +4110,9 @@
     "semantic_hash": "15e5c25a15667f46df7f1359d10104b9"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/rows/power_row.py": {
-    "mtime": 1786563208.8799064,
-    "ast_hash": "99f44e2480c7f1ccfaeadc7316684963",
-    "semantic_hash": "99f44e2480c7f1ccfaeadc7316684963"
+    "mtime": 1787251963.088654,
+    "ast_hash": "ebaaed8f83f7cc2369a9e8485281a919",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/rows/__init__.py": {
     "mtime": 1786563208.8794572,
@@ -4125,9 +4125,9 @@
     "semantic_hash": "2420634c2a21461f670a4552b0393be3"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/rows/tab_power_row.py": {
-    "mtime": 1786563208.8800743,
-    "ast_hash": "bd804c07434271187bfdc69a427902a0",
-    "semantic_hash": "bd804c07434271187bfdc69a427902a0"
+    "mtime": 1787251963.0890815,
+    "ast_hash": "0aa035ca4324f5f6b853f07087d011c6",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/widgets/rows/air_assist_row.py": {
     "mtime": 1786563208.8795428,
@@ -4405,9 +4405,9 @@
     "semantic_hash": "6447c87bbcddc87a52d9af05dd6afb7d"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/cmd.py": {
-    "mtime": 1786563208.9602604,
-    "ast_hash": "6acb0bf9a0888da6fc4815c6cebf832f",
-    "semantic_hash": "6acb0bf9a0888da6fc4815c6cebf832f"
+    "mtime": 1787251767.8065312,
+    "ast_hash": "ca15d8220d4eadd3c7045ee50c0e3185",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/kinematics.py": {
     "mtime": 1786563208.9657614,
@@ -4490,9 +4490,9 @@
     "semantic_hash": "8aa24ceb44a11dab214ab7c46aa2788b"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/driver.py": {
-    "mtime": 1786563208.961127,
-    "ast_hash": "e4821c92342b5031906587afef1b2a91",
-    "semantic_hash": "e4821c92342b5031906587afef1b2a91"
+    "mtime": 1787251738.0453746,
+    "ast_hash": "d025bd12ca785cf623377f5d3783a2ca",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/dummy.py": {
     "mtime": 1786563208.9612563,
@@ -4560,8 +4560,8 @@
     "semantic_hash": "320cffa22fad6197edfcb6becc72c908"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_encoder.py": {
-    "mtime": 1786573442.2916362,
-    "ast_hash": "51b86010f0aee9d6a5d98a20d2a635d6",
+    "mtime": 1787184266.159095,
+    "ast_hash": "9029312d74ef47dfb1d74e729f129c3d",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_maps.py": {
@@ -4590,18 +4590,18 @@
     "semantic_hash": "f84e014b62a9d13f670e3737d301eade"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_util.py": {
-    "mtime": 1786563208.9650586,
-    "ast_hash": "9237ce05bdc5d13a1af7748bc96bd6d7",
-    "semantic_hash": "9237ce05bdc5d13a1af7748bc96bd6d7"
+    "mtime": 1787220509.3963475,
+    "ast_hash": "f3b7ce386f0a5d726c0f7424b25083ea",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_driver.py": {
-    "mtime": 1786573160.5651717,
-    "ast_hash": "4fc4cd44bdad127581391427085ebf19",
+    "mtime": 1787251762.4229693,
+    "ast_hash": "d6f40b30eba527fd56a7618891b46b0e",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_server.py": {
-    "mtime": 1786572900.9130747,
-    "ast_hash": "2097beb35ad7c9897b729752b9f0e91e",
+    "mtime": 1786732477.4458728,
+    "ast_hash": "2aafa81ed6cf55c8c00bfd0a56de5905",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_simulator.py": {
@@ -4610,8 +4610,8 @@
     "semantic_hash": "ae10c51760b7696d8c3135750e42d311"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/ruida/ruida_client.py": {
-    "mtime": 1786573207.115493,
-    "ast_hash": "9bf0e7e62a92033e4b7b979fb8be1761",
+    "mtime": 1787251560.040574,
+    "ast_hash": "d72aa120ca514ac0e18068cbf2a697d8",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/driver/octoprint/__init__.py": {
@@ -4795,9 +4795,9 @@
     "semantic_hash": "598486b18464cfd903b6caeea8e47cbf"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/device/lightburn_importer.py": {
-    "mtime": 1786563208.9605536,
-    "ast_hash": "afabb2dc1806b6587b48e72a5cf59d74",
-    "semantic_hash": "afabb2dc1806b6587b48e72a5cf59d74"
+    "mtime": 1787251879.5826948,
+    "ast_hash": "38f30a10ef290dbb93ab84f3c44d7b4a",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/machine/device/profile.py": {
     "mtime": 1786563208.9608357,
@@ -4880,9 +4880,9 @@
     "semantic_hash": "e37c7e3496445f41b1be1fa842125544"
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/doceditor/file_cmd.py": {
-    "mtime": 1786563208.9438624,
-    "ast_hash": "44281756a5edbe53d65dcebd141b37ed",
-    "semantic_hash": "44281756a5edbe53d65dcebd141b37ed"
+    "mtime": 1787177436.9302304,
+    "ast_hash": "94b38174fce06e087c7d98ef650bce66",
+    "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/doceditor/command_registry.py": {
     "mtime": 1786563208.943364,
@@ -5620,27 +5620,27 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-pyflakes-d0a66a65c7528968.json": {
-    "mtime": 1786573539.514536,
+    "mtime": 1787252884.68852,
     "ast_hash": "f88571186911ba56012d89045cd5798a",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-format-d0a66a65c7528968.json": {
-    "mtime": 1786573531.8980007,
+    "mtime": 1787252876.3032198,
     "ast_hash": "cc27487bbeb85cb68b5247f242dabbb2",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-rayforge-d0a66a65c7528968.json": {
-    "mtime": 1786563681.0464408,
+    "mtime": 1786705926.9091418,
     "ast_hash": "072d4c2871019daea6080ba958e78ede",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-ruff-d0a66a65c7528968.json": {
-    "mtime": 1786573531.9316416,
+    "mtime": 1787252876.3285494,
     "ast_hash": "a64c1647b15a712dbddefcb67f4d588d",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-flake-d0a66a65c7528968.json": {
-    "mtime": 1786573535.628256,
+    "mtime": 1787252880.7812834,
     "ast_hash": "1925566160d31a85c195c7d14b4c531b",
     "semantic_hash": ""
   },
@@ -6965,7 +6965,7 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/envs/default/bin/rayforge": {
-    "mtime": 1786563526.9635808,
+    "mtime": 1786732105.5772,
     "ast_hash": "ca69c55b32f22a4dfbc76f3c66bcc062",
     "semantic_hash": ""
   },
@@ -31825,8 +31825,8 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/shared/units/test_units.py": {
-    "mtime": 1786563209.1100419,
-    "ast_hash": "cb41e3571f1fa1c7325bc7d194db3db8",
+    "mtime": 1787252020.380483,
+    "ast_hash": "6e838884fd0445dda5767a5bbe328d6e",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/image/test_raster_renderer.py": {
@@ -31985,8 +31985,8 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/image/ruida/test_ruida_parser.py": {
-    "mtime": 1786563209.0910501,
-    "ast_hash": "ac5a5d2f008f125bd75b43d05f2ae2f2",
+    "mtime": 1787220634.8370028,
+    "ast_hash": "3754ae5601b05b0a2a047775adbcb0c7",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/image/dxf/test_dxf_exporter.py": {
@@ -32095,8 +32095,8 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/ui_gtk/machine/test_jog_direction.py": {
-    "mtime": 1786563209.1148086,
-    "ast_hash": "507f93a3fbd85d4c7702bc379d9d0ee3",
+    "mtime": 1787177588.5108123,
+    "ast_hash": "894c809b8d1866dd00179f4cbcef345c",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/ui_gtk/doceditor/test_unit_switch_repro.py": {
@@ -32445,13 +32445,13 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/test_ruida_client.py": {
-    "mtime": 1786563209.0988812,
-    "ast_hash": "c3b1e7fe3b7e679675a1a4da0af78c40",
+    "mtime": 1787252363.014011,
+    "ast_hash": "32ae1023cbf3ffae1732f458580bddc9",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/test_ruida_encoder.py": {
-    "mtime": 1786573491.0226288,
-    "ast_hash": "50d1172adae5947c5aa3938f694bfc48",
+    "mtime": 1787184389.0775099,
+    "ast_hash": "4c3619bac22b9266f1a0fe9ddd94358d",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/test_ruida_server.py": {
@@ -32470,13 +32470,13 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/test_ruida_driver.py": {
-    "mtime": 1786573334.0594587,
-    "ast_hash": "048dcd3a05a3bbe926608d1dc3b1a124",
+    "mtime": 1787252069.2800136,
+    "ast_hash": "ee15457d6423a44365c5f92b071dca4f",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/test_ruida_util.py": {
-    "mtime": 1786563209.0997734,
-    "ast_hash": "3e473b689e4e1f81d4bfdca36089e40d",
+    "mtime": 1787220643.1398966,
+    "ast_hash": "577f2aad9549749fd32ccf42af2af97d",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/client_app.py": {
@@ -32625,8 +32625,8 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/device/test_lbdev_importer.py": {
-    "mtime": 1786563209.0968828,
-    "ast_hash": "979f7abf0d16dd59bea9cd671b4ca25a",
+    "mtime": 1787252141.9308622,
+    "ast_hash": "69adaa65a50801a1857afb39733e485c",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/device/test_device_profile.py": {
@@ -33155,8 +33155,8 @@
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/CLAUDE.md": {
-    "mtime": 1786563327.4065204,
-    "ast_hash": "e2bc4aa3d584ea3c6121404607b2fac1",
+    "mtime": 1786618389.8225121,
+    "ast_hash": "450d34eb829d543d4a7b6ec3a7c093b4",
     "semantic_hash": ""
   },
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/envs/default/etc/conda/test-files/zstd/1/cf_test/CMakeLists.txt": {
@@ -43727,6 +43727,51 @@
   "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/resources/icons/step-frame-symbolic.svg": {
     "mtime": 1786563208.877379,
     "ast_hash": "b4047b599c1d4ae39c1e9c07a42892df",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-test-3373f9b28d226de0.json": {
+    "mtime": 1786732198.6964004,
+    "ast_hash": "c2da65c32d71cd54e46436497ef196be",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-test-e852bb30c2410079.json": {
+    "mtime": 1786732620.6179502,
+    "ast_hash": "71b6db496bf8f34f04894aaf212a020c",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-test-d0a66a65c7528968.json": {
+    "mtime": 1787253023.2263036,
+    "ast_hash": "8638593fcb6ab4156d42768ed17565f9",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/machine/driver/ruida/send_fixture_test.py": {
+    "mtime": 1787178341.1278024,
+    "ast_hash": "59da905ea0ffe0bcdc39e00232dad081",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-test-553cf4837f94bb1b.json": {
+    "mtime": 1787220739.844976,
+    "ast_hash": "c7d334e6c76f94b20befa87f8fb033b9",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-test-f565a2cbb243fe48.json": {
+    "mtime": 1787220749.4930158,
+    "ast_hash": "8287b696fc413a09f369df02a935b0a6",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/.pixi/task-cache-v0/default-uitest-d0a66a65c7528968.json": {
+    "mtime": 1787253041.912923,
+    "ast_hash": "4c1b9fa0b59b77fd6ee5ceeb5e6a2e3c",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/shared/units/test_speed_display_units.py": {
+    "mtime": 1787252265.7316625,
+    "ast_hash": "ec0299f1eaeb69b0669d7124733bc5c2",
+    "semantic_hash": ""
+  },
+  "/Users/martin_calderon/Library/CloudStorage/OneDrive-NordAngliaEducation-TheAmericas/NAE - Files/Desktop/Rayforge/tests/ui_gtk/machine/test_jog_widget_origin.py": {
+    "mtime": 1787252872.6905303,
+    "ast_hash": "02b810a475c76a61e570e07f2aaf257f",
     "semantic_hash": ""
   }
 }

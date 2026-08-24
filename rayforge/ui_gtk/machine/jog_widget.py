@@ -7,11 +7,10 @@ from ...machine.cmd import MachineCmd
 from ...machine.models.machine import JogDirection, Machine
 from ...shared.units.definitions import Unit, get_unit
 from ..icons import get_icon
+from .cut_scale_dialog import CutScaleDialog
 
-# The jog spin button is a plain SpinButton (not a unit-aware pref row),
-# so it pins the display unit the rest of the speed UI defaults to.
+# The widget carries its jog speed in mm/s; drivers take base units.
 _JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
-_JOG_SPEED_UNIT_LABEL = _JOG_SPEED_UNIT.label
 
 # The hold jog speed is driver state, so it is pushed when the control
 # settles rather than on every keystroke.
@@ -53,7 +52,7 @@ class JogWidget(Gtk.Widget):
         self.jog_speed = 100  # mm/s
         self.jog_distance = 10.0
         self._buttons = []
-        self._framing = False
+        self._scaling = False
         self._keys_down: set[tuple[str, int]] = set()
         self._button_directions: dict[
             Gtk.Button, tuple[JogDirection, ...]
@@ -113,13 +112,11 @@ class JogWidget(Gtk.Widget):
         self._attach_hold(self.west_btn, JogDirection.WEST)
         self._jog_grid.attach(self.west_btn, 0, 1, 1, 1)
 
-        self.origin_btn = create_button(
-            "zero-here-symbolic",
-            _("Set job origin to current position"),
-            label=_("Origin"),
+        self.home_all_btn = create_button(
+            "home-symbolic", _("Home machine"), label=_("Home")
         )
-        self.origin_btn.connect("clicked", self._on_origin_clicked)
-        self._jog_grid.attach(self.origin_btn, 1, 1, 1, 1)
+        self.home_all_btn.connect("clicked", self._on_home_all_clicked)
+        self._jog_grid.attach(self.home_all_btn, 1, 1, 1, 1)
 
         self.east_btn = create_button(
             "arrow-east-symbolic", _("Move East (Right)")
@@ -148,60 +145,77 @@ class JogWidget(Gtk.Widget):
         )
         self._jog_grid.attach(self.south_east_btn, 2, 2, 1, 1)
 
-        # Row 3: Frame. Homing stays reachable from the action column.
-        self.frame_btn = create_button(
+        # Row 3: the two scale actions, side by side.
+        self.go_scale_btn = create_button(
             "frame-symbolic",
-            _("Trace job outline with the pointer"),
-            label=_("Frame"),
+            _("Traverse the job outline with the laser off"),
+            label=_("Go Scale"),
         )
-        self._frame_caption = self._button_caption(self.frame_btn)
-        self.frame_btn.connect("clicked", self._on_frame_clicked)
-        self._jog_grid.attach(self.frame_btn, 0, 3, 3, 1)
+        self._go_scale_caption = self._button_caption(self.go_scale_btn)
+        self.go_scale_btn.connect("clicked", self._on_go_scale_clicked)
 
-        # Row 4: jog speed (mm/s)
-        adjustment = Gtk.Adjustment(
-            value=self.jog_speed,
-            lower=1,
-            upper=1000,
-            step_increment=1,
-            page_increment=10,
+        self.cut_scale_btn = create_button(
+            "frame-symbolic",
+            _("Cut a rectangle around the job outline"),
+            label=_("Cut Scale"),
         )
-        self.speed_spin = Gtk.SpinButton(adjustment=adjustment)
-        self.speed_spin.set_tooltip_text(
-            _("Jog speed in {unit}").format(unit=_JOG_SPEED_UNIT_LABEL)
+        self.cut_scale_btn.connect("clicked", self._on_cut_scale_clicked)
+
+        scale_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=_SPACING
         )
-        self.speed_spin.set_valign(Gtk.Align.CENTER)
-        self.speed_spin.connect("value-changed", self._on_jog_speed_changed)
-        self._jog_grid.attach(self.speed_spin, 0, 4, 3, 1)
+        scale_box.set_homogeneous(True)
+        scale_box.append(self.go_scale_btn)
+        scale_box.append(self.cut_scale_btn)
+        self._jog_grid.attach(scale_box, 0, 3, 3, 1)
+
+        # Row 4: position readout, with Set origin as a small aside.
+        self.position_label = Gtk.Label(label=self._format_position(None))
+        self.position_label.add_css_class("numeric")
+        self.position_label.set_halign(Gtk.Align.START)
+        self.position_label.set_hexpand(True)
+
+        self.origin_btn = Gtk.Button(label=_("Set origin"))
+        self.origin_btn.add_css_class("flat")
+        self.origin_btn.set_tooltip_text(
+            _("Set job origin to current position")
+        )
+        self.origin_btn.connect("clicked", self._on_origin_clicked)
+
+        status_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=_SPACING
+        )
+        status_box.set_valign(Gtk.Align.CENTER)
+        status_box.append(self.position_label)
+        status_box.append(self.origin_btn)
+        self._jog_grid.attach(status_box, 0, 4, 3, 1)
 
         # Action column (separate grid for extra gap)
-        self.send_btn = create_button("send-symbolic", _("Send to machine"))
-        self.send_btn.add_css_class("suggested-action")
-        self.send_btn.connect("clicked", self._on_send_clicked)
-        self._action_grid.attach(self.send_btn, 0, 0, 1, 1)
+        self.start_btn = create_button("send-symbolic", _("Start job"))
+        self.start_btn.add_css_class("suggested-action")
+        self.start_btn.connect("clicked", self._on_start_clicked)
+        self._action_grid.attach(self.start_btn, 0, 0, 1, 1)
+
+        self.pause_btn = create_button("pause-symbolic", _("Pause job"))
+        self.pause_btn.connect("clicked", self._on_pause_clicked)
+        self._action_grid.attach(self.pause_btn, 0, 1, 1, 1)
+
+        self.stop_btn = create_button("stop-symbolic", _("Stop job"))
+        self.stop_btn.add_css_class("destructive-action")
+        self.stop_btn.connect("clicked", self._on_stop_clicked)
+        self._action_grid.attach(self.stop_btn, 0, 2, 1, 1)
 
         self.z_plus_btn = create_button(
             "arrow-z-up-symbolic", _("Increase Z-Distance")
         )
         self._attach_hold(self.z_plus_btn, JogDirection.UP)
-        self._action_grid.attach(self.z_plus_btn, 0, 1, 1, 1)
+        self._action_grid.attach(self.z_plus_btn, 0, 3, 1, 1)
 
         self.z_minus_btn = create_button(
             "arrow-z-down-symbolic", _("Decrease Z-Distance")
         )
         self._attach_hold(self.z_minus_btn, JogDirection.DOWN)
-        self._action_grid.attach(self.z_minus_btn, 0, 2, 1, 1)
-
-        self.cancel_btn = create_button(
-            "stop-symbolic", _("Cancel running job")
-        )
-        self.cancel_btn.add_css_class("destructive-action")
-        self.cancel_btn.connect("clicked", self._on_cancel_clicked)
-        self._action_grid.attach(self.cancel_btn, 0, 3, 1, 1)
-
-        self.home_all_btn = create_button("home-symbolic", _("Home machine"))
-        self.home_all_btn.connect("clicked", self._on_home_all_clicked)
-        self._action_grid.attach(self.home_all_btn, 0, 4, 1, 1)
+        self._action_grid.attach(self.z_minus_btn, 0, 4, 1, 1)
 
         key_controller = Gtk.EventControllerKey()
         key_controller.connect("key-pressed", self._on_key_pressed)
@@ -324,6 +338,7 @@ class JogWidget(Gtk.Widget):
 
         self._update_button_sensitivity()
         self._update_limit_status()
+        self._update_position()
 
     def _on_machine_changed(self, sender, **kwargs):
         self._update_button_sensitivity()
@@ -364,10 +379,12 @@ class JogWidget(Gtk.Widget):
         self.z_plus_btn.set_sensitive(False)
         self.z_minus_btn.set_sensitive(False)
         self.home_all_btn.set_sensitive(False)
-        self.frame_btn.set_sensitive(False)
+        self.go_scale_btn.set_sensitive(False)
+        self.cut_scale_btn.set_sensitive(False)
         self.origin_btn.set_sensitive(False)
-        self.send_btn.set_sensitive(False)
-        self.cancel_btn.set_sensitive(False)
+        self.start_btn.set_sensitive(False)
+        self.pause_btn.set_sensitive(False)
+        self.stop_btn.set_sensitive(False)
 
         # Only enable buttons if machine exists, is connected
         if self.machine is None or not self.machine.is_connected():
@@ -401,15 +418,16 @@ class JogWidget(Gtk.Widget):
 
         self.home_all_btn.set_sensitive(True)
 
-        # Origin and Frame are driver-specific; only offer them where
-        # they are supported.
+        # Setting the origin is driver-specific; only offer it where it
+        # is supported.
         driver = machine.driver
         self.origin_btn.set_sensitive(bool(driver) and driver.can_set_origin())
-        self._update_frame_button()
+        self._update_scale_buttons()
 
-        # Send and Cancel buttons - always enabled when connected
-        self.send_btn.set_sensitive(True)
-        self.cancel_btn.set_sensitive(True)
+        # Job controls - always enabled when connected
+        self.start_btn.set_sensitive(True)
+        self.pause_btn.set_sensitive(True)
+        self.stop_btn.set_sensitive(True)
 
         self._update_limit_status()
 
@@ -581,9 +599,9 @@ class JogWidget(Gtk.Widget):
         if not root.is_active():
             self._release_all_jog_keys()
 
-    def _on_jog_speed_changed(self, spin):
-        """Handle jog speed spin button changes (mm/s)."""
-        self.jog_speed = int(spin.get_value())
+    def set_jog_speed(self, speed_mm_s: int):
+        """Set the jog speed in mm/s and push it to the driver."""
+        self.jog_speed = int(speed_mm_s)
         if self._jog_speed_timeout_id is not None:
             GLib.source_remove(self._jog_speed_timeout_id)
         self._jog_speed_timeout_id = GLib.timeout_add(
@@ -600,9 +618,25 @@ class JogWidget(Gtk.Widget):
             )
         return GLib.SOURCE_REMOVE
 
+    @staticmethod
+    def _format_position(pos) -> str:
+        """Render a machine position, or dashes where it is unknown."""
+
+        def axis(value) -> str:
+            return "—" if value is None else f"{value:.1f}"
+
+        x, y = (pos[0], pos[1]) if pos else (None, None)
+        return f"X {axis(x)}  Y {axis(y)}"
+
+    def _update_position(self):
+        """Show the last polled machine position."""
+        pos = self.machine.device_state.machine_pos if self.machine else None
+        self.position_label.set_label(self._format_position(pos))
+
     def _on_machine_state_changed(self, machine, state):
         """Handle machine state changes to update limit status."""
         self._update_limit_status()
+        self._update_position()
 
     def _on_connection_status_changed(self, sender, **kwargs):
         """Handle connection status changes to update button sensitivity."""
@@ -676,55 +710,80 @@ class JogWidget(Gtk.Widget):
         """Handle Left-Toward diagonal button click."""
         self._perform_visual_jog(JogDirection.WEST, JogDirection.SOUTH)
 
-    def _can_trace_frame(self) -> bool:
-        """Whether an outline trace could be started right now."""
+    def _can_run_scale(self) -> bool:
+        """Whether a scale run could be started right now."""
         if not self.machine or not self.machine.is_connected():
             return False
-        if not self.machine_cmd or not self.machine_cmd.has_job_ops:
-            return False
-        driver = self.machine.driver
-        return bool(driver) and driver.can_trace_frame()
+        return bool(self.machine_cmd and self.machine_cmd.has_job_ops)
 
-    def _update_frame_button(self):
-        """Reflect framing state in the Frame button."""
-        if self._framing:
-            self._frame_caption.set_label(_("Stop"))
-            self.frame_btn.set_tooltip_text(_("Stop tracing the outline"))
-            self.frame_btn.add_css_class("destructive-action")
-            self.frame_btn.set_sensitive(True)
+    def _update_scale_buttons(self):
+        """Reflect the running state in the two scale buttons."""
+        if self._scaling:
+            self._go_scale_caption.set_label(_("Stop"))
+            self.go_scale_btn.set_tooltip_text(_("Stop the running scale"))
+            self.go_scale_btn.add_css_class("destructive-action")
+            self.go_scale_btn.set_sensitive(True)
+            self.cut_scale_btn.set_sensitive(False)
             return
 
-        self._frame_caption.set_label(_("Frame"))
-        self.frame_btn.set_tooltip_text(
-            _("Trace job outline with the pointer")
+        self._go_scale_caption.set_label(_("Go Scale"))
+        self.go_scale_btn.set_tooltip_text(
+            _("Traverse the job outline with the laser off")
         )
-        self.frame_btn.remove_css_class("destructive-action")
-        self.frame_btn.set_sensitive(self._can_trace_frame())
+        self.go_scale_btn.remove_css_class("destructive-action")
+        can_run = self._can_run_scale()
+        self.go_scale_btn.set_sensitive(can_run)
+        self.cut_scale_btn.set_sensitive(can_run)
 
-    def _on_frame_clicked(self, button):
-        """Handle Frame button click: start, or stop while running."""
+    def _on_go_scale_clicked(self, button):
+        """Handle Go Scale: start, or stop while running."""
         if not self.machine or not self.machine_cmd:
             return
 
-        if self._framing:
-            self.machine_cmd.cancel_frame(self.machine)
+        if self._scaling:
+            self.machine_cmd.cancel_job(self.machine)
             return
 
-        self._framing = True
-        self._update_frame_button()
-        self.machine_cmd.trace_frame(self.machine, on_done=self._on_frame_done)
+        self._scaling = True
+        self._update_scale_buttons()
+        self.machine_cmd.run_go_scale(
+            self.machine, on_done=self._on_scale_done
+        )
 
-    def _on_frame_done(self):
-        """The outline trace finished, was cancelled, or failed."""
-        self._framing = False
-        self._update_frame_button()
+    def _on_cut_scale_clicked(self, button):
+        """Handle Cut Scale: ask for speed and power, then cut."""
+        if not self.machine or not self.machine_cmd or self._scaling:
+            return
+
+        machine = self.machine
+        machine_cmd = self.machine_cmd
+
+        def confirm(speed: int, power: float):
+            self._scaling = True
+            self._update_scale_buttons()
+            machine_cmd.run_cut_scale(
+                machine, speed, power, on_done=self._on_scale_done
+            )
+
+        dialog = CutScaleDialog(
+            machine_cmd.first_layer_power() * 100.0, confirm
+        )
+        root = self.get_root()
+        if isinstance(root, Gtk.Window):
+            dialog.set_transient_for(root)
+        dialog.present()
+
+    def _on_scale_done(self):
+        """The scale run finished, was cancelled, or failed."""
+        self._scaling = False
+        self._update_scale_buttons()
 
     def _on_document_settled(self, sender, **kwargs):
-        """A document with no ops has no outline to trace."""
-        self._update_frame_button()
+        """A document with no ops has no outline to scale."""
+        self._update_scale_buttons()
 
     def _on_origin_clicked(self, button):
-        """Handle Origin button click."""
+        """Handle Set origin button click."""
         if self.machine and self.machine_cmd:
             self.machine_cmd.set_origin(self.machine)
 
@@ -733,13 +792,18 @@ class JogWidget(Gtk.Widget):
         if self.machine and self.machine_cmd:
             self.machine_cmd.home(self.machine)
 
-    def _on_send_clicked(self, button):
-        """Handle Send button click."""
+    def _on_start_clicked(self, button):
+        """Handle Start button click."""
         if self.machine and self.machine_cmd:
             self.machine_cmd.run_send_job(self.machine)
 
-    def _on_cancel_clicked(self, button):
-        """Handle Cancel button click."""
+    def _on_pause_clicked(self, button):
+        """Handle Pause button click."""
+        if self.machine and self.machine_cmd:
+            self.machine_cmd.set_hold(self.machine, True)
+
+    def _on_stop_clicked(self, button):
+        """Handle Stop button click."""
         if self.machine and self.machine_cmd:
             self.machine_cmd.cancel_job(self.machine)
 
