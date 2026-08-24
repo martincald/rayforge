@@ -31,6 +31,9 @@ class LaserStep(Step):
 
     def __init__(self, typelabel, name=None):
         self.power: float = 1.0
+        # None means "follow Max Power", so a subclass that sets its own
+        # default power does not end up with a floor above its ceiling.
+        self._min_power: float | None = None
         self.max_power: int = 1000
         self.air_assist: bool = False
         self.tab_power: float = 0.0
@@ -46,8 +49,21 @@ class LaserStep(Step):
                     description=_("Optionally force a specific laser head")
                 ),
                 SliderFloatVar(
+                    key="min_power",
+                    label=_("Min Power"),
+                    description=_(
+                        "Power floor the controller applies below its "
+                        "start speed. Equal to Max Power by default."
+                    ),
+                    default=0.8,
+                    min_val=0.0,
+                    max_val=1.0,
+                    show_value=True,
+                    format_suffix="%",
+                ),
+                SliderFloatVar(
                     key="power",
-                    label=_("Power"),
+                    label=_("Max Power"),
                     default=0.8,
                     min_val=0.0,
                     max_val=1.0,
@@ -120,6 +136,7 @@ class LaserStep(Step):
         """
         return {
             "power": self.power,
+            "min_power": self.min_power,
             "cut_speed": self.cut_speed,
             "travel_speed": self.travel_speed,
             "air_assist": self.air_assist,
@@ -136,12 +153,18 @@ class LaserStep(Step):
         power = settings.get("power")
         if power is not None:
             self.set_power(power)
+        min_power = settings.get("min_power")
+        if min_power is not None:
+            self.set_min_power(min_power)
+        elif power is not None:
+            self.set_min_power(power)
 
     def get_cache_params(self) -> dict[str, Any]:
         params = super().get_cache_params()
         params.update(
             {
                 "power": self.power,
+                "min_power": self.min_power,
                 "max_power": self.max_power,
                 "air_assist": self.air_assist,
                 "tab_power": self.tab_power,
@@ -158,11 +181,34 @@ class LaserStep(Step):
             return head
         return None
 
+    @property
+    def min_power(self) -> float:
+        """Power floor, normalized 0-1.
+
+        RDWorks-style controllers apply it below their start speed.
+        Follows Max Power until it is set explicitly, and never rises
+        above it.
+        """
+        if self._min_power is None:
+            return self.power
+        return min(self._min_power, self.power)
+
+    @min_power.setter
+    def min_power(self, power: float | None) -> None:
+        self._min_power = None if power is None else float(power)
+
     def set_power(self, power: float):
         if not (0.0 <= power <= 1.0):
             raise ValueError("Power must be between 0.0 and 1.0")
         if self.power != power:
             self.power = power
+            self.updated.send(self)
+
+    def set_min_power(self, power: float):
+        if not (0.0 <= power <= 1.0):
+            raise ValueError("Min power must be between 0.0 and 1.0")
+        if self.min_power != power:
+            self.min_power = power
             self.updated.send(self)
 
     def set_air_assist(self, enabled: bool):
@@ -205,6 +251,7 @@ class LaserStep(Step):
         result.update(
             {
                 "power": self.power,
+                "min_power": self.min_power,
                 "max_power": self.max_power,
                 "air_assist": self.air_assist,
                 "tab_power": self.tab_power,
@@ -218,6 +265,9 @@ class LaserStep(Step):
     def from_dict(cls, data: dict[str, Any]) -> "LaserStep":
         step = cast("LaserStep", super().from_dict(data))
         step.power = data.get("power", step.power)
+        # Documents written before Min Power existed cut at one power,
+        # which is min == max.
+        step.min_power = data.get("min_power", step.power)
         step.max_power = data.get("max_power", step.max_power)
         step.air_assist = data.get("air_assist", step.air_assist)
         step.tab_power = data.get("tab_power", step.tab_power)
@@ -230,6 +280,7 @@ class LaserStep(Step):
         return super()._serialized_keys() | frozenset(
             {
                 "power",
+                "min_power",
                 "max_power",
                 "air_assist",
                 "tab_power",

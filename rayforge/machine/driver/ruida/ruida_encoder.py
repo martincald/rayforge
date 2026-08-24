@@ -120,11 +120,13 @@ class RuidaEncoder(OpsEncoder):
         self.current_pos: Point3D = (0.0, 0.0, 0.0)
         self.active_laser: int = 1
         self.origin_um: tuple[int, int] = (0, 0)
+        self._doc: Doc | None = None
         self._layers: list[dict] = []
         self._part: int = -1
         self._laser_selected: int | None = None
         self._last_pos_um: tuple[int, int] | None = None
         self._imd_power: int | None = None
+        self._min_power: float | None = None
 
     def encode(
         self, ops: Ops, machine: "Machine", doc: "Doc"
@@ -142,6 +144,7 @@ class RuidaEncoder(OpsEncoder):
             driver_data["commands"], text representation, and op_map
         """
         self._reset_state()
+        self._doc = doc
 
         binary_chunks: list[bytes] = []
         text_lines: list[str] = []
@@ -171,18 +174,31 @@ class RuidaEncoder(OpsEncoder):
 
     def _reset_state(self) -> None:
         """Reset encoder state for a new encoding pass."""
+        self.current_pos = (0.0, 0.0, 0.0)
+        self.active_laser = 1
+        self.origin_um = (0, 0)
+        self._doc = None
+        self._layers = []
+        self._part = -1
+        self._reset_emission_state()
+
+    def _reset_emission_state(self) -> None:
+        """
+        Forget everything the encoder remembers having emitted.
+
+        Every one of these fields suppresses a command when it already
+        matches, so a stale value silently drops a command a layer
+        needs. Cleared at the start of each layer, so no setting can
+        bleed from the layer before it.
+        """
         self.power = None
         self.cut_speed = None
         self.travel_speed = None
         self.air_assist = False
-        self.current_pos = (0.0, 0.0, 0.0)
-        self.active_laser = 1
-        self.origin_um = (0, 0)
-        self._layers = []
-        self._part = -1
         self._laser_selected = None
         self._last_pos_um = None
         self._imd_power = None
+        self._min_power = None
 
     def _mm_to_um(self, mm: float) -> int:
         """Convert millimeters to micrometers."""
@@ -269,7 +285,8 @@ class RuidaEncoder(OpsEncoder):
             text.append(f"POWER {power_percent:.1f}")
             return
         self.power = power
-        power14 = encode14(self._power_to_ruida(power))
+        min14 = encode14(self._power_to_ruida(self._min_power_for(power)))
+        max14 = encode14(self._power_to_ruida(power))
 
         laser_cmds = {
             1: (b"\xc6\x01", b"\xc6\x02"),
@@ -278,9 +295,45 @@ class RuidaEncoder(OpsEncoder):
             4: (b"\xc6\x07", b"\xc6\x08"),
         }
         min_cmd, max_cmd = laser_cmds.get(self.active_laser, laser_cmds[1])
-        binary.append(min_cmd + power14)
-        binary.append(max_cmd + power14)
+        binary.append(min_cmd + min14)
+        binary.append(max_cmd + max14)
         text.append(f"POWER {power_percent:.1f}")
+
+    def _min_power_for(self, max_power: float) -> float:
+        """
+        The floor to pair with a max power, never above it.
+
+        Falls back to the max power, which is what the reference file
+        emits and what a document without the field means.
+        """
+        if self._min_power is None:
+            return max_power
+        return min(self._min_power, max_power)
+
+    def _layer_min_power(self, uid: str | None, max_power: float) -> float:
+        """
+        The Min Power configured for a layer, normalized 0-1.
+
+        The controller applies Min Power below its start speed, so a
+        floor left at zero never fires the tube on a slow cut. Ops carry
+        a single power channel, so the floor is read from the document
+        by layer uid. Layers with no configured floor - and jobs the
+        document knows nothing about - fall back to min == max.
+        """
+        if uid is None or self._doc is None:
+            return max_power
+        for layer in self._doc.layers:
+            if layer.uid != uid:
+                continue
+            workflow = layer.workflow
+            if workflow is None:
+                break
+            for step in workflow.steps:
+                min_power = getattr(step, "min_power", None)
+                if min_power is not None:
+                    return min(float(min_power), max_power)
+            break
+        return max_power
 
     def _handle_set_cut_speed(
         self,
@@ -621,6 +674,7 @@ class RuidaEncoder(OpsEncoder):
             ct = ops.command_type(i)
             if ct == CommandType.LAYER_START:
                 current = {
+                    "uid": ops.layer_uid(i),
                     "speed": cur_speed,
                     "power": cur_power,
                     "air": cur_air,
@@ -666,6 +720,7 @@ class RuidaEncoder(OpsEncoder):
         if not layers:
             layers.append(
                 {
+                    "uid": None,
                     "speed": cur_speed,
                     "power": cur_power,
                     "air": cur_air,
@@ -685,10 +740,12 @@ class RuidaEncoder(OpsEncoder):
                     self._mm_to_um(lb[2]) - ox,
                     self._mm_to_um(lb[3]) - oy,
                 )
+            power = layer["power"] or 0.0
             result.append(
                 {
                     "speed": layer["speed"] or 0.0,
-                    "power": layer["power"] or 0.0,
+                    "power": power,
+                    "min_power": self._layer_min_power(layer["uid"], power),
                     "air": layer["air"],
                     "bounds": layer_bounds,
                 }
@@ -753,15 +810,16 @@ class RuidaEncoder(OpsEncoder):
         for part, layer in enumerate(layers):
             part_b = bytes([part])
             speed_um = self._speed_to_um_s(layer["speed"])
-            power14 = encode14(self._power_to_ruida(layer["power"]))
+            min14 = encode14(self._power_to_ruida(layer["min_power"]))
+            max14 = encode14(self._power_to_ruida(layer["power"]))
             lmin_x, lmin_y, lmax_x, lmax_y = layer["bounds"]
             binary.append(b"\xc9\x04" + part_b + encode35(speed_um))
             if self.follow_reference:
                 binary.append(b"\xc6\x65" + part_b + _REF_C6_65_VALUE)
-            binary.append(b"\xc6\x31" + part_b + power14)
-            binary.append(b"\xc6\x32" + part_b + power14)
-            binary.append(b"\xc6\x41" + part_b + power14)
-            binary.append(b"\xc6\x42" + part_b + power14)
+            binary.append(b"\xc6\x31" + part_b + min14)
+            binary.append(b"\xc6\x32" + part_b + max14)
+            binary.append(b"\xc6\x41" + part_b + min14)
+            binary.append(b"\xc6\x42" + part_b + max14)
             binary.append(b"\xca\x06" + part_b + z5)
             if self.follow_reference:
                 binary.append(b"\xca\x41" + part_b + b"\x00")
@@ -860,10 +918,21 @@ class RuidaEncoder(OpsEncoder):
         if part < len(self._layers):
             layer = self._layers[part]
         else:
-            layer = {"speed": 0.0, "power": 0.0, "air": False}
+            layer = {
+                "speed": 0.0,
+                "power": 0.0,
+                "min_power": 0.0,
+                "air": False,
+            }
         part_b = bytes([part & 0xFF])
         speed_um = self._speed_to_um_s(layer["speed"])
-        power14 = encode14(self._power_to_ruida(layer["power"]))
+        min14 = encode14(self._power_to_ruida(layer["min_power"]))
+        max14 = encode14(self._power_to_ruida(layer["power"]))
+
+        # The block below restates every setting this layer needs, so
+        # nothing may still be suppressed by what the previous layer
+        # emitted.
+        self._reset_emission_state()
 
         binary.append(b"\xca\x01\x00")
         binary.append(b"\xca\x02" + part_b)
@@ -877,21 +946,20 @@ class RuidaEncoder(OpsEncoder):
         binary.append(b"\xc6\x13" + encode35(0))
         binary.append(b"\xc6\x50" + encode14(0x1FFF))
         binary.append(b"\xc6\x51" + encode14(0x1FFF))
-        binary.append(b"\xc6\x01" + power14)
-        binary.append(b"\xc6\x02" + power14)
-        binary.append(b"\xc6\x21" + power14)
-        binary.append(b"\xc6\x22" + power14)
+        binary.append(b"\xc6\x01" + min14)
+        binary.append(b"\xc6\x02" + max14)
+        binary.append(b"\xc6\x21" + min14)
+        binary.append(b"\xc6\x22" + max14)
         binary.append(_REF_CA_03)
         binary.append(b"\xca\x10" + bytes([self.active_laser - 1]))
 
+        # Record what the block just emitted, so the layer body only
+        # repeats a setting when it actually changes.
         self.cut_speed = layer["speed"]
         self.power = layer["power"]
+        self._min_power = layer["min_power"]
         self.air_assist = layer["air"]
         self._laser_selected = self.active_laser
-        # Layer boundary: first motion of a layer must be absolute
-        # and immediate power must be re-emitted.
-        self._last_pos_um = None
-        self._imd_power = None
         text.append(f"; --- Layer {uid[:8]} ---")
 
     def _handle_layer_end(

@@ -73,6 +73,50 @@ def test_laser_step_serialization_roundtrip():
     assert r.pulse_width == 100
 
 
+def test_min_power_defaults_to_max_power():
+    """A fresh step cuts at one power, which is min == max."""
+    s = ContourStep(name="t")
+
+    assert s.min_power == s.power
+
+
+def test_min_power_survives_a_serialization_roundtrip():
+    s = ContourStep(name="t")
+    s.power = 0.6
+    s.min_power = 0.15
+
+    r = Step.from_dict(s.to_dict())
+
+    assert type(r) is ContourStep
+    assert r.min_power == 0.15
+    assert r.power == 0.6
+
+
+def test_document_without_min_power_gets_min_equal_to_max():
+    """Documents written before Min Power existed keep cutting the
+    same."""
+    s = ContourStep(name="t")
+    s.power = 0.6
+    data = s.to_dict()
+    del data["min_power"]
+
+    r = Step.from_dict(data)
+
+    assert type(r) is ContourStep
+    assert r.min_power == 0.6
+
+
+def test_set_min_power_rejects_out_of_range():
+    s = ContourStep(name="t")
+
+    with pytest.raises(ValueError):
+        s.set_min_power(1.5)
+
+
+def test_min_power_is_a_recipe_key():
+    assert "min_power" in ContourStep.recipe_keys()
+
+
 def test_laser_step_summary():
     s = ContourStep(name="t")
     assert "% power" in s.get_summary()
