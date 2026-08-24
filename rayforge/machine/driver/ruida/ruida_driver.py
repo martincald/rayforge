@@ -84,6 +84,12 @@ class RuidaDriver(Driver):
     FRAME_POLL_INTERVAL = 0.2
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
+    # Press-and-hold jog: the keypad stream does not move this
+    # controller, so a hold is a stream of short interactive D9 moves.
+    JOG_TICK_INTERVAL = 0.15
+    JOG_STEP_LEAD = 1.2
+    JOG_STEP_MIN_MM = 0.5
+    JOG_STEP_MAX_MM = 5.0
 
     def __init__(self, context: RayforgeContext, machine: "Machine"):
         super().__init__(context, machine)
@@ -103,6 +109,8 @@ class RuidaDriver(Driver):
         self._last_known_pos: tuple[int, int] | None = None
         self._origin_pos: tuple[int, int] | None = None
         self._jog_keys_down: set[tuple[str, int]] = set()
+        self._jog_task: asyncio.Task | None = None
+        self._jog_speed_mm_min = self.DEFAULT_TRAVEL_SPEED
         self._frame_cancelled = False
 
     @property
@@ -784,40 +792,92 @@ class RuidaDriver(Driver):
             return
         self._jog_keys_down.add(key)
         logger.debug(f"Jog key down: {key[0]}{direction:+d}")
-        await self._client.press_jog_key(*key)
+        if self._jog_task is None or self._jog_task.done():
+            self._jog_task = asyncio.create_task(self._run_hold_jog())
 
     async def jog_key_up(self, axis: str, direction: int) -> None:
-        assert self._client
         key = (axis.lower(), direction)
         self._jog_keys_down.discard(key)
         logger.debug(f"Jog key up: {key[0]}{direction:+d}")
-        # Sent even when the key was not tracked: an extra key-up is
-        # harmless, a missed one leaves the head moving.
-        await self._client.release_jog_key(*key)
+        if not self._jog_keys_down:
+            self._cancel_hold_jog()
 
     async def release_all_jog_keys(self) -> None:
         keys = sorted(self._jog_keys_down)
         self._jog_keys_down.clear()
-        if not keys or not self._client:
-            return
-        logger.info(
-            f"Releasing {len(keys)} held jog key(s)",
-            extra=self._log_extra("MACHINE_EVENT"),
-        )
-        for axis, direction in keys:
-            try:
-                await self._client.release_jog_key(axis, direction)
-            except (OSError, RuntimeError) as e:
-                logger.warning(f"Could not release jog key {axis}: {e}")
+        self._cancel_hold_jog()
+        if keys:
+            logger.info(
+                f"Releasing {len(keys)} held jog key(s)",
+                extra=self._log_extra("MACHINE_EVENT"),
+            )
+
+    def _cancel_hold_jog(self) -> None:
+        """
+        Stop the repeat task at once.
+
+        Steps already handed to the controller still run; the overrun
+        is bounded by the tick interval.
+        """
+        task, self._jog_task = self._jog_task, None
+        if task is not None and not task.done():
+            task.cancel()
+
+    def _hold_jog_step_um(self) -> int:
+        """
+        Distance one hold-jog tick travels, in micrometers.
+
+        Sized just beyond what the head covers in a tick so successive
+        steps run into each other instead of stuttering, and clamped so
+        a slow speed still moves and a fast one cannot bolt.
+        """
+        speed_mm_s = self._jog_speed_mm_min / 60.0
+        step_mm = speed_mm_s * self.JOG_TICK_INTERVAL * self.JOG_STEP_LEAD
+        step_mm = min(max(step_mm, self.JOG_STEP_MIN_MM), self.JOG_STEP_MAX_MM)
+        return round(step_mm * 1000)
+
+    async def _run_hold_jog(self) -> None:
+        """
+        Move in short D9 hops for as long as a jog key is held.
+
+        The A5 keypad stream does not move this controller, so a hold is
+        built from the same interactive primitive an ordinary jog uses.
+        The speed goes out once, ahead of the first step.
+        """
+        assert self._client
+        step_um = self._hold_jog_step_um()
+        try:
+            await self._client.set_travel_speed(
+                int(self._jog_speed_mm_min * 1000 / 60)
+            )
+            while self._jog_keys_down:
+                await self._jog_step(step_um)
+                await asyncio.sleep(self.JOG_TICK_INTERVAL)
+        except asyncio.CancelledError:
+            raise
+        except (OSError, RuntimeError) as e:
+            logger.warning(f"Hold jog stopped: {e}")
+
+    async def _jog_step(self, step_um: int) -> None:
+        """Send one motion command for the currently held keys."""
+        deltas = {"x": 0, "y": 0, "z": 0}
+        for axis, direction in self._jog_keys_down:
+            if axis in deltas:
+                deltas[axis] += direction * step_um
+        await self._jog_move(deltas["x"], deltas["y"], deltas["z"])
 
     async def set_jog_speed(self, speed: int) -> None:
-        assert self._client
-        um_per_s = int(speed * 1000 / 60)
+        """
+        Remember the press-and-hold jog speed.
+
+        Args:
+            speed: Jog speed in mm/min.
+        """
+        self._jog_speed_mm_min = max(1, int(speed))
         logger.info(
-            f"Keypad jog speed: {um_per_s} um/s",
+            f"Hold jog speed: {self._jog_speed_mm_min} mm/min",
             extra=self._log_extra("MACHINE_EVENT"),
         )
-        await self._client.set_manual_jog_speed(um_per_s)
 
     async def jog(self, speed: int, **deltas: float) -> None:
         assert self._client
@@ -825,6 +885,7 @@ class RuidaDriver(Driver):
 
         dx_um = 0
         dy_um = 0
+        dz_um = 0
         for axis_name, delta in deltas.items():
             axis_lower = axis_name.lower()
             delta_um = int(delta * 1000)
@@ -832,19 +893,34 @@ class RuidaDriver(Driver):
                 dx_um += delta_um
             elif axis_lower == "y":
                 dy_um += delta_um
+            elif axis_lower == "z":
+                dz_um += delta_um
 
+        await self._jog_move(dx_um, dy_um, dz_um)
+
+    async def _jog_move(self, dx_um: int, dy_um: int, dz_um: int = 0) -> None:
+        """
+        Move the head by a relative offset with the interactive D9
+        commands. No speed is sent; the caller streams it first.
+        """
+        assert self._client
         if not (dx_um and dy_um):
-            # Single-axis jog: D9 00/D9 01 take relative deltas.
-            if not (dx_um or dy_um):
+            # Single-axis move: D9 00/01/02 take relative deltas.
+            if not (dx_um or dy_um or dz_um):
                 return
-            axis = 0x00 if dx_um else 0x01
-            await self._client.rapid_move_axis(axis, dx_um or dy_um)
+            if dx_um:
+                axis, coord = 0x00, dx_um
+            elif dy_um:
+                axis, coord = 0x01, dy_um
+            else:
+                axis, coord = 0x02, dz_um
+            await self._client.rapid_move_axis(axis, coord)
             if self._last_known_pos is not None:
                 px, py = self._last_known_pos
                 self._last_known_pos = (px + dx_um, py + dy_um)
             return
 
-        # Two-axis jog: D9 10 takes an absolute target.
+        # Two-axis move: D9 10 takes an absolute target.
         if self._last_known_pos is None:
             await self._client._read_memory_wait(0x0421, timeout=1.0)
             await self._client._read_memory_wait(0x0431, timeout=1.0)

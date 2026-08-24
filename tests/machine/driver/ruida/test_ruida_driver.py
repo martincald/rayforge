@@ -1580,115 +1580,166 @@ class TestDefaultRefPoint:
         assert machine.active_wcs == "REF1"
 
 
-class TestHoldJogKeys:
-    """Press-and-hold jog, and the releases that must never be lost."""
+class _JogClientSpy:
+    """Records the interactive motion a hold jog produces."""
+
+    def __init__(self):
+        self.commands: list[bytes] = []
+        self.state_changed = Signal()
+        self.position_updated = Signal()
+
+    async def disconnect(self):
+        pass
+
+    async def set_travel_speed(self, um_per_s: int):
+        self.commands.append(b"\xc9\x02" + encode35(um_per_s))
+
+    async def rapid_move_axis(
+        self,
+        axis: int,
+        coord: int,
+        origin: bool = False,
+        light: bool = False,
+    ):
+        self.commands.append(
+            b"\xd9" + bytes([axis]) + b"\x02" + encode35(coord)
+        )
+
+    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
+        self.commands.append(b"\xd9\x10\x00" + encode35(x_um) + encode35(y_um))
+
+    async def _read_memory_wait(self, address: int, timeout: float = 2.0):
+        return None
+
+
+def _motion(commands: list[bytes]) -> list[bytes]:
+    """The D9 motion commands out of a recorded stream."""
+    return [c for c in commands if c[:1] == b"\xd9"]
+
+
+class TestHoldJog:
+    """Press-and-hold jog repeats short interactive D9 moves."""
 
     @pytest.mark.asyncio
     async def test_driver_reports_hold_jog_support(self, driver):
         assert driver.can_hold_jog() is True
 
     @pytest.mark.asyncio
-    async def test_key_down_sends_one_key_and_tracks_it(self, driver):
-        sent = []
-        driver._client.press_jog_key = _recorder(sent)
+    async def test_key_down_tracks_the_key_and_starts_the_task(self, driver):
+        driver._client = _JogClientSpy()
 
         await driver.jog_key_down("x", 1)
 
-        assert sent == [("x", 1)]
         assert driver._jog_keys_down == {("x", 1)}
+        assert driver._jog_task is not None
+        await driver.release_all_jog_keys()
 
     @pytest.mark.asyncio
-    async def test_repeated_key_down_sends_only_once(self, driver):
-        sent = []
-        driver._client.press_jog_key = _recorder(sent)
+    async def test_repeated_key_down_starts_only_one_task(self, driver):
+        driver._client = _JogClientSpy()
 
         await driver.jog_key_down("x", 1)
+        task = driver._jog_task
         await driver.jog_key_down("x", 1)
 
-        assert sent == [("x", 1)]
+        assert driver._jog_task is task
+        await driver.release_all_jog_keys()
 
     @pytest.mark.asyncio
-    async def test_key_up_sends_the_release_and_forgets_the_key(self, driver):
-        released = []
-        driver._client.press_jog_key = _recorder([])
-        driver._client.release_jog_key = _recorder(released)
+    async def test_three_ticks_emit_three_moves_after_one_speed(self, driver):
+        """A hold streams C9 02 once, then one move per tick."""
+        spy = _JogClientSpy()
+        driver._client = spy
+        await driver.set_jog_speed(1200)  # 20 mm/s
+
+        await driver.jog_key_down("x", 1)
+        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 2.5)
+        await driver.jog_key_up("x", 1)
+
+        speeds = [c for c in spy.commands if c[:2] == b"\xc9\x02"]
+        moves = _motion(spy.commands)
+        assert len(speeds) == 1
+        assert decode35(speeds[0][2:7]) == 20000
+        assert len(moves) == 3
+        assert spy.commands[0] == speeds[0]
+        # 20 mm/s * 0.15 s * 1.2 = 3.6 mm, inside the clamp.
+        for move in moves:
+            assert move[:3] == b"\xd9\x00\x02"
+            assert decode35(move[3:8]) == 3600
+
+    @pytest.mark.asyncio
+    async def test_key_up_cancels_the_task(self, driver):
+        spy = _JogClientSpy()
+        driver._client = spy
 
         await driver.jog_key_down("y", -1)
+        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 0.5)
         await driver.jog_key_up("y", -1)
+        emitted = len(_motion(spy.commands))
+        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 3)
 
-        assert released == [("y", -1)]
         assert driver._jog_keys_down == set()
+        assert driver._jog_task is None
+        assert len(_motion(spy.commands)) == emitted
 
     @pytest.mark.asyncio
-    async def test_untracked_key_up_is_still_sent(self, driver):
-        """A stuck head is worse than a redundant key-up."""
-        released = []
-        driver._client.release_jog_key = _recorder(released)
-
-        await driver.jog_key_up("z", 1)
-
-        assert released == [("z", 1)]
-
-    @pytest.mark.asyncio
-    async def test_release_all_releases_every_held_key(self, driver):
-        released = []
-        driver._client.press_jog_key = _recorder([])
-        driver._client.release_jog_key = _recorder(released)
+    async def test_release_all_cancels_the_task(self, driver):
+        """Focus loss and disconnect both land here."""
+        spy = _JogClientSpy()
+        driver._client = spy
 
         await driver.jog_key_down("x", 1)
-        await driver.jog_key_down("y", -1)
+        await driver.jog_key_down("y", 1)
         await driver.release_all_jog_keys()
-
-        assert sorted(released) == [("x", 1), ("y", -1)]
-        assert driver._jog_keys_down == set()
-
-    @pytest.mark.asyncio
-    async def test_release_all_survives_a_dead_transport(self, driver):
-        """Disconnect must not leave the key set populated."""
-
-        async def boom(axis, direction):
-            raise OSError("socket gone")
-
-        driver._client.press_jog_key = _recorder([])
-        driver._client.release_jog_key = boom
-
-        await driver.jog_key_down("x", 1)
-        await driver.release_all_jog_keys()
+        emitted = len(_motion(spy.commands))
+        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 3)
 
         assert driver._jog_keys_down == set()
+        assert driver._jog_task is None
+        assert len(_motion(spy.commands)) == emitted
 
     @pytest.mark.asyncio
-    async def test_disconnect_releases_held_keys(self, driver):
-        released = []
-        driver._client.press_jog_key = _recorder([])
-        driver._client.release_jog_key = _recorder(released)
+    async def test_disconnect_cancels_the_task(self, driver):
+        driver._client = _JogClientSpy()
 
         await driver.jog_key_down("x", -1)
         await driver._disconnect_transports()
 
-        assert released == [("x", -1)]
+        assert driver._jog_keys_down == set()
+        assert driver._jog_task is None
 
     @pytest.mark.asyncio
-    async def test_set_jog_speed_converts_mm_min_to_um_per_s(self, driver):
-        written = []
+    async def test_diagonal_hold_moves_to_an_absolute_target(self, driver):
+        """Two axes at once need the absolute D9 10 form."""
+        spy = _JogClientSpy()
+        driver._client = spy
+        driver._last_known_pos = (10000, 20000)
+        await driver.set_jog_speed(1200)  # 20 mm/s -> 3.6 mm steps
 
-        async def record(um_per_s):
-            written.append(um_per_s)
+        await driver.jog_key_down("x", 1)
+        await driver.jog_key_down("y", 1)
+        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 0.5)
+        await driver.release_all_jog_keys()
 
-        driver._client.set_manual_jog_speed = record
+        moves = _motion(spy.commands)
+        assert moves
+        assert moves[0][:3] == b"\xd9\x10\x00"
+        assert decode35(moves[0][3:8]) == 13600
+        assert decode35(moves[0][8:13]) == 23600
 
+    @pytest.mark.asyncio
+    async def test_step_is_clamped_at_both_ends(self, driver):
+        await driver.set_jog_speed(60)  # 1 mm/s -> 0.18 mm, clamped up
+        assert driver._hold_jog_step_um() == 500
+
+        await driver.set_jog_speed(60000)  # 1000 mm/s, clamped down
+        assert driver._hold_jog_step_um() == 5000
+
+    @pytest.mark.asyncio
+    async def test_set_jog_speed_stores_mm_min(self, driver):
         await driver.set_jog_speed(6000)
 
-        assert written == [100000]
-
-
-def _recorder(sink: list):
-    """An async stand-in that records the (axis, direction) it got."""
-
-    async def record(axis, direction):
-        sink.append((axis, direction))
-
-    return record
+        assert driver._jog_speed_mm_min == 6000
 
 
 class _FrameClientSpy:

@@ -10,7 +10,6 @@ from blinker import Signal
 
 from rayforge.machine.driver.ruida.ruida_client import (
     JOB_MAGIC,
-    MANUAL_FAST_SPEED_ADDRESS,
     RuidaClient,
 )
 from rayforge.machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
@@ -753,82 +752,3 @@ class TestRuidaClientSetOrigin:
 
         with pytest.raises(RuntimeError, match="jog transport"):
             await client.set_origin()
-
-
-class TestRuidaClientKeypadJog:
-    """Press-and-hold jog rides the panel keypad stream."""
-
-    def setup_method(self):
-        self.main = StubJobTransport()
-        self.jog = StubJogTransport()
-        self.client = RuidaClient(
-            self.main,  # type: ignore[arg-type]
-            jog_transport=self.jog,  # type: ignore[arg-type]
-        )
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "axis, direction, expected",
-        [
-            ("x", -1, b"\xa5\x50\x01"),
-            ("x", 1, b"\xa5\x50\x02"),
-            ("y", 1, b"\xa5\x50\x03"),
-            ("y", -1, b"\xa5\x50\x04"),
-            ("z", 1, b"\xa5\x50\x0a"),
-            ("z", -1, b"\xa5\x50\x0b"),
-        ],
-    )
-    async def test_press_emits_the_documented_key_down(
-        self, axis, direction, expected
-    ):
-        await self.client.press_jog_key(axis, direction)
-
-        assert self.jog.raw_sent == [expected]
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "axis, direction, expected",
-        [
-            ("x", -1, b"\xa5\x51\x01"),
-            ("x", 1, b"\xa5\x51\x02"),
-            ("y", 1, b"\xa5\x51\x03"),
-            ("y", -1, b"\xa5\x51\x04"),
-            ("z", 1, b"\xa5\x51\x0a"),
-            ("z", -1, b"\xa5\x51\x0b"),
-        ],
-    )
-    async def test_release_emits_the_matching_key_up(
-        self, axis, direction, expected
-    ):
-        await self.client.release_jog_key(axis, direction)
-
-        assert self.jog.raw_sent == [expected]
-
-    @pytest.mark.asyncio
-    async def test_keys_bypass_swizzle_and_the_main_channel(self):
-        await self.client.press_jog_key("x", 1)
-        await self.client.release_jog_key("x", 1)
-
-        assert self.jog.commands_sent == []
-        assert self.main.sent == []
-
-    @pytest.mark.asyncio
-    async def test_unknown_axis_direction_raises(self):
-        with pytest.raises(ValueError, match="No jog key"):
-            await self.client.press_jog_key("u", 1)
-
-    @pytest.mark.asyncio
-    async def test_speed_writes_the_manual_fast_speed_register(self):
-        await self.client.set_manual_jog_speed(12345)
-
-        assert MANUAL_FAST_SPEED_ADDRESS == 0x0131
-        assert self.main.sent == [
-            b"\xda\x01\x01\x31" + encode35(12345) + encode35(12345)
-        ]
-
-    @pytest.mark.asyncio
-    async def test_speed_does_not_touch_the_jog_channel(self):
-        """The register write is a normal framed command."""
-        await self.client.set_manual_jog_speed(100000)
-
-        assert self.jog.raw_sent == []

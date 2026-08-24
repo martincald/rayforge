@@ -13,9 +13,13 @@ from ..icons import get_icon
 _JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
 _JOG_SPEED_UNIT_LABEL = _JOG_SPEED_UNIT.label
 
-# Keypad jog speed lives in a controller register, so it is written
-# when the control settles rather than on every keypress.
+# The hold jog speed is driver state, so it is pushed when the control
+# settles rather than on every keystroke.
 _JOG_SPEED_DEBOUNCE_MS = 300
+
+# How long an arrow must stay down before it counts as a hold. A
+# shorter press is a click, and moves exactly one step instead.
+_HOLD_START_DELAY_MS = 150
 
 _GAP = 12
 _SPACING = 6
@@ -55,6 +59,7 @@ class JogWidget(Gtk.Widget):
             Gtk.Button, tuple[JogDirection, ...]
         ] = {}
         self._jog_speed_timeout_id: int | None = None
+        self._hold_timeout_id: int | None = None
         self._root_active_handler: int | None = None
 
         self.set_focusable(True)
@@ -502,6 +507,7 @@ class JogWidget(Gtk.Widget):
         Called from every path where a key-up could otherwise be lost:
         pointer leave, gesture cancel, unmap, and window focus loss.
         """
+        self._cancel_pending_hold()
         keys = sorted(self._keys_down)
         self._keys_down.clear()
         if not self.machine or not self.machine_cmd:
@@ -509,28 +515,49 @@ class JogWidget(Gtk.Widget):
         for axis, direction in keys:
             self.machine_cmd.jog_key_up(self.machine, axis, direction)
         # Sweep whatever the driver still believes is held, in case the
-        # two views of the keypad ever drift apart.
+        # two views of the held keys ever drift apart.
         self.machine_cmd.release_all_jog_keys(self.machine)
+
+    def _cancel_pending_hold(self) -> bool:
+        """Drop an armed hold. True when one was still pending."""
+        if self._hold_timeout_id is None:
+            return False
+        GLib.source_remove(self._hold_timeout_id)
+        self._hold_timeout_id = None
+        return True
+
+    def _start_hold(self, directions: tuple[JogDirection, ...]):
+        """Hand the held directions to the driver's repeat jog."""
+        self._hold_timeout_id = None
+        for key in self._jog_keys(*directions):
+            self._press_jog_key(key)
+        return GLib.SOURCE_REMOVE
 
     def _on_jog_pressed(self, gesture, n_press, x, y, directions):
         if not self._hold_jog_supported():
             return
-        for key in self._jog_keys(*directions):
-            self._press_jog_key(key)
+        self._cancel_pending_hold()
+        self._hold_timeout_id = GLib.timeout_add(
+            _HOLD_START_DELAY_MS, self._start_hold, directions
+        )
 
     def _on_jog_released(self, gesture, n_press, x, y, directions):
-        if not self._hold_jog_supported():
-            # Step jog keeps working for drivers without hold support.
+        # A press too short to become a hold is a click: one step of the
+        # step-size control. Drivers without hold support always land
+        # here, which keeps step jog working for them.
+        if self._cancel_pending_hold() or not self._hold_jog_supported():
             self._perform_visual_jog(*directions)
             return
         for key in self._jog_keys(*directions):
             self._release_jog_key(key)
 
     def _on_jog_cancelled(self, gesture, sequence, directions):
+        self._cancel_pending_hold()
         for key in self._jog_keys(*directions):
             self._release_jog_key(key)
 
     def _on_jog_leave(self, controller, directions):
+        self._cancel_pending_hold()
         for key in self._jog_keys(*directions):
             self._release_jog_key(key)
 
@@ -564,7 +591,7 @@ class JogWidget(Gtk.Widget):
         )
 
     def _commit_jog_speed(self):
-        """Write the settled jog speed to the controller."""
+        """Push the settled jog speed to the driver."""
         self._jog_speed_timeout_id = None
         if self._hold_jog_supported() and self.machine and self.machine_cmd:
             self.machine_cmd.set_jog_speed(
@@ -582,6 +609,7 @@ class JogWidget(Gtk.Widget):
         if self.machine and not self.machine.is_connected():
             # Nothing can be sent any more; the driver releases its own
             # held keys as it tears the transports down.
+            self._cancel_pending_hold()
             self._keys_down.clear()
         self._update_button_sensitivity()
 

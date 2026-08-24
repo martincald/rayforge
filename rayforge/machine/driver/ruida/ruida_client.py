@@ -59,22 +59,6 @@ ORIGIN_KEY = 0x08
 ORIGIN_KEY_DOWN = KEY_DOWN_PREFIX + bytes([ORIGIN_KEY])
 ORIGIN_KEY_UP = KEY_UP_PREFIX + bytes([ORIGIN_KEY])
 
-# Panel keypad codes for the directional jog keys. Holding one of these
-# down makes the controller jog until the matching key-up arrives, at
-# the speed stored in the Manual Fast Speed register.
-JOG_KEY_CODES: dict[tuple[str, int], int] = {
-    ("x", -1): 0x01,
-    ("x", 1): 0x02,
-    ("y", 1): 0x03,
-    ("y", -1): 0x04,
-    ("z", 1): 0x0A,
-    ("z", -1): 0x0B,
-}
-
-# Keypad jog speed is controller-side: it reads this register rather
-# than taking a speed with each keypress.
-MANUAL_FAST_SPEED_ADDRESS = 0x0131
-
 
 def split_commands(data: bytes) -> list[bytes]:
     """
@@ -533,57 +517,6 @@ class RuidaClient:
         )
         await self._jog_transport.send(ORIGIN_KEY_DOWN)
         await self._jog_transport.send(ORIGIN_KEY_UP)
-
-    def _jog_key_code(self, axis: str, direction: int) -> int:
-        """
-        Look up the keypad code for an axis and direction.
-
-        Args:
-            axis: Axis name ('x', 'y' or 'z').
-            direction: 1 for positive, -1 for negative.
-
-        Raises:
-            ValueError: If the axis/direction pair has no keypad key.
-        """
-        key = (axis.lower(), direction)
-        if key not in JOG_KEY_CODES:
-            raise ValueError(f"No jog key for axis {axis}, {direction}")
-        return JOG_KEY_CODES[key]
-
-    async def press_jog_key(self, axis: str, direction: int) -> None:
-        """
-        Hold a keypad jog key down. The head moves until it is released.
-
-        Args:
-            axis: Axis name ('x', 'y' or 'z').
-            direction: 1 for positive, -1 for negative.
-        """
-        code = self._jog_key_code(axis, direction)
-        if self._jog_transport is None:
-            raise RuntimeError("No jog transport configured")
-        await self._jog_transport.send(KEY_DOWN_PREFIX + bytes([code]))
-
-    async def release_jog_key(self, axis: str, direction: int) -> None:
-        """
-        Release a keypad jog key, stopping motion on that axis.
-
-        Args:
-            axis: Axis name ('x', 'y' or 'z').
-            direction: 1 for positive, -1 for negative.
-        """
-        code = self._jog_key_code(axis, direction)
-        if self._jog_transport is None:
-            raise RuntimeError("No jog transport configured")
-        await self._jog_transport.send(KEY_UP_PREFIX + bytes([code]))
-
-    async def set_manual_jog_speed(self, um_per_s: int) -> None:
-        """
-        Write the Manual Fast Speed register used by keypad jogging.
-
-        Args:
-            um_per_s: Jog speed in micrometers per second.
-        """
-        await self._write_memory(MANUAL_FAST_SPEED_ADDRESS, um_per_s)
 
     async def jog_start(self, axis: str, direction: int) -> None:
         """

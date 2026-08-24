@@ -61,7 +61,7 @@ def test_press_emits_exactly_one_key_down(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
 
     machine_cmd.jog_key_down.assert_called_once_with(machine, "x", 1)
 
@@ -74,8 +74,8 @@ def test_repeated_press_does_not_repeat_the_key_down(
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
+        _hold(widget, _east())
 
     assert machine_cmd.jog_key_down.call_count == 1
 
@@ -86,7 +86,7 @@ def test_release_emits_the_key_up(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         widget._on_jog_released(None, 1, 0.0, 0.0, (_east(),))
 
     machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
@@ -99,7 +99,7 @@ def test_diagonal_press_holds_both_axes(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(), _north()))
+        _hold(widget, _east(), _north())
 
     held = {c.args[1:] for c in machine_cmd.jog_key_down.call_args_list}
     assert held == {("x", 1), ("y", 1)}
@@ -112,7 +112,7 @@ def test_focus_loss_releases_a_held_key(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         root = MagicMock()
         root.is_active.return_value = False
         widget._on_root_active_changed(root, None)
@@ -128,7 +128,7 @@ def test_focus_gain_does_not_release(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         root = MagicMock()
         root.is_active.return_value = True
         widget._on_root_active_changed(root, None)
@@ -142,7 +142,7 @@ def test_pointer_leave_releases_a_held_key(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         widget._on_jog_leave(None, (_east(),))
 
     machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
@@ -154,7 +154,7 @@ def test_gesture_cancel_releases_a_held_key(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         widget._on_jog_cancelled(None, None, (_east(),))
 
     machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
@@ -166,7 +166,7 @@ def test_unmap_releases_a_held_key(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
         widget._on_unmapped(widget)
 
     machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
@@ -210,7 +210,7 @@ def test_disconnect_drops_the_held_key_set(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        _hold(widget, _east())
 
     machine.connection_status = TransportStatus.DISCONNECTED
     widget._on_connection_status_changed(machine)
@@ -240,6 +240,51 @@ def test_speed_debounce_timeout_is_300ms(ui_context_initializer):
     from rayforge.ui_gtk.machine import jog_widget
 
     assert jog_widget._JOG_SPEED_DEBOUNCE_MS == 300
+
+
+@pytest.mark.ui
+def test_short_click_steps_once_instead_of_holding(ui_context_initializer):
+    """A press too short to become a hold moves one step size."""
+    machine_cmd = MagicMock()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+
+    with _hold_jog_driver(machine):
+        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        widget._on_jog_released(None, 1, 0.0, 0.0, (_east(),))
+
+    machine_cmd.jog_key_down.assert_not_called()
+    machine_cmd.jog_key_up.assert_not_called()
+    machine_cmd.jog.assert_called_once()
+
+
+@pytest.mark.ui
+def test_focus_loss_cancels_a_pending_hold(ui_context_initializer):
+    """Losing focus mid-press must not start jogging afterwards."""
+    machine_cmd = MagicMock()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+
+    with _hold_jog_driver(machine):
+        widget._on_jog_pressed(None, 1, 0.0, 0.0, (_east(),))
+        root = MagicMock()
+        root.is_active.return_value = False
+        widget._on_root_active_changed(root, None)
+
+    assert widget._hold_timeout_id is None
+    machine_cmd.jog_key_down.assert_not_called()
+
+
+@pytest.mark.ui
+def test_hold_start_delay_is_150ms(ui_context_initializer):
+    from rayforge.ui_gtk.machine import jog_widget
+
+    assert jog_widget._HOLD_START_DELAY_MS == 150
+
+
+def _hold(widget, *directions):
+    """Press an arrow and let the hold delay elapse."""
+    widget._on_jog_pressed(None, 1, 0.0, 0.0, directions)
+    widget._cancel_pending_hold()
+    widget._start_hold(directions)
 
 
 def _east():
