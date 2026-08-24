@@ -231,7 +231,7 @@ def test_speed_change_is_debounced_then_pushed(ui_context_initializer):
 
         widget._commit_jog_speed()
 
-    # 80 mm/s set, pushed in the mm/min base unit.
+    # 80 mm/s set, pushed in the application base unit.
     machine_cmd.set_jog_speed.assert_called_once_with(machine, 4800)
 
 

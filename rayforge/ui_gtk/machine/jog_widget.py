@@ -9,7 +9,8 @@ from ...shared.units.definitions import Unit, get_unit
 from ..icons import get_icon
 from .cut_scale_dialog import CutScaleDialog
 
-# The widget carries its jog speed in mm/s; drivers take base units.
+# The widget carries its jog speed in the display unit; drivers take
+# application base units, so it converts at that one boundary.
 _JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
 
 # The hold jog speed is driver state, so it is pushed when the control

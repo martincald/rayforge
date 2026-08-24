@@ -108,6 +108,7 @@ class RuidaEncoder(OpsEncoder):
     """
 
     UM_PER_MM = 1000.0
+    SECONDS_PER_MINUTE = 60.0
     POWER_SCALE = 16383.0
 
     def __init__(self, follow_reference: bool = True):
@@ -186,6 +187,17 @@ class RuidaEncoder(OpsEncoder):
     def _mm_to_um(self, mm: float) -> int:
         """Convert millimeters to micrometers."""
         return int(mm * self.UM_PER_MM)
+
+    def _speed_to_um_s(self, mm_min: float) -> int:
+        """
+        Convert a stored speed to the micrometers per second the wire
+        wants.
+
+        Speeds reach the encoder in the application base unit, mm/min.
+        This is the only place they are converted, so a speed set in the
+        UI arrives on the controller unchanged.
+        """
+        return int(mm_min * self.UM_PER_MM / self.SECONDS_PER_MINUTE)
 
     def _power_to_ruida(self, power_normalized: float) -> int:
         """Convert normalized power (0.0-1.0) to Ruida 14-bit value."""
@@ -277,14 +289,13 @@ class RuidaEncoder(OpsEncoder):
         binary: list[bytes],
         text: list[str],
     ) -> None:
-        """Handle SetCutSpeedCommand - set cutting speed in mm/s."""
+        """Handle SetCutSpeedCommand - set cutting speed in mm/min."""
         speed = ops.rate(idx)
         if self.cut_speed is not None and speed == self.cut_speed:
             text.append(f"SPEED {speed:.1f}")
             return
         self.cut_speed = speed
-        speed_um = self._mm_to_um(speed)
-        binary.append(b"\xc9\x02" + encode35(speed_um))
+        binary.append(b"\xc9\x02" + encode35(self._speed_to_um_s(speed)))
         text.append(f"SPEED {speed:.1f}")
 
     def _handle_set_travel_speed(
@@ -579,7 +590,7 @@ class RuidaEncoder(OpsEncoder):
         Pre-scan ops for the job prologue.
 
         Returns job bounds in job-local micrometers (job minimum maps
-        to 0,0) and one entry per layer with the layer's speed (mm/s),
+        to 0,0) and one entry per layer with the layer's speed (mm/min),
         power (normalized), air assist state and bounds (um).
         Jobs without layer markers yield a single implicit layer.
         """
@@ -741,7 +752,7 @@ class RuidaEncoder(OpsEncoder):
 
         for part, layer in enumerate(layers):
             part_b = bytes([part])
-            speed_um = self._mm_to_um(layer["speed"])
+            speed_um = self._speed_to_um_s(layer["speed"])
             power14 = encode14(self._power_to_ruida(layer["power"]))
             lmin_x, lmin_y, lmax_x, lmax_y = layer["bounds"]
             binary.append(b"\xc9\x04" + part_b + encode35(speed_um))
@@ -851,7 +862,7 @@ class RuidaEncoder(OpsEncoder):
         else:
             layer = {"speed": 0.0, "power": 0.0, "air": False}
         part_b = bytes([part & 0xFF])
-        speed_um = self._mm_to_um(layer["speed"])
+        speed_um = self._speed_to_um_s(layer["speed"])
         power14 = encode14(self._power_to_ruida(layer["power"]))
 
         binary.append(b"\xca\x01\x00")

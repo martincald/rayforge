@@ -181,25 +181,23 @@ class TestSetCutSpeedCommand:
     """Tests for SetCutSpeedCommand encoding."""
 
     def test_speed_encoding(self, encoder, mock_machine, doc):
-        """Cut speed should be encoded as mm/s to µm/s."""
+        """Cut speed is stored in mm/min and encoded as um/s."""
         ops = Ops()
-        ops.set_feed_rate(100)
+        ops.set_feed_rate(6000)
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        speed_um = 100 * 1000
-        assert binary == b"\xc9\x02" + encode35(speed_um)
-        assert "SPEED 100.0" in result.text
+        assert binary == b"\xc9\x02" + encode35(100000)
+        assert "SPEED 6000.0" in result.text
 
     def test_speed_fractional(self, encoder, mock_machine, doc):
-        """Fractional speeds should be encoded correctly."""
+        """A speed that does not divide evenly still converts once."""
         ops = Ops()
         ops.set_feed_rate(50)
         result = encoder.encode(ops, mock_machine, doc)
 
         binary = b"".join(result.driver_data["commands"])
-        speed_um = 50 * 1000
-        assert binary == b"\xc9\x02" + encode35(speed_um)
+        assert binary == b"\xc9\x02" + encode35(833)
         assert "SPEED 50.0" in result.text
 
     def test_speed_zero(self, encoder, mock_machine, doc):
@@ -1005,7 +1003,7 @@ class TestJobPrologue:
             b"\xe7\x51" + w35 + h35,
             b"\xe7\x04" + one14 + one14 + encode14(0) * 5,
             b"\xe7\x05\x00",
-            b"\xc9\x04\x00" + encode35(100000),
+            b"\xc9\x04\x00" + encode35(1666),
             b"\xc6\x65\x00\x3d",
             b"\xc6\x31\x00" + power14,
             b"\xc6\x32\x00" + power14,
@@ -1073,8 +1071,8 @@ class TestJobPrologue:
         commands = result.driver_data["commands"]
         speeds = [c for c in commands if c.startswith(b"\xc9\x04")]
         assert speeds == [
-            b"\xc9\x04\x00" + encode35(100000),
-            b"\xc9\x04\x01" + encode35(50000),
+            b"\xc9\x04\x00" + encode35(1666),
+            b"\xc9\x04\x01" + encode35(833),
         ]
         assert b"\xca\x22\x01" in commands
 
