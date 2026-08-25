@@ -4,7 +4,7 @@ from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk
 from raygeo.ops.axis import Axis
 
 from ...machine.cmd import MachineCmd
-from ...machine.models.machine import JogDirection, Machine
+from ...machine.models.machine import JogDirection, Machine, Origin
 from ...shared.units.definitions import Unit, get_unit
 from ..icons import get_icon
 from .cut_scale_dialog import CutScaleDialog
@@ -20,6 +20,15 @@ _JOG_SPEED_DEBOUNCE_MS = 300
 # How long an arrow must stay down before it counts as a hold. A
 # shorter press is a click, and moves exactly one step instead.
 _HOLD_START_DELAY_MS = 200
+
+# The position readout is in machine coordinates; which corner those
+# run from is a profile setting, so the readout names it.
+_ORIGIN_LABELS = {
+    Origin.TOP_LEFT: _("top-left"),
+    Origin.TOP_RIGHT: _("top-right"),
+    Origin.BOTTOM_LEFT: _("bottom-left"),
+    Origin.BOTTOM_RIGHT: _("bottom-right"),
+}
 
 _GAP = 12
 _SPACING = 6
@@ -336,6 +345,7 @@ class JogWidget(Gtk.Widget):
     def _on_machine_changed(self, sender, **kwargs):
         self._update_button_sensitivity()
         self._update_limit_status()
+        self._update_position()
 
     def _jog_deltas(self, *directions: JogDirection) -> dict[Axis, float]:
         """Aggregate native-axis deltas for one or more visual
@@ -612,10 +622,27 @@ class JogWidget(Gtk.Widget):
         x, y = (pos[0], pos[1]) if pos else (None, None)
         return f"X {axis(x)}  Y {axis(y)}"
 
+    def _position_origin_hint(self) -> str:
+        """Name the corner the readout is measured from."""
+        corner = (
+            _ORIGIN_LABELS.get(self.machine.origin) if self.machine else None
+        )
+        if corner is None:
+            return _("Machine position")
+        return _("Machine position, measured from the {corner}").format(
+            corner=corner
+        )
+
     def _update_position(self):
-        """Show the last polled machine position."""
+        """Show the last polled machine position.
+
+        These are the machine's own coordinates, so they match what the
+        controller panel reads. Which corner they run from depends on
+        the profile's origin setting, so the tooltip names it.
+        """
         pos = self.machine.device_state.machine_pos if self.machine else None
         self.position_label.set_label(self._format_position(pos))
+        self.position_label.set_tooltip_text(self._position_origin_hint())
 
     def _on_machine_state_changed(self, machine, state):
         """Handle machine state changes to update limit status."""
@@ -725,7 +752,9 @@ class JogWidget(Gtk.Widget):
             return
 
         if self._scaling:
-            self.machine_cmd.cancel_job(self.machine)
+            # Go Scale is rapids, not a job: cancelling stops the
+            # motion in flight rather than aborting a process.
+            self.machine_cmd.cancel_frame(self.machine)
             return
 
         self._scaling = True

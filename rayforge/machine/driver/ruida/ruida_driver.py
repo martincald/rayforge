@@ -615,96 +615,97 @@ class RuidaDriver(Driver):
         return True
 
     async def trace_frame(self, width_mm: float, height_mm: float) -> None:
+        """
+        Traverse the job's bounding box as plain interactive rapids.
+
+        This is an alignment aid, not a job: it never starts a process
+        (no D8 00, no prologue) and never sends a power command, so the
+        laser cannot fire and the controller's door interlock has
+        nothing to gate. The corners are absolute targets built from
+        the head position the trace starts at, driven by the same
+        D9 10 primitive a jog uses.
+        """
         assert self._client
         width_um = int(width_mm * 1000)
         height_um = int(height_mm * 1000)
-        corners = [
-            (0, 0),
-            (width_um, 0),
-            (width_um, height_um),
-            (0, height_um),
-            (0, 0),
-        ]
         logger.info(
-            f"Frame: tracing {width_mm:.1f} x {height_mm:.1f} mm "
-            f"from the anchor",
+            f"Go Scale: tracing {width_mm:.1f} x {height_mm:.1f} mm "
+            f"from the current position",
             extra=self._log_extra("USER_COMMAND"),
         )
 
         self._frame_cancelled = False
-        # Corner arrival is judged against the anchor the controller
-        # resolves ORIGIN-relative targets against; reading the head
-        # position gives the polling a reference without affecting
-        # where the head actually goes.
-        anchor = await self._client.read_position()
+        start = await self._client.read_position()
+        if start is None:
+            start = self._last_known_pos or (0, 0)
+        self._last_known_pos = start
+        corners = [
+            (start[0] + dx, start[1] + dy)
+            for dx, dy in (
+                (0, 0),
+                (width_um, 0),
+                (width_um, height_um),
+                (0, height_um),
+                (0, 0),
+            )
+        ]
 
         self._suppress_polling = True
+        self._jog_busy = True
         try:
             await self._client.set_travel_speed(self.FRAME_SPEED_MM_S * 1000)
             for x_um, y_um in corners:
                 if self._frame_cancelled:
                     logger.info(
-                        "Frame cancelled",
+                        "Go Scale cancelled",
                         extra=self._log_extra("USER_COMMAND"),
                     )
                     return
-                # Pointer on, relative to the anchor. No power command
-                # is ever sent, so the laser cannot fire.
-                await self._client.rapid_move_xy(x_um, y_um, light=True)
-                await self._wait_for_frame_corner(anchor, x_um, y_um)
-
-            if self._frame_cancelled:
-                return
-            # Pointer off, back to the anchor.
-            await self._client.rapid_move_xy(0, 0)
+                target = await self._jog_move_to(x_um, y_um)
+                await self._wait_for_frame_corner(*target)
         finally:
             self._suppress_polling = False
             self._frame_cancelled = False
+            self._jog_busy = False
 
     async def cancel_frame(self) -> None:
         """
-        Stop a running frame trace after the current move.
+        Stop a running scale trace and resync the cached position.
 
-        The head parks wherever it is; no further corners are sent.
+        The head parks wherever the stop caught it; no further corners
+        are sent.
         """
         self._frame_cancelled = True
+        if self._jog_busy:
+            await self._stop_jog_motion()
 
     async def _wait_for_frame_corner(
         self,
-        anchor: tuple[int, int] | None,
         target_x: int,
         target_y: int,
     ) -> None:
         """
-        Poll the head position until it reaches a frame corner.
+        Poll the head position until it reaches a corner.
 
         Args:
-            anchor: Absolute position the corners are relative to, or
-                None when it could not be read.
-            target_x: Corner X in micrometers, relative to the anchor.
-            target_y: Corner Y in micrometers, relative to the anchor.
+            target_x: Corner X in micrometers, absolute.
+            target_y: Corner Y in micrometers, absolute.
         """
         assert self._client
-        if anchor is None:
-            await asyncio.sleep(self.FRAME_CORNER_TIMEOUT)
-            return
-
-        want_x = anchor[0] + target_x
-        want_y = anchor[1] + target_y
         deadline = asyncio.get_event_loop().time() + self.FRAME_CORNER_TIMEOUT
         while asyncio.get_event_loop().time() < deadline:
             if self._frame_cancelled:
                 return
             pos = await self._client.read_position()
             if pos is not None and (
-                abs(pos[0] - want_x) <= self.FRAME_CORNER_TOLERANCE_UM
-                and abs(pos[1] - want_y) <= self.FRAME_CORNER_TOLERANCE_UM
+                abs(pos[0] - target_x) <= self.FRAME_CORNER_TOLERANCE_UM
+                and abs(pos[1] - target_y) <= self.FRAME_CORNER_TOLERANCE_UM
             ):
                 return
             await asyncio.sleep(self.FRAME_POLL_INTERVAL)
 
         logger.warning(
-            f"Frame: corner ({target_x}, {target_y}) um not reached "
+            f"Go Scale: corner ({target_x}, {target_y}) um not reached "
             f"within {self.FRAME_CORNER_TIMEOUT}s, continuing",
             extra=self._log_extra("USER_COMMAND"),
         )

@@ -99,3 +99,24 @@ def test_job_controls_need_a_connection(ui_context_initializer):
         assert widget.start_btn.get_sensitive() is True
         assert widget.pause_btn.get_sensitive() is True
         assert widget.stop_btn.get_sensitive() is True
+
+
+@pytest.mark.ui
+def test_position_readout_names_the_origin_corner(ui_context_initializer):
+    """
+    The readout is in machine coordinates, so it has to say which
+    corner those run from -- and follow the profile when it changes.
+    """
+    from rayforge.machine.models.machine import Machine, Origin
+    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+
+    machine = Machine(ui_context_initializer)
+    machine.set_origin(Origin.TOP_LEFT)
+    ui_context_initializer.machine_mgr.add_machine(machine)
+
+    widget = JogWidget()
+    widget.set_machine(machine, MagicMock())
+    assert "top-left" in (widget.position_label.get_tooltip_text() or "")
+
+    machine.set_origin(Origin.BOTTOM_RIGHT)
+    assert "bottom-right" in (widget.position_label.get_tooltip_text() or "")

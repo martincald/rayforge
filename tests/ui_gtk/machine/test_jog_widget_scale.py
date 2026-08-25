@@ -165,6 +165,7 @@ def test_button_becomes_stop_while_running(ui_context_initializer):
 
 @pytest.mark.ui
 def test_second_click_stops_instead_of_restarting(ui_context_initializer):
+    """Go Scale is rapids, so stopping halts motion, not a job."""
     machine_cmd = _scale_cmd()
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
@@ -173,7 +174,8 @@ def test_second_click_stops_instead_of_restarting(ui_context_initializer):
         widget.go_scale_btn.emit("clicked")
         widget.go_scale_btn.emit("clicked")
 
-    machine_cmd.cancel_job.assert_called_once_with(machine)
+    machine_cmd.cancel_frame.assert_called_once_with(machine)
+    machine_cmd.cancel_job.assert_not_called()
     assert machine_cmd.run_go_scale.call_count == 1
 
 

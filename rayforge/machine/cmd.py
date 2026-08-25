@@ -377,7 +377,7 @@ class MachineCmd:
         on_done: Callable[[], None] | None = None,
     ):
         """
-        Adds a task to trace the job outline with the machine's pointer.
+        Adds a task to traverse the job outline with the laser off.
 
         Args:
             machine: The machine to trace on.
@@ -439,14 +439,11 @@ class MachineCmd:
         """
         Adds a task to traverse the job's bounding box, laser off.
 
-        The rectangle goes out as a normal job, so the controller
-        anchors it exactly where the real job would start.
+        The rectangle goes out as plain rapids rather than a job: no
+        process is started and no power is ever set, so the laser
+        cannot fire and a machine whose door is open still traces.
         """
-
-        def build(width: float, height: float) -> Ops:
-            return _go_scale_ops(machine, width, height)
-
-        self._run_scale_job(machine, build, "go scale", on_done)
+        self.trace_frame(machine, on_done=on_done)
 
     def run_cut_scale(
         self,
@@ -650,22 +647,6 @@ def _rect_corners(width: float, height: float) -> list[tuple[float, float]]:
         (0.0, height),
         (0.0, 0.0),
     ]
-
-
-def _go_scale_ops(machine: Machine, width: float, height: float) -> Ops:
-    """
-    Build a job that only traverses the bounding box.
-
-    No layer is opened and no power is ever set, so the stream carries
-    travel moves alone and the laser cannot fire.
-    """
-    ops = Ops()
-    ops.job_start()
-    ops.set_feed_rate(machine.max_travel_speed)
-    for x, y in _rect_corners(width, height):
-        ops.move_to(x, y, 0.0)
-    ops.job_end()
-    return ops
 
 
 def _cut_scale_ops(

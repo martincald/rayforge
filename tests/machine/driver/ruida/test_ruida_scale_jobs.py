@@ -1,16 +1,21 @@
-"""The Ruida blobs the Go Scale and Cut Scale actions produce.
+"""What the Go Scale and Cut Scale actions put on the wire.
 
-Go Scale must be incapable of firing the laser: the stream carries
-travel moves and no power command at all. Cut Scale is an ordinary
-one-layer job around the same rectangle.
+Go Scale is plain interactive rapids: a speed and five moves, nothing
+else, so no process starts and the laser cannot fire. Cut Scale is an
+ordinary one-layer job around the same rectangle, and stays one.
 """
 
 import pytest
+import pytest_asyncio
+from blinker import Signal
 
 from rayforge.core.doc import Doc
-from rayforge.machine.cmd import _cut_scale_ops, _go_scale_ops
+from rayforge.machine.cmd import _cut_scale_ops
+from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
 from rayforge.machine.models.laser import Laser
+from rayforge.machine.models.machine import Machine
 
 # Opcodes that cut, and the power commands a layer body emits.
 CUT_OPCODES = (b"\xa8", b"\xa9", b"\xaa", b"\xab")
@@ -32,43 +37,109 @@ def _commands(ops, machine):
     return RuidaEncoder().encode(ops, machine, Doc()).driver_data["commands"]
 
 
-def _body(commands):
-    """Everything after the prologue's last part-settings command."""
-    starts = [
-        i
-        for i, c in enumerate(commands)
-        if c.startswith((b"\xe7\x55", b"\xe7\x08"))
+class _ScaleClientSpy:
+    """Records everything a Go Scale run sends."""
+
+    def __init__(self, position=(0, 0)):
+        self.commands: list[bytes] = []
+        self.position = position
+        self.state_changed = Signal()
+        self.position_updated = Signal()
+
+    async def disconnect(self):
+        pass
+
+    async def set_travel_speed(self, um_per_s: int):
+        self.commands.append(b"\xc9\x02" + encode35(um_per_s))
+
+    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
+        self.commands.append(b"\xd9\x10\x00" + encode35(x_um) + encode35(y_um))
+        self.position = (x_um, y_um)
+
+    async def stop_process(self):
+        self.commands.append(b"\xd8\x01")
+
+    async def read_position(self, timeout: float = 2.0):
+        return self.position
+
+
+def _corners(commands: list[bytes]) -> list[tuple[int, int]]:
+    return [
+        (decode35(c[3:8]), decode35(c[8:13]))
+        for c in commands
+        if c[:2] == b"\xd9\x10"
     ]
-    return commands[max(starts) + 1 :] if starts else commands
 
 
-def test_go_scale_body_has_no_cut_opcode(machine):
-    commands = _commands(_go_scale_ops(machine, 100.0, 50.0), machine)
+@pytest_asyncio.fixture
+async def ruida_driver(lite_context):
+    """A RuidaDriver with no transports; tests inject a client spy."""
+    machine = Machine(lite_context)
+    machine.driver_name = "RuidaDriver"
+    lite_context.machine_mgr.add_machine(machine)
+    driver = RuidaDriver(lite_context, machine)
 
-    cuts = [c for c in commands if c[:1] in CUT_OPCODES]
-    assert cuts == []
+    yield driver
 
-
-def test_go_scale_body_has_no_power_command(machine):
-    commands = _commands(_go_scale_ops(machine, 100.0, 50.0), machine)
-
-    powers = [c for c in _body(commands) if c[:2] in BODY_POWER]
-    assert powers == []
-
-
-def test_go_scale_traverses_the_four_corners(machine):
-    commands = _commands(_go_scale_ops(machine, 100.0, 50.0), machine)
-
-    moves = [
-        c for c in commands if c[:1] in (b"\x88", b"\x89", b"\x8a", b"\x8b")
-    ]
-    assert len(moves) == 5
+    driver._client = None
+    await driver.cleanup()
+    await machine.shutdown()
 
 
-def test_go_scale_anchors_at_the_ref_point(machine):
-    commands = _commands(_go_scale_ops(machine, 100.0, 50.0), machine)
+class TestGoScale:
+    """Go Scale traverses the outline with interactive rapids."""
 
-    assert commands[0] == b"\xd8\x12"
+    @pytest.mark.asyncio
+    async def test_emits_one_speed_and_five_moves_only(self, ruida_driver):
+        spy = _ScaleClientSpy(position=(0, 0))
+        ruida_driver._client = spy
+
+        await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert spy.commands[0] == b"\xc9\x02" + encode35(
+            ruida_driver.FRAME_SPEED_MM_S * 1000
+        )
+        assert len(_corners(spy.commands)) == 5
+        # A speed and five moves: nothing starts a process, and no
+        # power command is ever sent.
+        assert len(spy.commands) == 6
+        assert b"\xd8\x00" not in spy.commands
+
+    @pytest.mark.asyncio
+    async def test_corners_are_offset_from_the_start_position(
+        self, ruida_driver
+    ):
+        spy = _ScaleClientSpy(position=(60000, 40000))
+        ruida_driver._client = spy
+
+        await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert _corners(spy.commands) == [
+            (60000, 40000),
+            (160000, 40000),
+            (160000, 90000),
+            (60000, 90000),
+            (60000, 40000),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_cancel_stops_the_motion_and_resyncs(self, ruida_driver):
+        spy = _ScaleClientSpy(position=(0, 0))
+        ruida_driver._client = spy
+        original = spy.rapid_move_xy
+
+        async def cancel_after_second(x_um, y_um, light=False):
+            await original(x_um, y_um, light=light)
+            if len(_corners(spy.commands)) == 2:
+                await ruida_driver.cancel_frame()
+
+        spy.rapid_move_xy = cancel_after_second
+
+        await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert _corners(spy.commands) == [(0, 0), (100000, 0)]
+        assert b"\xd8\x01" in spy.commands
+        assert ruida_driver._jog_busy is False
 
 
 def test_cut_scale_cuts_four_segments(machine):
@@ -86,6 +157,15 @@ def test_cut_scale_uses_one_layer(machine):
     commands = _commands(ops, machine)
 
     assert b"\xca\x22\x00" in commands
+
+
+def test_cut_scale_still_starts_a_process(machine):
+    """Cut Scale fires, so the interlock must still apply to it."""
+    ops = _cut_scale_ops(machine, 100.0, 50.0, 1200, 0.8)
+
+    commands = _commands(ops, machine)
+
+    assert b"\xd8\x00" in commands
 
 
 def test_cut_scale_min_power_equals_max_power(machine):
