@@ -6,6 +6,7 @@ from .driver import (
     Driver,
     DriverMaturity,
     PWMParams,
+    acceleration_run_up_mm,
 )
 from .dummy import NoDeviceDriver
 from .grbl import (
@@ -56,4 +57,5 @@ __all__ = [
     "PWMParams",
     "RuidaDriver",
     "SmoothieDriver",
+    "acceleration_run_up_mm",
 ]

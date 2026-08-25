@@ -32,6 +32,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def acceleration_run_up_mm(
+    speed_mm_min: float, acceleration_mm_s2: float
+) -> float:
+    """
+    Distance a head needs to reach a speed from rest, v^2 / 2a.
+
+    Controllers that overscan natively run this far past each end of a
+    raster row. It is not in the op stream, so anything that reasons
+    about where the head will actually go has to add it back.
+    """
+    if speed_mm_min <= 0 or acceleration_mm_s2 <= 0:
+        return 0.0
+    speed_mm_s = speed_mm_min / 60.0
+    return (speed_mm_s**2) / (2.0 * acceleration_mm_s2)
+
+
 class DriverPrecheckError(Exception):
     """Custom exception for non-fatal pre-flight check failures."""
 

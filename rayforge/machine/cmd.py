@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from blinker import Signal
 from raygeo.ops import Ops
+from raygeo.ops.types import CommandType
 
 from ..context import get_context
 from ..pipeline.artifact import JobArtifact
@@ -15,7 +16,7 @@ from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder.base import EncodedOutput
 from ..pipeline.encoder.context import GcodeContext, JobInfo
 from ..shared.util.template import TemplateFormatter
-from .driver import get_driver_cls
+from .driver import acceleration_run_up_mm, get_driver_cls
 from .driver.dummy import NoDeviceDriver
 from .job_monitor import JobMonitor
 from .models.coordspace import MachineSpace
@@ -59,6 +60,69 @@ class MachineCmd:
             lambda ctx: machine.select_tool(tool_number), key="select-head"
         )
 
+    def _job_motion_extent(
+        self, ops: Ops, machine: Machine
+    ) -> tuple[float, float, float, float]:
+        """
+        Where the head will actually go, in job-local millimeters.
+
+        Travel moves count, and on a controller that overscans natively
+        the raster run-up is added back: it never appears in the op
+        stream, but the head still travels it.
+        """
+        min_x, min_y, max_x, max_y = ops.rect(True)
+        driver = machine.driver
+        if driver is None or not driver.native_overscan:
+            return min_x, min_y, max_x, max_y
+
+        acceleration = float(machine.acceleration or 0)
+        pad = 0.0
+        rate = 0.0
+        for i in range(ops.len()):
+            command = ops.command_type(i)
+            if command == CommandType.SET_FEED_RATE:
+                rate = float(ops.rate(i) or 0.0)
+            elif command == CommandType.SCAN_LINE:
+                pad = max(pad, acceleration_run_up_mm(rate, acceleration))
+        return min_x - pad, min_y, max_x + pad, max_y
+
+    def _warn_if_job_overruns_bed(self, ops: Ops, machine: Machine) -> None:
+        """
+        Toast, without blocking, when the job cannot fit from here.
+
+        The job is anchored where the head is now, so a rectangle that
+        fits the bed on its own can still run off the far edge.
+        """
+        bed_w, bed_h = machine.axis_extents
+        if bed_w <= 0 or bed_h <= 0:
+            return
+        try:
+            min_x, min_y, max_x, max_y = self._job_motion_extent(ops, machine)
+        except Exception:
+            logger.debug("Could not measure job extent", exc_info=True)
+            return
+
+        pos = machine.device_state.machine_pos
+        start_x = float(pos[0] or 0.0)
+        start_y = float(pos[1] or 0.0)
+        width = max_x - min_x
+        height = max_y - min_y
+        if start_x + width <= bed_w and start_y + height <= bed_h:
+            return
+
+        logger.warning(
+            f"Job extent {width:.1f} x {height:.1f} mm from "
+            f"({start_x:.1f}, {start_y:.1f}) leaves the "
+            f"{bed_w:.0f} x {bed_h:.0f} mm bed"
+        )
+        self._editor.notification_requested.send(
+            self,
+            message=_(
+                "This job needs {width:.0f} x {height:.0f} mm from the "
+                "current position and would run past the bed."
+            ).format(width=width, height=height),
+        )
+
     def _progress_handler(self, sender, metrics):
         """Signal handler for job progress updates."""
         logger.debug(f"JobMonitor progress: {metrics}")
@@ -87,6 +151,8 @@ class MachineCmd:
             if machine.driver:
                 machine.driver.job_finished.send(machine.driver)
             return
+
+        self._warn_if_job_overruns_bed(ops, machine)
 
         # Store the callback
         self._on_progress_callback = on_progress

@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 import pytest_asyncio
@@ -288,3 +288,75 @@ class TestMachineCmdLaserPower:
         await wait_for_tasks_to_finish(task_mgr)
 
         set_power_mock.assert_called_once_with(head, 0.5)
+
+
+class TestBedOverrunWarning:
+    """A job that cannot fit from here is flagged, not blocked."""
+
+    def _messages(self, machine_cmd):
+        seen: list[str] = []
+
+        def receiver(sender, message="", **kwargs):
+            seen.append(message)
+
+        # blinker holds receivers weakly; keep ours alive.
+        self._receiver = receiver
+        machine_cmd._editor.notification_requested.connect(receiver)
+        return seen
+
+    def test_no_warning_when_the_job_fits(self, machine_cmd, machine):
+        machine.set_axis_extents(200.0, 200.0)
+        seen = self._messages(machine_cmd)
+        ops = Ops()
+        ops.move_to(0, 0, 0)
+        ops.line_to(50, 50, 0)
+
+        machine_cmd._warn_if_job_overruns_bed(ops, machine)
+
+        assert seen == []
+
+    def test_warns_when_the_job_runs_past_the_bed(self, machine_cmd, machine):
+        machine.set_axis_extents(100.0, 100.0)
+        seen = self._messages(machine_cmd)
+        ops = Ops()
+        ops.move_to(0, 0, 0)
+        ops.line_to(150, 10, 0)
+
+        machine_cmd._warn_if_job_overruns_bed(ops, machine)
+
+        assert len(seen) == 1
+        assert "150" in seen[0]
+
+    def test_travel_alone_can_overrun(self, machine_cmd, machine):
+        """ops.rect() would miss this; the head still goes there."""
+        machine.set_axis_extents(100.0, 100.0)
+        ops = Ops()
+        ops.move_to(0, 0, 0)
+        ops.line_to(10, 10, 0)
+        ops.move_to(150, 10, 0)
+
+        extent = machine_cmd._job_motion_extent(ops, machine)
+
+        assert extent[2] == 150.0
+
+    def test_native_overscan_widens_the_extent(self, machine_cmd, machine):
+        """
+        The controller adds the raster run-up itself, so it is absent
+        from the ops but still has to fit on the bed.
+        """
+        machine.acceleration = 1000
+        driver = MagicMock()
+        driver.native_overscan = True
+
+        ops = Ops()
+        ops.set_feed_rate(6000)  # 100 mm/s -> 5 mm at 1000 mm/s^2
+        ops.move_to(0, 0, 0)
+        ops.scan_to(20, 0, 0.0, bytearray([128] * 8))
+
+        with patch.object(
+            Machine, "driver", new_callable=PropertyMock
+        ) as driver_prop:
+            driver_prop.return_value = driver
+            extent = machine_cmd._job_motion_extent(ops, machine)
+
+        assert (extent[0], extent[2]) == (-5.0, 25.0)

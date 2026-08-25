@@ -1333,3 +1333,136 @@ class TestFrequencyAndPulseWidthInJob:
         text = result.text
         assert "FREQUENCY 1000" in text
         assert "PULSE_WIDTH 50.0" in text
+
+
+def _raster_job_ops() -> Ops:
+    """A one-layer raster job: two 20mm scan rows at 100 mm/s."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.5)
+    ops.set_feed_rate(6000)  # 100 mm/s
+    ops.move_to(10.0, 10.0, 0.0)
+    ops.scan_to(30.0, 10.0, 0.0, bytearray([128] * 8))
+    ops.move_to(10.0, 11.0, 0.0)
+    ops.scan_to(30.0, 11.0, 0.0, bytearray([128] * 8))
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+def _travelling_job_ops() -> Ops:
+    """A cut job whose travel reaches past the cutting geometry."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.5)
+    ops.set_feed_rate(600)
+    ops.move_to(10.0, 10.0, 0.0)
+    ops.line_to(20.0, 10.0, 0.0)
+    ops.move_to(50.0, 40.0, 0.0)  # travel well outside the cut bbox
+    ops.move_to(10.0, 10.0, 0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+def _decode_s35(data: bytes) -> int:
+    """A 35-bit Ruida value, read as signed."""
+    value = _decode_u35(data)
+    return value - (1 << 35) if value >= (1 << 34) else value
+
+
+def _bounds(commands: list[bytes]) -> tuple[int, int, int, int]:
+    """The declared doc bounds, job-local micrometers."""
+    e7_03 = next(c for c in commands if c[:2] == b"\xe7\x03")
+    e7_07 = next(c for c in commands if c[:2] == b"\xe7\x07")
+    return (
+        _decode_s35(e7_03[2:7]),
+        _decode_s35(e7_03[7:12]),
+        _decode_s35(e7_07[2:7]),
+        _decode_s35(e7_07[7:12]),
+    )
+
+
+class TestDeclaredMotionExtent:
+    """The declared bounds cover every motion, not just the content."""
+
+    def test_raster_bounds_exceed_the_content_bbox(
+        self, encoder, mock_machine, doc
+    ):
+        """
+        The controller adds its own overscan to a scan row, so the
+        declaration has to leave room for it or the job is rejected
+        for exceeding its stated limits.
+        """
+        mock_machine.acceleration = 1000
+        commands = encoder.encode(
+            _raster_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        min_x, min_y, max_x, max_y = _bounds(commands)
+        # 100 mm/s at 1000 mm/s^2 needs 5 mm to reach speed, both ends.
+        assert min_x == -5000
+        assert max_x == 25000
+        # The scan axis alone grows; across the rows nothing changes.
+        assert (min_y, max_y) == (0, 1000)
+
+    def test_raster_bounds_scale_with_the_profile_acceleration(
+        self, encoder, mock_machine, doc
+    ):
+        """A machine that accelerates harder needs less run-up."""
+        mock_machine.acceleration = 4000
+        commands = encoder.encode(
+            _raster_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        min_x, _, max_x, _ = _bounds(commands)
+        assert (min_x, max_x) == (-1250, 21250)
+
+    def test_per_part_bounds_carry_the_overscan_too(
+        self, encoder, mock_machine, doc
+    ):
+        mock_machine.acceleration = 1000
+        commands = encoder.encode(
+            _raster_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        e7_52 = next(c for c in commands if c[:2] == b"\xe7\x52")
+        e7_53 = next(c for c in commands if c[:2] == b"\xe7\x53")
+        assert _decode_s35(e7_52[3:8]) == -5000
+        assert _decode_s35(e7_53[3:8]) == 25000
+
+    def test_checksum_still_holds_over_the_grown_bounds(
+        self, encoder, mock_machine, doc
+    ):
+        mock_machine.acceleration = 1000
+        commands = encoder.encode(
+            _raster_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        e5_idx = next(
+            i for i, c in enumerate(commands) if c[:2] == b"\xe5\x05"
+        )
+        running = sum(sum(c) for c in commands[:e5_idx])
+        assert commands[e5_idx][2:] == encode35(running + 0xD7)
+
+    def test_travel_moves_count_toward_the_bounds(
+        self, encoder, mock_machine, doc
+    ):
+        """ops.rect() drops travels; the head still goes there."""
+        commands = encoder.encode(
+            _travelling_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        assert _bounds(commands) == (0, 0, 40000, 30000)
+
+    def test_vector_only_bounds_are_unchanged(
+        self, encoder, mock_machine, doc
+    ):
+        """A job whose travel stays inside the cuts declares the cuts."""
+        commands = encoder.encode(
+            _equivalent_job_ops(), mock_machine, doc
+        ).driver_data["commands"]
+
+        assert _bounds(commands) == (0, 0, 20000, 20000)

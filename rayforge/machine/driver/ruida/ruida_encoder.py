@@ -6,6 +6,7 @@ text representation for UI display.
 """
 
 import logging
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,7 @@ from ....pipeline.encoder.base import (
     MachineCodeOpMap,
     OpsEncoder,
 )
+from ..driver import acceleration_run_up_mm
 from .ruida_maps import REF_POINT_COMMANDS
 from .ruida_util import build_swizzle_lut, encode14, encode35
 
@@ -636,8 +638,57 @@ class RuidaEncoder(OpsEncoder):
         opcode = _IMD_POWER_CMDS.get(self.active_laser, 0xC7)
         binary.append(bytes([opcode]) + encode14(power_val))
 
+    @staticmethod
+    def _grow(
+        box: list[float] | None, points: list[tuple[float, float]]
+    ) -> list[float]:
+        """Extend an [min_x, min_y, max_x, max_y] box over points."""
+        for px, py in points:
+            if box is None:
+                box = [px, py, px, py]
+            else:
+                box[0] = min(box[0], px)
+                box[1] = min(box[1], py)
+                box[2] = max(box[2], px)
+                box[3] = max(box[3], py)
+        assert box is not None
+        return box
+
+    @staticmethod
+    def _overscan_points(
+        points: list[tuple[float, float]],
+        speed_mm_min: float | None,
+        acceleration: float,
+    ) -> list[tuple[float, float]]:
+        """
+        Extend a scan row by the overscan the controller will add.
+
+        Ruida performs its own overscan (the driver reports
+        native_overscan), so the ramp never appears in the op stream --
+        yet the head really does travel it, and a job whose declared
+        bounds stop at the content is rejected for exceeding them. The
+        allowance is the distance needed to reach the scan speed,
+        v^2 / 2a, applied past both ends along the scan direction.
+        """
+        if not speed_mm_min or len(points) < 2:
+            return points
+        distance = acceleration_run_up_mm(speed_mm_min, acceleration)
+        if distance <= 0.0:
+            return points
+        (x0, y0), (x1, y1) = points[0], points[-1]
+        dx, dy = x1 - x0, y1 - y0
+        length = math.hypot(dx, dy)
+        if length == 0.0:
+            return points
+        pad_x = distance * dx / length
+        pad_y = distance * dy / length
+        return points + [
+            (x0 - pad_x, y0 - pad_y),
+            (x1 + pad_x, y1 + pad_y),
+        ]
+
     def _collect_job_info(
-        self, ops: Ops
+        self, ops: Ops, machine: "Machine"
     ) -> tuple[tuple[int, int, int, int], list[dict]]:
         """
         Pre-scan ops for the job prologue.
@@ -646,15 +697,15 @@ class RuidaEncoder(OpsEncoder):
         to 0,0) and one entry per layer with the layer's speed (mm/min),
         power (normalized), air assist state and bounds (um).
         Jobs without layer markers yield a single implicit layer.
+
+        The bounds cover every motion the controller will make, not
+        just the cutting geometry: travel moves count (``ops.rect()``
+        excludes them), and raster rows carry the controller's own
+        overscan. Under-declaring either makes the controller reject
+        the job for exceeding its stated limits.
         """
-        min_x, min_y, max_x, max_y = ops.rect()
         ox, oy = self.origin_um
-        bounds = (
-            self._mm_to_um(min_x) - ox,
-            self._mm_to_um(min_y) - oy,
-            self._mm_to_um(max_x) - ox,
-            self._mm_to_um(max_y) - oy,
-        )
+        acceleration = float(machine.acceleration or 0)
 
         cutting = (
             CommandType.LINE_TO,
@@ -669,6 +720,7 @@ class RuidaEncoder(OpsEncoder):
         cur_power: float | None = None
         cur_air: bool = False
         pos: tuple[float, float] | None = None
+        job_box: list[float] | None = None
 
         for i in range(ops.len()):
             ct = ops.command_type(i)
@@ -703,19 +755,26 @@ class RuidaEncoder(OpsEncoder):
                     current["explicit_air"] = True
             elif ct in motion:
                 end = ops.endpoint(i)
-                if ct in cutting and current is not None:
-                    points = [end] if pos is None else [pos, end]
-                    lb = current["bounds"]
-                    for px, py in ((p[0], p[1]) for p in points):
-                        if lb is None:
-                            lb = [px, py, px, py]
-                        else:
-                            lb[0] = min(lb[0], px)
-                            lb[1] = min(lb[1], py)
-                            lb[2] = max(lb[2], px)
-                            lb[3] = max(lb[3], py)
-                    current["bounds"] = lb
+                points = [(end[0], end[1])]
+                if pos is not None:
+                    points.insert(0, pos)
+                if ct == CommandType.SCAN_LINE:
+                    points = self._overscan_points(
+                        points, cur_speed, acceleration
+                    )
+                job_box = self._grow(job_box, points)
+                if current is not None:
+                    current["bounds"] = self._grow(current["bounds"], points)
                 pos = (end[0], end[1])
+
+        if job_box is None:
+            job_box = [0.0, 0.0, 0.0, 0.0]
+        bounds = (
+            self._mm_to_um(job_box[0]) - ox,
+            self._mm_to_um(job_box[1]) - oy,
+            self._mm_to_um(job_box[2]) - ox,
+            self._mm_to_um(job_box[3]) - oy,
+        )
 
         if not layers:
             layers.append(
@@ -782,7 +841,7 @@ class RuidaEncoder(OpsEncoder):
             self._mm_to_um(rect[0]),
             self._mm_to_um(rect[1]),
         )
-        bounds, layers = self._collect_job_info(ops)
+        bounds, layers = self._collect_job_info(ops, machine)
         min_x, min_y, max_x, max_y = bounds
         self._layers = layers
         self._part = -1

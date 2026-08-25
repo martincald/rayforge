@@ -8,6 +8,10 @@ from .spin_row import SpinRow
 if TYPE_CHECKING:
     from rayforge.doceditor.editor import DocEditor
 
+# Bounds are in application base units. Travel is limited by what the
+# machine can actually rapid at, so its ceiling stays the profile's max.
+TRAVEL_SPEED_MIN = 6.0  # 0.1 mm/s
+
 
 class TravelSpeedRow(SpinRow):
     """A spin row bound to the base ``Step.travel_speed`` attribute."""
@@ -24,7 +28,7 @@ class TravelSpeedRow(SpinRow):
             "travel_speed",
             title,
             _("Speed of rapid positioning moves"),
-            1.0,
+            TRAVEL_SPEED_MIN,
             float(getattr(step, "max_travel_speed", 10000.0)),
             1.0,
             0,
@@ -35,4 +39,4 @@ class TravelSpeedRow(SpinRow):
     def _sync_dependencies(self):
         max_speed = getattr(self.step, "max_travel_speed", None)
         if max_speed:
-            self.set_range(1.0, float(max_speed))
+            self.set_range(TRAVEL_SPEED_MIN, float(max_speed))

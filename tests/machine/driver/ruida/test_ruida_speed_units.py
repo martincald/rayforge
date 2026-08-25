@@ -98,3 +98,21 @@ def test_body_speed_change_converts_once(machine):
     commands = result.driver_data["commands"]
 
     assert _speeds(commands, b"\xc9\x02", 2) == [10000, 40000]
+
+
+@pytest.mark.parametrize("speed_mm_s", [0.1, 1000.0])
+def test_speed_range_ends_survive_the_mm_min_boundary(machine, speed_mm_s):
+    """
+    The cut speed range is 0.1 - 1000 mm/s. Both ends have to reach the
+    controller intact: mm/s to mm/min is the one lossy hop, and 0.1 mm/s
+    is exactly 6 mm/min, so nothing gets rounded away.
+    """
+    stored = _store_mm_s(speed_mm_s)
+    assert stored == round(speed_mm_s * 60)
+
+    result = RuidaEncoder().encode(_one_layer_job(stored), machine, Doc())
+    commands = result.driver_data["commands"]
+
+    expected = round(speed_mm_s * 1000)
+    assert _speeds(commands, b"\xc9\x02", 2) == [expected]
+    assert _speeds(commands, b"\xc9\x04", 3) == [expected]
