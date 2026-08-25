@@ -1,4 +1,9 @@
-from rayforge.shared.util.time_format import format_hours_to_hm
+import pytest
+
+from rayforge.shared.util.time_format import (
+    format_clock,
+    format_hours_to_hm,
+)
 
 
 class TestFormatHoursToHm:
@@ -31,3 +36,23 @@ class TestFormatHoursToHm:
 
     def test_one_quarter_hour(self):
         assert format_hours_to_hm(0.25) == "15m"
+
+
+class TestFormatClock:
+    """The job estimate reads as a clock, so mm:ss always shows."""
+
+    @pytest.mark.parametrize(
+        "seconds, expected",
+        [
+            (0, "00:00"),
+            (5, "00:05"),
+            (65, "01:05"),
+            (125, "02:05"),
+            (599.6, "10:00"),
+            (3600, "1:00:00"),
+            (5445, "1:30:45"),
+            (-10, "00:00"),
+        ],
+    )
+    def test_reads_as_a_clock(self, seconds, expected):
+        assert format_clock(seconds) == expected

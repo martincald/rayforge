@@ -1,6 +1,6 @@
 from gi.repository import Gtk
 
-from ...shared.util.time_format import format_seconds
+from ...shared.util.time_format import format_clock
 from .gtk import apply_css
 
 css = """
@@ -34,7 +34,5 @@ class TimeEstimateOverlay(Gtk.Box):
         if time_seconds is None or time_seconds <= 0:
             self._label.set_visible(False)
         else:
-            self._label.set_text(
-                "~" + format_seconds(time_seconds, compact=True)
-            )
+            self._label.set_text("~" + format_clock(time_seconds))
             self._label.set_visible(True)

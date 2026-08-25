@@ -119,7 +119,7 @@ class TestMachine:
         assert isinstance(machine.driver, NoDeviceDriver)
         assert machine.name is not None
         assert machine.id is not None
-        assert machine.acceleration == 1000
+        assert machine.acceleration == 3000
         assert machine.reverse_x_axis is False
         assert machine.reverse_y_axis is False
         assert machine.reverse_z_axis is False

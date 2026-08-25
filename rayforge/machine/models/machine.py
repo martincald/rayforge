@@ -138,7 +138,7 @@ class Machine:
         self.cameras: list[Camera] = []
         self.max_travel_speed: int = 3000  # in mm/min
         self.max_cut_speed: int = 1000  # in mm/min
-        self.acceleration: int = 1000  # in mm/s²
+        self.acceleration: int = 3000  # in mm/s²
         self.axes: AxisSet = AxisSet(
             [
                 AxisConfig(
