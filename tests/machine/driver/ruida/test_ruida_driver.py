@@ -332,6 +332,8 @@ async def test_jog_x_axis(driver, ruida_simulator):
     assert await wait_for_connection(driver)
 
     sim.x = 0
+    sim.y = 0
+    assert await wait_for_cached_position(driver, x_um=0, y_um=0)
 
     await driver.jog(5000, x=10.0)
     await asyncio.sleep(0.2)
@@ -348,7 +350,9 @@ async def test_jog_y_axis(driver, ruida_simulator):
 
     assert await wait_for_connection(driver)
 
+    sim.x = 0
     sim.y = 0
+    assert await wait_for_cached_position(driver, x_um=0, y_um=0)
 
     await driver.jog(3000, y=5.0)
     await asyncio.sleep(0.2)
@@ -536,15 +540,17 @@ async def test_home_restores_response_timeout(driver, ruida_simulator):
 
 
 @pytest.mark.asyncio
-async def test_jog_single_axis_streams_speed_then_relative(
+async def test_jog_single_axis_streams_speed_then_absolute(
     driver, ruida_simulator
 ):
-    """Test single-axis jog: C9 02 speed, then relative D9 00."""
+    """Test single-axis jog: C9 02 speed, then absolute D9 10."""
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
 
     sim.x = 30000
+    sim.y = 0
+    assert await wait_for_cached_position(driver, x_um=30000, y_um=0)
 
     commands: list[tuple[str, bytes]] = []
     sim._server.on_command = lambda desc, data: commands.append((desc, data))
@@ -570,8 +576,9 @@ async def test_jog_single_axis_streams_speed_then_relative(
     assert speed[:2] == b"\xc9\x02"
     # 6000 mm/min = 100000 um/s.
     assert decode35(speed[2:7]) == 100000
-    assert rapid[:3] == b"\xd9\x00\x02"
-    assert decode35(rapid[3:8]) == 10000
+    assert rapid[:3] == b"\xd9\x10\x00"
+    assert decode35(rapid[3:8]) == 40000
+    assert decode35(rapid[8:13]) == 0
     assert sim.x == 40000
 
     await driver.cleanup()
@@ -902,6 +909,7 @@ async def test_multiple_jogs_in_sequence(driver, ruida_simulator):
 
     sim.x = 0
     sim.y = 0
+    assert await wait_for_cached_position(driver, x_um=0, y_um=0)
 
     await driver.jog(5000, x=10.0)
     await asyncio.sleep(0.2)
@@ -1581,10 +1589,12 @@ class TestDefaultRefPoint:
 
 
 class _JogClientSpy:
-    """Records the interactive motion a hold jog produces."""
+    """Records the interactive motion a jog produces."""
 
-    def __init__(self):
+    def __init__(self, position=(0, 0)):
         self.commands: list[bytes] = []
+        self.position = position
+        self.reads = 0
         self.state_changed = Signal()
         self.position_updated = Signal()
 
@@ -1594,22 +1604,16 @@ class _JogClientSpy:
     async def set_travel_speed(self, um_per_s: int):
         self.commands.append(b"\xc9\x02" + encode35(um_per_s))
 
-    async def rapid_move_axis(
-        self,
-        axis: int,
-        coord: int,
-        origin: bool = False,
-        light: bool = False,
-    ):
-        self.commands.append(
-            b"\xd9" + bytes([axis]) + b"\x02" + encode35(coord)
-        )
-
     async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
         self.commands.append(b"\xd9\x10\x00" + encode35(x_um) + encode35(y_um))
+        self.position = (x_um, y_um)
 
-    async def _read_memory_wait(self, address: int, timeout: float = 2.0):
-        return None
+    async def stop_process(self):
+        self.commands.append(b"\xd8\x01")
+
+    async def read_position(self, timeout: float = 2.0):
+        self.reads += 1
+        return self.position
 
 
 def _motion(commands: list[bytes]) -> list[bytes]:
@@ -1618,122 +1622,166 @@ def _motion(commands: list[bytes]) -> list[bytes]:
 
 
 class TestHoldJog:
-    """Press-and-hold jog repeats short interactive D9 moves."""
+    """A hold is one long move, halted by D8 01 on release."""
 
     @pytest.mark.asyncio
     async def test_driver_reports_hold_jog_support(self, driver):
         assert driver.can_hold_jog() is True
 
     @pytest.mark.asyncio
-    async def test_key_down_tracks_the_key_and_starts_the_task(self, driver):
-        driver._client = _JogClientSpy()
-
-        await driver.jog_key_down("x", 1)
-
-        assert driver._jog_keys_down == {("x", 1)}
-        assert driver._jog_task is not None
-        await driver.release_all_jog_keys()
-
-    @pytest.mark.asyncio
-    async def test_repeated_key_down_starts_only_one_task(self, driver):
-        driver._client = _JogClientSpy()
-
-        await driver.jog_key_down("x", 1)
-        task = driver._jog_task
-        await driver.jog_key_down("x", 1)
-
-        assert driver._jog_task is task
-        await driver.release_all_jog_keys()
-
-    @pytest.mark.asyncio
-    async def test_three_ticks_emit_three_moves_after_one_speed(self, driver):
-        """A hold streams C9 02 once, then one move per tick."""
+    async def test_press_emits_speed_then_one_long_move(self, driver):
         spy = _JogClientSpy()
         driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+        driver._machine.set_axis_extents(400.0, 300.0)
         await driver.set_jog_speed(1200)  # 20 mm/s
 
         await driver.jog_key_down("x", 1)
-        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 2.5)
-        await driver.jog_key_up("x", 1)
 
-        speeds = [c for c in spy.commands if c[:2] == b"\xc9\x02"]
+        assert spy.commands[0] == b"\xc9\x02" + encode35(20000)
         moves = _motion(spy.commands)
-        assert len(speeds) == 1
-        assert decode35(speeds[0][2:7]) == 20000
-        assert len(moves) == 3
-        assert spy.commands[0] == speeds[0]
-        # 20 mm/s * 0.15 s * 1.2 = 3.6 mm, inside the clamp.
-        for move in moves:
-            assert move[:3] == b"\xd9\x00\x02"
-            assert decode35(move[3:8]) == 3600
+        assert len(moves) == 1
+        assert moves[0][:3] == b"\xd9\x10\x00"
+        # 400 mm bed, 1 mm margin, Y unchanged.
+        assert decode35(moves[0][3:8]) == 399000
+        assert decode35(moves[0][8:13]) == 100000
 
     @pytest.mark.asyncio
-    async def test_key_up_cancels_the_task(self, driver):
+    async def test_negative_direction_runs_to_the_near_limit(self, driver):
         spy = _JogClientSpy()
         driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+        driver._machine.set_axis_extents(400.0, 300.0)
 
         await driver.jog_key_down("y", -1)
-        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 0.5)
-        await driver.jog_key_up("y", -1)
-        emitted = len(_motion(spy.commands))
-        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 3)
 
-        assert driver._jog_keys_down == set()
-        assert driver._jog_task is None
-        assert len(_motion(spy.commands)) == emitted
+        moves = _motion(spy.commands)
+        assert decode35(moves[0][3:8]) == 100000
+        assert decode35(moves[0][8:13]) == 1000
 
     @pytest.mark.asyncio
-    async def test_release_all_cancels_the_task(self, driver):
+    async def test_diagonal_hold_runs_both_axes_to_their_limits(self, driver):
+        """The two halves of a diagonal arrive as separate presses."""
+        spy = _JogClientSpy(position=(100000, 100000))
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+        driver._machine.set_axis_extents(400.0, 300.0)
+
+        await driver.jog_key_down("x", -1)
+        spy.position = (100000, 100000)
+        await driver.jog_key_down("y", 1)
+
+        # The second press stops the first move before re-issuing, so
+        # only one move is ever outstanding.
+        moves = _motion(spy.commands)
+        assert len(moves) == 2
+        assert spy.commands.index(b"\xd8\x01") < spy.commands.index(moves[1])
+        assert decode35(moves[1][3:8]) == 1000
+        assert decode35(moves[1][8:13]) == 299000
+
+    @pytest.mark.asyncio
+    async def test_release_stops_and_resyncs(self, driver):
+        spy = _JogClientSpy()
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+
+        await driver.jog_key_down("x", 1)
+        spy.position = (222000, 100000)
+        reads_before = spy.reads
+        await driver.jog_key_up("x", 1)
+
+        assert spy.commands[-1] == b"\xd8\x01"
+        assert spy.reads == reads_before + 1
+        assert driver._last_known_pos == (222000, 100000)
+        assert driver._jog_busy is False
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_click_during_a_hold_emits_nothing(self, driver):
+        spy = _JogClientSpy()
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+
+        await driver.jog_key_down("x", 1)
+        emitted = len(spy.commands)
+        await driver.jog(6000, x=10.0)
+
+        assert len(spy.commands) == emitted
+        assert driver._jog_keys_down == {("x", 1)}
+
+    @pytest.mark.asyncio
+    async def test_input_while_a_step_settles_emits_nothing(self, driver):
+        spy = _JogClientSpy()
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+        driver._jog_busy = True  # a single step is still settling
+
+        await driver.jog_key_down("x", 1)
+        await driver.jog(6000, y=10.0)
+
+        assert spy.commands == []
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_release_all_stops_and_resyncs(self, driver):
         """Focus loss and disconnect both land here."""
         spy = _JogClientSpy()
         driver._client = spy
+        driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", 1)
-        await driver.jog_key_down("y", 1)
         await driver.release_all_jog_keys()
-        emitted = len(_motion(spy.commands))
-        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 3)
 
+        assert spy.commands[-1] == b"\xd8\x01"
         assert driver._jog_keys_down == set()
-        assert driver._jog_task is None
-        assert len(_motion(spy.commands)) == emitted
+        assert driver._jog_busy is False
 
     @pytest.mark.asyncio
-    async def test_disconnect_cancels_the_task(self, driver):
-        driver._client = _JogClientSpy()
+    async def test_disconnect_stops_the_motion(self, driver):
+        spy = _JogClientSpy()
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", -1)
         await driver._disconnect_transports()
 
+        assert b"\xd8\x01" in spy.commands
         assert driver._jog_keys_down == set()
-        assert driver._jog_task is None
+        assert driver._jog_busy is False
 
     @pytest.mark.asyncio
-    async def test_diagonal_hold_moves_to_an_absolute_target(self, driver):
-        """Two axes at once need the absolute D9 10 form."""
-        spy = _JogClientSpy()
+    async def test_single_step_is_busy_until_it_settles(self, driver):
+        spy = _JogClientSpy(position=(100000, 100000))
         driver._client = spy
-        driver._last_known_pos = (10000, 20000)
-        await driver.set_jog_speed(1200)  # 20 mm/s -> 3.6 mm steps
+        driver._last_known_pos = (100000, 100000)
 
-        await driver.jog_key_down("x", 1)
-        await driver.jog_key_down("y", 1)
-        await asyncio.sleep(driver.JOG_TICK_INTERVAL * 0.5)
-        await driver.release_all_jog_keys()
+        await driver.jog(6000, x=10.0)
 
         moves = _motion(spy.commands)
-        assert moves
-        assert moves[0][:3] == b"\xd9\x10\x00"
-        assert decode35(moves[0][3:8]) == 13600
-        assert decode35(moves[0][8:13]) == 23600
+        assert len(moves) == 1
+        assert decode35(moves[0][3:8]) == 110000
+        assert spy.reads >= 1
+        assert driver._jog_busy is False
 
     @pytest.mark.asyncio
-    async def test_step_is_clamped_at_both_ends(self, driver):
-        await driver.set_jog_speed(60)  # 1 mm/s -> 0.18 mm, clamped up
-        assert driver._hold_jog_step_um() == 500
+    async def test_single_step_gives_up_after_the_timeout(self, driver):
+        """A head that never arrives must not pin the busy flag."""
+        spy = _JogClientSpy(position=(100000, 100000))
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
 
-        await driver.set_jog_speed(60000)  # 1000 mm/s, clamped down
-        assert driver._hold_jog_step_um() == 5000
+        async def frozen(x_um, y_um, light=False):
+            spy.commands.append(
+                b"\xd9\x10\x00" + encode35(x_um) + encode35(y_um)
+            )
+
+        spy.rapid_move_xy = frozen
+        driver.JOG_SETTLE_GRACE = 0.05
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.01
+
+        await driver.jog(60000, x=1.0)
+
+        assert driver._jog_busy is False
 
     @pytest.mark.asyncio
     async def test_set_jog_speed_stores_mm_min(self, driver):
@@ -1791,7 +1839,6 @@ class TestTraceFrame:
         """(0,0) (w,0) (w,h) (0,h) (0,0), pointer on, anchor-relative."""
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         await driver.trace_frame(30.0, 20.0)
 
@@ -1808,7 +1855,6 @@ class TestTraceFrame:
     async def test_finishes_with_the_pointer_off_at_the_anchor(self, driver):
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         await driver.trace_frame(30.0, 20.0)
 
@@ -1818,7 +1864,6 @@ class TestTraceFrame:
     async def test_travel_speed_is_set_before_the_first_corner(self, driver):
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         await driver.trace_frame(10.0, 10.0)
 
@@ -1830,7 +1875,6 @@ class TestTraceFrame:
         """The laser must not fire while framing."""
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         await driver.trace_frame(10.0, 10.0)
 
@@ -1840,9 +1884,8 @@ class TestTraceFrame:
     @pytest.mark.asyncio
     async def test_corners_are_offset_from_a_non_zero_anchor(self, driver):
         """Arrival is judged against the anchor, not machine zero."""
-        spy = _FrameClientSpy(position=(0, 0))
+        spy = _FrameClientSpy(position=(50000, 70000))
         driver._client = spy
-        driver._origin_pos = (50000, 70000)
 
         # The spy reports the commanded anchor-relative position, so a
         # non-zero anchor means no corner ever compares equal; the
@@ -1857,7 +1900,6 @@ class TestTraceFrame:
     async def test_cancel_stops_before_the_next_corner(self, driver):
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         original = spy.rapid_move_xy
 
@@ -1881,7 +1923,6 @@ class TestTraceFrame:
     async def test_cancel_flag_is_cleared_for_the_next_trace(self, driver):
         spy = _FrameClientSpy()
         driver._client = spy
-        driver._origin_pos = (0, 0)
 
         await driver.cancel_frame()
         await driver.trace_frame(10.0, 10.0)

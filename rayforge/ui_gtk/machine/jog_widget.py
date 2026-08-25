@@ -19,7 +19,7 @@ _JOG_SPEED_DEBOUNCE_MS = 300
 
 # How long an arrow must stay down before it counts as a hold. A
 # shorter press is a click, and moves exactly one step instead.
-_HOLD_START_DELAY_MS = 150
+_HOLD_START_DELAY_MS = 200
 
 _GAP = 12
 _SPACING = 6
@@ -170,25 +170,17 @@ class JogWidget(Gtk.Widget):
         scale_box.append(self.cut_scale_btn)
         self._jog_grid.attach(scale_box, 0, 3, 3, 1)
 
-        # Row 4: position readout, with Set origin as a small aside.
+        # Row 4: position readout.
         self.position_label = Gtk.Label(label=self._format_position(None))
         self.position_label.add_css_class("numeric")
         self.position_label.set_halign(Gtk.Align.START)
         self.position_label.set_hexpand(True)
-
-        self.origin_btn = Gtk.Button(label=_("Set origin"))
-        self.origin_btn.add_css_class("flat")
-        self.origin_btn.set_tooltip_text(
-            _("Set job origin to current position")
-        )
-        self.origin_btn.connect("clicked", self._on_origin_clicked)
 
         status_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=_SPACING
         )
         status_box.set_valign(Gtk.Align.CENTER)
         status_box.append(self.position_label)
-        status_box.append(self.origin_btn)
         self._jog_grid.attach(status_box, 0, 4, 3, 1)
 
         # Action column (separate grid for extra gap)
@@ -382,7 +374,6 @@ class JogWidget(Gtk.Widget):
         self.home_all_btn.set_sensitive(False)
         self.go_scale_btn.set_sensitive(False)
         self.cut_scale_btn.set_sensitive(False)
-        self.origin_btn.set_sensitive(False)
         self.start_btn.set_sensitive(False)
         self.pause_btn.set_sensitive(False)
         self.stop_btn.set_sensitive(False)
@@ -390,9 +381,6 @@ class JogWidget(Gtk.Widget):
         # Only enable buttons if machine exists, is connected
         if self.machine is None or not self.machine.is_connected():
             return
-
-        # Type assertion to help Pylance understand machine is not None
-        machine: Machine = self.machine  # type: ignore
 
         # Jog buttons - a direction is joggable when every native axis it
         # drives is supported (under rotation a visual axis may map to
@@ -418,11 +406,6 @@ class JogWidget(Gtk.Widget):
         )
 
         self.home_all_btn.set_sensitive(True)
-
-        # Setting the origin is driver-specific; only offer it where it
-        # is supported.
-        driver = machine.driver
-        self.origin_btn.set_sensitive(bool(driver) and driver.can_set_origin())
         self._update_scale_buttons()
 
         # Job controls - always enabled when connected
@@ -782,11 +765,6 @@ class JogWidget(Gtk.Widget):
     def _on_document_settled(self, sender, **kwargs):
         """A document with no ops has no outline to scale."""
         self._update_scale_buttons()
-
-    def _on_origin_clicked(self, button):
-        """Handle Set origin button click."""
-        if self.machine and self.machine_cmd:
-            self.machine_cmd.set_origin(self.machine)
 
     def _on_home_all_clicked(self, button):
         """Handle Home machine button click."""

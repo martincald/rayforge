@@ -343,3 +343,35 @@ def test_jog_button_limit_warning(
 
     # 5. Assert that the set of warned buttons matches the expectation
     assert warned_buttons == expected_warnings
+
+
+@pytest.mark.ui
+def test_x_mapping_follows_the_origin_corner_setting(ui_context_initializer):
+    """
+    The arrow-to-delta mapping is read from the machine profile's
+    origin corner, not baked in: moving the origin across the bed
+    inverts X on a widget that is already live.
+    """
+    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+
+    machine = Machine(ui_context_initializer)
+    machine.set_axis_extents(200, 200)
+    machine.set_origin(Origin.TOP_LEFT)
+    ui_context_initializer.machine_mgr.add_machine(machine)
+
+    mock_machine_cmd = MagicMock()
+    jog_widget = JogWidget()
+    jog_widget.set_machine(machine, mock_machine_cmd)
+    jog_widget.jog_distance = JOG_DISTANCE
+    jog_widget.jog_speed = JOG_SPEED
+
+    directions = jog_widget._button_directions[jog_widget.east_btn]
+    jog_widget._on_jog_released(None, 1, 0.0, 0.0, directions)
+    left_origin = mock_machine_cmd.jog.call_args[0][1]
+
+    machine.set_origin(Origin.TOP_RIGHT)
+    jog_widget._on_jog_released(None, 1, 0.0, 0.0, directions)
+    right_origin = mock_machine_cmd.jog.call_args[0][1]
+
+    assert left_origin == {Axis.X: JOG_DISTANCE}
+    assert right_origin == {Axis.X: -JOG_DISTANCE}

@@ -274,10 +274,11 @@ def test_focus_loss_cancels_a_pending_hold(ui_context_initializer):
 
 
 @pytest.mark.ui
-def test_hold_start_delay_is_150ms(ui_context_initializer):
+def test_hold_start_delay_is_200ms(ui_context_initializer):
+    """A press shorter than this is a click: one step, not a hold."""
     from rayforge.ui_gtk.machine import jog_widget
 
-    assert jog_widget._HOLD_START_DELAY_MS == 150
+    assert jog_widget._HOLD_START_DELAY_MS == 200
 
 
 def _hold(widget, *directions):

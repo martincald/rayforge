@@ -55,10 +55,6 @@ _JOB_NAK_BYTES = frozenset(
 KEY_DOWN_PREFIX = b"\xa5\x50"
 KEY_UP_PREFIX = b"\xa5\x51"
 
-ORIGIN_KEY = 0x08
-ORIGIN_KEY_DOWN = KEY_DOWN_PREFIX + bytes([ORIGIN_KEY])
-ORIGIN_KEY_UP = KEY_UP_PREFIX + bytes([ORIGIN_KEY])
-
 
 def split_commands(data: bytes) -> list[bytes]:
     """
@@ -500,23 +496,6 @@ class RuidaClient:
     async def commit_ref_point(self) -> None:
         """Commit the current reference point setting."""
         await self.send_command(b"\xf0")
-
-    async def set_origin(self) -> None:
-        """
-        Press the panel Origin key to anchor the job origin here.
-
-        The panel key stream goes out on the jog channel as raw bytes:
-        no swizzle and no checksum frame, unlike normal commands. A key
-        press is a down/up pair.
-        """
-        if self._jog_transport is None:
-            raise RuntimeError("No jog transport configured")
-        logger.info(
-            f"Origin key: {ORIGIN_KEY_DOWN.hex(' ')} / "
-            f"{ORIGIN_KEY_UP.hex(' ')} on the jog channel"
-        )
-        await self._jog_transport.send(ORIGIN_KEY_DOWN)
-        await self._jog_transport.send(ORIGIN_KEY_UP)
 
     async def jog_start(self, axis: str, direction: int) -> None:
         """

@@ -632,22 +632,6 @@ class MachineCmd:
         """Adds a task to home a specific axis."""
         self._editor.task_manager.add_coroutine(lambda ctx: machine.home(axis))
 
-    def set_origin(self, machine: Machine):
-        """Adds a task to set the job origin to the current position."""
-        driver = machine.driver
-        if not driver:
-            return
-
-        async def set_origin_and_notify(ctx):
-            await driver.set_origin()
-            self._editor.notification_requested.send(
-                self, message=_("Origin set")
-            )
-
-        self._editor.task_manager.add_coroutine(
-            set_origin_and_notify, key="set-origin"
-        )
-
     def move_to(self, machine: Machine, x: float, y: float):
         """Adds a task to move to an absolute position."""
         driver = machine.driver
