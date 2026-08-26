@@ -510,3 +510,34 @@ class TestInteractiveBytes:
             assert client._build_jog_keyup(axis, direction) == bytes(
                 [0xD8, down + 0x10]
             )
+
+
+class TestEveryReleasePathStops:
+    """Invariant: a held key must not survive any teardown path."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "path", ["key_up", "release_all", "disconnect", "cancel", "cleanup"]
+    )
+    async def test_release_path_stops_and_clears(self, driver, path):
+        spy = MotionClientSpy(position=(100000, 100000))
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+
+        await driver.jog_key_down("x", 1)
+        assert driver._jog_busy is True
+
+        if path == "key_up":
+            await driver.jog_key_up("x", 1)
+        elif path == "release_all":
+            await driver.release_all_jog_keys()
+        elif path == "disconnect":
+            await driver._disconnect_transports()
+        elif path == "cancel":
+            await driver.cancel()
+        elif path == "cleanup":
+            await driver.cleanup()
+
+        assert STOP in spy.commands
+        assert driver._jog_keys_down == set()
+        assert driver._jog_busy is False

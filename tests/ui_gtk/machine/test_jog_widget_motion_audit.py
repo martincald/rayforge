@@ -160,3 +160,57 @@ def test_every_jog_button_tracks_drag_off(ui_context_initializer):
             if isinstance(c, Gtk.GestureClick)
         ]
         assert gestures, "every jog button needs its own click gesture"
+
+
+@pytest.mark.ui
+@pytest.mark.parametrize(
+    "release",
+    [
+        "released",
+        "cancelled",
+        "leave",
+        "drag_off",
+        "unmap",
+        "focus_loss",
+        "disconnect",
+        "machine_swap",
+    ],
+)
+def test_every_release_path_lets_the_key_go(ui_context_initializer, release):
+    """Invariant: no path may lose a key-up and leave the head moving."""
+    machine_cmd = MagicMock()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+    east = (JogDirection.EAST,)
+
+    with _hold_jog_driver(machine):
+        _hold(widget, JogDirection.EAST)
+        assert widget._keys_down == {("x", 1)}
+
+        if release == "released":
+            widget._on_jog_released(None, 1, 0.0, 0.0, east)
+        elif release == "cancelled":
+            widget._on_jog_cancelled(None, None, east)
+        elif release == "leave":
+            widget._on_jog_leave(None, east)
+        elif release == "drag_off":
+            gesture = MagicMock()
+            gesture.get_point.return_value = (True, -40.0, -40.0)
+            button = MagicMock()
+            button.contains.return_value = False
+            widget._on_jog_gesture_update(gesture, None, button, east)
+        elif release == "unmap":
+            widget._on_unmapped(widget)
+        elif release == "focus_loss":
+            root = MagicMock()
+            root.is_active.return_value = False
+            widget._on_root_active_changed(root, None)
+        elif release == "disconnect":
+            with patch.object(
+                type(machine), "is_connected", return_value=False
+            ):
+                widget._on_connection_status_changed(machine)
+        elif release == "machine_swap":
+            widget.set_machine(None, machine_cmd)
+
+    machine_cmd.jog_key_up.assert_any_call(machine, "x", 1)
+    assert widget._keys_down == set()
