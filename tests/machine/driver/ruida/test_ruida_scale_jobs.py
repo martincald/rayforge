@@ -96,8 +96,15 @@ class TestGoScale:
 
         await ruida_driver.trace_frame(100.0, 50.0)
 
+        # The trace prefers its own moderate speed but never exceeds
+        # the profile's max travel speed.
+        expected_mm_min = min(
+            ruida_driver.FRAME_SPEED_MM_S * 60,
+            ruida_driver._machine.max_travel_speed
+            or ruida_driver.DEFAULT_TRAVEL_SPEED,
+        )
         assert spy.commands[0] == b"\xc9\x02" + encode35(
-            ruida_driver.FRAME_SPEED_MM_S * 1000
+            int(expected_mm_min * 1000 / 60)
         )
         assert len(_corners(spy.commands)) == 5
         # A speed and five moves: nothing starts a process, and no

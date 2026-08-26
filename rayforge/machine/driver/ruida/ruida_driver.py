@@ -3,6 +3,7 @@ import inspect
 import logging
 import tempfile
 from collections.abc import Awaitable, Callable
+from contextlib import contextmanager
 from dataclasses import replace
 from gettext import gettext as _
 from pathlib import Path
@@ -69,6 +70,10 @@ class RuidaDriver(Driver):
     # Homing and move-to are positioning, not cutting: they run at the
     # profile's max travel speed, falling back to 200 mm/s.
     DEFAULT_TRAVEL_SPEED = 12000  # mm/min
+    # Press-and-hold jog runs at the speed the panel shows. This is
+    # only the seed for the moment before the UI has pushed one, and
+    # it matches the jog speed row's own default so the two agree.
+    DEFAULT_JOG_SPEED = 1000  # mm/min
     # Jobs default to the anchor ref point (D8 12), matching RDWorks, so
     # cuts start at the origin the user set on the panel. The WCS itself
     # stays user-selectable; this only picks the initial slot.
@@ -107,12 +112,66 @@ class RuidaDriver(Driver):
         self._keep_running = False
         self._is_connected = False
         self._response_timeout = self.CONNECTION_TIMEOUT
-        self._suppress_polling = False
-        self._last_known_pos: tuple[int, int] | None = None
+        self._polling_suspensions = 0
+        # The two axes are reported in separate replies, so they are
+        # cached separately; _last_known_pos is only a position once
+        # both halves are in.
+        self._last_x_um: int | None = None
+        self._last_y_um: int | None = None
         self._jog_keys_down: set[tuple[str, int]] = set()
+        # True while any interactive motion is in flight -- a jog, a
+        # single step, or a scale trace. It is the ignore interlock:
+        # input that arrives while it is set is dropped, never queued.
         self._jog_busy = False
-        self._jog_speed_mm_min = self.DEFAULT_TRAVEL_SPEED
-        self._frame_cancelled = False
+        self._jog_speed_mm_min = self.DEFAULT_JOG_SPEED
+        # A job owns the wire while it uploads and runs: interactive
+        # motion is refused for the duration rather than interleaved
+        # into a stream whose acks are matched positionally.
+        self._job_running = False
+        # Every halt bumps this. A trace captures it on entry and
+        # abandons itself the moment it changes, so a stop that came
+        # from anywhere -- Stop button, key release, focus loss,
+        # disconnect -- ends the trace too.
+        self._frame_epoch = 0
+        # A Stop pressed while the outline is still being measured has
+        # no trace to bump the epoch on, so it is latched here and
+        # consumed by the run it was aimed at.
+        self._frame_cancel_pending = False
+
+    @property
+    def _last_known_pos(self) -> tuple[int, int] | None:
+        """Where the head is in machine space, or None if unknown."""
+        if self._last_x_um is None or self._last_y_um is None:
+            return None
+        return (self._last_x_um, self._last_y_um)
+
+    @_last_known_pos.setter
+    def _last_known_pos(self, value: tuple[int, int] | None) -> None:
+        if value is None:
+            self._last_x_um = None
+            self._last_y_um = None
+        else:
+            self._last_x_um, self._last_y_um = value
+
+    @property
+    def _suppress_polling(self) -> bool:
+        """Whether background polling is currently suspended."""
+        return self._polling_suspensions > 0
+
+    @contextmanager
+    def _polling_suspended(self):
+        """
+        Hold off background polling for the duration of a block.
+
+        A counter rather than a flag: a job upload and a scale trace
+        can overlap, and the inner one's exit must not hand the poller
+        back to the outer one mid-send.
+        """
+        self._polling_suspensions += 1
+        try:
+            yield
+        finally:
+            self._polling_suspensions = max(0, self._polling_suspensions - 1)
 
     @property
     def machine_space_wcs(self) -> str:
@@ -399,6 +458,8 @@ class RuidaDriver(Driver):
         # Last chance to stop a held jog key; the socket may already be
         # dead, which release_all_jog_keys tolerates.
         await self.release_all_jog_keys()
+        # A reconnect must not inherit a position from before the gap.
+        self._last_known_pos = None
         if self._client:
             try:
                 await self._client.disconnect()
@@ -475,24 +536,27 @@ class RuidaDriver(Driver):
 
         self._dump_job_blob(blob)
 
-        self._suppress_polling = True
+        self._job_running = True
         try:
-            # The proven sender had no concurrent traffic: keepalive
-            # and position polling stay suspended for the whole send.
-            await asyncio.sleep(0.2)
-            await self._client.send_job(
-                blob,
-                on_start=self._log_send_start,
-                on_chunk=self._log_chunk_acked,
-            )
-            logger.info(
-                "Upload complete, waiting for job to finish",
-                extra=self._log_extra("USER_COMMAND"),
-            )
-            await self._report_ops_done(on_command_done, 0, num_ops)
-            await self._wait_for_job_completion()
+            with self._polling_suspended():
+                # The proven sender had no concurrent traffic:
+                # keepalive and position polling stay suspended for
+                # the whole send.
+                await asyncio.sleep(0.2)
+                await self._client.send_job(
+                    blob,
+                    on_start=self._log_send_start,
+                    on_chunk=self._log_chunk_acked,
+                )
+                logger.info(
+                    "Upload complete, waiting for job to finish",
+                    extra=self._log_extra("USER_COMMAND"),
+                )
+                await self._report_ops_done(on_command_done, 0, num_ops)
+                await self._wait_for_job_completion()
         finally:
-            self._suppress_polling = False
+            self._job_running = False
+            self._last_known_pos = None
 
         logger.info("Job finished", extra=self._log_extra("USER_COMMAND"))
         self.job_finished.send(self)
@@ -575,8 +639,19 @@ class RuidaDriver(Driver):
             await self._client.resume_process()
 
     async def cancel(self) -> None:
+        """
+        Stop whatever this driver started: job, trace, or jog.
+
+        The red Stop button is the one control the user reaches for
+        when anything is moving, so it cannot be a job-only command.
+        Bumping the frame epoch aborts a running trace, dropping the
+        held keys stops a release from restarting a hold, and
+        _stop_jog_motion sends the same D8 01 a job cancel used to.
+        """
         assert self._client
-        await self._client.stop_process()
+        self._frame_epoch += 1
+        self._jog_keys_down.clear()
+        await self._stop_jog_motion()
 
     def can_home(self, axis: Axis | None = None) -> bool:
         return True
@@ -634,11 +709,32 @@ class RuidaDriver(Driver):
             extra=self._log_extra("USER_COMMAND"),
         )
 
-        self._frame_cancelled = False
-        start = await self._client.read_position()
+        # Captured before anything is sent. A cancel that arrived
+        # while the caller was still measuring the outline has already
+        # bumped the epoch, so the trace refuses to start rather than
+        # wiping the user's Stop.
+        epoch = self._frame_epoch
+        if self._frame_cancel_pending:
+            self._frame_cancel_pending = False
+            logger.info(
+                "Go Scale cancelled before it started",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
+        if self._jog_busy or self._job_running:
+            logger.info(
+                "Go Scale ignored: the head is already moving",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
+
+        start = await self._jog_origin()
         if start is None:
-            start = self._last_known_pos or (0, 0)
-        self._last_known_pos = start
+            logger.warning(
+                "Go Scale not started: the head position is unknown",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
         corners = [
             (start[0] + dx, start[1] + dy)
             for dx, dy in (
@@ -649,33 +745,74 @@ class RuidaDriver(Driver):
                 (0, 0),
             )
         ]
+        if not self._corners_fit(corners):
+            return
 
-        self._suppress_polling = True
         self._jog_busy = True
         try:
-            await self._client.set_travel_speed(self.FRAME_SPEED_MM_S * 1000)
-            for x_um, y_um in corners:
-                if self._frame_cancelled:
-                    logger.info(
-                        "Go Scale cancelled",
-                        extra=self._log_extra("USER_COMMAND"),
-                    )
-                    return
-                target = await self._jog_move_to(x_um, y_um)
-                await self._wait_for_frame_corner(*target)
+            with self._polling_suspended():
+                await self._set_travel_speed(self._frame_speed_mm_min())
+                for x_um, y_um in corners:
+                    if self._frame_epoch != epoch:
+                        logger.info(
+                            "Go Scale cancelled",
+                            extra=self._log_extra("USER_COMMAND"),
+                        )
+                        return
+                    target = await self._jog_move_to(x_um, y_um)
+                    await self._wait_for_frame_corner(*target, epoch=epoch)
         finally:
-            self._suppress_polling = False
-            self._frame_cancelled = False
             self._jog_busy = False
+            self._frame_cancel_pending = False
+
+    def _frame_speed_mm_min(self) -> int:
+        """
+        The trace speed, in mm/min, clamped to the profile.
+
+        Framing is an alignment aid, so it prefers a moderate fixed
+        speed -- but never one the machine is not configured for.
+        """
+        profile = self._machine.max_travel_speed or self.DEFAULT_TRAVEL_SPEED
+        return int(min(self.FRAME_SPEED_MM_S * 60, profile))
+
+    def _corners_fit(self, corners: list[tuple[int, int]]) -> bool:
+        """
+        Whether every corner is reachable, warning about the ones that
+        are not.
+
+        A clamped corner would trace a rectangle that is not the job's,
+        which is worse than tracing nothing: the user reads it as
+        proof the job fits.
+        """
+        (x_lo, x_hi), (y_lo, y_hi) = (
+            self._axis_range("x"),
+            self._axis_range("y"),
+        )
+        outside = [
+            c
+            for c in corners
+            if not (x_lo <= c[0] <= x_hi and y_lo <= c[1] <= y_hi)
+        ]
+        if not outside:
+            return True
+        logger.warning(
+            f"Go Scale not started: the outline runs off the bed at "
+            f"{outside[0][0] / 1000:.1f}, {outside[0][1] / 1000:.1f} mm",
+            extra=self._log_extra("USER_COMMAND"),
+        )
+        return False
 
     async def cancel_frame(self) -> None:
         """
         Stop a running scale trace and resync the cached position.
 
         The head parks wherever the stop caught it; no further corners
-        are sent.
+        are sent. Bumping the epoch also cancels a trace that has not
+        started yet, so a Stop pressed while the outline is still
+        being measured is not forgotten.
         """
-        self._frame_cancelled = True
+        self._frame_epoch += 1
+        self._frame_cancel_pending = True
         if self._jog_busy:
             await self._stop_jog_motion()
 
@@ -683,6 +820,7 @@ class RuidaDriver(Driver):
         self,
         target_x: int,
         target_y: int,
+        epoch: int,
     ) -> None:
         """
         Poll the head position until it reaches a corner.
@@ -690,25 +828,30 @@ class RuidaDriver(Driver):
         Args:
             target_x: Corner X in micrometers, absolute.
             target_y: Corner Y in micrometers, absolute.
+            epoch: The frame epoch this trace was started under.
         """
         assert self._client
         deadline = asyncio.get_event_loop().time() + self.FRAME_CORNER_TIMEOUT
         while asyncio.get_event_loop().time() < deadline:
-            if self._frame_cancelled:
+            if self._frame_epoch != epoch:
                 return
-            pos = await self._client.read_position()
-            if pos is not None and (
-                abs(pos[0] - target_x) <= self.FRAME_CORNER_TOLERANCE_UM
-                and abs(pos[1] - target_y) <= self.FRAME_CORNER_TOLERANCE_UM
-            ):
-                return
+            pos = self._from_controller(await self._client.read_position())
+            if pos is not None:
+                self._last_known_pos = pos
+                if (
+                    abs(pos[0] - target_x) <= self.FRAME_CORNER_TOLERANCE_UM
+                    and abs(pos[1] - target_y)
+                    <= self.FRAME_CORNER_TOLERANCE_UM
+                ):
+                    return
             await asyncio.sleep(self.FRAME_POLL_INTERVAL)
 
         logger.warning(
             f"Go Scale: corner ({target_x}, {target_y}) um not reached "
-            f"within {self.FRAME_CORNER_TIMEOUT}s, continuing",
+            f"within {self.FRAME_CORNER_TIMEOUT}s, abandoning the trace",
             extra=self._log_extra("USER_COMMAND"),
         )
+        self._frame_epoch += 1
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         assert self._client
@@ -720,18 +863,30 @@ class RuidaDriver(Driver):
         y_um = int(pos_y * 1000)
         await self._rapid_move_to(x_um, y_um)
 
+    async def _set_travel_speed(self, speed_mm_min: float) -> None:
+        """
+        Stream C9 02 at a speed given in mm/min.
+
+        This is the only place the application's mm/min meets the
+        controller's um/s: every interactive path goes through here so
+        the conversion has exactly one home.
+        """
+        assert self._client
+        await self._client.set_travel_speed(int(speed_mm_min * 1000 / 60))
+
     async def _set_max_travel_speed(self) -> None:
         """Stream C9 02 at the profile's max travel speed."""
-        assert self._client
-        speed_mm_min = (
+        await self._set_travel_speed(
             self._machine.max_travel_speed or self.DEFAULT_TRAVEL_SPEED
         )
-        await self._client.set_travel_speed(int(speed_mm_min * 1000 / 60))
 
     async def _rapid_move_to(self, target_x: int, target_y: int) -> None:
         assert self._client
         await self._set_max_travel_speed()
-        await self._client.rapid_move_xy(target_x, target_y)
+        await self._client.rapid_move_xy(
+            *self._to_controller(target_x, target_y)
+        )
+        self._last_known_pos = (target_x, target_y)
 
     async def select_tool(self, tool_number: int) -> None:
         pass
@@ -760,7 +915,16 @@ class RuidaDriver(Driver):
         await self.set_power(head, percent)
 
     def can_jog(self, axis: Axis | None = None) -> bool:
-        return True
+        """
+        Z is not implemented here, so it is not advertised.
+
+        Both jog paths speak only X and Y; a Z delta used to be
+        converted and then dropped, which left the panel offering a
+        button that did nothing but pin the busy interlock.
+        """
+        if axis is None:
+            return True
+        return not bool(axis & Axis.Z)
 
     def can_hold_jog(self) -> bool:
         return True
@@ -769,19 +933,22 @@ class RuidaDriver(Driver):
         """
         Start a continuous jog: one long move toward the bed limit.
 
-        Ignored while a single-step jog is still settling. A key that
-        joins a hold already running -- the two halves of a diagonal
-        button arrive as separate presses -- stops the move in flight
-        and re-issues it for the combined direction, so exactly one
-        move is ever outstanding and nothing queues up behind the
-        finger.
+        Ignored while a single-step jog or a trace is still running. A
+        key that joins a hold already running -- the two halves of a
+        diagonal button arrive as separate presses -- stops the move
+        in flight and re-issues it for the combined direction, so
+        exactly one move is ever outstanding and nothing queues up
+        behind the finger.
         """
         assert self._client
         key = (axis.lower(), direction)
+        if key[0] not in ("x", "y"):
+            logger.debug(f"Jog key ignored, axis not supported: {key[0]}")
+            return
         if key in self._jog_keys_down:
             return
         holding = bool(self._jog_keys_down)
-        if self._jog_busy and not holding:
+        if self._job_running or (self._jog_busy and not holding):
             return
 
         self._jog_keys_down.add(key)
@@ -790,14 +957,20 @@ class RuidaDriver(Driver):
             await self._stop_jog_motion()
         try:
             self._jog_busy = True
-            await self._client.set_travel_speed(
-                int(self._jog_speed_mm_min * 1000 / 60)
-            )
-            await self._jog_to_limit()
+            await self._set_travel_speed(self._jog_speed_mm_min)
+            if not await self._jog_to_limit():
+                self._jog_keys_down.discard(key)
         except (OSError, RuntimeError) as e:
             logger.warning(f"Hold jog failed to start: {e}")
             self._jog_keys_down.discard(key)
-            self._jog_busy = False
+        finally:
+            # The flag tracks motion, not intent: if no key survived
+            # the awaits, nothing is moving and the interlock must not
+            # stay up. Releasing it here is what keeps a diagonal
+            # whose halves were released mid-flight from bricking every
+            # later jog.
+            if not self._jog_keys_down:
+                self._jog_busy = False
 
     async def jog_key_up(self, axis: str, direction: int) -> None:
         key = (axis.lower(), direction)
@@ -806,10 +979,19 @@ class RuidaDriver(Driver):
         self._jog_keys_down.discard(key)
         logger.debug(f"Jog key up: {key[0]}{direction:+d}")
         await self._stop_jog_motion()
-        if self._jog_keys_down:
+        if not self._jog_keys_down:
+            return
+        try:
             # One half of a diagonal let go: keep going on the rest.
             self._jog_busy = True
-            await self._jog_to_limit()
+            if not await self._jog_to_limit():
+                self._jog_keys_down.clear()
+        except (OSError, RuntimeError) as e:
+            logger.warning(f"Hold jog failed to continue: {e}")
+            self._jog_keys_down.clear()
+        finally:
+            if not self._jog_keys_down:
+                self._jog_busy = False
 
     async def release_all_jog_keys(self) -> None:
         keys = sorted(self._jog_keys_down)
@@ -824,61 +1006,153 @@ class RuidaDriver(Driver):
 
     async def _stop_jog_motion(self) -> None:
         """
-        Halt a jog in flight and resync the cached position.
+        Halt whatever is moving and resync the cached position.
 
         The stop goes out first so the head is already braking while
         the position read is in flight; whatever comes back is where
-        the head actually ended up.
+        the head actually ended up. A read that fails leaves the cache
+        empty rather than holding the target the head was only ever
+        commanded toward -- an unknown position is recoverable, a
+        confident wrong one is not.
+
+        Bumping the frame epoch makes this the single halt for every
+        kind of interactive motion: a trace running concurrently sees
+        the change at its next corner and abandons itself.
 
         HARDWARE NOTE: this assumes D8 01 halts an interactive rapid.
-        If it turns out not to on this controller, the fallback is to
-        keep the long move but chunk it into 25 mm relative moves,
-        issued only once the polled position shows the previous chunk
-        nearly consumed -- still behind the busy flag, so the queue
-        never grows past one outstanding move.
+        See MOTION_AUDIT.md MOT-05 -- nothing in this repository
+        confirms it, and the fallback if it is wrong is to keep the
+        long move but chunk it into 25 mm relative moves, issued only
+        once the polled position shows the previous chunk nearly
+        consumed -- still behind the busy flag, so the queue never
+        grows past one outstanding move.
         """
+        self._frame_epoch += 1
         if not self._client:
             self._jog_busy = False
             return
         try:
             await self._client.stop_process()
-            pos = await self._client.read_position()
-            if pos is not None:
-                self._last_known_pos = pos
+            self._set_known_pos(await self._client.read_position())
         except (OSError, RuntimeError) as e:
             logger.warning(f"Jog stop failed: {e}")
+            self._set_known_pos(None)
         finally:
             self._jog_busy = False
 
-    async def _jog_to_limit(self) -> None:
-        """Move toward the bed limit along the held direction(s)."""
+    async def _jog_to_limit(self) -> bool:
+        """
+        Move toward the bed limit along the held direction(s).
+
+        Returns whether a move was actually commanded. A caller that
+        gets False is holding the interlock over nothing and must let
+        it go.
+        """
+        if not self._held_deltas():
+            return False
+
+        origin = await self._jog_origin()
+        if origin is None:
+            logger.warning(
+                "Hold jog not started: the head position is unknown",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return False
+
+        # Re-read the held keys after the await. A release that landed
+        # while the position read was in flight must win, or the head
+        # departs for the bed limit with nothing held down.
+        deltas = self._held_deltas()
+        if not deltas:
+            return False
+
+        margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
+        target = tuple(
+            self._axis_limit(
+                origin[i], deltas[name], self._axis_range(name), margin_um
+            )
+            for i, name in enumerate(("x", "y"))
+        )
+        await self._jog_move_to(target[0], target[1])
+        return True
+
+    def _held_deltas(self) -> dict[str, int] | None:
+        """The summed direction per axis, or None when nothing is held."""
         deltas = {"x": 0, "y": 0}
         for axis, direction in self._jog_keys_down:
             if axis in deltas:
                 deltas[axis] += direction
         if not (deltas["x"] or deltas["y"]):
-            return
+            return None
+        return deltas
 
-        pos_x, pos_y = await self._jog_origin()
-        bed_w_mm, bed_h_mm = self._machine.axis_extents
-        margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
-        target_x = self._axis_limit(
-            pos_x, deltas["x"], int(bed_w_mm * 1000), margin_um
+    def _axis_range(self, axis: str) -> tuple[int, int]:
+        """
+        The travel an axis has, in micrometres, in machine space.
+
+        A reversed axis runs from -extent to 0 rather than 0 to
+        extent, which is the same convention Machine.get_soft_limits
+        uses, so the driver has to speak it too.
+        """
+        width_mm, height_mm = self._machine.axis_extents
+        if axis == "x":
+            extent_um = int(width_mm * 1000)
+            reversed_axis = self._machine.reverse_x_axis
+        else:
+            extent_um = int(height_mm * 1000)
+            reversed_axis = self._machine.reverse_y_axis
+        if reversed_axis:
+            return -extent_um, 0
+        return 0, extent_um
+
+    def _to_controller(self, x_um: int, y_um: int) -> tuple[int, int]:
+        """Machine-space micrometres as the controller counts them."""
+        return (
+            -x_um if self._machine.reverse_x_axis else x_um,
+            -y_um if self._machine.reverse_y_axis else y_um,
         )
-        target_y = self._axis_limit(
-            pos_y, deltas["y"], int(bed_h_mm * 1000), margin_um
+
+    def _axis_um_from_controller(self, axis: str, value_um: int) -> int:
+        """One controller reading in the profile's own machine space."""
+        if axis == "x" and self._machine.reverse_x_axis:
+            return -value_um
+        if axis == "y" and self._machine.reverse_y_axis:
+            return -value_um
+        return value_um
+
+    def _from_controller(
+        self, pos: tuple[int, int] | None
+    ) -> tuple[int, int] | None:
+        """A controller position pair in the profile's machine space."""
+        if pos is None:
+            return None
+        return (
+            self._axis_um_from_controller("x", pos[0]),
+            self._axis_um_from_controller("y", pos[1]),
         )
-        await self._jog_move_to(target_x, target_y)
+
+    def _set_known_pos(self, pos: tuple[int, int] | None) -> None:
+        """
+        Record where the head is, in controller coordinates.
+
+        None means "no longer known", which every consumer treats as a
+        reason to read again rather than to invent a zero.
+        """
+        self._last_known_pos = self._from_controller(pos)
 
     @staticmethod
     def _axis_limit(
-        pos_um: int, direction: int, extent_um: int, margin_um: int
+        pos_um: int,
+        direction: int,
+        axis_range: tuple[int, int],
+        margin_um: int,
     ) -> int:
         """The far end of the travel an axis has left, or where it is."""
+        low, high = axis_range
         if direction > 0:
-            return max(pos_um, extent_um - margin_um)
+            return max(pos_um, high - margin_um)
         if direction < 0:
-            return min(pos_um, margin_um)
+            return min(pos_um, low + margin_um)
         return pos_um
 
     async def set_jog_speed(self, speed: int) -> None:
@@ -898,11 +1172,11 @@ class RuidaDriver(Driver):
         """
         Move one step of the step-size control and wait for it to land.
 
-        Ignored while another jog is in flight, so clicks cannot queue
-        up behind a hold or behind each other.
+        Ignored while another jog or a trace is in flight, so clicks
+        cannot queue up behind a hold or behind each other.
         """
         assert self._client
-        if self._jog_busy:
+        if self._jog_busy or self._job_running:
             return
 
         dx_um = 0
@@ -919,60 +1193,83 @@ class RuidaDriver(Driver):
 
         self._jog_busy = True
         try:
-            await self._client.set_travel_speed(int(speed * 1000 / 60))
-            pos_x, pos_y = await self._jog_origin()
-            target = await self._jog_move_to(pos_x + dx_um, pos_y + dy_um)
-            await self._wait_for_jog_settled(target, speed)
+            origin = await self._jog_origin()
+            if origin is None:
+                logger.warning(
+                    "Jog not sent: the head position is unknown",
+                    extra=self._log_extra("USER_COMMAND"),
+                )
+                return
+            await self._set_travel_speed(speed)
+            target = await self._jog_move_to(
+                origin[0] + dx_um, origin[1] + dy_um
+            )
+            await self._wait_for_jog_settled(origin, target, speed)
         finally:
             self._jog_busy = False
 
-    async def _jog_origin(self) -> tuple[int, int]:
-        """The position a jog is measured from, read back if unknown."""
+    async def _jog_origin(self) -> tuple[int, int] | None:
+        """
+        The position a jog is measured from, read back if unknown.
+
+        None when it cannot be established. Every D9 10 this driver
+        sends is an absolute target, so an origin that was guessed is
+        a full-bed traverse waiting to happen: callers must refuse to
+        move rather than substitute a zero.
+        """
         assert self._client
         if self._last_known_pos is None:
-            pos = await self._client.read_position()
-            if pos is not None:
-                self._last_known_pos = pos
-        return self._last_known_pos or (0, 0)
+            self._set_known_pos(await self._client.read_position())
+        return self._last_known_pos
 
     async def _jog_move_to(self, x_um: int, y_um: int) -> tuple[int, int]:
         """
         Move the head to an absolute target with the interactive D9 10
-        command, clamped to the bed. No speed is sent; the caller
-        streams it first.
+        command, clamped to the axis travel. No speed is sent; the
+        caller streams it first.
 
-        D9 10 is the only motion form used: the single-axis D9 00/01
-        commands take an absolute coordinate in the same slot, so
-        feeding them a relative delta drove the head to the wrong end
-        of the axis.
+        Coordinates in and out are machine space as the profile
+        defines it, which a reversed axis makes negative; the
+        conversion to the controller's own count happens here.
+
+        D9 10 is the only motion form used. D9 00/01 are decoded as
+        relative by ruida_server and by the reference client app, so
+        an earlier attempt to use them as absolute targets drove the
+        head to the wrong end of the axis.
         """
         assert self._client
-        bed_w_mm, bed_h_mm = self._machine.axis_extents
-        x_um = max(0, min(x_um, int(bed_w_mm * 1000)))
-        y_um = max(0, min(y_um, int(bed_h_mm * 1000)))
-        await self._client.rapid_move_xy(x_um, y_um)
+        x_lo, x_hi = self._axis_range("x")
+        y_lo, y_hi = self._axis_range("y")
+        x_um = max(x_lo, min(x_um, x_hi))
+        y_um = max(y_lo, min(y_um, y_hi))
+        await self._client.rapid_move_xy(*self._to_controller(x_um, y_um))
         # Track the commanded target so back-to-back jogs do not
         # compute from a stale polled position.
         self._last_known_pos = (x_um, y_um)
         return x_um, y_um
 
     async def _wait_for_jog_settled(
-        self, target: tuple[int, int], speed_mm_min: int
+        self,
+        start: tuple[int, int],
+        target: tuple[int, int],
+        speed_mm_min: int,
     ) -> None:
         """
         Poll until the head reaches a single-step target, or time out.
 
         The timeout is the move's own travel time plus a grace period,
-        so a slow jog over a long step is not cut short.
+        so a slow jog over a long step is not cut short. The start has
+        to be passed in: _jog_move_to has already overwritten the
+        cached position with the commanded target by the time this
+        runs.
         """
         assert self._client
-        start = self._last_known_pos or target
         distance_um = max(abs(target[0] - start[0]), abs(target[1] - start[1]))
         speed_um_s = max(1.0, speed_mm_min * 1000.0 / 60.0)
         timeout = distance_um / speed_um_s + self.JOG_SETTLE_GRACE
         deadline = asyncio.get_event_loop().time() + timeout
         while asyncio.get_event_loop().time() < deadline:
-            pos = await self._client.read_position()
+            pos = self._from_controller(await self._client.read_position())
             if pos is not None:
                 self._last_known_pos = pos
                 if (
@@ -1077,17 +1374,23 @@ class RuidaDriver(Driver):
         self._response_received.set()
 
     def _on_position_updated(self, sender, axis: str, value_um: int) -> None:
-        """Handle position update from client."""
-        pos_mm = value_um / 1000.0
+        """
+        Handle position update from client.
+
+        The two axes arrive in separate replies, so the cache is only
+        published once both are known. Filling the missing one with a
+        zero used to hand the next jog a fabricated origin.
+        """
+        machine_um = self._axis_um_from_controller(axis, value_um)
+        pos_mm = machine_um / 1000.0
         current_pos = self.state.machine_pos
-        last_x, last_y = self._last_known_pos or (0, 0)
 
         if axis == "x":
             new_pos = (pos_mm, current_pos[1], current_pos[2])
-            self._last_known_pos = (value_um, last_y)
+            self._last_x_um = machine_um
         elif axis == "y":
             new_pos = (current_pos[0], pos_mm, current_pos[2])
-            self._last_known_pos = (last_x, value_um)
+            self._last_y_um = machine_um
         elif axis == "z":
             new_pos = (current_pos[0], current_pos[1], pos_mm)
         else:

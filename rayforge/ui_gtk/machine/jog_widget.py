@@ -63,6 +63,10 @@ class JogWidget(Gtk.Widget):
         self.jog_distance = 10.0
         self._buttons = []
         self._scaling = False
+        # Which scale run is in flight: a Go Scale is interactive
+        # rapids and stops with cancel_frame, a Cut Scale is a job and
+        # stops with cancel_job. One Stop button serves both.
+        self._scale_kind: str | None = None
         self._keys_down: set[tuple[str, int]] = set()
         self._button_directions: dict[
             Gtk.Button, tuple[JogDirection, ...]
@@ -753,11 +757,17 @@ class JogWidget(Gtk.Widget):
 
         if self._scaling:
             # Go Scale is rapids, not a job: cancelling stops the
-            # motion in flight rather than aborting a process.
-            self.machine_cmd.cancel_frame(self.machine)
+            # motion in flight rather than aborting a process. A Cut
+            # Scale is a real job and needs the job cancel, or the
+            # laser keeps cutting behind a button labelled Stop.
+            if self._scale_kind == "cut":
+                self.machine_cmd.cancel_job(self.machine)
+            else:
+                self.machine_cmd.cancel_frame(self.machine)
             return
 
         self._scaling = True
+        self._scale_kind = "go"
         self._update_scale_buttons()
         self.machine_cmd.run_go_scale(
             self.machine, on_done=self._on_scale_done
@@ -773,6 +783,7 @@ class JogWidget(Gtk.Widget):
 
         def confirm(speed: int, power: float):
             self._scaling = True
+            self._scale_kind = "cut"
             self._update_scale_buttons()
             machine_cmd.run_cut_scale(
                 machine, speed, power, on_done=self._on_scale_done
@@ -789,6 +800,7 @@ class JogWidget(Gtk.Widget):
     def _on_scale_done(self):
         """The scale run finished, was cancelled, or failed."""
         self._scaling = False
+        self._scale_kind = None
         self._update_scale_buttons()
 
     def _on_document_settled(self, sender, **kwargs):

@@ -138,10 +138,13 @@ class TestStopReachesEveryMotion:
 
         await driver.jog_key_down("x", 1)
         await driver.jog_key_down("y", 1)
+        # A diagonal restarts once by design, so count from the stop
+        # rather than from the first D8 01 the restart itself sent.
+        before = len(moves(spy.commands))
         await driver.cancel()
         await driver.jog_key_up("x", 1)
 
-        assert moves_after_stop(spy.commands) == []
+        assert len(moves(spy.commands)) == before
 
     @pytest.mark.asyncio
     async def test_release_all_keys_aborts_a_running_go_scale(self, driver):
