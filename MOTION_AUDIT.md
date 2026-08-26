@@ -110,7 +110,7 @@ entries below are marked NEEDS-HARDWARE rather than fixed blind.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:577`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_cancel_aborts_a_running_go_scale`
 
 **Evidence**
@@ -194,7 +194,7 @@ again (expect ~15 s, then the rectangle finishes).
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:637`
 - **Class:** Failure class 5 — queue / ignore semantics (input during motion must be IGNORED, never QUEUED, at every layer including the transport)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_cancel_before_a_trace_is_not_erased`
 
 **Evidence**
@@ -264,7 +264,7 @@ Observed: 5 corner moves emitted after the cancel.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:809`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_cancel_does_not_let_a_diagonal_restart`
 
 **Evidence**
@@ -335,7 +335,7 @@ STOP with a second finger, then lifting one of the two.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:822`
 - **Class:** Failure class 3 — state desync of RuidaDriver._last_known_pos and _jog_busy (full read/write lifecycle, leak analysis, plus the shared _suppress_polling flag)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_release_all_keys_aborts_a_running_go_scale`
 
 **Evidence**
@@ -413,7 +413,7 @@ driver's own comment at lines 833-838 flags this as unverified.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:833`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** OPEN
+- **Status:** NEEDS-HARDWARE - observe whether memory 0x0421 keeps changing after a D8 01 sent mid-flight into a D9 10 rapid. If it does, D8 01 does not brake an interactive move and the chunked-move fallback in _stop_jog_motion's docstring has to be built. Capture the exchange as a second fixture either way.
 - **Phase 2:** no automated reproduction; see the note below
 
 **Evidence**
@@ -502,7 +502,7 @@ learn which one actually brakes an interactive rapid.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:856`
 - **Class:** Failure class 5 — queue / ignore semantics (input during motion must be IGNORED, never QUEUED, at every layer including the transport)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_key_up_cannot_be_overtaken_by_its_key_down`
 
 **Evidence**
@@ -587,7 +587,7 @@ required.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:879`
 - **Class:** Failure class 2 — sign / axis / frame errors in the interactive-motion subsystem (jog arrows → D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestReversedAxesJogTheRightWay` (all three tests)
 
 **Evidence**
@@ -708,7 +708,7 @@ confirms the finding; it only selects which half of the fix matters most.
 - **Severity:** SAFETY
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:936`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestOriginIsNeverInvented` (step, hold and Go Scale)
 
 **Evidence**
@@ -790,7 +790,7 @@ instead of stepping.
 - **Severity:** SAFETY
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:754`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/ui_gtk/machine/test_jog_widget_motion_audit.py::test_stop_during_a_cut_scale_cancels_the_job`
 
 **Evidence**
@@ -881,7 +881,7 @@ the Stop click.
 - **Severity:** BROKEN
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:548`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED ff8431006
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestWaitsAreBounded::test_job_completion_wait_gives_up_on_a_silent_controller`
 
 **Evidence**
@@ -966,7 +966,7 @@ raise this to SAFETY-adjacent (the UI stays locked in 'running').
 - **Severity:** BROKEN
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:608`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** OPEN
+- **Status:** FIXED ff8431006
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestWaitsAreBounded::test_home_waits_on_machine_status_not_on_current_x`
 
 **Evidence**
@@ -1063,7 +1063,7 @@ D8 01 aborts a homing cycle, and whether 0x0400 carries a homing/idle bit.
 - **Severity:** BROKEN
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:791`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestBusyFlagNeverLeaks::test_diagonal_release_leaves_the_driver_usable`
 
 **Evidence**
@@ -1170,7 +1170,7 @@ a D9 10 (it emits nothing today).
 - **Severity:** BROKEN
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:855`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestBusyFlagNeverLeaks::test_a_held_z_key_does_not_block_x_and_y`
 
 **Evidence**
@@ -1260,7 +1260,7 @@ ruida_server._handle_d8_command, so the simulator can validate either.
 - **Severity:** BROKEN
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:969`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestWaitsAreBounded::test_settle_timeout_scales_with_the_step`
 
 **Evidence**
@@ -1330,7 +1330,7 @@ assert `spy.reads` is in the thousands (travel-time-bounded) rather than ~5
 - **Severity:** BROKEN
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:257`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 - **Phase 2:** reproduced by `tests/ui_gtk/machine/test_jog_widget_motion_audit.py::test_dragging_off_a_held_button_releases_it` and siblings
 
 **Evidence**
@@ -1423,7 +1423,7 @@ when the mouse button is released.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/cmd.py:591`
 - **Class:** Failure class 5 — queue / ignore semantics (input during motion must be IGNORED, never QUEUED, at every layer including the transport)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366
 
 **Evidence**
 
@@ -1517,7 +1517,7 @@ proves the lock works.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:147`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** DEFERRED - the minimal fix edits how a reply is matched to a pending job-chunk ack, and send_job's ack handling is fenced off by the brief. 47a49acd0 removes the trigger instead: a job now holds an interlock for its whole upload and run, so no interactive command can be in flight to steal the ack. Revisit with approval if job acks are ever wanted concurrently with interactive traffic.
 
 **Evidence**
 
@@ -1615,7 +1615,7 @@ resync), which still ACK.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:165`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -1696,7 +1696,7 @@ simulator reports the homing move complete.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:188`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -1780,7 +1780,7 @@ is not set.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:906`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -1884,7 +1884,7 @@ release, which is the signature.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:114`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0 and cd33192d1
 
 **Evidence**
 
@@ -1971,7 +1971,7 @@ a fresh launch; it will decode to 200 mm/s while the panel reads 16.67 mm/s.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:382`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -2040,7 +2040,7 @@ exactly 1 arrives, at connect.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:601`
 - **Class:** Failure class 3 — state desync of RuidaDriver._last_known_pos and _jog_busy (full read/write lifecycle, leak analysis, plus the shared _suppress_polling flag)
-- **Status:** OPEN
+- **Status:** FIXED ff8431006
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestWaitsAreBounded::test_home_invalidates_the_cached_position`
 
 **Evidence**
@@ -2120,7 +2120,7 @@ widening this window considerably.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:638`
 - **Class:** Failure class 2 — sign / axis / frame errors in the interactive-motion subsystem (jog arrows → D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** OPEN
+- **Status:** DEFERRED - anchoring the trace at REF0 rather than at the head changes what Go Scale means, and depends on REF0 semantics this repository cannot confirm (see MOT-38). It is a behaviour decision for the user, not a repair. What is fixed is the part that was unambiguously wrong: an outline that runs off the bed is now refused rather than clamped into a rectangle that is not the job's (MOT-30).
 
 **Evidence**
 
@@ -2222,7 +2222,7 @@ compare. The offset between the two rectangles equals the anchor.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:653`
 - **Class:** Failure class 3 — state desync of RuidaDriver._last_known_pos and _jog_busy (full read/write lifecycle, leak analysis, plus the shared _suppress_polling flag)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 
 **Evidence**
 
@@ -2288,7 +2288,7 @@ by pre-setting the flag and driving a stubbed send_job.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:656`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 
 **Evidence**
 
@@ -2367,7 +2367,7 @@ register. The host-side defect -- ignoring the profile the user configured
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:809`
 - **Class:** Failure class 3 — state desync of RuidaDriver._last_known_pos and _jog_busy (full read/write lifecycle, leak analysis, plus the shared _suppress_polling flag)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 
 **Evidence**
 
@@ -2434,7 +2434,7 @@ D9 command. Add a CancelledError variant for jog_key_down.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:845`
 - **Class:** Failure class 3 — state desync of RuidaDriver._last_known_pos and _jog_busy (full read/write lifecycle, leak analysis, plus the shared _suppress_polling flag)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestStopReachesEveryMotion::test_stop_resyncs_before_clearing_busy`
 
 **Evidence**
@@ -2509,7 +2509,7 @@ nothing.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:850`
 - **Class:** Failure class 5 — queue / ignore semantics (input during motion must be IGNORED, never QUEUED, at every layer including the transport)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 
 **Evidence**
 
@@ -2580,7 +2580,7 @@ was accepted during Go Scale.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:951`
 - **Class:** Failure class 2 — sign / axis / frame errors in the interactive-motion subsystem (jog arrows → D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 
 **Evidence**
 
@@ -2646,7 +2646,7 @@ corners still describe a 100x50 rectangle -- currently they describe 50x50.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:1083`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0
 - **Phase 2:** reproduced by `tests/machine/driver/ruida/test_motion_audit.py::TestOriginIsNeverInvented::test_partial_position_update_does_not_invent_the_other`
 
 **Evidence**
@@ -2714,7 +2714,7 @@ assert both components are present.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/doceditor/bottom_panel.py:461`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED cd33192d1
 
 **Evidence**
 
@@ -2796,7 +2796,7 @@ value that reaches `machine_cmd.set_jog_speed` is 1, not 60. Repeat with
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:62`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED cd33192d1
 
 **Evidence**
 
@@ -2875,7 +2875,7 @@ freshly constructed widget and assert the third positional argument to
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:222`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -2955,7 +2955,7 @@ keeps travelling after the key is up; count $J= lines in the serial log.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:374`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -3029,7 +3029,7 @@ is a GTK behaviour, confirmed by the disassembly above.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:551`
 - **Class:** Failure class 5 — queue / ignore semantics (input during motion must be IGNORED, never QUEUED, at every layer including the transport)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -3108,7 +3108,7 @@ jog_key_down calls — the North press vanished.
 - **Severity:** DEGRADED
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:571`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -3188,7 +3188,7 @@ lift it. The head stops while the first finger is still down.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:418`
 - **Class:** Failure class 2 — sign / axis / frame errors in the interactive-motion subsystem (jog arrows → D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366 (documentation only) - NEEDS-HARDWARE for the byte itself: capture an RDWorks panel jog and read the D9 10 option byte and payload against a known non-zero REF0 offset. The wire bytes were deliberately left alone; the two readings coincide whenever that offset is zero, so changing them on the strength of a docstring could only move the head somewhere new.
 
 **Evidence**
 
@@ -3290,7 +3290,7 @@ the anchor and needs the offset conversion.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:510`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366
 
 **Evidence**
 
@@ -3374,7 +3374,7 @@ or promoted.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:526`
 - **Class:** Failure class 7 — protocol correctness of the interactive byte stream (D9 rapid moves, D8 realtime commands, C9 speed, DA memory) as emitted by RuidaDriver/RuidaClient, diffed against the only in-repo references (ruida_maps.py, ruida_server.py, fixtures/rdworks_reference.rd)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366 (documentation only) - NEEDS-HARDWARE for the frame: send D9 00 twice from a known position and see whether the head accumulates. Nothing in the driver emits D9 00/01, so the answer changes documentation, not behaviour.
 
 **Evidence**
 
@@ -3474,7 +3474,7 @@ the reference the rest of the suite trusts.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:713`
 - **Class:** Failure class 7 — protocol correctness of the interactive byte stream (D9 rapid moves, D8 realtime commands, C9 speed, DA memory) as emitted by RuidaDriver/RuidaClient, diffed against the only in-repo references (ruida_maps.py, ruida_server.py, fixtures/rdworks_reference.rd)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366
 
 **Evidence**
 
@@ -3570,7 +3570,7 @@ D8 30, and watch whether X keeps travelling.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_client.py:738`
 - **Class:** Unit errors on the interactive-motion speed and distance paths (jog / hold-jog / Go Scale), from the human-facing control to the byte on the wire and back
-- **Status:** OPEN
+- **Status:** FIXED cd33192d1
 
 **Evidence**
 
@@ -3639,7 +3639,7 @@ identical commands.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:341`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -3706,7 +3706,7 @@ the loop.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:384`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 01d841e3a
 
 **Evidence**
 
@@ -3777,7 +3777,7 @@ through cleanup().
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:751`
 - **Class:** Failure class 7 — protocol correctness of the interactive byte stream (D9 rapid moves, D8 realtime commands, C9 speed, DA memory) as emitted by RuidaDriver/RuidaClient, diffed against the only in-repo references (ruida_maps.py, ruida_server.py, fixtures/rdworks_reference.rd)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366
 
 **Evidence**
 
@@ -3856,7 +3856,7 @@ stops.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:944`
 - **Class:** Failure class 2 — sign / axis / frame errors in the interactive-motion subsystem (jog arrows → D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** OPEN
+- **Status:** FIXED 47a49acd0 and 6ee845366
 
 **Evidence**
 
@@ -3932,7 +3932,7 @@ appears there.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_server.py:299`
 - **Class:** Failure class 7 — protocol correctness of the interactive byte stream (D9 rapid moves, D8 realtime commands, C9 speed, DA memory) as emitted by RuidaDriver/RuidaClient, diffed against the only in-repo references (ruida_maps.py, ruida_server.py, fixtures/rdworks_reference.rd)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366 (the inferred handlers are now labelled) - NEEDS-HARDWARE for the capture itself: one RDWorks session exercising panel jog in four directions, move-to, Frame, Stop, Pause, Resume and Home, saved beside rdworks_reference.rd, and the decoded command list written up as the opcode table this audit's brief assumed already existed.
 
 **Evidence**
 
@@ -4047,7 +4047,7 @@ before and after each.
 - **Severity:** SMELL
 - **Location:** `rayforge/machine/driver/ruida/ruida_transport.py:140`
 - **Class:** FAILURE CLASS 4 - Concurrency in RuidaClient and the driver's loops (tasks, locks, futures, Events, response attribution)
-- **Status:** OPEN
+- **Status:** FIXED 6ee845366
 
 **Evidence**
 
@@ -4127,7 +4127,7 @@ deleting the branch.
 - **Severity:** SMELL
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:585`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -4195,7 +4195,7 @@ exactly one connect and one disconnect.
 - **Severity:** SMELL
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:599`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -4265,7 +4265,7 @@ machine_cmd.set_jog_speed.assert_not_called().
 - **Severity:** SMELL
 - **Location:** `rayforge/ui_gtk/machine/jog_widget.py:652`
 - **Class:** FAILURE CLASS 8 — UI handler wiring in rayforge/ui_gtk/machine/jog_widget.py (connection, ownership, and teardown of the interactive-motion handlers)
-- **Status:** OPEN
+- **Status:** FIXED d426885ac
 
 **Evidence**
 
@@ -4367,3 +4367,55 @@ survive adversarial review or duplicate a finding above.
 | The jog channel (port 50207) is opened and never used; the whole panel-key command surface is unreachable | duplicate of *The repo's only modelled motion-stop primitive, and the whole jog UDP channel, are dead code* |
 | One shared _hold_timeout_id for all jog buttons — any press/leave/release cancels another button's pending hold | duplicate of *One hold timer for every arrow: a second press kills the first's hold, and any release kills whichever hold is armed* |
 
+---
+
+## Summary
+
+| Severity | Status | Count | Findings |
+| --- | --- | --- | --- |
+| SAFETY | Fixed | 8 | MOT-01, MOT-02, MOT-03, MOT-04, MOT-06, MOT-07, MOT-08, MOT-09 |
+| SAFETY | Needs hardware | 1 | MOT-05 |
+| BROKEN | Fixed | 6 | MOT-10, MOT-11, MOT-12, MOT-13, MOT-14, MOT-15 |
+| DEGRADED | Fixed | 20 | MOT-16, MOT-18, MOT-19, MOT-20, MOT-21, MOT-22, MOT-23, MOT-25, MOT-26, MOT-27, MOT-28, MOT-29, MOT-30, MOT-31, MOT-32, MOT-33, MOT-34, MOT-35, MOT-36, MOT-37 |
+| DEGRADED | Deferred | 2 | MOT-17, MOT-24 |
+| SMELL | Fixed | 11 | MOT-39, MOT-41, MOT-42, MOT-43, MOT-44, MOT-45, MOT-46, MOT-48, MOT-49, MOT-50, MOT-51 |
+| SMELL | Fixed, byte unverified | 3 | MOT-38, MOT-40, MOT-47 |
+
+| Status | Count |
+| --- | --- |
+| Fixed | 45 |
+| Fixed, byte unverified | 3 |
+| Needs hardware | 1 |
+| Deferred | 2 |
+| **Total** | **51** |
+
+### Invariants at the end of Phase 3
+
+- **Any motion the app starts, the app can stop, and every stop
+  resyncs position before the busy flag clears.** `cancel()` is the
+  one universal halt: it bumps the frame epoch, drops the held
+  keys and goes through `_stop_jog_motion`, which sends the stop,
+  reads the position back, and clears the cache outright when that
+  read fails rather than keeping the target the head was only
+  commanded toward. Covered by
+  `TestStopReachesEveryMotion` and `TestEveryReleasePathStops`.
+  The one thing this cannot promise is that `D8 01` brakes the
+  controller: see MOT-05.
+- **Input during motion is ignored, never queued.** The driver's
+  busy interlock covers jog, step jog and trace alike, a job holds
+  it for its whole upload and run, and a jog that commands nothing
+  releases it instead of pinning it. At the widget, arrow-key
+  auto-repeat counts once and `MachineCmd.jog` is keyed so a
+  pending step is replaced rather than stacked. Below that,
+  `UdpTransport.send` hands each datagram straight to the socket,
+  so there is no application-level send queue to defeat the flag.
+- **One authoritative unit conversion per value path.** The jog
+  speed is mm/min from the panel row to `Driver.set_jog_speed`
+  with no conversion in between; `RuidaDriver._set_travel_speed`
+  is the only place mm/min becomes um/s; and
+  `RuidaClient.set_travel_speed` is the only encoder of `C9 02`.
+- **Every safety release path is covered by a test.** Release,
+  gesture cancel, pointer leave, drag-off inside the grab, unmap,
+  window focus loss, dropped connection and machine swap at the
+  widget; key-up, release-all, transport teardown, cancel and
+  cleanup at the driver.
