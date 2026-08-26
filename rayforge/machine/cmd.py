@@ -423,8 +423,12 @@ class MachineCmd:
         """
         Adds a task to jog the machine along specific axes.
         """
+        # Keyed, so a step jog that has not started yet is replaced
+        # by the newer one rather than stacking behind it. The hold
+        # path stays unkeyed on purpose: a replaced key-up would leave
+        # the head moving.
         self._editor.task_manager.add_coroutine(
-            lambda ctx: machine.jog(deltas, speed)
+            lambda ctx: machine.jog(deltas, speed), key="jog"
         )
 
     @property

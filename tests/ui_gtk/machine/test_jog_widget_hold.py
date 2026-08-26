@@ -269,7 +269,7 @@ def test_focus_loss_cancels_a_pending_hold(ui_context_initializer):
         root.is_active.return_value = False
         widget._on_root_active_changed(root, None)
 
-    assert widget._hold_timeout_id is None
+    assert widget._pending_holds == {}
     machine_cmd.jog_key_down.assert_not_called()
 
 

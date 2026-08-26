@@ -67,13 +67,22 @@ class JogWidget(Gtk.Widget):
         # rapids and stops with cancel_frame, a Cut Scale is a job and
         # stops with cancel_job. One Stop button serves both.
         self._scale_kind: str | None = None
-        self._keys_down: set[tuple[str, int]] = set()
+        # Which buttons are holding each key down. A key is only
+        # released when its last owner lets go, so a pointer crossing
+        # a neighbouring arrow cannot end the hold under the finger.
+        self._key_owners: dict[
+            tuple[str, int], set[tuple[JogDirection, ...]]
+        ] = {}
         self._button_directions: dict[
             Gtk.Button, tuple[JogDirection, ...]
         ] = {}
+        self._pressed_keyvals: set[int] = set()
         self._jog_speed_timeout_id: int | None = None
-        self._hold_timeout_id: int | None = None
+        # One armed hold per button, so a second press cannot disarm
+        # the first one's timer.
+        self._pending_holds: dict[tuple[JogDirection, ...], int] = {}
         self._root_active_handler: int | None = None
+        self._root_window: Gtk.Window | None = None
 
         self.set_focusable(True)
 
@@ -225,6 +234,7 @@ class JogWidget(Gtk.Widget):
 
         key_controller = Gtk.EventControllerKey()
         key_controller.connect("key-pressed", self._on_key_pressed)
+        key_controller.connect("key-released", self._on_key_released)
         self.add_controller(key_controller)
 
         # A held jog key must never outlive the widget being usable.
@@ -256,9 +266,17 @@ class JogWidget(Gtk.Widget):
         gesture.connect("pressed", self._on_jog_pressed, directions)
         gesture.connect("released", self._on_jog_released, directions)
         gesture.connect("cancel", self._on_jog_cancelled, directions)
+        # Dragging off the button must stop the motion. GTK4 does not
+        # deliver crossing events while an implicit pointer grab is in
+        # effect, so "leave" never arrives between press and release
+        # and cannot carry this on its own; the gesture's own update
+        # signal does, because the grab is what feeds it.
+        gesture.connect(
+            "update", self._on_jog_gesture_update, button, directions
+        )
         button.add_controller(gesture)
 
-        # Dragging off the button must stop the motion too.
+        # Kept for the ungrabbed case, where leave does arrive.
         motion = Gtk.EventControllerMotion()
         motion.connect("leave", self._on_jog_leave, directions)
         button.add_controller(motion)
@@ -373,60 +391,53 @@ class JogWidget(Gtk.Widget):
         )
 
     def _update_button_sensitivity(self):
-        """Update button sensitivity based on machine capabilities."""
-        # Default all buttons to disabled
-        self.east_btn.set_sensitive(False)
-        self.west_btn.set_sensitive(False)
-        self.north_btn.set_sensitive(False)
-        self.south_btn.set_sensitive(False)
-        self.north_east_btn.set_sensitive(False)
-        self.north_west_btn.set_sensitive(False)
-        self.south_east_btn.set_sensitive(False)
-        self.south_west_btn.set_sensitive(False)
-        self.z_plus_btn.set_sensitive(False)
-        self.z_minus_btn.set_sensitive(False)
-        self.home_all_btn.set_sensitive(False)
-        self.go_scale_btn.set_sensitive(False)
-        self.cut_scale_btn.set_sensitive(False)
-        self.start_btn.set_sensitive(False)
-        self.pause_btn.set_sensitive(False)
-        self.stop_btn.set_sensitive(False)
+        """
+        Update button sensitivity based on machine capabilities.
 
-        # Only enable buttons if machine exists, is connected
-        if self.machine is None or not self.machine.is_connected():
-            return
+        Each button's value is computed once and written once. Writing
+        False and then the real value would reset every controller on
+        the button in between, which cancels a press the user is still
+        holding.
+        """
+        connected = self.machine is not None and self.machine.is_connected()
 
         # Jog buttons - a direction is joggable when every native axis it
         # drives is supported (under rotation a visual axis may map to
         # the orthogonal native axis)
-        can_jog_east = self._can_jog_direction(JogDirection.EAST)
-        can_jog_west = self._can_jog_direction(JogDirection.WEST)
-        can_jog_north = self._can_jog_direction(JogDirection.NORTH)
-        can_jog_south = self._can_jog_direction(JogDirection.SOUTH)
-        self.east_btn.set_sensitive(can_jog_east)
-        self.west_btn.set_sensitive(can_jog_west)
-        self.north_btn.set_sensitive(can_jog_north)
-        self.south_btn.set_sensitive(can_jog_south)
+        east = connected and self._can_jog_direction(JogDirection.EAST)
+        west = connected and self._can_jog_direction(JogDirection.WEST)
+        north = connected and self._can_jog_direction(JogDirection.NORTH)
+        south = connected and self._can_jog_direction(JogDirection.SOUTH)
+        self.east_btn.set_sensitive(east)
+        self.west_btn.set_sensitive(west)
+        self.north_btn.set_sensitive(north)
+        self.south_btn.set_sensitive(south)
 
         # Diagonal buttons - need both cardinal directions
-        self.north_east_btn.set_sensitive(can_jog_east and can_jog_north)
-        self.north_west_btn.set_sensitive(can_jog_west and can_jog_north)
-        self.south_east_btn.set_sensitive(can_jog_east and can_jog_south)
-        self.south_west_btn.set_sensitive(can_jog_west and can_jog_south)
+        self.north_east_btn.set_sensitive(east and north)
+        self.north_west_btn.set_sensitive(west and north)
+        self.south_east_btn.set_sensitive(east and south)
+        self.south_west_btn.set_sensitive(west and south)
 
-        self.z_plus_btn.set_sensitive(self._can_jog_direction(JogDirection.UP))
+        self.z_plus_btn.set_sensitive(
+            connected and self._can_jog_direction(JogDirection.UP)
+        )
         self.z_minus_btn.set_sensitive(
-            self._can_jog_direction(JogDirection.DOWN)
+            connected and self._can_jog_direction(JogDirection.DOWN)
         )
 
-        self.home_all_btn.set_sensitive(True)
-        self._update_scale_buttons()
-
+        self.home_all_btn.set_sensitive(connected)
         # Job controls - always enabled when connected
-        self.start_btn.set_sensitive(True)
-        self.pause_btn.set_sensitive(True)
-        self.stop_btn.set_sensitive(True)
+        self.start_btn.set_sensitive(connected)
+        self.pause_btn.set_sensitive(connected)
+        self.stop_btn.set_sensitive(connected)
 
+        if not connected:
+            self.go_scale_btn.set_sensitive(False)
+            self.cut_scale_btn.set_sensitive(False)
+            return
+
+        self._update_scale_buttons()
         self._update_limit_status()
 
     def _update_limit_status(self):
@@ -501,18 +512,34 @@ class JogWidget(Gtk.Widget):
                 keys.append((axis.name.lower(), 1 if delta > 0 else -1))
         return keys
 
-    def _press_jog_key(self, key: tuple[str, int]):
-        if key in self._keys_down:
-            return
+    @property
+    def _keys_down(self) -> set[tuple[str, int]]:
+        """Every key at least one button is still holding down."""
+        return set(self._key_owners)
+
+    def _press_jog_key(
+        self, owner: tuple[JogDirection, ...], key: tuple[str, int]
+    ):
         if not self.machine or not self.machine_cmd:
             return
-        self._keys_down.add(key)
-        self.machine_cmd.jog_key_down(self.machine, key[0], key[1])
-
-    def _release_jog_key(self, key: tuple[str, int]):
-        if key not in self._keys_down:
+        owners = self._key_owners.setdefault(key, set())
+        if owner in owners:
             return
-        self._keys_down.discard(key)
+        was_held = bool(owners)
+        owners.add(owner)
+        if not was_held:
+            self.machine_cmd.jog_key_down(self.machine, key[0], key[1])
+
+    def _release_jog_key(
+        self, owner: tuple[JogDirection, ...], key: tuple[str, int]
+    ):
+        owners = self._key_owners.get(key)
+        if not owners or owner not in owners:
+            return
+        owners.discard(owner)
+        if owners:
+            return
+        del self._key_owners[key]
         if self.machine and self.machine_cmd:
             self.machine_cmd.jog_key_up(self.machine, key[0], key[1])
 
@@ -521,11 +548,13 @@ class JogWidget(Gtk.Widget):
         Release every key this widget believes is held down.
 
         Called from every path where a key-up could otherwise be lost:
-        pointer leave, gesture cancel, unmap, and window focus loss.
+        pointer leave, gesture cancel, drag-off, unmap, window focus
+        loss, and a dropped connection.
         """
         self._cancel_pending_hold()
-        keys = sorted(self._keys_down)
-        self._keys_down.clear()
+        self._pressed_keyvals.clear()
+        keys = sorted(self._key_owners)
+        self._key_owners.clear()
         if not self.machine or not self.machine_cmd:
             return
         for axis, direction in keys:
@@ -534,26 +563,39 @@ class JogWidget(Gtk.Widget):
         # two views of the held keys ever drift apart.
         self.machine_cmd.release_all_jog_keys(self.machine)
 
-    def _cancel_pending_hold(self) -> bool:
-        """Drop an armed hold. True when one was still pending."""
-        if self._hold_timeout_id is None:
+    def _cancel_pending_hold(
+        self, directions: tuple[JogDirection, ...] | None = None
+    ) -> bool:
+        """
+        Drop an armed hold. True when one was still pending.
+
+        Without an argument every armed hold is dropped, which is what
+        the safety release paths want.
+        """
+        if directions is None:
+            pending = list(self._pending_holds.items())
+            self._pending_holds.clear()
+            for _directions, source_id in pending:
+                GLib.source_remove(source_id)
+            return bool(pending)
+        source_id = self._pending_holds.pop(directions, None)
+        if source_id is None:
             return False
-        GLib.source_remove(self._hold_timeout_id)
-        self._hold_timeout_id = None
+        GLib.source_remove(source_id)
         return True
 
     def _start_hold(self, directions: tuple[JogDirection, ...]):
         """Hand the held directions to the driver's repeat jog."""
-        self._hold_timeout_id = None
+        self._pending_holds.pop(directions, None)
         for key in self._jog_keys(*directions):
-            self._press_jog_key(key)
+            self._press_jog_key(directions, key)
         return GLib.SOURCE_REMOVE
 
     def _on_jog_pressed(self, gesture, n_press, x, y, directions):
         if not self._hold_jog_supported():
             return
-        self._cancel_pending_hold()
-        self._hold_timeout_id = GLib.timeout_add(
+        self._cancel_pending_hold(directions)
+        self._pending_holds[directions] = GLib.timeout_add(
             _HOLD_START_DELAY_MS, self._start_hold, directions
         )
 
@@ -561,36 +603,54 @@ class JogWidget(Gtk.Widget):
         # A press too short to become a hold is a click: one step of the
         # step-size control. Drivers without hold support always land
         # here, which keeps step jog working for them.
-        if self._cancel_pending_hold() or not self._hold_jog_supported():
+        if self._cancel_pending_hold(directions) or not (
+            self._hold_jog_supported()
+        ):
             self._perform_visual_jog(*directions)
             return
         for key in self._jog_keys(*directions):
-            self._release_jog_key(key)
+            self._release_jog_key(directions, key)
 
     def _on_jog_cancelled(self, gesture, sequence, directions):
-        self._cancel_pending_hold()
+        self._cancel_pending_hold(directions)
         for key in self._jog_keys(*directions):
-            self._release_jog_key(key)
+            self._release_jog_key(directions, key)
 
     def _on_jog_leave(self, controller, directions):
-        self._cancel_pending_hold()
+        self._cancel_pending_hold(directions)
         for key in self._jog_keys(*directions):
-            self._release_jog_key(key)
+            self._release_jog_key(directions, key)
+
+    def _on_jog_gesture_update(self, gesture, sequence, button, directions):
+        """Let go once the pointer has been dragged off the button."""
+        ok, x, y = gesture.get_point(sequence)
+        if ok and button.contains(x, y):
+            return
+        self._cancel_pending_hold(directions)
+        for key in self._jog_keys(*directions):
+            self._release_jog_key(directions, key)
 
     def _on_mapped(self, widget):
         root = self.get_root()
         if not isinstance(root, Gtk.Window):
             return
         if self._root_active_handler is None:
+            self._root_window = root
             self._root_active_handler = root.connect(
                 "notify::is-active", self._on_root_active_changed
             )
 
     def _on_unmapped(self, widget):
-        root = self.get_root()
-        if isinstance(root, Gtk.Window) and self._root_active_handler:
-            root.disconnect(self._root_active_handler)
-        self._root_active_handler = None
+        # Disconnect from the window we actually connected to: by the
+        # time an unmap runs, get_root() can already be None and the
+        # handler would be leaked on a live window.
+        if self._root_window is not None and (
+            self._root_active_handler is not None
+        ):
+            self._root_window.disconnect(self._root_active_handler)
+            self._root_active_handler = None
+        self._root_window = None
+        self._cancel_pending_speed_push()
         self._release_all_jog_keys()
 
     def _on_root_active_changed(self, root, pspec):
@@ -605,6 +665,12 @@ class JogWidget(Gtk.Widget):
         self._jog_speed_timeout_id = GLib.timeout_add(
             _JOG_SPEED_DEBOUNCE_MS, self._commit_jog_speed
         )
+
+    def _cancel_pending_speed_push(self):
+        """Drop a debounced speed push that has not fired yet."""
+        if self._jog_speed_timeout_id is not None:
+            GLib.source_remove(self._jog_speed_timeout_id)
+            self._jog_speed_timeout_id = None
 
     def _commit_jog_speed(self):
         """Push the settled jog speed to the driver."""
@@ -656,10 +722,10 @@ class JogWidget(Gtk.Widget):
     def _on_connection_status_changed(self, sender, **kwargs):
         """Handle connection status changes to update button sensitivity."""
         if self.machine and not self.machine.is_connected():
-            # Nothing can be sent any more; the driver releases its own
-            # held keys as it tears the transports down.
-            self._cancel_pending_hold()
-            self._keys_down.clear()
+            # Send the releases anyway rather than just forgetting the
+            # keys: they are no-ops if the driver is genuinely gone,
+            # and correct if the drop was transient.
+            self._release_all_jog_keys()
         self._update_button_sensitivity()
 
     def _perform_jog(self, deltas: dict[Axis, float]):
@@ -827,10 +893,21 @@ class JogWidget(Gtk.Widget):
         if self.machine and self.machine_cmd:
             self.machine_cmd.cancel_job(self.machine)
 
+    def _on_key_released(self, controller, keyval, keycode, state):
+        """Let an arrow key be pressed again once it is let go."""
+        self._pressed_keyvals.discard(keyval)
+
     def _on_key_pressed(self, controller, keyval, keycode, state):
         """Handle key press events for cursor key jogging."""
         if not self.machine or not self.machine.is_connected():
             return False
+
+        # Auto-repeat re-fires key-pressed many times a second. Each
+        # one would mint a task the driver then discards, so only the
+        # first press of a held key counts.
+        if keyval in self._pressed_keyvals:
+            return True
+        self._pressed_keyvals.add(keyval)
 
         # Map cursor keys to jog actions
         if keyval == Gdk.KEY_Up:
@@ -852,4 +929,5 @@ class JogWidget(Gtk.Widget):
             self._on_z_minus_clicked(None)  # Down
             return True
 
+        self._pressed_keyvals.discard(keyval)
         return False

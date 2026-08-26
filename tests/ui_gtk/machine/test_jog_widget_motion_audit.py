@@ -12,6 +12,8 @@ import pytest
 
 gi.require_version("Gtk", "4.0")
 
+from gi.repository import Gtk  # noqa: E402
+
 from rayforge.machine.models.machine import (  # noqa: E402
     JogDirection,
     Machine,
@@ -155,6 +157,6 @@ def test_every_jog_button_tracks_drag_off(ui_context_initializer):
         gestures = [
             c
             for c in button.observe_controllers()
-            if isinstance(c, gi.repository.Gtk.GestureClick)
+            if isinstance(c, Gtk.GestureClick)
         ]
         assert gestures, "every jog button needs its own click gesture"
