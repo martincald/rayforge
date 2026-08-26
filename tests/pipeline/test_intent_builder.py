@@ -605,7 +605,7 @@ def test_step_aggregate_machine_params_from_machine(
 def test_job_aggregate_has_layer_and_job_markers(
     contour_step_class, test_machine_and_config
 ):
-    """The job aggregate wraps layers with LayerStart/End and the whole
+    """The job aggregate wraps steps with LayerStart/End and the whole
     job with JobStart/End."""
     machine, context = test_machine_and_config
     step = contour_step_class.create(context, name="cut")
@@ -618,11 +618,40 @@ def test_job_aggregate_has_layer_and_job_markers(
     spec = job_node.stage.spec
     assert len(spec.wrap_start) == 1
     assert len(spec.wrap_end) == 1
-    # One group per layer (single layer here).
+    # One group per step (single step here).
     assert len(spec.groups) == 1
     group = spec.groups[0]
     assert len(group.start_markers) == 1
     assert len(group.end_markers) == 1
+
+
+def test_each_step_gets_its_own_marker_group(
+    contour_step_class, engrave_step_class, test_machine_and_config
+):
+    """Two steps in one layer are two marker groups, not one.
+
+    A step owns its speed, power and min-power floor, so an encoder
+    that maps a marker pair onto a machine-side settings group needs
+    one pair per step. Merging them is what made a cut step run with
+    the engrave step's settings.
+    """
+    machine, context = test_machine_and_config
+    engrave = engrave_step_class.create(context, name="engrave")
+    cut = contour_step_class.create(context, name="cut")
+    wp = WorkPiece(name="wp")
+    doc = _make_doc(engrave, wp)
+    workflow = doc.active_layer.workflow
+    assert workflow is not None
+    workflow.add_child(cut)
+
+    nodes = IntentBuilder(machine=machine).build(doc)
+    spec = next(n for n in nodes if n.key == job_key()).stage.spec
+
+    assert len(spec.groups) == 2
+    assert [len(g.inputs) for g in spec.groups] == [1, 1]
+    # The marker carries the step uid, which is what the min-power
+    # floor is bound to.
+    assert [g.inputs[0].uid for g in spec.groups] == [engrave.uid, cut.uid]
 
 
 def test_job_encode_node_emits_encode_spec(

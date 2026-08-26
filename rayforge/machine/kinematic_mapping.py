@@ -18,14 +18,16 @@ if TYPE_CHECKING:
     from .models.rotary_module import RotaryModule
 
 
-def _resolve_rotary_layer_by_uid(layer_uid: str, doc):
-    """Return the Layer if it has rotary enabled."""
-    descendant = doc.find_descendant_by_uid(layer_uid)
-    if not isinstance(descendant, Layer):
+def _resolve_rotary_layer_by_uid(marker_uid: str, doc):
+    """Return the Layer if it has rotary enabled.
+
+    Job layer markers carry the step uid, so the lookup goes through
+    the document rather than matching a layer uid directly.
+    """
+    layer = doc.get_layer_for_marker_uid(marker_uid)
+    if layer is None or not layer.rotary_enabled:
         return None
-    if not descendant.rotary_enabled:
-        return None
-    return descendant
+    return layer
 
 
 def _is_valid_replacement_module(module):

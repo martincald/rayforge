@@ -231,9 +231,8 @@ class OpPlayer:
     def _create_home_state(self) -> MachineState:
         return create_home_state(self._machine)
 
-    def _update_rotary_config(self, layer_uid: str) -> None:
-        item = self._doc.find_descendant_by_uid(layer_uid)
-        layer = item if isinstance(item, Layer) else None
+    def _update_rotary_config(self, marker_uid: str) -> None:
+        layer = self._doc.get_layer_for_marker_uid(marker_uid)
         cfg = resolve_layer_rotary(layer, self._machine)
         self._source_axis = cfg.source_axis
         self._rotary_axis = cfg.rotary_axis
@@ -314,12 +313,7 @@ class OpPlayer:
         return 0
 
     def get_current_layer(self, doc: Doc) -> Layer | None:
-        uid = self.state.current_layer_uid
-        if uid:
-            item = doc.find_descendant_by_uid(uid)
-            if isinstance(item, Layer):
-                return item
-        return None
+        return doc.get_layer_for_marker_uid(self.state.current_layer_uid)
 
     def get_effective_layer(self, doc: Doc) -> Layer | None:
         """Return the layer that should drive playback configuration.
@@ -359,8 +353,9 @@ class SnapshotBuilder:
         for i in range(self._current_index + 1, index + 1):
             ct = self.ops.command_type(i)
             if ct == CommandType.LAYER_START:
-                item = self._doc.find_descendant_by_uid(self.ops.layer_uid(i))
-                layer = item if isinstance(item, Layer) else None
+                layer = self._doc.get_layer_for_marker_uid(
+                    self.ops.layer_uid(i)
+                )
                 cfg = resolve_layer_rotary(layer, self._machine)
                 self._source_axis = cfg.source_axis
                 self._rotary_axis = cfg.rotary_axis

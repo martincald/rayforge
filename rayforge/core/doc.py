@@ -494,6 +494,34 @@ class Doc(DocItem):
                         return layer.uid
         return None
 
+    def get_layer_for_marker_uid(self, uid: str | None) -> Layer | None:
+        """
+        Look up the layer a job's layer marker belongs to.
+
+        Job ops carry the *step* uid on their layer markers, because a
+        step is what owns the process settings. Per-layer settings
+        (rotary, WCS) still have to be resolved from one, so a uid that
+        is not a layer's is looked up as a step's.
+
+        Args:
+            uid: A layer marker's uid, which is a step uid for job ops
+                and may be a layer uid for ops built elsewhere.
+
+        Returns:
+            The layer that owns the uid, or None if neither a layer nor
+            a step has it.
+        """
+        if uid is None:
+            return None
+        item = self.find_descendant_by_uid(uid)
+        if isinstance(item, Layer):
+            return item
+        layer_uid = self.get_layer_uid_for_step(uid)
+        if layer_uid is None:
+            return None
+        item = self.find_descendant_by_uid(layer_uid)
+        return item if isinstance(item, Layer) else None
+
     @property
     def missing_step_types(self) -> set[str]:
         """Step type names referenced but not registered in step_registry."""

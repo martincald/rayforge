@@ -135,6 +135,13 @@ def job_machinexform_key() -> str:
     return JOB_MACHINEXFORM_KEY
 
 
+def _step_uids(layer: Layer) -> list[str]:
+    """The uids of a layer's steps, in workflow order."""
+    if not layer.workflow:
+        return []
+    return [step.uid for step in layer.workflow.steps]
+
+
 class IntentBuilder:
     """
     Builds a flat :class:`NodeRequest` list from a :class:`Doc`.
@@ -723,44 +730,47 @@ class IntentBuilder:
         """
         Build the final job aggregate :class:`StageSpec.Aggregate`.
 
-        One :class:`AggregateGroup` per layer, wrapped by
-        ``LayerStart`` / ``LayerEnd`` markers, containing one
-        :class:`AggregateInput` per visible step in that layer that has
-        workpiece compute nodes upstream (i.e. is present in
-        *step_tokens*).  The whole aggregate is wrapped by
-        ``JobStart`` / ``JobEnd`` markers.  ``MachineParams`` is
-        populated from the resolved machine so the aggregate's time
-        estimate is correct.
+        One :class:`AggregateGroup` per visible step that has workpiece
+        compute nodes upstream (i.e. is present in *step_tokens*),
+        wrapped by ``LayerStart`` / ``LayerEnd`` markers carrying the
+        **step** uid.  The whole aggregate is wrapped by ``JobStart`` /
+        ``JobEnd`` markers.  ``MachineParams`` is populated from the
+        resolved machine so the aggregate's time estimate is correct.
+
+        The marker is per step, not per layer, because a step is what
+        owns the process settings: speed, power and the min-power
+        floor all live on the step, and an encoder that groups by
+        layer can only ever emit the first step's. Encoders that map a
+        marker pair onto a machine-side settings group (Ruida parts)
+        therefore get one group per step. The uid is the step's for the
+        same reason: the min-power floor cannot be bound to the right
+        group from a layer uid repeated across steps.
         """
         groups: list[AggregateGroup] = []
         for layer in doc.layers:
             if not layer.workflow:
                 continue
-            step_inputs: list[AggregateInput] = []
             for step in layer.workflow.steps:
                 if not step.visible:
                     continue
                 if step.uid not in step_tokens:
                     continue
                 sk = step_key(step.uid)
-                step_inputs.append(
-                    AggregateInput(
-                        source_key=sk,
-                        placement_matrix=_IDENTITY_4X4,
-                        uid=step.uid,
+                groups.append(
+                    AggregateGroup(
+                        start_markers=[
+                            Marker.LayerStart(uid=step.uid, _tag=True)
+                        ],
+                        inputs=[
+                            AggregateInput(
+                                source_key=sk,
+                                placement_matrix=_IDENTITY_4X4,
+                                uid=step.uid,
+                            )
+                        ],
+                        end_markers=[Marker.LayerEnd(uid=step.uid, _tag=True)],
                     )
                 )
-            if not step_inputs:
-                continue
-            groups.append(
-                AggregateGroup(
-                    start_markers=[
-                        Marker.LayerStart(uid=layer.uid, _tag=True)
-                    ],
-                    inputs=step_inputs,
-                    end_markers=[Marker.LayerEnd(uid=layer.uid, _tag=True)],
-                )
-            )
         spec = AggregateSpec(
             wrap_start=[Marker.JobStart(_tag=True)],
             groups=groups,
@@ -868,6 +878,12 @@ class IntentBuilder:
                 wcs_is_workarea_origin=machine.wcs_origin_is_workarea_origin,
             )
             layer_wcs_offsets.append((layer.uid, list(cmd_offset)))
+            # Job layer markers carry the step uid, so every step of
+            # the layer is registered under the layer's own offset.
+            # The layer entry stays for ops built outside the job
+            # aggregate, which still mark by layer uid.
+            for step_uid in _step_uids(layer):
+                layer_wcs_offsets.append((step_uid, list(cmd_offset)))
 
         # Per-layer rotary mappings.
         rotary_mappings = self._build_rotary_mappings(doc, machine)
@@ -923,19 +939,24 @@ class IntentBuilder:
             else:
                 rotary_axis = "Y"
                 replaced_axis = module.axis.name
-            mappings.append(
-                RotaryMappingSpec(
-                    layer_uid=layer.uid,
-                    diameter=diameter,
-                    gear_ratio=gear_ratio,
-                    reverse=module.reverse_axis,
-                    axis_position_3d=axis_position_3d.tolist(),
-                    cylinder_dir=cylinder_dir.tolist(),
-                    rotary_axis=rotary_axis,
-                    replaced_axis=replaced_axis,
-                    mm_per_rotation=module.mm_per_rotation,
+            # As with the WCS offsets: the job's layer markers carry
+            # step uids, so each step of the layer is registered under
+            # the layer's mapping, and the layer uid is kept for ops
+            # marked outside the job aggregate.
+            for uid in [layer.uid, *_step_uids(layer)]:
+                mappings.append(
+                    RotaryMappingSpec(
+                        layer_uid=uid,
+                        diameter=diameter,
+                        gear_ratio=gear_ratio,
+                        reverse=module.reverse_axis,
+                        axis_position_3d=axis_position_3d.tolist(),
+                        cylinder_dir=cylinder_dir.tolist(),
+                        rotary_axis=rotary_axis,
+                        replaced_axis=replaced_axis,
+                        mm_per_rotation=module.mm_per_rotation,
+                    )
                 )
-            )
         return mappings
 
     def _make_python_encoder_callable(

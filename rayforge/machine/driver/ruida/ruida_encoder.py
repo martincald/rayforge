@@ -58,6 +58,17 @@ RD_MAGIC = 0x88
 JOB_REF_POINT = "REF0"
 
 
+def _no_settings() -> dict:
+    """The settings a part falls back to when it has none at all."""
+    return {
+        "uid": None,
+        "speed": 0.0,
+        "power": 0.0,
+        "min_power": 0.0,
+        "air": False,
+    }
+
+
 def commands_to_rd_bytes(commands: list[bytes]) -> bytes:
     """
     Swizzle a complete command list into final .rd file bytes.
@@ -314,16 +325,31 @@ class RuidaEncoder(OpsEncoder):
 
     def _layer_min_power(self, uid: str | None, max_power: float) -> float:
         """
-        The Min Power configured for a layer, normalized 0-1.
+        The Min Power configured for a part, normalized 0-1.
 
         The controller applies Min Power below its start speed, so a
         floor left at zero never fires the tube on a slow cut. Ops carry
         a single power channel, so the floor is read from the document
-        by layer uid. Layers with no configured floor - and jobs the
-        document knows nothing about - fall back to min == max.
+        by the uid the layer marker carries.
+
+        Job ops mark by step uid, which is what owns the floor. A layer
+        uid is still accepted, for ops assembled outside the job
+        aggregate, and answers with the first step that has a floor.
+        Anything else falls back to min == max, loudly.
         """
         if uid is None or self._doc is None:
             return max_power
+
+        for step in self._doc_steps():
+            # getattr, like min_power below: the encoder reads only the
+            # fields it needs off a step, never the whole model.
+            if getattr(step, "uid", None) != uid:
+                continue
+            min_power = getattr(step, "min_power", None)
+            if min_power is None:
+                return max_power
+            return min(float(min_power), max_power)
+
         for layer in self._doc.layers:
             if layer.uid != uid:
                 continue
@@ -335,7 +361,38 @@ class RuidaEncoder(OpsEncoder):
                 if min_power is not None:
                     return min(float(min_power), max_power)
             break
+        else:
+            self._warn_unresolved_uid(uid, "min power")
         return max_power
+
+    def _doc_steps(self) -> list:
+        """Every step of every layer the document has, in order."""
+        if self._doc is None:
+            return []
+        return [
+            step
+            for layer in self._doc.layers
+            if layer.workflow
+            for step in layer.workflow.steps
+        ]
+
+    def _warn_unresolved_uid(self, uid: str | None, what: str) -> None:
+        """
+        Report a settings lookup that found nothing and fell back.
+
+        Silence here is what let a whole job run on one step's
+        settings, so the uid and both uid spaces it was matched
+        against are named.
+        """
+        layer_uids = (
+            [layer.uid for layer in self._doc.layers] if self._doc else []
+        )
+        step_uids = [getattr(step, "uid", None) for step in self._doc_steps()]
+        logger.warning(
+            f"Ruida: no {what} for uid {uid!r}; falling back. "
+            f"Known layer uids: {layer_uids}. "
+            f"Known step uids: {step_uids}."
+        )
 
     def _handle_set_cut_speed(
         self,
@@ -802,6 +859,7 @@ class RuidaEncoder(OpsEncoder):
             power = layer["power"] or 0.0
             result.append(
                 {
+                    "uid": layer["uid"],
                     "speed": layer["speed"] or 0.0,
                     "power": power,
                     "min_power": self._layer_min_power(layer["uid"], power),
@@ -955,6 +1013,30 @@ class RuidaEncoder(OpsEncoder):
         binary.append(b"\xd7")
         text.append("; Job End")
 
+    def _settings_for(self, uid: str | None, part: int) -> dict:
+        """
+        The pre-scanned settings for one part, matched by marker uid.
+
+        The pre-scan walks the same markers in the same order, so the
+        part index normally lands on the right entry; the uid is what
+        proves it. A mismatch means the two walks disagree, which is
+        how a whole job came to run on one step's settings, so it is
+        searched for by uid and reported rather than papered over.
+        """
+        if part < len(self._layers):
+            entry = self._layers[part]
+            if entry["uid"] == uid:
+                return entry
+
+        for entry in self._layers:
+            if entry["uid"] == uid:
+                return entry
+
+        self._warn_unresolved_uid(uid, f"part {part} settings")
+        if part < len(self._layers):
+            return self._layers[part]
+        return _no_settings()
+
     def _handle_layer_start(
         self,
         ops: Ops,
@@ -974,15 +1056,7 @@ class RuidaEncoder(OpsEncoder):
         uid = ops.layer_uid(idx)
         self._part += 1
         part = self._part
-        if part < len(self._layers):
-            layer = self._layers[part]
-        else:
-            layer = {
-                "speed": 0.0,
-                "power": 0.0,
-                "min_power": 0.0,
-                "air": False,
-            }
+        layer = self._settings_for(uid, part)
         part_b = bytes([part & 0xFF])
         speed_um = self._speed_to_um_s(layer["speed"])
         min14 = encode14(self._power_to_ruida(layer["min_power"]))
@@ -1019,6 +1093,12 @@ class RuidaEncoder(OpsEncoder):
         self._min_power = layer["min_power"]
         self.air_assist = layer["air"]
         self._laser_selected = self.active_laser
+        logger.info(
+            f"Part {part} ({uid}): "
+            f"speed {layer['speed'] / self.SECONDS_PER_MINUTE:.1f} mm/s "
+            f"power {layer['min_power'] * 100:.0f}/"
+            f"{layer['power'] * 100:.0f}%"
+        )
         text.append(f"; --- Layer {uid[:8]} ---")
 
     def _handle_layer_end(

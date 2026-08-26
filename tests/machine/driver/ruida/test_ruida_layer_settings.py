@@ -6,6 +6,8 @@ needs, and the RDWorks-style Min Power has to reach both the header and
 the layer body.
 """
 
+import logging
+
 import pytest
 from raygeo.ops import Ops
 
@@ -198,6 +200,47 @@ class TestMinPower:
 
         block = _layer_blocks(commands)[0]
         assert _payloads(block, b"\xc6\x01") == _payloads(block, b"\xc6\x02")
+
+    def test_an_unknown_uid_says_so(self, machine, caplog):
+        """A silent fallback is how a whole job ran on one step's
+        settings, so a failed lookup names the uid and both uid
+        spaces it was matched against."""
+        doc, known_uid = _doc_with_powers(min_power=0.15, power=0.60)
+        ops = _one_layer_job("not-in-the-doc", 0.6)
+
+        with caplog.at_level(logging.WARNING):
+            _commands(ops, machine, doc)
+
+        warnings = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.WARNING
+        ]
+        assert any("not-in-the-doc" in m for m in warnings)
+        assert any(known_uid in m for m in warnings)
+
+    def test_a_resolved_uid_is_quiet(self, machine, caplog):
+        """The warning must not fire on a job that resolved."""
+        doc, uid = _doc_with_powers(min_power=0.15, power=0.60)
+
+        with caplog.at_level(logging.WARNING):
+            _commands(_one_layer_job(uid, 0.60), machine, doc)
+
+        assert not [r for r in caplog.records if r.levelno == logging.WARNING]
+
+    def test_every_part_is_logged_with_its_settings(self, machine, caplog):
+        """The console shows the truth on every real run."""
+        with caplog.at_level(logging.INFO):
+            _commands(_two_layer_job(), machine)
+
+        parts = [
+            r.getMessage()
+            for r in caplog.records
+            if r.getMessage().startswith("Part ")
+        ]
+        assert len(parts) == 2
+        assert "Part 0 (layer-1): speed 10.0 mm/s power 50/50%" in parts[0]
+        assert "Part 1 (layer-2): speed 40.0 mm/s power 80/80%" in parts[1]
 
 
 class _Step:
