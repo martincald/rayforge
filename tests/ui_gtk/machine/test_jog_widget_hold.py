@@ -225,14 +225,29 @@ def test_speed_change_is_debounced_then_pushed(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
-        widget.set_jog_speed(50)
-        widget.set_jog_speed(80)
+        machine_cmd.set_jog_speed.reset_mock()
+        widget.set_jog_speed(3000)
+        widget.set_jog_speed(4800)
         machine_cmd.set_jog_speed.assert_not_called()
 
         widget._commit_jog_speed()
 
-    # 80 mm/s set, pushed in the application base unit.
+    # The widget and the driver both speak mm/min: no conversion.
     machine_cmd.set_jog_speed.assert_called_once_with(machine, 4800)
+
+
+@pytest.mark.ui
+def test_the_panel_speed_is_pushed_without_waiting_for_a_change(
+    ui_context_initializer,
+):
+    """MOT-21: the driver must not keep its own seed value."""
+    machine_cmd = MagicMock()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+
+    with _hold_jog_driver(machine):
+        widget._commit_jog_speed()
+
+    machine_cmd.set_jog_speed.assert_called_with(machine, 1000)
 
 
 @pytest.mark.ui

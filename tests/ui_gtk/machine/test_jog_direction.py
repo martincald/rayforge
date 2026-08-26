@@ -120,7 +120,7 @@ def test_jog_button_direction(
     jog_widget = JogWidget()
     jog_widget.set_machine(machine, mock_machine_cmd)
     jog_widget.jog_distance = JOG_DISTANCE
-    jog_widget.jog_speed = JOG_SPEED
+    jog_widget.jog_speed_mm_min = JOG_SPEED_MM_MIN
 
     # 4. Get the button by name and release a press on it. Without a
     # driver that jogs while held, a release is a step jog.
@@ -182,7 +182,7 @@ def test_jog_button_direction_with_rotated_workspace(
     jog_widget = JogWidget()
     jog_widget.set_machine(machine, mock_machine_cmd)
     jog_widget.jog_distance = JOG_DISTANCE
-    jog_widget.jog_speed = JOG_SPEED
+    jog_widget.jog_speed_mm_min = JOG_SPEED_MM_MIN
 
     # 4. Get the button by name and release a press on it. Without a
     # driver that jogs while held, a release is a step jog.
@@ -363,7 +363,7 @@ def test_x_mapping_follows_the_origin_corner_setting(ui_context_initializer):
     jog_widget = JogWidget()
     jog_widget.set_machine(machine, mock_machine_cmd)
     jog_widget.jog_distance = JOG_DISTANCE
-    jog_widget.jog_speed = JOG_SPEED
+    jog_widget.jog_speed_mm_min = JOG_SPEED_MM_MIN
 
     directions = jog_widget._button_directions[jog_widget.east_btn]
     jog_widget._on_jog_released(None, 1, 0.0, 0.0, directions)

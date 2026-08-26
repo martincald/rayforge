@@ -5,13 +5,18 @@ from raygeo.ops.axis import Axis
 
 from ...machine.cmd import MachineCmd
 from ...machine.models.machine import JogDirection, Machine, Origin
-from ...shared.units.definitions import Unit, get_unit
 from ..icons import get_icon
 from .cut_scale_dialog import CutScaleDialog
 
-# The widget carries its jog speed in the display unit; drivers take
-# application base units, so it converts at that one boundary.
-_JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
+# The widget carries its jog speed in application base units, the
+# same unit Driver.jog and Driver.set_jog_speed document, so the
+# value never round trips through a display unit on its way to the
+# machine. Only the panel row converts, once, for display.
+#
+# The jog speed the widget starts with, in mm/min. It matches the
+# jog speed row's own default so the panel and the machine agree
+# before the user has touched the control.
+_DEFAULT_JOG_SPEED_MM_MIN = 1000
 
 # The hold jog speed is driver state, so it is pushed when the control
 # settles rather than on every keystroke.
@@ -59,7 +64,7 @@ class JogWidget(Gtk.Widget):
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self.jog_speed = 100  # mm/s
+        self.jog_speed_mm_min = _DEFAULT_JOG_SPEED_MM_MIN
         self.jog_distance = 10.0
         self._buttons = []
         self._scaling = False
@@ -363,6 +368,10 @@ class JogWidget(Gtk.Widget):
         self._update_button_sensitivity()
         self._update_limit_status()
         self._update_position()
+        # The driver seeds its own default, which is only right until
+        # the panel has a value; push ours as soon as there is
+        # somewhere to push it.
+        self._commit_jog_speed()
 
     def _on_machine_changed(self, sender, **kwargs):
         self._update_button_sensitivity()
@@ -657,9 +666,9 @@ class JogWidget(Gtk.Widget):
         if not root.is_active():
             self._release_all_jog_keys()
 
-    def set_jog_speed(self, speed_mm_s: int):
-        """Set the jog speed in mm/s and push it to the driver."""
-        self.jog_speed = int(speed_mm_s)
+    def set_jog_speed(self, speed_mm_min: float):
+        """Set the jog speed in mm/min and push it to the driver."""
+        self.jog_speed_mm_min = max(1, int(round(speed_mm_min)))
         if self._jog_speed_timeout_id is not None:
             GLib.source_remove(self._jog_speed_timeout_id)
         self._jog_speed_timeout_id = GLib.timeout_add(
@@ -676,10 +685,7 @@ class JogWidget(Gtk.Widget):
         """Push the settled jog speed to the driver."""
         self._jog_speed_timeout_id = None
         if self._hold_jog_supported() and self.machine and self.machine_cmd:
-            self.machine_cmd.set_jog_speed(
-                self.machine,
-                int(_JOG_SPEED_UNIT.to_base(self.jog_speed)),
-            )
+            self.machine_cmd.set_jog_speed(self.machine, self.jog_speed_mm_min)
         return GLib.SOURCE_REMOVE
 
     @staticmethod
@@ -726,6 +732,9 @@ class JogWidget(Gtk.Widget):
             # keys: they are no-ops if the driver is genuinely gone,
             # and correct if the drop was transient.
             self._release_all_jog_keys()
+        elif self.machine:
+            # A speed set while disconnected never reached the driver.
+            self._commit_jog_speed()
         self._update_button_sensitivity()
 
     def _perform_jog(self, deltas: dict[Axis, float]):
@@ -737,13 +746,9 @@ class JogWidget(Gtk.Widget):
             return
 
         if deltas:
-            # jog_speed is in display units; Driver.jog takes base
-            # units.
-            self.machine_cmd.jog(
-                self.machine,
-                deltas,
-                int(_JOG_SPEED_UNIT.to_base(self.jog_speed)),
-            )
+            # Both the widget and Driver.jog speak mm/min, so nothing
+            # is converted here.
+            self.machine_cmd.jog(self.machine, deltas, self.jog_speed_mm_min)
 
     def _perform_visual_jog(self, *directions: JogDirection):
         """Jog according to one or more visual directions."""

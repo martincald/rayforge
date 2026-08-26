@@ -13,7 +13,6 @@ from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
 from ...shared.gcodeedit.viewer import GcodeViewer
 from ...shared.tasker import task_mgr
-from ...shared.units.definitions import Unit, get_unit
 from ..doceditor.layers_tab import LayersTab
 from ..icons import get_icon
 from ..machine.console import Console
@@ -34,7 +33,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # The jog widget carries its speed in this display unit.
-_JOG_SPEED_UNIT: Unit = get_unit("mm/s")  # type: ignore[assignment]
 
 controls_css = """
 preferencesgroup.compact list {
@@ -452,13 +450,10 @@ class BottomPanel(Gtk.Box):
         self._update_wcs_ui()
 
     def _on_speed_changed(self, row):
-        # The row hands out base units; the jog widget speaks the same
-        # display unit the row shows, so convert with that unit rather
-        # than a hard-coded factor.
-        display = _JOG_SPEED_UNIT.from_base(
-            self.speed_row.get_value_in_base_units()
-        )
-        self.jog_widget.set_jog_speed(max(1, round(display)))
+        # Both the row and the jog widget speak application base
+        # units. Converting to the display unit and back used to
+        # quantise the value to whole mm/s, i.e. 60 mm/min steps.
+        self.jog_widget.set_jog_speed(self.speed_row.get_value_in_base_units())
 
     def _on_distance_changed(self, row):
         self.jog_widget.jog_distance = (

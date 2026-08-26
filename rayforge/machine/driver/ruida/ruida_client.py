@@ -591,12 +591,14 @@ class RuidaClient:
         Set interactive travel speed (C9 02, speed_laser_1).
 
         Streamed immediately before an interactive rapid move; real
-        hardware has no persistent jog-speed register.
+        hardware has no persistent jog-speed register. This is the
+        only authority for C9 02: the mm/s wrappers below convert and
+        delegate rather than encoding the opcode a second time.
 
         Args:
             um_per_s: Speed in micrometers per second
         """
-        await self.send_command(b"\xc9\x02" + encode35(um_per_s))
+        await self.send_command(self._build_travel_speed(um_per_s))
 
     async def set_speed(self, speed_mm_s: float) -> None:
         """
@@ -743,9 +745,13 @@ class RuidaClient:
             raise ValueError(f"Invalid laser: {laser}")
         return bytes([laser_map[laser]]) + encode14(power_val)
 
+    def _build_travel_speed(self, um_per_s: int) -> bytes:
+        """C9 02 + encode35, in micrometres per second."""
+        return b"\xc9\x02" + encode35(um_per_s)
+
     def _build_speed(self, speed_mm_s: float) -> bytes:
-        speed_val = int(speed_mm_s * 1000)
-        return b"\xc9\x02" + encode35(speed_val)
+        """C9 02 from mm/s. Delegates so one place owns the opcode."""
+        return self._build_travel_speed(int(speed_mm_s * 1000))
 
     def _build_frequency(
         self, laser: int, frequency: int, layer: int = 0
@@ -763,8 +769,8 @@ class RuidaClient:
         return b"\xc6\x10" + encode35(pulse_width_us)
 
     def _build_axis_speed(self, speed_mm_s: float) -> bytes:
-        speed_val = int(speed_mm_s * 1000)
-        return b"\xc9\x03" + encode35(speed_val)
+        """C9 03, the per-axis speed, from mm/s."""
+        return b"\xc9\x03" + encode35(int(speed_mm_s * 1000))
 
     def _build_end_of_file(self) -> bytes:
         return b"\xd7"

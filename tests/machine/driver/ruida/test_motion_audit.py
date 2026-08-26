@@ -257,6 +257,36 @@ class TestBusyFlagNeverLeaks:
         assert driver._jog_busy is False
 
 
+class TestOneSpeedUnitPath:
+    """mm/min meets um/s in exactly one place."""
+
+    @pytest.mark.asyncio
+    async def test_hold_jog_seeds_from_the_jog_default(self, driver):
+        """MOT-21: not from the max travel speed, 12x higher."""
+        spy = MotionClientSpy(position=(100000, 100000))
+        driver._client = spy
+        driver._last_known_pos = (100000, 100000)
+
+        await driver.jog_key_down("x", 1)
+
+        expected = int(driver.DEFAULT_JOG_SPEED * 1000 / 60)
+        assert spy.commands[0] == b"\xc9\x02" + encode35(expected)
+        assert driver.DEFAULT_JOG_SPEED != driver.DEFAULT_TRAVEL_SPEED
+
+    @pytest.mark.asyncio
+    async def test_go_scale_never_exceeds_the_profile(self, driver):
+        """MOT-26: the trace is clamped, not hard-coded."""
+        spy = MotionClientSpy(position=(0, 0))
+        driver._client = spy
+        driver._machine.set_max_travel_speed(600)
+        driver.FRAME_CORNER_TIMEOUT = 0.05
+        driver.FRAME_POLL_INTERVAL = 0.01
+
+        await driver.trace_frame(10.0, 10.0)
+
+        assert spy.commands[0] == b"\xc9\x02" + encode35(10000)
+
+
 class TestOriginIsNeverInvented:
     """An absolute rapid needs a real origin or no command at all."""
 
