@@ -8,15 +8,15 @@ from ...machine.models.machine import JogDirection, Machine, Origin
 from ..icons import get_icon
 from .cut_scale_dialog import CutScaleDialog
 
-# The widget carries its jog speed in application base units, the
-# same unit Driver.jog and Driver.set_jog_speed document, so the
-# value never round trips through a display unit on its way to the
-# machine. Only the panel row converts, once, for display.
+# The widget carries its jog speed in application base units, which
+# is what Driver.jog and Driver.set_jog_speed take, so the value
+# never round trips through a display unit on its way to the machine.
+# Only the panel row converts, once, for display.
 #
-# The jog speed the widget starts with, in mm/min. It matches the
+# The jog speed the widget starts with, in base units. It matches the
 # jog speed row's own default so the panel and the machine agree
 # before the user has touched the control.
-_DEFAULT_JOG_SPEED_MM_MIN = 1000
+_DEFAULT_JOG_SPEED_BASE = 1000
 
 # The hold jog speed is driver state, so it is pushed when the control
 # settles rather than on every keystroke.
@@ -64,7 +64,7 @@ class JogWidget(Gtk.Widget):
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self.jog_speed_mm_min = _DEFAULT_JOG_SPEED_MM_MIN
+        self.jog_speed_base = _DEFAULT_JOG_SPEED_BASE
         self.jog_distance = 10.0
         self._buttons = []
         self._scaling = False
@@ -666,9 +666,9 @@ class JogWidget(Gtk.Widget):
         if not root.is_active():
             self._release_all_jog_keys()
 
-    def set_jog_speed(self, speed_mm_min: float):
-        """Set the jog speed in mm/min and push it to the driver."""
-        self.jog_speed_mm_min = max(1, int(round(speed_mm_min)))
+    def set_jog_speed(self, speed_in_base: float):
+        """Set the jog speed in base units and push it to the driver."""
+        self.jog_speed_base = max(1, int(round(speed_in_base)))
         if self._jog_speed_timeout_id is not None:
             GLib.source_remove(self._jog_speed_timeout_id)
         self._jog_speed_timeout_id = GLib.timeout_add(
@@ -685,7 +685,7 @@ class JogWidget(Gtk.Widget):
         """Push the settled jog speed to the driver."""
         self._jog_speed_timeout_id = None
         if self._hold_jog_supported() and self.machine and self.machine_cmd:
-            self.machine_cmd.set_jog_speed(self.machine, self.jog_speed_mm_min)
+            self.machine_cmd.set_jog_speed(self.machine, self.jog_speed_base)
         return GLib.SOURCE_REMOVE
 
     @staticmethod
@@ -746,9 +746,9 @@ class JogWidget(Gtk.Widget):
             return
 
         if deltas:
-            # Both the widget and Driver.jog speak mm/min, so nothing
-            # is converted here.
-            self.machine_cmd.jog(self.machine, deltas, self.jog_speed_mm_min)
+            # Both the widget and Driver.jog speak application base
+            # units, so nothing is converted here.
+            self.machine_cmd.jog(self.machine, deltas, self.jog_speed_base)
 
     def _perform_visual_jog(self, *directions: JogDirection):
         """Jog according to one or more visual directions."""

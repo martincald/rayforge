@@ -452,7 +452,7 @@ class BottomPanel(Gtk.Box):
     def _on_speed_changed(self, row):
         # Both the row and the jog widget speak application base
         # units. Converting to the display unit and back used to
-        # quantise the value to whole mm/s, i.e. 60 mm/min steps.
+        # quantise every setting to whole mm/s.
         self.jog_widget.set_jog_speed(self.speed_row.get_value_in_base_units())
 
     def _on_distance_changed(self, row):
