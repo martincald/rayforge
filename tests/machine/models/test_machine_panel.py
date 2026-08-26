@@ -651,7 +651,12 @@ class TestMachinePanelCalculateJog:
         self, origin, reverse_x, reverse_y
     ):
         """NATIVE orientation reproduces the machine's per-axis jog
-        calculation exactly."""
+        calculation, with X inverted.
+
+        The panel owns the arrow convention (left arrow = X toward
+        machine home); Machine.calculate_jog predates it and still
+        answers in the un-inverted sense, so X is compared negated.
+        """
         x_dir, y_dir = self._directions_for(origin)
         panel = _panel(
             origin=origin,
@@ -662,6 +667,8 @@ class TestMachinePanelCalculateJog:
         )
         for direction, axis in self.AXIS_FOR_DIRECTION.items():
             expected = panel.machine.calculate_jog(direction, 10.0)
+            if axis is Axis.X:
+                expected = -expected
             assert panel.calculate_jog(direction, 10.0) == {axis: expected}
 
     @pytest.mark.parametrize(
@@ -670,12 +677,12 @@ class TestMachinePanelCalculateJog:
             (
                 PanelOrientation.ROTATED_RIGHT,
                 JogDirection.EAST,
-                {Axis.Y: 10.0},
+                {Axis.Y: -10.0},
             ),
             (
                 PanelOrientation.ROTATED_RIGHT,
                 JogDirection.WEST,
-                {Axis.Y: -10.0},
+                {Axis.Y: 10.0},
             ),
             (
                 PanelOrientation.ROTATED_RIGHT,
@@ -690,12 +697,12 @@ class TestMachinePanelCalculateJog:
             (
                 PanelOrientation.ROTATED_LEFT,
                 JogDirection.EAST,
-                {Axis.Y: -10.0},
+                {Axis.Y: 10.0},
             ),
             (
                 PanelOrientation.ROTATED_LEFT,
                 JogDirection.WEST,
-                {Axis.Y: 10.0},
+                {Axis.Y: -10.0},
             ),
             (
                 PanelOrientation.ROTATED_LEFT,
@@ -749,7 +756,7 @@ class TestMachinePanelCalculateJog:
                 PanelOrientation.ROTATED_RIGHT,
                 OriginCorner.TOP_LEFT,
                 JogDirection.EAST,
-                {Axis.Y: -10.0},
+                {Axis.Y: 10.0},
             ),
             (
                 PanelOrientation.ROTATED_RIGHT,
@@ -761,7 +768,7 @@ class TestMachinePanelCalculateJog:
                 PanelOrientation.ROTATED_RIGHT,
                 OriginCorner.TOP_RIGHT,
                 JogDirection.EAST,
-                {Axis.Y: -10.0},
+                {Axis.Y: 10.0},
             ),
             (
                 PanelOrientation.ROTATED_RIGHT,

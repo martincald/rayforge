@@ -432,9 +432,13 @@ class MachinePanel:
 
         if direction in (JogDirection.UP, JogDirection.DOWN):
             return {Axis.Z: self._machine.calculate_jog(direction, distance)}
+        # Arrow convention: left arrow = X toward machine home, right
+        # arrow away from it. The presented X sign is inverted here,
+        # the one place a visual direction becomes a delta, so the
+        # diagonals composed from these cardinals follow it too.
         presented_deltas = {
-            JogDirection.EAST: (distance, 0.0),
-            JogDirection.WEST: (-distance, 0.0),
+            JogDirection.EAST: (-distance, 0.0),
+            JogDirection.WEST: (distance, 0.0),
             JogDirection.NORTH: (0.0, distance),
             JogDirection.SOUTH: (0.0, -distance),
         }

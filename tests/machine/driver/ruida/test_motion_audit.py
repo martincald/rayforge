@@ -343,7 +343,9 @@ class TestReversedAxesJogTheRightWay:
     """calculate_jog already signs the delta; the driver must agree."""
 
     @pytest.mark.asyncio
-    async def test_hold_jog_east_runs_to_the_east_limit(self, driver):
+    async def test_hold_jog_runs_to_the_limit_the_arrow_points_at(
+        self, driver
+    ):
         """MOT-07: a reversed X must not swap the arrows."""
         machine = driver._machine
         machine.set_reverse_x_axis(True)
@@ -355,13 +357,15 @@ class TestReversedAxesJogTheRightWay:
 
         await driver.jog_key_down("x", key)
 
-        # East is machine X = -(400 - 1) mm in app space, which is
-        # +399 mm on the controller's own 0..extent scale.
-        assert move_target(moves(spy.commands)[0])[0] == 399000
+        # The right arrow signs X positive, so the run ends at the top
+        # of the reversed range: machine X = -1 mm in app space, which
+        # is +1 mm on the controller's own 0..extent scale.
+        assert move_target(moves(spy.commands)[0])[0] == 1000
 
     @pytest.mark.asyncio
-    async def test_step_jog_east_moves_east(self, driver):
-        """MOT-07: a 10 mm east click must not move 10 mm west."""
+    async def test_step_jog_moves_the_way_the_arrow_points(self, driver):
+        """MOT-07: a 10 mm arrow click must not move 10 mm the other
+        way."""
         machine = driver._machine
         machine.set_reverse_x_axis(True)
         machine.soft_limits_enabled = False
@@ -372,9 +376,9 @@ class TestReversedAxesJogTheRightWay:
 
         await driver.jog(600, x=delta)
 
-        # -100 mm app space, 10 mm further east, is -110 mm app space
-        # and +110 mm on the controller.
-        assert move_target(moves(spy.commands)[0])[0] == 110000
+        # -100 mm app space, 10 mm along the right arrow, is -90 mm
+        # app space and +90 mm on the controller.
+        assert move_target(moves(spy.commands)[0])[0] == 90000
 
     @pytest.mark.asyncio
     async def test_reported_position_uses_the_profile_sign(self, driver):

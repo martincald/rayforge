@@ -119,7 +119,7 @@ def test_dragging_off_a_held_button_releases_it(ui_context_initializer):
             gesture, None, button, (JogDirection.EAST,)
         )
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
     assert widget._keys_down == set()
 
 
@@ -141,7 +141,7 @@ def test_moving_inside_a_held_button_keeps_it_held(ui_context_initializer):
         )
 
     machine_cmd.jog_key_up.assert_not_called()
-    assert widget._keys_down == {("x", 1)}
+    assert widget._keys_down == {("x", -1)}
 
 
 @pytest.mark.ui
@@ -184,7 +184,7 @@ def test_every_release_path_lets_the_key_go(ui_context_initializer, release):
 
     with _hold_jog_driver(machine):
         _hold(widget, JogDirection.EAST)
-        assert widget._keys_down == {("x", 1)}
+        assert widget._keys_down == {("x", -1)}
 
         if release == "released":
             widget._on_jog_released(None, 1, 0.0, 0.0, east)
@@ -212,5 +212,5 @@ def test_every_release_path_lets_the_key_go(ui_context_initializer, release):
         elif release == "machine_swap":
             widget.set_machine(None, machine_cmd)
 
-    machine_cmd.jog_key_up.assert_any_call(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_any_call(machine, "x", -1)
     assert widget._keys_down == set()

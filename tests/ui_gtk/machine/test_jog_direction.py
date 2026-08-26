@@ -15,25 +15,29 @@ JOG_SPEED = 100
 JOG_SPEED_MM_MIN = JOG_SPEED * 60
 
 # (button, axis, origin, reversed, expectation)
+#
+# X runs opposite to the origin-corner derivation on purpose: the
+# arrow convention is "left arrow = X toward machine home", applied
+# once in MachinePanel.calculate_jog.
 JOG_BUTTON_SCENARIOS = [
     # Right (East) button
-    ("east", Axis.X, Origin.BOTTOM_LEFT, False, JOG_DISTANCE),
-    ("east", Axis.X, Origin.BOTTOM_LEFT, True, -JOG_DISTANCE),
-    ("east", Axis.X, Origin.TOP_LEFT, False, JOG_DISTANCE),
-    ("east", Axis.X, Origin.TOP_LEFT, True, -JOG_DISTANCE),
-    ("east", Axis.X, Origin.TOP_RIGHT, False, -JOG_DISTANCE),
-    ("east", Axis.X, Origin.TOP_RIGHT, True, JOG_DISTANCE),
-    ("east", Axis.X, Origin.BOTTOM_RIGHT, False, -JOG_DISTANCE),
-    ("east", Axis.X, Origin.BOTTOM_RIGHT, True, JOG_DISTANCE),
+    ("east", Axis.X, Origin.BOTTOM_LEFT, False, -JOG_DISTANCE),
+    ("east", Axis.X, Origin.BOTTOM_LEFT, True, JOG_DISTANCE),
+    ("east", Axis.X, Origin.TOP_LEFT, False, -JOG_DISTANCE),
+    ("east", Axis.X, Origin.TOP_LEFT, True, JOG_DISTANCE),
+    ("east", Axis.X, Origin.TOP_RIGHT, False, JOG_DISTANCE),
+    ("east", Axis.X, Origin.TOP_RIGHT, True, -JOG_DISTANCE),
+    ("east", Axis.X, Origin.BOTTOM_RIGHT, False, JOG_DISTANCE),
+    ("east", Axis.X, Origin.BOTTOM_RIGHT, True, -JOG_DISTANCE),
     # Left (West) button
-    ("west", Axis.X, Origin.BOTTOM_LEFT, False, -JOG_DISTANCE),
-    ("west", Axis.X, Origin.BOTTOM_LEFT, True, JOG_DISTANCE),
-    ("west", Axis.X, Origin.TOP_LEFT, False, -JOG_DISTANCE),
-    ("west", Axis.X, Origin.TOP_LEFT, True, JOG_DISTANCE),
-    ("west", Axis.X, Origin.TOP_RIGHT, False, JOG_DISTANCE),
-    ("west", Axis.X, Origin.TOP_RIGHT, True, -JOG_DISTANCE),
-    ("west", Axis.X, Origin.BOTTOM_RIGHT, False, JOG_DISTANCE),
-    ("west", Axis.X, Origin.BOTTOM_RIGHT, True, -JOG_DISTANCE),
+    ("west", Axis.X, Origin.BOTTOM_LEFT, False, JOG_DISTANCE),
+    ("west", Axis.X, Origin.BOTTOM_LEFT, True, -JOG_DISTANCE),
+    ("west", Axis.X, Origin.TOP_LEFT, False, JOG_DISTANCE),
+    ("west", Axis.X, Origin.TOP_LEFT, True, -JOG_DISTANCE),
+    ("west", Axis.X, Origin.TOP_RIGHT, False, -JOG_DISTANCE),
+    ("west", Axis.X, Origin.TOP_RIGHT, True, JOG_DISTANCE),
+    ("west", Axis.X, Origin.BOTTOM_RIGHT, False, -JOG_DISTANCE),
+    ("west", Axis.X, Origin.BOTTOM_RIGHT, True, JOG_DISTANCE),
     # Away (North) button
     ("north", Axis.Y, Origin.BOTTOM_LEFT, False, JOG_DISTANCE),
     ("north", Axis.Y, Origin.BOTTOM_LEFT, True, -JOG_DISTANCE),
@@ -92,8 +96,9 @@ def test_jog_button_direction(
     machine for all combinations of origin and axis direction settings.
 
     The correct behavior is:
-    - X axis: Right button sends positive X when origin is on the left,
-      negative X when origin is on the right.
+    - X axis: Right button sends negative X when origin is on the left,
+      positive X when origin is on the right -- the inverted arrow
+      convention, "left arrow = X toward machine home".
     - Y axis: North button sends positive Y when origin is on the bottom,
       negative Y when origin is on the top.
     - Z axis: Depends on reverse_z_axis setting.
@@ -137,12 +142,12 @@ def test_jog_button_direction(
 
 # (orientation, button_name, expected_native_deltas)
 ROTATED_JOG_SCENARIOS = [
-    (PanelOrientation.ROTATED_RIGHT, "east", {Axis.Y: JOG_DISTANCE}),
-    (PanelOrientation.ROTATED_RIGHT, "west", {Axis.Y: -JOG_DISTANCE}),
+    (PanelOrientation.ROTATED_RIGHT, "east", {Axis.Y: -JOG_DISTANCE}),
+    (PanelOrientation.ROTATED_RIGHT, "west", {Axis.Y: JOG_DISTANCE}),
     (PanelOrientation.ROTATED_RIGHT, "north", {Axis.X: -JOG_DISTANCE}),
     (PanelOrientation.ROTATED_RIGHT, "south", {Axis.X: JOG_DISTANCE}),
-    (PanelOrientation.ROTATED_LEFT, "east", {Axis.Y: -JOG_DISTANCE}),
-    (PanelOrientation.ROTATED_LEFT, "west", {Axis.Y: JOG_DISTANCE}),
+    (PanelOrientation.ROTATED_LEFT, "east", {Axis.Y: JOG_DISTANCE}),
+    (PanelOrientation.ROTATED_LEFT, "west", {Axis.Y: -JOG_DISTANCE}),
     (PanelOrientation.ROTATED_LEFT, "north", {Axis.X: JOG_DISTANCE}),
     (PanelOrientation.ROTATED_LEFT, "south", {Axis.X: -JOG_DISTANCE}),
 ]
@@ -205,11 +210,11 @@ LIMIT_SCENARIOS = [
         False,
         (95.0, 95.0),
         {
-            "east_btn",
+            "west_btn",
             "north_btn",
             "north_east_btn",
             "north_west_btn",
-            "south_east_btn",
+            "south_west_btn",
         },
     ),
     # Standard (Bottom-Left, no reverse), near bottom-left corner
@@ -219,11 +224,11 @@ LIMIT_SCENARIOS = [
         False,
         (5.0, 5.0),
         {
-            "west_btn",
+            "east_btn",
             "south_btn",
-            "north_west_btn",
-            "south_west_btn",
+            "north_east_btn",
             "south_east_btn",
+            "south_west_btn",
         },
     ),
     # Top-Left (Y-down), near bottom-left corner (visually)
@@ -233,11 +238,11 @@ LIMIT_SCENARIOS = [
         False,
         (5.0, 5.0),
         {
-            "west_btn",
+            "east_btn",
             "north_btn",
-            "north_west_btn",
-            "south_west_btn",
             "north_east_btn",
+            "north_west_btn",
+            "south_east_btn",
         },
     ),
     # Bottom-Left, reverse X. Limits are X:[-100, 0], Y:[0, 100].
@@ -248,10 +253,10 @@ LIMIT_SCENARIOS = [
         False,
         (-5.0, 5.0),
         {
-            "west_btn",
+            "east_btn",
             "south_btn",
+            "north_east_btn",
             "south_east_btn",
-            "north_west_btn",
             "south_west_btn",
         },
     ),
@@ -263,11 +268,11 @@ LIMIT_SCENARIOS = [
         True,
         (-5.0, -5.0),
         {
-            "east_btn",
+            "west_btn",
             "north_btn",
             "north_east_btn",
             "north_west_btn",
-            "south_east_btn",
+            "south_west_btn",
         },
     ),
     # Center position, no warnings expected
@@ -373,5 +378,5 @@ def test_x_mapping_follows_the_origin_corner_setting(ui_context_initializer):
     jog_widget._on_jog_released(None, 1, 0.0, 0.0, directions)
     right_origin = mock_machine_cmd.jog.call_args[0][1]
 
-    assert left_origin == {Axis.X: JOG_DISTANCE}
-    assert right_origin == {Axis.X: -JOG_DISTANCE}
+    assert left_origin == {Axis.X: -JOG_DISTANCE}
+    assert right_origin == {Axis.X: JOG_DISTANCE}

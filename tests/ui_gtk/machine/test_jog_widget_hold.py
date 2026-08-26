@@ -63,7 +63,7 @@ def test_press_emits_exactly_one_key_down(ui_context_initializer):
     with _hold_jog_driver(machine):
         _hold(widget, _east())
 
-    machine_cmd.jog_key_down.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_down.assert_called_once_with(machine, "x", -1)
 
 
 @pytest.mark.ui
@@ -89,7 +89,7 @@ def test_release_emits_the_key_up(ui_context_initializer):
         _hold(widget, _east())
         widget._on_jog_released(None, 1, 0.0, 0.0, (_east(),))
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
     assert widget._keys_down == set()
 
 
@@ -102,7 +102,7 @@ def test_diagonal_press_holds_both_axes(ui_context_initializer):
         _hold(widget, _east(), _north())
 
     held = {c.args[1:] for c in machine_cmd.jog_key_down.call_args_list}
-    assert held == {("x", 1), ("y", 1)}
+    assert held == {("x", -1), ("y", 1)}
 
 
 @pytest.mark.ui
@@ -117,7 +117,7 @@ def test_focus_loss_releases_a_held_key(ui_context_initializer):
         root.is_active.return_value = False
         widget._on_root_active_changed(root, None)
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
     machine_cmd.release_all_jog_keys.assert_called_once_with(machine)
     assert widget._keys_down == set()
 
@@ -145,7 +145,7 @@ def test_pointer_leave_releases_a_held_key(ui_context_initializer):
         _hold(widget, _east())
         widget._on_jog_leave(None, (_east(),))
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
 
 
 @pytest.mark.ui
@@ -157,7 +157,7 @@ def test_gesture_cancel_releases_a_held_key(ui_context_initializer):
         _hold(widget, _east())
         widget._on_jog_cancelled(None, None, (_east(),))
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
 
 
 @pytest.mark.ui
@@ -169,7 +169,7 @@ def test_unmap_releases_a_held_key(ui_context_initializer):
         _hold(widget, _east())
         widget._on_unmapped(widget)
 
-    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", 1)
+    machine_cmd.jog_key_up.assert_called_once_with(machine, "x", -1)
 
 
 @pytest.mark.ui
