@@ -86,9 +86,6 @@ class RuidaDriver(Driver):
     # Consecutive unanswered status reads before a completion wait
     # decides the controller is gone rather than busy.
     STATUS_MISS_LIMIT = 8
-    # Framing traces the job outline with the pointer at a moderate,
-    # fixed speed: it is an alignment aid, not a job.
-    FRAME_SPEED_MM_S = 100
     FRAME_CORNER_TOLERANCE_UM = 1000
     FRAME_CORNER_TIMEOUT = 15.0
     FRAME_POLL_INTERVAL = 0.2
@@ -839,11 +836,13 @@ class RuidaDriver(Driver):
         """
         The trace speed, in mm/min, clamped to the profile.
 
-        Framing is an alignment aid, so it prefers a moderate fixed
-        speed -- but never one the machine is not configured for.
+        Framing is interactive motion the user watches, so it runs at
+        the jog panel's own speed -- the same value the arrows use,
+        pushed here by set_jog_speed -- rather than a fixed one. It is
+        still never faster than the machine is configured for.
         """
         profile = self._machine.max_travel_speed or self.DEFAULT_TRAVEL_SPEED
-        return int(min(self.FRAME_SPEED_MM_S * 60, profile))
+        return int(min(self._jog_speed_mm_min, profile))
 
     def _corners_fit(self, corners: list[tuple[int, int]]) -> bool:
         """

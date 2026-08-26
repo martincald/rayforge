@@ -96,10 +96,10 @@ class TestGoScale:
 
         await ruida_driver.trace_frame(100.0, 50.0)
 
-        # The trace prefers its own moderate speed but never exceeds
+        # The trace runs at the jog panel's speed but never exceeds
         # the profile's max travel speed.
         expected_mm_min = min(
-            ruida_driver.FRAME_SPEED_MM_S * 60,
+            ruida_driver._jog_speed_mm_min,
             ruida_driver._machine.max_travel_speed
             or ruida_driver.DEFAULT_TRAVEL_SPEED,
         )
@@ -111,6 +111,18 @@ class TestGoScale:
         # power command is ever sent.
         assert len(spy.commands) == 6
         assert b"\xd8\x00" not in spy.commands
+
+    @pytest.mark.asyncio
+    async def test_traces_at_the_jog_panel_speed(self, ruida_driver):
+        """The panel's jog speed drives the trace, not a fixed one."""
+        spy = _ScaleClientSpy(position=(0, 0))
+        ruida_driver._client = spy
+        # 40 mm/s, in the mm/min base units the jog panel pushes.
+        await ruida_driver.set_jog_speed(40 * 60)
+
+        await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert spy.commands[0] == b"\xc9\x02" + encode35(40000)
 
     @pytest.mark.asyncio
     async def test_corners_are_offset_from_the_start_position(
