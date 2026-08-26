@@ -233,7 +233,15 @@ class RuidaServer:
         return b"", 2
 
     def _handle_d8_command(self, data: bytes) -> tuple[bytes, int]:
-        """Handle D8 realtime commands."""
+        """
+        Handle D8 realtime commands.
+
+        UNVERIFIED -- inferred, not captured. This handler is the only
+        in-repo description of what a Ruida controller does with these
+        bytes, and the RDWorks fixture next to it contains no
+        interactive command at all. Do not read it as a
+        specification; see MOTION_AUDIT.md MOT-47.
+        """
         if len(data) < 2:
             return b"", 1
 
@@ -289,7 +297,17 @@ class RuidaServer:
         return b"", 2
 
     def _handle_d9_command(self, data: bytes) -> tuple[bytes, int]:
-        """Handle D9 rapid move commands."""
+        """
+        Handle D9 rapid move commands.
+
+        UNVERIFIED -- inferred, not captured; see
+        _handle_d8_command. Two consequences worth knowing when
+        writing tests against this: D9 10 teleports rather than
+        travelling, so no test here can observe an in-flight move or
+        what stops one, and it assigns regardless of the option byte,
+        so it cannot tell an origin-relative target from an absolute
+        one.
+        """
         if len(data) < 2:
             return b"", 1
 

@@ -592,9 +592,12 @@ class MachineCmd:
         """
         Adds a task to start a press-and-hold jog on one axis.
 
-        These tasks are deliberately unkeyed: a keyed task replaces the
-        pending one with the same key, which could swallow a key-up and
-        leave the head moving.
+        These tasks are deliberately unkeyed: a keyed task replaces
+        the pending one with the same key, which could swallow a
+        key-up and leave the head moving. Unkeyed tasks are not
+        ordered against each other either -- the task manager fires
+        each one straight at the loop -- so the driver does its own
+        ordering rather than relying on this layer for it.
         """
         driver = machine.driver
         if driver:

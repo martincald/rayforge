@@ -972,8 +972,14 @@ class RuidaDriver(Driver):
         pass
 
     async def clear_alarm(self) -> None:
-        assert self._client
-        await self._client.stop_process()
+        """
+        Nothing to clear: this driver models no alarm state.
+
+        It used to send D8 01 Stop Process, byte-identical to
+        cancel(), so a "clear alarm" quietly aborted whatever was
+        running. Stopping belongs to cancel().
+        """
+        logger.debug("Ruida reports no alarm state; nothing to clear")
 
     async def set_power(self, head: "Laser", percent: float) -> None:
         assert self._client

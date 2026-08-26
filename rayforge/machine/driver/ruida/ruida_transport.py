@@ -137,7 +137,12 @@ class RuidaTransport(Transport):
             },
         )
 
-        if len(data) == 1 and unswizzled[0] in (0xCC, 0xCD, 0xCE):
+        # A single byte is an ack, a nak or a keepalive echo. It
+        # carries no memory-request shape, so it must never reach the
+        # magic detectors -- and the set has to be every single-byte
+        # reply, not the three that happened to be listed: 0xC6 is a
+        # job ack the client accepts and used to fall through.
+        if len(data) == 1:
             self.decoded_received.send(self, data=unswizzled)
             return
 

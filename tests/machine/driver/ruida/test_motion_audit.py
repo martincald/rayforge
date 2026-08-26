@@ -474,3 +474,39 @@ class TestWaitsAreBounded:
         await driver.jog(60000, x=300.0)
 
         assert spy.reads > 30
+
+
+class TestInteractiveBytes:
+    """What the driver puts on the wire, and what it does not."""
+
+    @pytest.mark.asyncio
+    async def test_clear_alarm_sends_nothing(self, driver):
+        """MOT-45: it was byte-identical to cancel, a silent stop."""
+        spy = MotionClientSpy()
+        driver._client = spy
+
+        await driver.clear_alarm()
+
+        assert spy.commands == []
+
+    def test_key_up_matches_the_key_down_it_releases(self):
+        """MOT-41: the map always emitted the negative-direction byte."""
+        from rayforge.machine.driver.ruida.ruida_client import RuidaClient
+
+        client = RuidaClient.__new__(RuidaClient)
+        for axis, direction, down in (
+            ("x", -1, 0x20),
+            ("x", 1, 0x21),
+            ("y", 1, 0x22),
+            ("y", -1, 0x23),
+            ("z", 1, 0x24),
+            ("z", -1, 0x25),
+            ("u", 1, 0x26),
+            ("u", -1, 0x27),
+        ):
+            assert client._build_jog_keydown(axis, direction) == bytes(
+                [0xD8, down]
+            )
+            assert client._build_jog_keyup(axis, direction) == bytes(
+                [0xD8, down + 0x10]
+            )

@@ -52,6 +52,13 @@ _JOB_NAK_BYTES = frozenset(
 
 # Panel key stream, sent raw on the jog channel: no swizzle and no
 # checksum frame, unlike normal commands. A press is a down/up pair.
+#
+# UNUSED. Nothing sends these, and nothing uses the jog transport the
+# client opens for them either. They are kept, with jog_start /
+# jog_stop / jog_move_x / jog_move_y below, because D8 KeyUp is the
+# only motion stop this repository actually models: if the hardware
+# check in MOTION_AUDIT.md MOT-05 shows D8 01 does not halt an
+# interactive D9 10 rapid, this is the surface the fix would use.
 KEY_DOWN_PREFIX = b"\xa5\x50"
 KEY_UP_PREFIX = b"\xa5\x51"
 
@@ -423,15 +430,25 @@ class RuidaClient:
         self, x_um: int, y_um: int, light: bool = False
     ) -> None:
         """
-        Rapid move to a position relative to the stored anchor (D9 10).
+        Rapid move to an absolute position (D9 10).
 
         This is the interactive motion command used by real Ruida
         hardware; job streams use move_abs (0x88) instead. The move is
         a traversal: the laser never fires.
 
+        UNVERIFIED, see MOTION_AUDIT.md MOT-38: the option byte sent
+        is 0x00, which ruida_server names "Origin", yet the driver
+        feeds this method absolute machine coordinates read back from
+        0x0421/0x0431. Those two readings coincide whenever the
+        selected ref point offset is zero, which is why nothing has
+        caught it. The RDWorks fixture contains no D9 at all, so the
+        repository cannot settle which frame the controller uses --
+        the hardware check is written up in the audit. Do not change
+        the option byte without that capture.
+
         Args:
-            x_um: X coordinate in micrometers, relative to the anchor
-            y_um: Y coordinate in micrometers, relative to the anchor
+            x_um: X coordinate in micrometers
+            y_um: Y coordinate in micrometers
             light: Switch the red pointer on for the move
         """
         opts = self._build_move_opts(origin=True, light=light)
@@ -448,7 +465,9 @@ class RuidaClient:
         Rapid move on a single axis.
 
         Args:
-            axis: Axis number (0x10=X, 0x11=Y, 0x12=Z, 0x13=U)
+            axis: Sub-opcode: 0x00=X, 0x01=Y, 0x02=Z, 0x03=U. It is
+                masked to four bits, so the 0x10-0x13 spelling maps
+                to the same commands.
             coord: Coordinate in micrometers
             origin: Move relative to stored origin point
             light: Enable laser pointer during move
@@ -515,30 +534,43 @@ class RuidaClient:
         """
         await self.send_command(self._build_jog_keydown(axis, direction))
 
-    async def jog_stop(self, axis: str) -> None:
+    async def jog_stop(self, axis: str, direction: int) -> None:
         """
         Stop continuous jog on an axis.
 
+        UNUSED; see the note on KEY_DOWN_PREFIX. Kept because D8
+        KeyUp is the only motion stop this repository models.
+
         Args:
             axis: Axis name ('x', 'y', 'z', or 'u')
+            direction: Direction the matching key-down used
         """
-        await self.send_command(self._build_jog_keyup(axis))
+        await self.send_command(self._build_jog_keyup(axis, direction))
 
     async def jog_move_x(self, target_x: int) -> None:
         """
-        Rapid move X axis to absolute target position.
+        Rapid move the X axis by a relative offset (D9 00).
+
+        UNUSED, and UNVERIFIED. Both in-repo references decode D9 00
+        as relative (ruida_server accumulates, s.x += coord), and the
+        driver's own bench note says feeding it an absolute
+        coordinate drove the head to the wrong end of the axis, which
+        is what a relative form would do. The driver uses D9 10 for
+        every interactive move instead.
 
         Args:
-            target_x: Absolute X target in micrometers
+            target_x: X offset in micrometers
         """
         await self.send_command(self._build_rapid_move_axis(0x00, target_x))
 
     async def jog_move_y(self, target_y: int) -> None:
         """
-        Rapid move Y axis to absolute target position.
+        Rapid move the Y axis by a relative offset (D9 01).
+
+        UNUSED and UNVERIFIED; see jog_move_x.
 
         Args:
-            target_y: Absolute Y target in micrometers
+            target_y: Y offset in micrometers
         """
         await self.send_command(self._build_rapid_move_axis(0x01, target_y))
 
@@ -664,6 +696,13 @@ class RuidaClient:
         return b"\xd9" + bytes([axis & 0x0F]) + bytes([opts]) + encode35(coord)
 
     def _build_move_opts(self, origin: bool, light: bool) -> int:
+        """
+        The D9 option byte: bit 0 is Light, bit 1 is not-Origin.
+
+        UNVERIFIED. This mapping matches ruida_server's own decoder
+        and nothing else -- there is no capture of a D9 command
+        anywhere in this repository. See MOTION_AUDIT.md MOT-47.
+        """
         if origin and light:
             return 0x01
         elif origin:
@@ -718,16 +757,17 @@ class RuidaClient:
             raise ValueError(f"Invalid axis/direction: {axis}, {direction}")
         return b"\xd8" + bytes([axis_map[key]])
 
-    def _build_jog_keyup(self, axis: str) -> bytes:
-        axis_map = {
-            "x": 0x30,
-            "y": 0x32,
-            "z": 0x34,
-            "u": 0x36,
-        }
-        if axis.lower() not in axis_map:
-            raise ValueError(f"Invalid axis: {axis}")
-        return b"\xd8" + bytes([axis_map[axis.lower()]])
+    def _build_jog_keyup(self, axis: str, direction: int) -> bytes:
+        """
+        D8 key-up, which is the key-down opcode plus 0x10.
+
+        The map used to be keyed by axis alone and always produced the
+        negative-direction opcode, so a positive-direction key could
+        never have been released.
+        """
+        key = (axis.lower(), direction)
+        keydown = self._build_jog_keydown(*key)
+        return b"\xd8" + bytes([keydown[1] + 0x10])
 
     def _build_power_immediate(
         self, laser: int, power_percent: float
