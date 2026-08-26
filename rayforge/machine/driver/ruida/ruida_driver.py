@@ -66,6 +66,10 @@ class RuidaDriver(Driver):
     RECONNECT_INTERVAL = 5.0
     KEEPALIVE_INTERVAL = 1.0
     POSITION_POLL_INTERVAL = 0.5
+    # The connection loop wakes on this tick and lets each activity
+    # own its own deadline. Sleeping a whole keepalive interval made
+    # POSITION_POLL_INTERVAL unreachable.
+    LOOP_TICK_INTERVAL = 0.1
     RESPONSE_PORT = 40200
     # Homing and move-to are positioning, not cutting: they run at the
     # profile's max travel speed, falling back to 200 mm/s.
@@ -112,6 +116,7 @@ class RuidaDriver(Driver):
         self._client = None
         self._response_received = asyncio.Event()
         self._connection_task: asyncio.Task | None = None
+        self._card_info_task: asyncio.Task | None = None
         self._keep_running = False
         self._is_connected = False
         self._response_timeout = self.CONNECTION_TIMEOUT
@@ -325,6 +330,13 @@ class RuidaDriver(Driver):
             except asyncio.CancelledError:
                 pass
             self._connection_task = None
+        if self._card_info_task:
+            self._card_info_task.cancel()
+            try:
+                await self._card_info_task
+            except asyncio.CancelledError:
+                pass
+            self._card_info_task = None
 
         if self._ruida_transport:
             self._ruida_transport.status_changed.disconnect(
@@ -400,32 +412,38 @@ class RuidaDriver(Driver):
                     extra=self._log_extra("MACHINE_EVENT"),
                 )
 
-                asyncio.create_task(
+                self._card_info_task = asyncio.create_task(
                     self._fetch_card_info(),
                     name="ruida-fetch-card-info",
                 )
 
                 last_poll_time = 0.0
                 last_ref_poll_time = 0.0
+                last_keepalive = asyncio.get_event_loop().time()
 
                 while self._keep_running and self._is_connected:
                     current_time = asyncio.get_event_loop().time()
+
+                    # The keepalive has to leave on its own schedule.
+                    # It used to be sent once, at connect, and never
+                    # again: liveness rode entirely on the position
+                    # poll, which a job upload suspends.
+                    if current_time - last_keepalive >= (
+                        self.KEEPALIVE_INTERVAL
+                    ):
+                        await self._client.keep_alive()
+                        last_keepalive = current_time
 
                     if (
                         not self._suppress_polling
                         and current_time - last_poll_time
                         >= self.POSITION_POLL_INTERVAL
                     ):
-                        self._response_received.clear()
-                        await self._poll_position()
-                        last_poll_time = current_time
-
-                        try:
-                            await asyncio.wait_for(
-                                self._response_received.wait(),
-                                timeout=self._response_timeout,
-                            )
-                        except asyncio.TimeoutError:
+                        # The poll is its own liveness proof: it waits
+                        # on the reply to the register it asked for,
+                        # not on "some packet arrived", which any
+                        # unrelated ack used to satisfy.
+                        if not await self._poll_position():
                             logger.warning(
                                 "Controller stopped responding, reconnecting",
                                 extra=self._log_extra("MACHINE_EVENT"),
@@ -433,6 +451,7 @@ class RuidaDriver(Driver):
                             self._is_connected = False
                             await self._disconnect_transports()
                             break
+                        last_poll_time = asyncio.get_event_loop().time()
 
                     if (
                         not self._suppress_polling
@@ -441,11 +460,12 @@ class RuidaDriver(Driver):
                         await self._poll_ref_point_mode()
                         last_ref_poll_time = current_time
 
-                    await asyncio.sleep(self.KEEPALIVE_INTERVAL)
+                    await asyncio.sleep(self.LOOP_TICK_INTERVAL)
 
             except asyncio.CancelledError:
                 logger.debug("Connection loop cancelled")
-                break
+                await self._disconnect_transports()
+                raise
             except Exception as e:  # noqa: BLE001 - connection loop boundary
                 logger.error(f"Connection error: {e}")
                 self._update_connection_status(TransportStatus.ERROR, str(e))
@@ -479,16 +499,33 @@ class RuidaDriver(Driver):
             except OSError as e:
                 logger.debug(f"Error disconnecting ruida transport: {e}")
 
-    async def _poll_position(self) -> None:
-        """Poll current position from controller."""
+    async def _poll_position(self) -> bool:
+        """
+        Poll the current position, waiting for the reply.
+
+        Returns whether the controller answered. Going through
+        read_position rather than the fire-and-forget get_position
+        gives every reply an owner, so an interactive read can no
+        longer be answered by the poller's request.
+        """
         if not self._client or not self._is_connected:
-            return
+            return True
 
         try:
             logger.debug("Polling position from controller")
-            await self._client.get_position()
+            pos = await self._client.read_position(
+                timeout=self._response_timeout
+            )
+            if pos is None:
+                return False
+            self._set_known_pos(pos)
+            await self._client._read_memory_wait(
+                0x0441, timeout=self._response_timeout
+            )
+            return True
         except (OSError, asyncio.TimeoutError) as e:
             logger.debug(f"Error polling position: {e}")
+            return False
 
     async def _poll_ref_point_mode(self) -> None:
         """Poll current ref point mode from controller."""
@@ -1400,8 +1437,10 @@ class RuidaDriver(Driver):
                 f"Identified: {device}",
                 extra=self._log_extra("MACHINE_EVENT"),
             )
-        except (OSError, asyncio.TimeoutError) as e:
-            logger.debug(f"Could not fetch card info: {e}")
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - background task boundary
+            logger.exception("Could not fetch card info")
 
     def _on_state_changed(self, sender) -> None:
         self._response_received.set()

@@ -117,7 +117,11 @@ class RuidaClient:
         self._transport = transport
         self._jog_transport = jog_transport
         self.state = state or RuidaState()
-        self._pending_mem_reads: dict[int, asyncio.Future] = {}
+        # A FIFO of waiters per address, not one. Two overlapping
+        # reads of the same register used to overwrite each other:
+        # the first hung to its full timeout, and its timeout then
+        # evicted the second one's future.
+        self._pending_mem_reads: dict[int, list[asyncio.Future]] = {}
         self._pending_acks: list[asyncio.Future] = []
         self._pending_job_acks: list[asyncio.Future] = []
         self._send_lock = asyncio.Lock()
@@ -142,7 +146,7 @@ class RuidaClient:
             sender: The signal sender (unused)
             data: The decoded response data
         """
-        pending = list(self._pending_mem_reads.keys())
+        pending = sorted(self._pending_mem_reads)
         logger.debug(f"handle_response: {data.hex()} (pending: {pending})")
         if len(data) == 1 and self._pending_job_acks:
             if data[0] in _JOB_ACK_BYTES or data[0] in _JOB_NAK_BYTES:
@@ -162,10 +166,14 @@ class RuidaClient:
             mem_address = (data[2] << 8) | data[3]
             value = decode35(data[4:9])
 
-            if mem_address in self._pending_mem_reads:
-                future = self._pending_mem_reads.pop(mem_address)
+            waiters = self._pending_mem_reads.get(mem_address)
+            while waiters:
+                future = waiters.pop(0)
+                if not waiters:
+                    self._pending_mem_reads.pop(mem_address, None)
                 if not future.done():
                     future.set_result(value)
+                    break
 
             axis = None
             if mem_address == 0x0421:
@@ -903,13 +911,21 @@ class RuidaClient:
         """
         loop = asyncio.get_event_loop()
         future = loop.create_future()
-        self._pending_mem_reads[mem_address] = future
+        waiters = self._pending_mem_reads.setdefault(mem_address, [])
+        waiters.append(future)
 
         try:
             await self._read_memory(mem_address)
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError:
-            self._pending_mem_reads.pop(mem_address, None)
+            # Remove by identity: popping the address would evict
+            # whichever waiter happens to be at the head, which may
+            # belong to somebody else entirely.
+            waiters = self._pending_mem_reads.get(mem_address)
+            if waiters and future in waiters:
+                waiters.remove(future)
+            if waiters is not None and not waiters:
+                self._pending_mem_reads.pop(mem_address, None)
             logger.warning(f"Timeout reading memory 0x{mem_address:04X}")
             return None
 
