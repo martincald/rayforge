@@ -79,6 +79,9 @@ class RuidaDriver(Driver):
     # stays user-selectable; this only picks the initial slot.
     DEFAULT_WCS = "REF0"
     STATUS_POLL_INTERVAL = 0.5
+    # Consecutive unanswered status reads before a completion wait
+    # decides the controller is gone rather than busy.
+    STATUS_MISS_LIMIT = 8
     # Framing traces the job outline with the pointer at a moderate,
     # fixed speed: it is an alignment aid, not a job.
     FRAME_SPEED_MM_S = 100
@@ -605,17 +608,39 @@ class RuidaDriver(Driver):
             if inspect.isawaitable(result):
                 await result
 
-    async def _wait_for_job_completion(self) -> None:
+    async def _wait_for_status_idle(self, what: str) -> None:
         """
         Poll machine status until the job-running bit clears.
+
+        Gives up after STATUS_MISS_LIMIT consecutive unanswered reads.
+        A UDP socket stays "connected" when the controller is
+        unplugged -- nothing fails a send and no reply ever comes --
+        so waiting on is_connected alone hangs forever, and the run
+        that is holding the polling suspension can never notice
+        either.
         """
+        misses = 0
         while self._client and self._client.is_connected:
             status = await self._client._read_memory_wait(
                 self.MACHINE_STATUS_ADDRESS
             )
-            if status is not None and not status & self.STATUS_JOB_RUNNING_BIT:
-                return
+            if status is None:
+                misses += 1
+                if misses >= self.STATUS_MISS_LIMIT:
+                    logger.warning(
+                        f"Controller stopped answering status; "
+                        f"abandoning the {what} wait",
+                        extra=self._log_extra("MACHINE_EVENT"),
+                    )
+                    return
+            else:
+                misses = 0
+                if not status & self.STATUS_JOB_RUNNING_BIT:
+                    return
             await asyncio.sleep(self.STATUS_POLL_INTERVAL)
+
+    async def _wait_for_job_completion(self) -> None:
+        await self._wait_for_status_idle("job")
 
     async def run_raw(self, machine_code: str) -> None:
         """
@@ -674,17 +699,25 @@ class RuidaDriver(Driver):
             logger.info(cmd_name, extra=self._log_extra("MACHINE_EVENT"))
 
         self._response_timeout = self.HOMING_TIMEOUT
+        self._jog_busy = True
         try:
-            await self._set_max_travel_speed()
-            if home_xy:
-                await self._client.home_xy()
-            if home_z:
-                await self._client.home_z()
-            await self._client._read_memory_wait(
-                0x0421, timeout=self.HOMING_TIMEOUT
-            )
+            with self._polling_suspended():
+                await self._set_max_travel_speed()
+                if home_xy:
+                    await self._client.home_xy()
+                if home_z:
+                    await self._client.home_z()
+                # Homing is over when the machine reports itself idle.
+                # Reading Current X only reports where the head is,
+                # which the background poller answers within half a
+                # second whether or not the cycle has finished.
+                await self._wait_for_status_idle("home")
         finally:
             self._response_timeout = self.CONNECTION_TIMEOUT
+            self._jog_busy = False
+            # The head is at the machine zero it just found, not where
+            # the cache last saw it.
+            self._last_known_pos = None
 
     def can_trace_frame(self) -> bool:
         return True
