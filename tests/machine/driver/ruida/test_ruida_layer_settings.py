@@ -13,7 +13,11 @@ from raygeo.ops import Ops
 
 from rayforge.core.doc import Doc
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import decode35, encode14
+from rayforge.machine.driver.ruida.ruida_util import (
+    decode35,
+    encode14,
+    encode35,
+)
 from rayforge.machine.models.laser import Laser
 
 # 10 and 40 mm/s, in the mm/min the model stores.
@@ -274,3 +278,181 @@ def _doc_with_powers(min_power: float, power: float):
     uid = "layer-1"
     layer = _Layer(uid, _Workflow([_Step(min_power, power)]))
     return _Doc([layer]), uid
+
+
+def _job(build) -> Ops:
+    """A job whose single marker is filled by ``build``."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    build(ops)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class TestSettingsChangeOpensAPart:
+    """A part is a settings combination, not a marker."""
+
+    def test_a_change_after_geometry_opens_a_new_part(self, machine):
+        """The second group cannot run at the first group's settings."""
+
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(10.0, 0.0, 0.0)
+            ops.set_power(0.8)
+            ops.set_feed_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 5.0, 0.0)
+            ops.line_to(10.0, 5.0, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        assert [p[0] for p in _payloads(commands, b"\xca\x02")] == [0, 1]
+        assert _payloads(commands, b"\xca\x22") == [b"\x01"]
+        speeds = [
+            decode35(payload[1:])
+            for payload in _payloads(commands, b"\xc9\x04")
+        ]
+        assert speeds == [SLOW_UM_S, FAST_UM_S]
+
+    def test_a_change_before_the_first_cut_stays_in_the_part(self, machine):
+        """The last value before the first cut is the part's value."""
+
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.set_feed_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(10.0, 0.0, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        assert [p[0] for p in _payloads(commands, b"\xca\x02")] == [0]
+        speeds = [
+            decode35(payload[1:])
+            for payload in _payloads(commands, b"\xc9\x04")
+        ]
+        assert speeds == [FAST_UM_S]
+
+    def test_no_bare_speed_override_survives_inside_a_part(self, machine):
+        """Every C9 02 belongs to a block, never to the body."""
+
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.set_feed_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(10.0, 0.0, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        assert len(_payloads(commands, b"\xc9\x02")) == 1
+
+    def test_each_part_switch_forces_an_absolute_first_move(self, machine):
+        """CA 02 clears the controller's first-move state."""
+
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(1.0, 0.0, 0.0)
+            ops.set_feed_rate(FAST_MM_MIN)
+            # A delta this small would otherwise be a relative move.
+            ops.move_to(1.0, 0.5, 0.0)
+            ops.line_to(2.0, 0.5, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        moves = [c for c in commands if c[0] in (0x88, 0x89, 0x8A, 0x8B)]
+        assert [c[0] for c in moves] == [0x88, 0x88]
+
+
+class TestEmptyPartsAreDropped:
+    """A marker with nothing in it is not a part."""
+
+    def test_a_marker_with_no_geometry_claims_no_part(self, machine):
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("empty")
+        ops.set_power(0.5)
+        ops.set_feed_rate(SLOW_MM_MIN)
+        ops.layer_end("empty")
+        ops.layer_start("real")
+        ops.set_power(0.8)
+        ops.set_feed_rate(FAST_MM_MIN)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(10.0, 0.0, 0.0)
+        ops.layer_end("real")
+        ops.job_end()
+
+        commands = _commands(ops, machine)
+
+        assert [p[0] for p in _payloads(commands, b"\xca\x02")] == [0]
+        assert _payloads(commands, b"\xca\x22") == [b"\x00"]
+        speeds = [
+            decode35(payload[1:])
+            for payload in _payloads(commands, b"\xc9\x04")
+        ]
+        assert speeds == [FAST_UM_S]
+
+
+class TestPartMode:
+    """Every part declares its work mode, header and body."""
+
+    def test_ca_41_is_emitted_without_the_reference_replay(self, machine):
+        """The mode is a property of the job, not of the replay."""
+        encoder = RuidaEncoder(follow_reference=False)
+
+        commands = encoder.encode(
+            _two_layer_job(), machine, Doc()
+        ).driver_data["commands"]
+
+        assert _payloads(commands, b"\xca\x41") == [b"\x00\x00", b"\x01\x00"]
+
+    def test_the_body_mode_matches_the_header_mode(self, machine):
+        commands = _commands(_two_layer_job(), machine)
+
+        modes = {p[1] for p in _payloads(commands, b"\xca\x41")}
+        blocks = _layer_blocks(commands)
+        assert len(blocks) == 2
+        assert modes == {block[0][2] for block in blocks}
+
+
+class TestPartTravelSpeed:
+    """A part's rapids run at the speed the part asked for."""
+
+    def test_the_block_emits_c9_03_from_the_travel_speed(self, machine):
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.set_rapid_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(10.0, 0.0, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        assert _payloads(commands, b"\xc9\x03") == [encode35(FAST_UM_S)]
+
+    def test_a_part_without_a_travel_speed_emits_none(self, machine):
+        commands = _commands(_two_layer_job(), machine)
+
+        assert _payloads(commands, b"\xc9\x03") == []
+
+    def test_the_travel_speed_is_not_re_emitted_per_primitive(self, machine):
+        """One C9 03 per part, not one per rapid."""
+
+        def build(ops):
+            ops.set_power(0.5)
+            ops.set_feed_rate(SLOW_MM_MIN)
+            ops.set_rapid_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 0.0, 0.0)
+            ops.line_to(10.0, 0.0, 0.0)
+            ops.set_rapid_rate(FAST_MM_MIN)
+            ops.move_to(0.0, 5.0, 0.0)
+            ops.line_to(10.0, 5.0, 0.0)
+
+        commands = _commands(_job(build), machine)
+
+        assert len(_payloads(commands, b"\xc9\x03")) == 1

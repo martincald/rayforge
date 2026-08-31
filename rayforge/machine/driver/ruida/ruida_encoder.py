@@ -58,14 +58,28 @@ RD_MAGIC = 0x88
 JOB_REF_POINT = "REF0"
 
 
+# The work mode a part declares, in the header's CA 41 <part> <mode>
+# and again in the body's CA 01 <mode>. The RDWorks ground-truth file
+# holds a single contour part and carries 0 in both places, so 0 is
+# right for a cut part and is what every part gets.
+# TODO: a scan part's mode is unverified. The fixtures that would
+# settle it -- fixtures/rdworks_scan.rd and
+# fixtures/rdworks_scan_plus_cut.rd -- are not in this repository.
+# See docs/process-ordering-audit.md PRO-09; when one arrives, this
+# is the only value that changes.
+_DEFAULT_PART_MODE = 0
+
+
 def _no_settings() -> dict:
     """The settings a part falls back to when it has none at all."""
     return {
         "uid": None,
         "speed": 0.0,
+        "travel": 0.0,
         "power": 0.0,
         "min_power": 0.0,
         "air": False,
+        "mode": _DEFAULT_PART_MODE,
     }
 
 
@@ -135,6 +149,9 @@ class RuidaEncoder(OpsEncoder):
         self.origin_um: tuple[int, int] = (0, 0)
         self._doc: Doc | None = None
         self._layers: list[dict] = []
+        self._part_opens: dict[int, int] = {}
+        self._planned: bool = False
+        self._in_part: bool = False
         self._part: int = -1
         self._laser_selected: int | None = None
         self._last_pos_um: tuple[int, int] | None = None
@@ -192,6 +209,9 @@ class RuidaEncoder(OpsEncoder):
         self.origin_um = (0, 0)
         self._doc = None
         self._layers = []
+        self._part_opens = {}
+        self._planned = False
+        self._in_part = False
         self._part = -1
         self._reset_emission_state()
 
@@ -242,6 +262,20 @@ class RuidaEncoder(OpsEncoder):
     ) -> None:
         """Dispatch command to appropriate handler."""
         ct = ops.command_type(idx)
+
+        # The job pre-scan is the only thing that decides where a part
+        # begins; this walk just does what it was told, at the index it
+        # was told. A stream encoded with no job prologue was never
+        # planned, so there a marker still opens its own part.
+        part = self._part_opens.get(idx)
+        if (
+            part is None
+            and not self._planned
+            and ct == CommandType.LAYER_START
+        ):
+            part = self._part + 1
+        if part is not None:
+            self._open_part(part, binary)
 
         if ct == CommandType.SET_POWER:
             self._handle_set_power(ops, idx, binary, text)
@@ -294,6 +328,12 @@ class RuidaEncoder(OpsEncoder):
         """Handle SetPowerCommand - set min/max power for active laser."""
         power = ops.power(idx)
         power_percent = power * 100.0
+        if self._in_part:
+            # The part's own block already stated this. A change the
+            # block could not have covered opened a part of its own,
+            # so nothing is left here to override inline.
+            text.append(f"POWER {power_percent:.1f}")
+            return
         if self.power is not None and power == self.power:
             text.append(f"POWER {power_percent:.1f}")
             return
@@ -403,7 +443,9 @@ class RuidaEncoder(OpsEncoder):
     ) -> None:
         """Handle SetCutSpeedCommand - set cutting speed in mm/min."""
         speed = ops.rate(idx)
-        if self.cut_speed is not None and speed == self.cut_speed:
+        if self._in_part or (
+            self.cut_speed is not None and speed == self.cut_speed
+        ):
             text.append(f"SPEED {speed:.1f}")
             return
         self.cut_speed = speed
@@ -420,11 +462,10 @@ class RuidaEncoder(OpsEncoder):
         """
         Handle SetTravelSpeedCommand - track state only.
 
-        Travel speed is a controller-side setting (G0 velocity); no
-        command is emitted so the cut speed is not overwritten.
-        Per-primitive C9 03/C9 05 travel speed was audited and is
-        intentionally not emitted: the RDWorks reference file
-        contains neither.
+        The part's own body block emits its C9 03 from the travel
+        speed in force when the part opened, so nothing is emitted
+        per primitive here; that would overwrite the part's axis
+        speed mid-cut.
         """
         speed = ops.rate(idx)
         self.travel_speed = speed
@@ -480,6 +521,9 @@ class RuidaEncoder(OpsEncoder):
     ) -> None:
         """Handle SetAirAssistCommand - update air assist state."""
         mode = ops.air_assist(idx)
+        if self._in_part:
+            # Stated by the part's block, like speed and power.
+            return
         if mode == AirAssistMode.ON:
             if not self.air_assist:
                 self.air_assist = True
@@ -746,14 +790,23 @@ class RuidaEncoder(OpsEncoder):
 
     def _collect_job_info(
         self, ops: Ops, machine: "Machine"
-    ) -> tuple[tuple[int, int, int, int], list[dict]]:
+    ) -> tuple[tuple[int, int, int, int], list[dict], dict[int, int]]:
         """
         Pre-scan ops for the job prologue.
 
-        Returns job bounds in job-local micrometers (job minimum maps
-        to 0,0) and one entry per layer with the layer's speed (mm/min),
-        power (normalized), air assist state and bounds (um).
-        Jobs without layer markers yield a single implicit layer.
+        This is the only site that decides where a part begins. It
+        returns the job bounds in job-local micrometers (job minimum
+        maps to 0,0), one entry per part, and the map from ops index
+        to the part that opens there -- which the body walk obeys
+        rather than counting for itself. Two walks with two sets of
+        rules is how geometry came to be bound to another part's
+        settings; see docs/process-ordering-audit.md PRO-02.
+
+        A part is a settings combination, not a marker: a marker opens
+        one, and so does a feed/power/air change that arrives after
+        the current part has already cut something. A change that
+        arrives before the part's first cut belongs to that part, so
+        the last value before the first cut is the part's value.
 
         The bounds cover every motion the controller will make, not
         just the cutting geometry: travel moves count (``ops.rect()``
@@ -770,46 +823,71 @@ class RuidaEncoder(OpsEncoder):
             CommandType.SCAN_LINE,
         )
         motion = cutting + (CommandType.MOVE_TO,)
+        settings = (
+            CommandType.SET_FEED_RATE,
+            CommandType.SET_POWER,
+            CommandType.SET_AIR_ASSIST,
+        )
 
-        layers: list[dict] = []
+        parts: list[dict] = []
+        opens: dict[int, int] = {}
         current: dict | None = None
+        cur_uid: str | None = None
         cur_speed: float | None = None
+        cur_travel: float | None = None
         cur_power: float | None = None
         cur_air: bool = False
         pos: tuple[float, float] | None = None
         job_box: list[float] | None = None
 
+        def open_part(index: int) -> dict:
+            """Start a part here, and record where the body must too."""
+            nonlocal current
+            current = {
+                "uid": cur_uid,
+                "speed": cur_speed,
+                "travel": cur_travel,
+                "power": cur_power,
+                "air": cur_air,
+                "bounds": None,
+                "has_cut": False,
+            }
+            opens[index] = len(parts)
+            parts.append(current)
+            return current
+
         for i in range(ops.len()):
             ct = ops.command_type(i)
             if ct == CommandType.LAYER_START:
-                current = {
-                    "uid": ops.layer_uid(i),
-                    "speed": cur_speed,
-                    "power": cur_power,
-                    "air": cur_air,
-                    "bounds": None,
-                    "explicit_speed": False,
-                    "explicit_power": False,
-                    "explicit_air": False,
-                }
-                layers.append(current)
+                cur_uid = ops.layer_uid(i)
+                open_part(i)
             elif ct == CommandType.LAYER_END:
                 current = None
-            elif ct == CommandType.SET_FEED_RATE:
-                cur_speed = ops.rate(i)
-                if current is not None and not current["explicit_speed"]:
+                cur_uid = None
+            elif ct in settings:
+                if ct == CommandType.SET_FEED_RATE:
+                    cur_speed = ops.rate(i)
+                elif ct == CommandType.SET_POWER:
+                    cur_power = ops.power(i)
+                else:
+                    cur_air = ops.air_assist(i) == AirAssistMode.ON
+                if current is None:
+                    continue
+                if current["has_cut"]:
+                    # The part below has already cut at its own
+                    # settings; these are somebody else's.
+                    open_part(i)
+                else:
                     current["speed"] = cur_speed
-                    current["explicit_speed"] = True
-            elif ct == CommandType.SET_POWER:
-                cur_power = ops.power(i)
-                if current is not None and not current["explicit_power"]:
                     current["power"] = cur_power
-                    current["explicit_power"] = True
-            elif ct == CommandType.SET_AIR_ASSIST:
-                cur_air = ops.air_assist(i) == AirAssistMode.ON
-                if current is not None and not current["explicit_air"]:
                     current["air"] = cur_air
-                    current["explicit_air"] = True
+            elif ct == CommandType.SET_RAPID_RATE:
+                cur_travel = ops.rate(i)
+                # Rapids are not a settings combination of their own:
+                # a travel change never opens a part, it just joins
+                # the one being built.
+                if current is not None and not current["has_cut"]:
+                    current["travel"] = cur_travel
             elif ct in motion:
                 end = ops.endpoint(i)
                 points = [(end[0], end[1])]
@@ -822,6 +900,8 @@ class RuidaEncoder(OpsEncoder):
                 job_box = self._grow(job_box, points)
                 if current is not None:
                     current["bounds"] = self._grow(current["bounds"], points)
+                    if ct in cutting:
+                        current["has_cut"] = True
                 pos = (end[0], end[1])
 
         if job_box is None:
@@ -833,11 +913,14 @@ class RuidaEncoder(OpsEncoder):
             self._mm_to_um(job_box[3]) - oy,
         )
 
-        if not layers:
-            layers.append(
+        parts, opens = self._drop_empty_parts(parts, opens)
+
+        if not parts:
+            parts.append(
                 {
                     "uid": None,
                     "speed": cur_speed,
+                    "travel": cur_travel,
                     "power": cur_power,
                     "air": cur_air,
                     "bounds": None,
@@ -845,29 +928,56 @@ class RuidaEncoder(OpsEncoder):
             )
 
         result = []
-        for layer in layers:
-            lb = layer["bounds"]
-            if lb is None:
-                layer_bounds = bounds
+        for part in parts:
+            pb = part["bounds"]
+            if pb is None:
+                part_bounds = bounds
             else:
-                layer_bounds = (
-                    self._mm_to_um(lb[0]) - ox,
-                    self._mm_to_um(lb[1]) - oy,
-                    self._mm_to_um(lb[2]) - ox,
-                    self._mm_to_um(lb[3]) - oy,
+                part_bounds = (
+                    self._mm_to_um(pb[0]) - ox,
+                    self._mm_to_um(pb[1]) - oy,
+                    self._mm_to_um(pb[2]) - ox,
+                    self._mm_to_um(pb[3]) - oy,
                 )
-            power = layer["power"] or 0.0
+            power = part["power"] or 0.0
             result.append(
                 {
-                    "uid": layer["uid"],
-                    "speed": layer["speed"] or 0.0,
+                    "uid": part["uid"],
+                    "speed": part["speed"] or 0.0,
+                    "travel": part["travel"] or 0.0,
                     "power": power,
-                    "min_power": self._layer_min_power(layer["uid"], power),
-                    "air": layer["air"],
-                    "bounds": layer_bounds,
+                    "min_power": self._layer_min_power(part["uid"], power),
+                    "air": part["air"],
+                    "mode": _DEFAULT_PART_MODE,
+                    "bounds": part_bounds,
                 }
             )
-        return bounds, result
+        return bounds, result, opens
+
+    @staticmethod
+    def _drop_empty_parts(
+        parts: list[dict], opens: dict[int, int]
+    ) -> tuple[list[dict], dict[int, int]]:
+        """
+        Forget the parts that have no motion at all, and renumber.
+
+        A marker the assembler emitted but never filled would
+        otherwise get a header block, a body block and a seat in the
+        CA 22 count -- a part the controller selects, sets up, and
+        finds nothing in.
+        """
+        keep = [n for n, part in enumerate(parts) if part["bounds"]]
+        if len(keep) == len(parts):
+            return parts, opens
+        renumbered = {old: new for new, old in enumerate(keep)}
+        return (
+            [parts[old] for old in keep],
+            {
+                index: renumbered[old]
+                for index, old in opens.items()
+                if old in renumbered
+            },
+        )
 
     def _handle_job_start(
         self,
@@ -899,9 +1009,11 @@ class RuidaEncoder(OpsEncoder):
             self._mm_to_um(rect[0]),
             self._mm_to_um(rect[1]),
         )
-        bounds, layers = self._collect_job_info(ops, machine)
+        bounds, layers, opens = self._collect_job_info(ops, machine)
         min_x, min_y, max_x, max_y = bounds
         self._layers = layers
+        self._part_opens = opens
+        self._planned = True
         self._part = -1
 
         z5 = encode35(0)
@@ -938,8 +1050,11 @@ class RuidaEncoder(OpsEncoder):
             binary.append(b"\xc6\x41" + part_b + min14)
             binary.append(b"\xc6\x42" + part_b + max14)
             binary.append(b"\xca\x06" + part_b + z5)
-            if self.follow_reference:
-                binary.append(b"\xca\x41" + part_b + b"\x00")
+            # CA 41 declares the part's work mode, whose shape is
+            # known -- unlike the payloads above it, which are
+            # replayed verbatim because their meaning is not. It is a
+            # property of the job, so it is not gated on the replay.
+            binary.append(b"\xca\x41" + part_b + bytes([layer["mode"]]))
             binary.append(
                 b"\xe7\x52" + part_b + encode35(lmin_x) + encode35(lmin_y)
             )
@@ -1013,61 +1128,53 @@ class RuidaEncoder(OpsEncoder):
         binary.append(b"\xd7")
         text.append("; Job End")
 
-    def _settings_for(self, uid: str | None, part: int) -> dict:
+    def _settings_for(self, part: int) -> dict:
         """
-        The pre-scanned settings for one part, matched by marker uid.
+        The pre-scanned settings for one part, by index.
 
-        The pre-scan walks the same markers in the same order, so the
-        part index normally lands on the right entry; the uid is what
-        proves it. A mismatch means the two walks disagree, which is
+        The pre-scan nominated this index, so it always has an entry.
+        A miss means the plan and the walk have come apart, which is
         how a whole job came to run on one step's settings, so it is
-        searched for by uid and reported rather than papered over.
+        reported rather than papered over.
         """
-        if part < len(self._layers):
-            entry = self._layers[part]
-            if entry["uid"] == uid:
-                return entry
-
-        for entry in self._layers:
-            if entry["uid"] == uid:
-                return entry
-
-        self._warn_unresolved_uid(uid, f"part {part} settings")
-        if part < len(self._layers):
+        if 0 <= part < len(self._layers):
             return self._layers[part]
+
+        self._warn_unresolved_part(part)
         return _no_settings()
 
-    def _handle_layer_start(
-        self,
-        ops: Ops,
-        idx: int,
-        binary: list[bytes],
-        text: list[str],
-    ) -> None:
-        """
-        Handle LayerStartCommand - emit the per-layer body block.
+    def _warn_unresolved_part(self, part: int) -> None:
+        """Report a part the job prologue never declared."""
+        logger.warning(
+            f"Ruida: no settings for part {part}; falling back to none. "
+            f"The prologue declared {len(self._layers)} part(s), "
+            f"opening at ops indices {sorted(self._part_opens)}."
+        )
 
-        Matches the RDWorks ground-truth file: layer prop commands,
-        part index, laser device, air assist, speed, delays and
-        powers, then CA 03 / CA 10 before the first motion command.
-        Layer settings come from the job pre-scan so the block is
-        complete before any motion.
+    def _open_part(self, part: int, binary: list[bytes]) -> None:
         """
-        uid = ops.layer_uid(idx)
-        self._part += 1
-        part = self._part
-        layer = self._settings_for(uid, part)
+        Emit one part's body block, at an index the pre-scan chose.
+
+        Matches the RDWorks ground-truth file: work mode, part index,
+        laser device, air assist, speeds, delays and powers, then
+        CA 03 / CA 10 before the first motion command. Every setting
+        the part needs is restated here, so the geometry that follows
+        cannot inherit anything from the part before it.
+        """
+        self._part = part
+        layer = self._settings_for(part)
         part_b = bytes([part & 0xFF])
         speed_um = self._speed_to_um_s(layer["speed"])
         min14 = encode14(self._power_to_ruida(layer["min_power"]))
         max14 = encode14(self._power_to_ruida(layer["power"]))
 
-        # The block below restates every setting this layer needs, so
-        # nothing may still be suppressed by what the previous layer
-        # emitted.
+        # Nothing this part emits may still be suppressed by what the
+        # part before it emitted. Clearing _last_pos_um is what makes
+        # the first move after the CA 02 absolute, which the DLL does
+        # by calling RD_SetFirstMove from RD_wSetLayerNum.
         self._reset_emission_state()
 
-        binary.append(b"\xca\x01\x00")
+        binary.append(b"\xca\x01" + bytes([layer["mode"]]))
         binary.append(b"\xca\x02" + part_b)
         binary.append(b"\xca\x01\x30")
         binary.append(
@@ -1075,6 +1182,12 @@ class RuidaEncoder(OpsEncoder):
         )
         binary.append(b"\xca\x01\x13" if layer["air"] else b"\xca\x01\x12")
         binary.append(b"\xc9\x02" + encode35(speed_um))
+        if layer["travel"]:
+            # The part's rapids, so a job no longer inherits the axis
+            # speed the job before it left on the controller.
+            binary.append(
+                b"\xc9\x03" + encode35(self._speed_to_um_s(layer["travel"]))
+            )
         binary.append(b"\xc6\x12" + encode35(0))
         binary.append(b"\xc6\x13" + encode35(0))
         binary.append(b"\xc6\x50" + encode14(0x1FFF))
@@ -1086,20 +1199,37 @@ class RuidaEncoder(OpsEncoder):
         binary.append(_REF_CA_03)
         binary.append(b"\xca\x10" + bytes([self.active_laser - 1]))
 
-        # Record what the block just emitted, so the layer body only
-        # repeats a setting when it actually changes.
+        # Record what the block just emitted, so nothing in the part
+        # body repeats it.
         self.cut_speed = layer["speed"]
+        self.travel_speed = layer["travel"]
         self.power = layer["power"]
         self._min_power = layer["min_power"]
         self.air_assist = layer["air"]
         self._laser_selected = self.active_laser
+        self._in_part = True
         logger.info(
-            f"Part {part} ({uid}): "
+            f"Part {part} ({layer['uid']}): "
             f"speed {layer['speed'] / self.SECONDS_PER_MINUTE:.1f} mm/s "
             f"power {layer['min_power'] * 100:.0f}/"
-            f"{layer['power'] * 100:.0f}%"
+            f"{layer['power'] * 100:.0f}% "
+            f"mode {layer['mode']}"
         )
-        text.append(f"; --- Layer {uid[:8]} ---")
+
+    def _handle_layer_start(
+        self,
+        ops: Ops,
+        idx: int,
+        binary: list[bytes],
+        text: list[str],
+    ) -> None:
+        """Handle LayerStartCommand - text marker only.
+
+        The body block itself is emitted by _open_part, at whichever
+        indices the job pre-scan nominated -- a marker is one of them,
+        but no longer the only one.
+        """
+        text.append(f"; --- Layer {ops.layer_uid(idx)[:8]} ---")
 
     def _handle_layer_end(
         self,
@@ -1113,6 +1243,7 @@ class RuidaEncoder(OpsEncoder):
         The reference file has no command between a layer's last cut
         and the next layer's body block (or the job tail).
         """
+        self._in_part = False
         text.append("; --- End Layer ---")
 
     def _handle_workpiece_start(

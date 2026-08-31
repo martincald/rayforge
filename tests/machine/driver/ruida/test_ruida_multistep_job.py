@@ -228,3 +228,82 @@ class TestTwoStepJobEmitsTwoParts:
         assert [c for c in engrave_block if c[:1] == b"\xc7"]
         assert not [c for c in cut_block if c[:1] == b"\xc7"]
         assert cut_moves(cut_block)
+
+
+def _first_move_after_each_switch(commands) -> list[int]:
+    """The opcode of the first motion command after every CA 02."""
+    opcodes = []
+    pending = False
+    for command in commands:
+        if command.startswith(b"\xca\x02"):
+            pending = True
+        elif pending and command[:1] in (
+            b"\x88",
+            b"\x89",
+            b"\x8a",
+            b"\x8b",
+            b"\xa8",
+            b"\xa9",
+            b"\xaa",
+            b"\xab",
+        ):
+            opcodes.append(command[0])
+            pending = False
+    return opcodes
+
+
+class TestPartSwitchResetsPosition:
+    """A part switch makes the controller forget where the head was."""
+
+    def test_the_first_move_after_each_switch_is_absolute(self, two_step_doc):
+        """CA 02 resets the controller's first-move state.
+
+        The DLL's RD_wSetLayerNum calls RD_SetFirstMove, so a relative
+        delta after a switch is measured from a position the
+        controller no longer holds.
+        """
+        doc, machine, _engrave, _cut = two_step_doc
+
+        commands = _encode_like_a_send(doc, machine)
+
+        opcodes = _first_move_after_each_switch(commands)
+        assert len(opcodes) == 2
+        # 0x88 is MOVE_ABS, 0xA8 CUT_ABS; the relative forms are odd
+        # or low-nibble A/B and must not appear here.
+        assert all(op in (0x88, 0xA8) for op in opcodes)
+
+
+class TestDisabledStep:
+    """The regression: a disabled first step must not lend settings."""
+
+    def test_one_part_carrying_the_second_steps_settings(self, two_step_doc):
+        """Hiding the engrave step leaves the cut running as the cut.
+
+        This is the exact shape of the reported bug: the surviving
+        step's geometry was emitted under the settings of a step the
+        user had switched off.
+        """
+        doc, machine, engrave, _cut = two_step_doc
+        engrave.set_visible(False)
+
+        commands = _encode_like_a_send(doc, machine)
+
+        assert [p[0] for p in _payloads(commands, b"\xca\x02")] == [0]
+        assert _payloads(commands, b"\xca\x22") == [b"\x00"]
+        assert _part_speeds(commands) == {0: CUT_UM_S}
+
+        cut14 = encode14(int(CUT_POWER * 16383))
+        for opcode in (b"\xc6\x31", b"\xc6\x32", b"\xc6\x41", b"\xc6\x42"):
+            assert _part_powers(commands, opcode) == {0: cut14}
+
+    def test_the_surviving_block_cuts_at_the_cut_speed(self, two_step_doc):
+        doc, machine, engrave, _cut = two_step_doc
+        engrave.set_visible(False)
+
+        blocks = _blocks(_encode_like_a_send(doc, machine))
+
+        assert len(blocks) == 1
+        assert decode35(_payloads(blocks[0], b"\xc9\x02")[0]) == CUT_UM_S
+        # A contour cut never modulates power per sample, so a C7
+        # here would mean the raster survived its disabled step.
+        assert not [c for c in blocks[0] if c[:1] == b"\xc7"]
