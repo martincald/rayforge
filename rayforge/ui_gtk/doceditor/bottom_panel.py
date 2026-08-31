@@ -10,7 +10,7 @@ from raygeo.ops.axis import Axis
 from ...logging_setup import ui_log_event_received
 from ...machine.cmd import MachineCmd
 from ...machine.driver.dummy import NoDeviceDriver
-from ...machine.models.machine import Machine
+from ...machine.models.machine import Machine, StartCorner
 from ...shared.gcodeedit.viewer import GcodeViewer
 from ...shared.tasker import task_mgr
 from ..doceditor.layers_tab import LayersTab
@@ -367,6 +367,8 @@ class BottomPanel(Gtk.Box):
         )
         position_button_box.append(self.move_origin_btn)
 
+        self._setup_start_corner_row()
+
         self.zero_row = Adw.ActionRow(title=_("Zero Axes"))
         self.wcs_group.add(self.zero_row)
 
@@ -448,6 +450,75 @@ class BottomPanel(Gtk.Box):
         self.wcs_group.add(self.distance_row)
 
         self._update_wcs_ui()
+
+    def _setup_start_corner_row(self):
+        """Four toggles saying which corner of the job the head is on.
+
+        The job is placed so the selected corner of its bounding box
+        lands where the head already is, so the operator parks on a
+        corner of the stock and names it rather than computing an
+        offset.
+        """
+        self.start_corner_row = Adw.ActionRow(title=_("Start Corner"))
+        self.start_corner_row.set_subtitle(
+            _("The current head position is this corner of the job")
+        )
+        self.wcs_group.add(self.start_corner_row)
+
+        corner_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        corner_box.set_spacing(6)
+        corner_box.set_valign(Gtk.Align.CENTER)
+        self.start_corner_row.add_suffix(corner_box)
+
+        self._start_corner_buttons: dict[StartCorner, Gtk.ToggleButton] = {}
+        buttons = (
+            (StartCorner.TOP_LEFT, "top-left-symbolic", _("Top Left")),
+            (StartCorner.TOP_RIGHT, "top-right-symbolic", _("Top Right")),
+            (
+                StartCorner.BOTTOM_LEFT,
+                "bottom-left-symbolic",
+                _("Bottom Left"),
+            ),
+            (
+                StartCorner.BOTTOM_RIGHT,
+                "bottom-right-symbolic",
+                _("Bottom Right"),
+            ),
+        )
+        for corner, icon_name, label in buttons:
+            button = Gtk.ToggleButton(child=get_icon(icon_name))
+            button.add_css_class("flat")
+            button.set_size_request(40, -1)
+            button.set_tooltip_text(label)
+            button.connect("toggled", self._on_start_corner_toggled, corner)
+            corner_box.append(button)
+            self._start_corner_buttons[corner] = button
+
+        self._update_start_corner_buttons()
+
+    def _on_start_corner_toggled(self, button, corner: "StartCorner"):
+        """Adopt a corner, and keep exactly one of the four active.
+
+        Untoggling the active corner would leave the job with no
+        stated placement, so the press is simply put back.
+        """
+        if not button.get_active():
+            if self.machine and self.machine.start_corner == corner:
+                button.set_active(True)
+            return
+        if self.machine:
+            self.machine.set_start_corner(corner)
+        self._update_start_corner_buttons()
+
+    def _update_start_corner_buttons(self):
+        """Show the profile's corner, without re-entering the handler."""
+        if not self.machine:
+            return
+        active = self.machine.start_corner
+        for corner, button in self._start_corner_buttons.items():
+            button.handler_block_by_func(self._on_start_corner_toggled)
+            button.set_active(corner == active)
+            button.handler_unblock_by_func(self._on_start_corner_toggled)
 
     def _on_speed_changed(self, row):
         # Both the row and the jog widget speak application base
@@ -644,6 +715,7 @@ class BottomPanel(Gtk.Box):
         hide_wcs_controls = self.machine.wcs_origin_is_workarea_origin
         self.wcs_row.set_visible(not hide_wcs_controls)
         self.zero_row.set_visible(not hide_wcs_controls)
+        self._update_start_corner_buttons()
 
         layer_has_wcs = (
             self.doc and self.doc.active_layer and self.doc.active_layer.wcs

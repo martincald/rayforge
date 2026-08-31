@@ -53,6 +53,38 @@ class Origin(Enum):
     BOTTOM_RIGHT = "bottom_right"
 
 
+class StartCorner(Enum):
+    """Which corner of the job the head is standing on.
+
+    The operator parks the head on a corner of the stock and says
+    which one it is; the job is then placed so that corner of its
+    bounding box lands where the head already is.
+    """
+
+    TOP_LEFT = "top_left"
+    TOP_RIGHT = "top_right"
+    BOTTOM_LEFT = "bottom_left"
+    BOTTOM_RIGHT = "bottom_right"
+
+
+def start_corner_offset(
+    corner: StartCorner, width: float, height: float
+) -> tuple[float, float]:
+    """
+    How far to shift job-local geometry so ``corner`` lands at (0, 0).
+
+    Job-local space already carries the profile's own origin and
+    reverse-axis settings, so this only picks which corner of the
+    bounding box the head is taken to be standing on. It re-derives
+    no direction of its own: jobs, Go Scale and Cut Scale all call
+    this one function with the same width and height, so the outline
+    a trace draws and the outline a job cuts cannot drift apart.
+    """
+    right = corner in (StartCorner.TOP_RIGHT, StartCorner.BOTTOM_RIGHT)
+    bottom = corner in (StartCorner.BOTTOM_LEFT, StartCorner.BOTTOM_RIGHT)
+    return (-width if right else 0.0, -height if bottom else 0.0)
+
+
 class JogDirection(Enum):
     """Visual direction for jog operations."""
 
@@ -166,6 +198,7 @@ class Machine:
         )
         self._soft_limits: Rect | None = None
         self.origin: Origin = Origin.BOTTOM_LEFT
+        self.start_corner: StartCorner = StartCorner.TOP_LEFT
         self.panel = MachinePanel(self)
         self.rotary_enabled_default: bool = False
         self.default_rotary_module_uid: str | None = None
@@ -784,6 +817,24 @@ class Machine:
             return
         self.origin = origin
         self.changed.send(self)
+
+    def set_start_corner(self, corner: StartCorner):
+        """Say which corner of the job the head is standing on."""
+        if self.start_corner == corner:
+            return
+        self.start_corner = corner
+        self.changed.send(self)
+
+    def job_placement_offset(
+        self, width: float, height: float
+    ) -> tuple[float, float]:
+        """
+        The shift that puts the start corner of a job at (0, 0).
+
+        The single site jobs, Go Scale and Cut Scale all ask, so the
+        outline that gets traced is the outline that gets cut.
+        """
+        return start_corner_offset(self.start_corner, width, height)
 
     @property
     def panel_orientation(self) -> PanelOrientation:
@@ -1468,6 +1519,7 @@ class Machine:
                 if self._soft_limits
                 else None,
                 "origin": self.origin.value,
+                "start_corner": self.start_corner.value,
                 "panel_orientation": self.panel.orientation.value,
                 "reverse_x_axis": self.reverse_x_axis,
                 "reverse_y_axis": self.reverse_y_axis,
@@ -1704,6 +1756,16 @@ class Machine:
 
         if "soft_limits" in ma_data and ma_data["soft_limits"] is not None:
             ma._soft_limits = tuple(ma_data["soft_limits"])
+
+        corner_value = ma_data.get("start_corner", None)
+        if corner_value is not None:
+            try:
+                ma.start_corner = StartCorner(corner_value)
+            except ValueError:
+                logger.warning(
+                    "Unknown start corner '%s'; using top left",
+                    corner_value,
+                )
 
         origin_value = ma_data.get("origin", None)
         if origin_value is not None:

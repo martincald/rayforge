@@ -1005,9 +1005,15 @@ class RuidaEncoder(OpsEncoder):
         )
 
         rect = ops.rect()
+        # Job-local (0, 0) is the start corner of the bounding box --
+        # the corner the operator says the head is standing on -- so
+        # the job lands where the head already is.
+        dx, dy = machine.job_placement_offset(
+            rect[2] - rect[0], rect[3] - rect[1]
+        )
         self.origin_um = (
-            self._mm_to_um(rect[0]),
-            self._mm_to_um(rect[1]),
+            self._mm_to_um(rect[0] - dx),
+            self._mm_to_um(rect[1] - dy),
         )
         bounds, layers, opens = self._collect_job_info(ops, machine)
         min_x, min_y, max_x, max_y = bounds

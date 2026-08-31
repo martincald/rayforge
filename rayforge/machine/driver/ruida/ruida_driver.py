@@ -770,9 +770,16 @@ class RuidaDriver(Driver):
         assert self._client
         width_um = int(width_mm * 1000)
         height_um = int(height_mm * 1000)
+        # The same helper the job's own placement uses, on the same
+        # width and height, so the outline traced here is the outline
+        # the job cuts.
+        offset_mm = self._machine.job_placement_offset(width_mm, height_mm)
+        off_x_um = int(offset_mm[0] * 1000)
+        off_y_um = int(offset_mm[1] * 1000)
         logger.info(
             f"Go Scale: tracing {width_mm:.1f} x {height_mm:.1f} mm "
-            f"from the current position",
+            f"from the current position, which is the "
+            f"{self._machine.start_corner.value} corner",
             extra=self._log_extra("USER_COMMAND"),
         )
 
@@ -803,7 +810,7 @@ class RuidaDriver(Driver):
             )
             return
         corners = [
-            (start[0] + dx, start[1] + dy)
+            (start[0] + off_x_um + dx, start[1] + off_y_um + dy)
             for dx, dy in (
                 (0, 0),
                 (width_um, 0),
