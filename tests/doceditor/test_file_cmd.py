@@ -1114,3 +1114,100 @@ class TestProjectRoundTrip:
                 f"Document state changed after round trip for "
                 f"{project_file.name}"
             )
+
+
+class TestExportRdToPath:
+    """The .rd export writes what the machine would have received."""
+
+    def _ruida_machine(self, context):
+        """A machine whose driver is the Ruida one."""
+        from rayforge.machine.models.laser import Laser
+
+        machine = Machine(context)
+        machine.driver_name = "RuidaDriver"
+        laser = Laser()
+        laser.tool_number = 1
+        machine.heads.clear()
+        machine.add_head(laser)
+        return machine
+
+    def _square_job_ops(self):
+        from raygeo.ops import Ops
+
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.6)
+        ops.set_feed_rate(600)
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(10.0, 0.0, 0.0)
+        ops.line_to(10.0, 10.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.job_end()
+        return ops
+
+    def _export(self, file_cmd, context, machine, ops, export_path):
+        """Drive the export with a stubbed job artifact."""
+        from contextlib import contextmanager
+
+        from rayforge.pipeline.artifact import JobArtifact
+
+        artifact = JobArtifact(ops=ops, distance=0.0, generation_id=1)
+
+        @contextmanager
+        def checkout_handle(_handle):
+            yield artifact
+
+        context.config.set_machine(machine)
+        with (
+            patch.object(
+                file_cmd._editor.pipeline.artifact_store,
+                "checkout_handle",
+                checkout_handle,
+            ),
+            patch.object(
+                file_cmd._editor.pipeline, "generate_job_artifact"
+            ) as mock_generate,
+        ):
+            mock_generate.side_effect = lambda when_done: when_done(
+                MagicMock(), None
+            )
+            file_cmd.export_rd_to_path(export_path)
+
+    def test_export_writes_the_send_job_blob(
+        self, file_cmd, context_initializer, tmp_path
+    ):
+        """The file equals build_rd_bytes on the production ops.
+
+        build_rd_bytes is the call RuidaDriver.run makes, and
+        test_export_writes_the_same_blob_as_send ties that to what
+        send_job actually transmits.
+        """
+        from rayforge.machine.driver.ruida.ruida_encoder import build_rd_bytes
+
+        machine = self._ruida_machine(context_initializer)
+        ops = self._square_job_ops()
+        export_path = tmp_path / "job.rd"
+
+        self._export(file_cmd, context_initializer, machine, ops, export_path)
+
+        assert export_path.exists()
+        assert export_path.read_bytes() == build_rd_bytes(
+            ops, machine, file_cmd._editor.doc
+        )
+
+    def test_export_does_not_read_pipeline_driver_data(
+        self, file_cmd, context_initializer, tmp_path
+    ):
+        """The pipeline strips driver_data, so it cannot be the source.
+
+        The artifact here carries none at all -- exactly what reaches
+        the UI -- and the export must still succeed.
+        """
+        machine = self._ruida_machine(context_initializer)
+        ops = self._square_job_ops()
+        export_path = tmp_path / "job.rd"
+
+        self._export(file_cmd, context_initializer, machine, ops, export_path)
+
+        assert export_path.read_bytes()

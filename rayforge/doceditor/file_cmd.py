@@ -46,7 +46,7 @@ from ..image.base_exporter import Exporter
 from ..image.dxf.exporter import GeometryDxfExporter
 from ..image.structures import ImportPayload, ImportResult, ParsingResult
 from ..image.svg.exporter import GeometrySvgExporter
-from ..machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
+from ..machine.driver.ruida.ruida_encoder import export_rd
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from .layout.align import PositionAtStrategy
@@ -1030,19 +1030,17 @@ class FileCmd:
                         )
                     if not isinstance(artifact, JobArtifact):
                         raise TypeError("Expected a JobArtifact for export.")
-                    encoded = artifact.encoded_output
-                    commands = (
-                        encoded.driver_data.get("commands")
-                        if encoded
-                        else None
-                    )
-                    if not commands:
-                        raise ValueError(
-                            "The current machine does not produce "
-                            "Ruida job data."
-                        )
 
-                    file_path.write_bytes(commands_to_rd_bytes(commands))
+                    machine = get_context().config.machine
+                    if machine is None:
+                        raise ValueError("No machine is configured.")
+
+                    export_rd(
+                        artifact.ops,
+                        machine,
+                        self._editor.doc,
+                        file_path,
+                    )
 
                     logger.info(
                         f"Successfully exported Ruida job to {file_path}"
