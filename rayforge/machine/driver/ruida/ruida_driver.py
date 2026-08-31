@@ -732,6 +732,7 @@ class RuidaDriver(Driver):
             cmd_name = f"Home {'/'.join(cmd_parts)}"
             logger.info(cmd_name, extra=self._log_extra("MACHINE_EVENT"))
 
+        epoch = self._frame_epoch
         self._response_timeout = self.HOMING_TIMEOUT
         self._jog_busy = True
         try:
@@ -746,12 +747,81 @@ class RuidaDriver(Driver):
                 # which the background poller answers within half a
                 # second whether or not the cycle has finished.
                 await self._wait_for_status_idle("home")
+                # The head is at the switches it just found, not where
+                # the cache last saw it, and the park below needs a
+                # real origin rather than a remembered one.
+                self._last_known_pos = None
+                if home_xy:
+                    await self._park_after_home(epoch)
         finally:
             self._response_timeout = self.CONNECTION_TIMEOUT
             self._jog_busy = False
-            # The head is at the machine zero it just found, not where
-            # the cache last saw it.
             self._last_known_pos = None
+
+    async def _park_after_home(self, epoch: int) -> None:
+        """
+        Rapid to the bed's top-left corner after a physical home.
+
+        D8 2A carries no coordinates: it is a seek to the X and Y limit
+        switches, so where it stops is a fact about this machine's
+        wiring, not about any coordinate mapping the application
+        controls. Nothing on the home path reads reverse_x_axis,
+        reverse_y_axis or origin, so there is no mapping here to fix --
+        the head has to be driven somewhere afterwards instead. See
+        docs/process-ordering-audit.md PRO-08.
+
+        The move runs at the speed the jog panel shows, through
+        _set_travel_speed, the one place mm/min becomes um/s, and
+        _jog_move_to, the one place an absolute target is sent. It
+        holds the busy interlock it was given and watches the frame
+        epoch, so the Stop button abandons it like any other motion.
+        """
+        assert self._client
+        if self._frame_epoch != epoch:
+            logger.info(
+                "Home park cancelled",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
+
+        target = self._top_left_corner()
+        logger.info(
+            f"Home: parking at the top-left corner "
+            f"({target[0] / 1000:.1f}, {target[1] / 1000:.1f}) mm at "
+            f"{self._jog_speed_mm_min} mm/min",
+            extra=self._log_extra("MACHINE_EVENT"),
+        )
+        await self._set_travel_speed(self._jog_speed_mm_min)
+        await self._jog_move_to(*target)
+
+    def _top_left_corner(self) -> tuple[int, int]:
+        """
+        The bed's top-left corner in machine micrometres.
+
+        Which end of each axis that is comes from the profile's own
+        jog convention -- calculate_jog already answers "which way is
+        west/north" for this origin and these reverse flags -- so no
+        second axis mapping is introduced here. The corner is inset by
+        the margin a held jog stops at, so the park never drives into
+        a hard stop.
+        """
+        # Imported here, not at module scope: machine.py imports this
+        # package for get_driver_cls, which is why Machine itself is
+        # only a TYPE_CHECKING name above.
+        from ...models.machine import JogDirection
+
+        margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
+        return (
+            self._axis_end("x", JogDirection.WEST, margin_um),
+            self._axis_end("y", JogDirection.NORTH, margin_um),
+        )
+
+    def _axis_end(self, axis: str, direction, margin_um: int) -> int:
+        """The far end of one axis in a visual direction, inset."""
+        low, high = self._axis_range(axis)
+        if self._machine.calculate_jog(direction, 1.0) > 0:
+            return high - margin_um
+        return low + margin_um
 
     def can_trace_frame(self) -> bool:
         return True

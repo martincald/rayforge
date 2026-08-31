@@ -211,8 +211,14 @@ async def test_move_to_negative_position(driver, ruida_simulator):
 
 
 @pytest.mark.asyncio
-async def test_home_xy_resets_position(driver, ruida_simulator):
-    """Test that home_xy command resets position to zero."""
+async def test_home_xy_parks_at_the_top_left_corner(driver, ruida_simulator):
+    """Home seeks the switches, then parks somewhere chosen.
+
+    D8 2A carries no coordinates -- the simulator implements it as
+    x = y = 0, real switches put the head wherever they are -- so the
+    driver drives to the bed's top-left corner afterwards rather than
+    leaving the resting place to the wiring.
+    """
     sim, _host, _port, _jog_port = ruida_simulator
 
     assert await wait_for_connection(driver)
@@ -223,8 +229,7 @@ async def test_home_xy_resets_position(driver, ruida_simulator):
     await driver.home()
     await asyncio.sleep(0.2)
 
-    assert sim.x == 0
-    assert sim.y == 0
+    assert (sim.x, sim.y) == driver._top_left_corner()
 
     await driver.cleanup()
 
@@ -262,8 +267,7 @@ async def test_home_all_axes(driver, ruida_simulator):
     await driver.home(None)
     await asyncio.sleep(0.2)
 
-    assert sim.x == 0
-    assert sim.y == 0
+    assert (sim.x, sim.y) == driver._top_left_corner()
     assert sim.z == 50000
 
     await driver.cleanup()
@@ -283,8 +287,7 @@ async def test_home_xy_only(driver, ruida_simulator):
     await driver.home(Axis.X | Axis.Y)
     await asyncio.sleep(0.2)
 
-    assert sim.x == 0
-    assert sim.y == 0
+    assert (sim.x, sim.y) == driver._top_left_corner()
     assert sim.z == 50000
 
     await driver.cleanup()
@@ -888,8 +891,7 @@ async def test_home_then_move(driver, ruida_simulator):
     await driver.home()
     await asyncio.sleep(0.2)
 
-    assert sim.x == 0
-    assert sim.y == 0
+    assert (sim.x, sim.y) == driver._top_left_corner()
 
     await driver.move_to(50.0, 75.0)
     await asyncio.sleep(0.2)

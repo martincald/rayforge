@@ -14,7 +14,7 @@ from blinker import Signal
 from rayforge.machine.driver.driver import Axis
 from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
-from rayforge.machine.models.machine import JogDirection, Machine
+from rayforge.machine.models.machine import JogDirection, Machine, Origin
 
 STOP = b"\xd8\x01"
 
@@ -545,3 +545,133 @@ class TestEveryReleasePathStops:
         assert STOP in spy.commands
         assert driver._jog_keys_down == set()
         assert driver._jog_busy is False
+
+
+class TestHomeParksTheHead:
+    """PRO-08: homing ends somewhere the operator chose."""
+
+    class _HomingClient(MotionClientSpy):
+        async def home_xy(self):
+            self.commands.append(b"\xd8\x2a")
+
+        async def home_z(self):
+            self.commands.append(b"\xd8\x2c")
+
+        async def _read_memory_wait(self, address, timeout=2.0):
+            return 0
+
+    def _homing_driver(self, driver):
+        driver._client = self._HomingClient()
+        driver.STATUS_POLL_INTERVAL = 0.01
+        return driver._client
+
+    @pytest.mark.asyncio
+    async def test_home_parks_at_the_top_left_corner(self, driver):
+        """D8 2A stops at the switches, so the app drives on from there.
+
+        The bed is 400 x 300 and the margin is 1 mm, so the top-left
+        corner of a default-origin profile is (1, 299) mm.
+        """
+        spy = self._homing_driver(driver)
+
+        await driver.home()
+
+        targets = [move_target(m) for m in moves(spy.commands)]
+        assert targets == [(1000, 299000)]
+
+    def test_the_park_follows_the_reversed_axis(self, driver):
+        """A reversed axis runs -extent..0, and west becomes +X.
+
+        calculate_jog is the profile's own answer to "which way is
+        west", so the park agrees with it rather than reading the
+        reverse flag a second time: the left edge is now the high end
+        of the range. Asserted in machine space, because _to_controller
+        is the one site that turns that into the controller's own
+        count -- and it negates a reversed axis, which would make a
+        wire-level assertion here indistinguishable from the
+        unreversed case.
+        """
+        driver._machine.set_reverse_x_axis(True)
+
+        assert driver._top_left_corner() == (-1000, 299000)
+
+    @pytest.mark.asyncio
+    async def test_the_reversed_park_reaches_the_wire_negated(self, driver):
+        """And _to_controller, not the park, is what negates it."""
+        driver._machine.set_reverse_x_axis(True)
+        spy = self._homing_driver(driver)
+
+        await driver.home()
+
+        assert move_target(moves(spy.commands)[0]) == (1000, 299000)
+
+    def test_the_park_follows_a_top_origin(self, driver):
+        """North is -Y for a top origin, so the corner flips with it."""
+        driver._machine.set_origin(Origin.TOP_LEFT)
+
+        assert driver._top_left_corner() == (1000, 1000)
+
+    @pytest.mark.asyncio
+    async def test_the_park_runs_at_the_panel_jog_speed(self, driver):
+        """Interactive motion the user watches runs at the panel speed."""
+        spy = self._homing_driver(driver)
+        await driver.set_jog_speed(40 * 60)
+
+        await driver.home()
+
+        # The last speed before the park is the park's own.
+        speeds = [c for c in spy.commands if c[:2] == b"\xc9\x02"]
+        assert speeds[-1] == b"\xc9\x02" + encode35(40000)
+
+    @pytest.mark.asyncio
+    async def test_the_park_is_stoppable(self, driver):
+        """A Stop that lands during homing must abandon the park."""
+        spy = self._homing_driver(driver)
+        plain_home = spy.home_xy
+
+        async def home_then_stop():
+            await plain_home()
+            await driver.cancel()
+
+        spy.home_xy = home_then_stop
+
+        await driver.home()
+
+        assert moves(spy.commands) == []
+
+    @pytest.mark.asyncio
+    async def test_the_park_holds_the_busy_interlock(self, driver):
+        """Nothing may interleave with the park, and it must release."""
+        spy = self._homing_driver(driver)
+        seen = []
+        plain_move = spy.rapid_move_xy
+
+        async def note_busy(x_um, y_um, light=False):
+            seen.append(driver._jog_busy)
+            await plain_move(x_um, y_um, light=light)
+
+        spy.rapid_move_xy = note_busy
+
+        await driver.home()
+
+        assert seen == [True]
+        assert driver._jog_busy is False
+
+    @pytest.mark.asyncio
+    async def test_a_z_only_home_does_not_park(self, driver):
+        """The park belongs to the XY home."""
+        spy = self._homing_driver(driver)
+
+        await driver.home(Axis.Z)
+
+        assert moves(spy.commands) == []
+
+    @pytest.mark.asyncio
+    async def test_the_cached_position_is_not_the_pre_home_one(self, driver):
+        """MOT-23 still holds: the cache cannot survive a home."""
+        self._homing_driver(driver)
+        driver._last_known_pos = (123000, 45000)
+
+        await driver.home()
+
+        assert driver._last_known_pos != (123000, 45000)
