@@ -16,7 +16,7 @@ from ...shared.tasker import task_mgr
 from ..doceditor.layers_tab import LayersTab
 from ..icons import get_icon
 from ..machine.console import Console
-from ..machine.jog_widget import JogWidget
+from ..machine.jog_widget import DEFAULT_JOG_SPEED_BASE, JogWidget
 from ..machine.laser_control_widget import LaserControlWidget
 from ..machine.wcs_dialog import WcsDialog
 from ..shared.dock_item import DockItem
@@ -434,7 +434,7 @@ class BottomPanel(Gtk.Box):
             _("Speed"),
             lower=1,
             upper=60000,
-            value_in_base=1000,
+            value_in_base=DEFAULT_JOG_SPEED_BASE,
         )
         self.speed_row.value_changed.connect(self._on_speed_changed)
         self.wcs_group.add(self.speed_row)

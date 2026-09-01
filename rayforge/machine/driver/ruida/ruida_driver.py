@@ -77,7 +77,7 @@ class RuidaDriver(Driver):
     # Press-and-hold jog runs at the speed the panel shows. This is
     # only the seed for the moment before the UI has pushed one, and
     # it matches the jog speed row's own default so the two agree.
-    DEFAULT_JOG_SPEED = 1000  # mm/min
+    DEFAULT_JOG_SPEED = 12000  # mm/min, 200 mm/s
     # Jobs default to the anchor ref point (D8 12), matching RDWorks, so
     # cuts start at the origin the user set on the panel. The WCS itself
     # stays user-selectable; this only picks the initial slot.

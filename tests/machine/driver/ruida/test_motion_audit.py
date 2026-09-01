@@ -262,7 +262,7 @@ class TestOneSpeedUnitPath:
 
     @pytest.mark.asyncio
     async def test_hold_jog_seeds_from_the_jog_default(self, driver):
-        """MOT-21: not from the max travel speed, 12x higher."""
+        """MOT-21: the panel's own seed, not the profile's speed."""
         spy = MotionClientSpy(position=(100000, 100000))
         driver._client = spy
         driver._last_known_pos = (100000, 100000)
@@ -271,7 +271,10 @@ class TestOneSpeedUnitPath:
 
         expected = int(driver.DEFAULT_JOG_SPEED * 1000 / 60)
         assert spy.commands[0] == b"\xc9\x02" + encode35(expected)
-        assert driver.DEFAULT_JOG_SPEED != driver.DEFAULT_TRAVEL_SPEED
+        assert (
+            driver.DEFAULT_JOG_SPEED
+            != driver._machine.max_travel_speed
+        )
 
     @pytest.mark.asyncio
     async def test_go_scale_runs_at_the_panel_speed(self, driver):

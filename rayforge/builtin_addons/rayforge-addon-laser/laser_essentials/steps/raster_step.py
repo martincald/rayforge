@@ -453,7 +453,7 @@ class EngraveStep(LaserStep):
         # exposes its ceiling, so the default is that ceiling, bounded by
         # the operation's typical feed rate (engraving is faster than
         # cutting).
-        step.cut_speed = min(machine.max_cut_speed, 4000)
+        step.cut_speed = min(machine.max_cut_speed, 18000)
         params = machine.get_pwm_params(default_head)
         if params is not None:
             step.frequency = params.frequency

@@ -16,7 +16,9 @@ from rayforge.machine.models.spindle import SpindleHead
 
 def test_contour_defaults_preserved():
     s = ContourStep(name="t")
-    assert s.power == 0.8, s.power
+    assert s.power == 0.45, s.power
+    # Min Power follows Max Power until it is set explicitly.
+    assert s.min_power == 0.45, s.min_power
     assert s.offset_mm == 0.0, s.offset_mm
     assert s.cut_speed == 500, s.cut_speed
     assert s.air_assist is False
@@ -48,11 +50,11 @@ def test_engrave_create_derives_cut_speed_from_machine():
     context.machine = machine
 
     s = EngraveStep.create(context, name="t")
-    assert s.cut_speed == 600  # machine ceiling, below the 4000 bound
+    assert s.cut_speed == 600  # machine ceiling, below the 18000 bound
 
-    machine.max_cut_speed = 8000
+    machine.max_cut_speed = 24000
     s2 = EngraveStep.create(context, name="t")
-    assert s2.cut_speed == 4000  # bounded by engraving's typical feed
+    assert s2.cut_speed == 18000  # 300 mm/s, engraving's typical feed
 
 
 def test_laser_step_serialization_roundtrip():

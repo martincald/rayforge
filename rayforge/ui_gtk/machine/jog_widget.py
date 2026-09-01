@@ -13,10 +13,10 @@ from .cut_scale_dialog import CutScaleDialog
 # never round trips through a display unit on its way to the machine.
 # Only the panel row converts, once, for display.
 #
-# The jog speed the widget starts with, in base units. It matches the
-# jog speed row's own default so the panel and the machine agree
-# before the user has touched the control.
-_DEFAULT_JOG_SPEED_BASE = 1000
+# The jog speed the widget starts with, in base units. The panel's
+# jog speed row seeds itself from this same constant, so the panel
+# and the machine agree before the user has touched the control.
+DEFAULT_JOG_SPEED_BASE = 12000  # 200 mm/s
 
 # The hold jog speed is driver state, so it is pushed when the control
 # settles rather than on every keystroke.
@@ -64,7 +64,7 @@ class JogWidget(Gtk.Widget):
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self.jog_speed_base = _DEFAULT_JOG_SPEED_BASE
+        self.jog_speed_base = DEFAULT_JOG_SPEED_BASE
         self.jog_distance = 10.0
         self._buttons = []
         self._scaling = False

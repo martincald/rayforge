@@ -241,13 +241,17 @@ def test_the_panel_speed_is_pushed_without_waiting_for_a_change(
     ui_context_initializer,
 ):
     """MOT-21: the driver must not keep its own seed value."""
+    from rayforge.ui_gtk.machine.jog_widget import DEFAULT_JOG_SPEED_BASE
+
     machine_cmd = MagicMock()
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with _hold_jog_driver(machine):
         widget._commit_jog_speed()
 
-    machine_cmd.set_jog_speed.assert_called_with(machine, 1000)
+    machine_cmd.set_jog_speed.assert_called_with(
+        machine, DEFAULT_JOG_SPEED_BASE
+    )
 
 
 @pytest.mark.ui

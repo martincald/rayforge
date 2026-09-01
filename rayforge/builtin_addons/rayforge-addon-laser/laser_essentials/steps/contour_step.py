@@ -85,7 +85,7 @@ class ContourStep(LaserStep):
 
     def __init__(self, name: str | None = None, typelabel: str | None = None):
         super().__init__(typelabel=typelabel or self.TYPELABEL, name=name)
-        self.power = 0.8
+        self.power = 0.45
         self.cut_side = "CENTERLINE"
         self.cut_order = "INSIDE_OUTSIDE"
         self.remove_inner_paths = False
@@ -266,7 +266,7 @@ class ContourStep(LaserStep):
         # Operating feed defaults are machine-derived: the machine only
         # exposes its ceiling, so the default is that ceiling, bounded by
         # the operation's typical feed rate.
-        step.cut_speed = min(machine.max_cut_speed, 500)
+        step.cut_speed = min(machine.max_cut_speed, 1800)
         params = machine.get_pwm_params(default_head)
         if params is not None:
             step.frequency = params.frequency
