@@ -3498,9 +3498,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/driver/ruida/ruida_encoder.py": {
-    "mtime": 1788204220.3120205,
-    "seen": 1788205080.9109423,
-    "ast_hash": "5a25fe6db9a1e3764973ffbf9c8dcf08",
+    "mtime": 1788288568.3956559,
+    "seen": 1788288790.8504195,
+    "ast_hash": "315197e8117bb820978370b5486564cc",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/ruida/ruida_maps.py": {
@@ -3924,21 +3924,21 @@
     "semantic_hash": ""
   },
   "rayforge/pipeline/intent_builder.py": {
-    "mtime": 1787858702.7071505,
-    "seen": 1788205080.9109955,
+    "mtime": 1788287519.878311,
+    "seen": 1788288790.8504834,
     "ast_hash": "448c272d23ba71999c36a958fd40205f",
     "semantic_hash": ""
   },
   "rayforge/pipeline/intent_controller.py": {
-    "mtime": 1786648505.787731,
-    "seen": 1788205080.9109962,
-    "ast_hash": "76f47ad7c1619caa55d9e6f8411a06d3",
+    "mtime": 1788288485.4321249,
+    "seen": 1788288790.8504848,
+    "ast_hash": "f0d121d3cbca29ef609f0dc28c3f37c0",
     "semantic_hash": ""
   },
   "rayforge/pipeline/pipeline.py": {
-    "mtime": 1786648505.787731,
-    "seen": 1788205080.9109972,
-    "ast_hash": "067c62f9beb4659d27a94360afe70efd",
+    "mtime": 1788287947.038197,
+    "seen": 1788288790.8504856,
+    "ast_hash": "7c75f165e383b8d1dca97cd2fc62c201",
     "semantic_hash": ""
   },
   "rayforge/pipeline/stage/__init__.py": {
@@ -5814,9 +5814,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/sim3d/scene_presenter.py": {
-    "mtime": 1786648506.129704,
-    "seen": 1788205080.911231,
-    "ast_hash": "c44d078e5d9bbf08de3fbfecf3bfdd4f",
+    "mtime": 1788288204.6093445,
+    "seen": 1788288790.8507576,
+    "ast_hash": "15693ad81ed3dbb7a742caef65ad4276",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/sim3d/shader/__init__.py": {
@@ -6942,9 +6942,9 @@
     "semantic_hash": ""
   },
   "tests/doceditor/test_file_cmd.py": {
-    "mtime": 1788204164.4125774,
-    "seen": 1788205080.9113677,
-    "ast_hash": "2b5eb258493883c069dca81807deba57",
+    "mtime": 1788287947.0930982,
+    "seen": 1788288790.8509276,
+    "ast_hash": "849ba29c1812f9380554cc3ae8d394da",
     "semantic_hash": ""
   },
   "tests/doceditor/test_group_cmd.py": {
@@ -7344,27 +7344,27 @@
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_encoder.py": {
-    "mtime": 1787686714.460493,
-    "seen": 1788205080.9114184,
-    "ast_hash": "ab3979119781ce2a3a01bd679a08b8cd",
+    "mtime": 1788287947.0764685,
+    "seen": 1788288790.850986,
+    "ast_hash": "3e3bda0c3838f40ad060ed50654ffcf3",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_layer_settings.py": {
-    "mtime": 1788203894.1357062,
-    "seen": 1788205080.911419,
-    "ast_hash": "9fdbd52be3a151355189d078b1b7357b",
+    "mtime": 1788287947.0764685,
+    "seen": 1788288790.8509872,
+    "ast_hash": "34dde1287bcb6d3e9b8c80d327d7ef0c",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_multistep_job.py": {
-    "mtime": 1788203894.1357062,
-    "seen": 1788205080.9114199,
-    "ast_hash": "2abeaf0afe2708daa13e961af207e5fe",
+    "mtime": 1788287947.0930982,
+    "seen": 1788288790.8509877,
+    "ast_hash": "a7fd95cfb9f74453a8ce63e4eca5fc5b",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_scale_jobs.py": {
-    "mtime": 1787858702.7071505,
-    "seen": 1788205080.9114203,
-    "ast_hash": "b0c768763993306d723d8ba78da33109",
+    "mtime": 1788287947.0764685,
+    "seen": 1788288790.8509905,
+    "ast_hash": "eadc35c32ae08f82842d8e36c794c911",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_server.py": {
@@ -7380,15 +7380,15 @@
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_speed_units.py": {
-    "mtime": 1787686714.4621747,
-    "seen": 1788205080.911423,
-    "ast_hash": "55593a8bf758c3cebf6cc6ea7fd036a2",
+    "mtime": 1788287947.0885072,
+    "seen": 1788288790.851005,
+    "ast_hash": "487e0a43c764835f2b698585837b607e",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_start_corner.py": {
-    "mtime": 1788204350.6232076,
-    "seen": 1788205080.9114234,
-    "ast_hash": "3d57857b032f446ff619e5fcc74b6dde",
+    "mtime": 1788287947.0910792,
+    "seen": 1788288790.8510065,
+    "ast_hash": "12ec3ad02717fea6fb936bcb60929a70",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_transport.py": {
@@ -15231,6 +15231,12 @@
     "mtime": 1786648506.9721687,
     "seen": 1788205080.912527,
     "ast_hash": "92ae393e0f01a7638245fc4fafdec9c8",
+    "semantic_hash": ""
+  },
+  "tests/machine/driver/ruida/test_ruida_production_path.py": {
+    "mtime": 1788288501.884977,
+    "seen": 1788288790.8509896,
+    "ast_hash": "daed417441af79c072d2509d4209e464",
     "semantic_hash": ""
   }
 }
