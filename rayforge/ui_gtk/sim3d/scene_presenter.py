@@ -220,20 +220,23 @@ class ScenePresenter:
             f"[CANVAS3D] _on_job_generation_finished: "
             f"status={task_status}, handle={'yes' if handle else 'none'}"
         )
-        if task_status == "completed":
-            if handle is not None:
-                self._current_job_handle = handle
-                self.update_scene_from_doc()
-                self._request_render()
-            else:
-                logger.debug(
-                    "[CANVAS3D] Job completed with no output. Clearing scene."
-                )
-                self._current_job_handle = None
-                self._compiled_job_generation = None
-                self._compiled_artifact = None
-                self._mark_artifact_dirty()
-                self._request_render()
+        if handle is None:
+            # No artifact this generation, whether the job was empty
+            # or would not encode. The pipeline has released the last
+            # one, so the scene cannot keep pointing at it.
+            logger.debug(
+                f"[CANVAS3D] Job {task_status} with no output. "
+                "Clearing scene."
+            )
+            self._current_job_handle = None
+            self._compiled_job_generation = None
+            self._compiled_artifact = None
+            self._mark_artifact_dirty()
+            self._request_render()
+        elif task_status == "completed":
+            self._current_job_handle = handle
+            self.update_scene_from_doc()
+            self._request_render()
 
     def _on_upload_complete(self, sender=None, **_kwargs):
         self._build_op_player_async()

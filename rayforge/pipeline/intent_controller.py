@@ -42,10 +42,16 @@ from raygeo.cnc.execution.intent import (
     create_intent_from_nodes,
     run_intent,
 )
+from raygeo.ops.types import CommandType
 from raygeo.pipeline.execute import Pipeline as RaygeoPipeline
 from raygeo.pipeline.request import NodeRequest
 
-from .intent_builder import IntentBuilder, parse_workpiece_key
+from .intent_builder import (
+    IntentBuilder,
+    job_encode_key,
+    job_key,
+    parse_workpiece_key,
+)
 from .status_messages import status_message_for_key
 
 if TYPE_CHECKING:
@@ -68,6 +74,67 @@ MAX_ACTIVE_PROGRESS_KEYS = 8
 
 # How many active statuses are shown before collapsing into (+N more).
 ACTIVE_PROGRESS_DISPLAY_LIMIT = 3
+
+# Every command the pipeline counts as a cut. A step whose section of
+# the job has none of these produced nothing the encoder can bind to
+# the step's settings.
+_CUTTING_TYPES = (
+    CommandType.LINE_TO,
+    CommandType.ARC_TO,
+    CommandType.BEZIER_TO,
+    CommandType.QUADRATIC_BEZIER_TO,
+    CommandType.SCAN_LINE,
+)
+
+
+def _audit_job_ops(ops: Any, step_uids: list[str]) -> None:
+    """Warn about every step the job aggregate did not carry intact.
+
+    Each step the build gave a node must reach the job as a
+    LayerStart/LayerEnd pair marked with its uid, with a feed rate and
+    a power set before its first cut, and with at least one cut. A
+    step that misses any of these ran through the whole pipeline and
+    produced nothing the encoder can bind to its own settings, which
+    is how a job came to cut one step's geometry under another step's
+    settings. Silence here is what let that pass.
+    """
+    if ops is None:
+        return
+    starts = {
+        ops.layer_uid(i): i for i in ops.indices_of(CommandType.LAYER_START)
+    }
+    ends = {
+        ops.layer_uid(i): i for i in ops.indices_of(CommandType.LAYER_END)
+    }
+    for uid in step_uids:
+        start, end = starts.get(uid), ends.get(uid)
+        if start is None or end is None or end < start:
+            logger.warning(
+                "Step %s is missing from the job ops: the aggregate "
+                "carries no layer marked with it",
+                uid,
+            )
+            continue
+        section = ops.extract_range(start, end)
+        cuts = [i for ct in _CUTTING_TYPES for i in section.indices_of(ct)]
+        if not cuts:
+            logger.warning(
+                "Step %s contributed no cutting ops to the job", uid
+            )
+            continue
+        before_first_cut = section.extract_range(0, min(cuts))
+        for ct, what in (
+            (CommandType.SET_FEED_RATE, "feed rate"),
+            (CommandType.SET_POWER, "power"),
+        ):
+            if not before_first_cut.indices_of(ct):
+                logger.warning(
+                    "Step %s reached the job with no %s command before "
+                    "its first cut: a settings command was dropped "
+                    "during assembly",
+                    uid,
+                    what,
+                )
 
 
 @runtime_checkable
@@ -146,6 +213,9 @@ class IntentController:
         self._key_to_item: dict[str, DocItem] = {}
         self._workpieces_by_uid: dict[str, WorkPiece] = {}
         self._steps_by_uid: dict[str, Step] = {}
+        # The steps the last build gave a node, in workflow order. The
+        # job aggregate is audited against this list.
+        self._job_step_uids: list[str] = []
 
         # Signals for notifying the UI of generation progress.
         self.workpiece_artifact_ready = Signal()
@@ -187,6 +257,16 @@ class IntentController:
     @property
     def is_data_stale(self) -> bool:
         return self._data_stale_flag
+
+    @property
+    def is_rebuild_queued(self) -> bool:
+        """True when a rebuild is due that has not started yet.
+
+        Either the debounce timer is armed, or a change arrived while
+        the current rebuild was running, so whatever that rebuild
+        produces describes a document that has already moved on.
+        """
+        return self._rebuild_timer is not None or self._rebuild_pending
 
     @property
     def auto_rebuild(self) -> bool:
@@ -351,6 +431,16 @@ class IntentController:
                     )
                 except RuntimeError as exc:
                     logger.debug("run_intent failed: %s", exc)
+            else:
+                # Nothing to run is still a finished generation: the
+                # document has no job now, and the artifact of the
+                # document that had one must not stay on offer.
+                self._task_manager.schedule_on_main_thread(
+                    self.job_generation_finished.send,
+                    self,
+                    handle=None,
+                    task_status="completed",
+                )
 
         def _on_done(_task: Any) -> None:
             self._rebuild_task = None
@@ -378,6 +468,13 @@ class IntentController:
     def _emit_pipeline_warnings(self, warnings: list) -> None:
         """Emit ``pipeline_warnings`` on the main thread."""
         self.pipeline_warnings.send(self, warnings=warnings)
+
+    def _emit_job_encode_failed(self, error: str) -> None:
+        """Emit ``job_generation_finished`` for a job that would not
+        encode, on the main thread."""
+        self.job_generation_finished.send(
+            self, handle=None, task_status="failed", error=error
+        )
 
     # ------------------------------------------------------------------
     # on_completed → epoch filter → DOM reattachment via main-thread
@@ -410,17 +507,28 @@ class IntentController:
                 return
             if kind == ErrorKind.UPSTREAM_FAILED:
                 logger.debug("Node %s: upstream failed", node.key)
-                return
-            if kind == ErrorKind.CACHE_BUDGET_EXCEEDED:
+            elif kind == ErrorKind.CACHE_BUDGET_EXCEEDED:
                 logger.error("Node %s failed: %s", node.key, node.error)
                 self._task_manager.schedule_on_main_thread(
                     self._emit_pipeline_error, kind
                 )
-                return
-            # Internal errors (cache type mismatch, etc.) — log only.
-            logger.error("Node %s failed: %s", node.key, node.error)
+            else:
+                # Internal errors (cache type mismatch, etc.) — log.
+                logger.error("Node %s failed: %s", node.key, node.error)
+            if node.key == job_encode_key():
+                # The job did not encode, so this generation has no
+                # artifact. Say so: left unsaid, the previous
+                # generation's artifact stays on offer, and a send
+                # transmits a job the document no longer describes.
+                self._task_manager.schedule_on_main_thread(
+                    self._emit_job_encode_failed, str(node.error)
+                )
             return
         key = node.key
+        if key == job_key():
+            _audit_job_ops(
+                getattr(node.output, "ops", None), self._job_step_uids
+            )
         item = self._key_to_item.get(key)
         if item is None:
             logger.debug(
@@ -572,6 +680,7 @@ class IntentController:
         """
 
         self._key_to_item = {}
+        self._job_step_uids = []
         if self._doc is None:
             return
         # Index workpieces and steps by uid for fast lookup.  Kept on
@@ -607,6 +716,7 @@ class IntentController:
                 step = steps.get(s_uid)
                 if step is not None:
                     self._key_to_item[key] = step
+                    self._job_step_uids.append(s_uid)
             # ``job`` or ``job:encode``
             elif key == "job" or key == "job:encode":
                 self._key_to_item[key] = self._doc

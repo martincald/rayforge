@@ -31,6 +31,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _encode_error(error: str) -> RuntimeError:
+    return RuntimeError(f"Job encoding failed: {error}")
+
+
 class Pipeline:
     """
     Public facade over the raygeo-backed intent pipeline.
@@ -70,6 +74,12 @@ class Pipeline:
         self._wp_handles: dict[tuple[str, str], BaseArtifactHandle] = {}
         self._last_aggregate_output: Any = None
         self._last_job_handle: BaseArtifactHandle | None = None
+        # Set when a rebuild starts and cleared when its artifact
+        # lands: in between, the artifact on hand describes a document
+        # that has since changed.
+        self._job_handle_stale = False
+        # Why the last finished generation has no artifact, if so.
+        self._job_error: str | None = None
 
         self.processing_state_changed = Signal()
         self.workpiece_starting = Signal()
@@ -267,6 +277,8 @@ class Pipeline:
         self._intent_ctl._schedule_rebuild()
 
     def _on_rebuild_started(self, sender) -> None:
+        self._job_handle_stale = True
+        self._job_error = None
         self._set_busy(True)
 
     def _on_rebuild_finished(self, sender) -> None:
@@ -335,12 +347,21 @@ class Pipeline:
             time_est = output.time_estimate
             self.job_time_updated.send(self, total_seconds=time_est)
 
-    def _on_job_encoded(self, sender, *, handle, task_status) -> None:
+    def _on_job_encoded(
+        self, sender, *, handle, task_status, error=None
+    ) -> None:
         if self._is_shutting_down:
             return
         if handle is None:
+            # This generation produced no job, or one that would not
+            # encode. The previous generation's artifact is dropped
+            # rather than left on offer: a send would transmit it, and
+            # an export would write it, as if it were this document.
+            self._drop_job_handle()
+            self._job_handle_stale = False
+            self._job_error = error
             self.job_generation_finished.send(
-                self, handle=None, task_status=task_status
+                self, handle=None, task_status=task_status, error=error
             )
             return
         agg = self._last_aggregate_output
@@ -386,13 +407,21 @@ class Pipeline:
             encoded_output=encoded,
             mapped_ops=mapped_ops,
         )
-        if self._last_job_handle is not None:
-            self._store.release(self._last_job_handle)
+        self._drop_job_handle()
         job_handle = self._store.put(artifact, "job")
         self._last_job_handle = job_handle
+        # A change that arrived while this generation ran has already
+        # queued the next one, and made this artifact stale.
+        self._job_handle_stale = self._intent_ctl.is_rebuild_queued
+        self._job_error = None
         self.job_generation_finished.send(
             self, handle=job_handle, task_status=task_status
         )
+
+    def _drop_job_handle(self) -> None:
+        if self._last_job_handle is not None:
+            self._store.release(self._last_job_handle)
+        self._last_job_handle = None
 
     def _job_time_relay(self, sender, *, total_seconds) -> None:
         self.job_time_updated.send(self, total_seconds=total_seconds)
@@ -436,9 +465,16 @@ class Pipeline:
             when_done(None, RuntimeError("No document is loaded."))
             return
 
-        if self._last_job_handle is not None:
-            when_done(self._last_job_handle, None)
-            return
+        ctl = self._intent_ctl
+        if not self._job_handle_stale and not ctl.is_rebuild_queued:
+            # The last generation describes the current document: hand
+            # out what it produced, or the reason it produced nothing.
+            if self._job_error is not None:
+                when_done(None, _encode_error(self._job_error))
+                return
+            if self._last_job_handle is not None:
+                when_done(self._last_job_handle, None)
+                return
 
         if not self._can_generate_job():
             when_done(
@@ -450,12 +486,20 @@ class Pipeline:
             )
             return
 
-        def _on_finished(sender, *, handle, task_status):
+        def _on_finished(sender, *, handle, task_status, error=None):
+            if ctl.is_rebuild_queued:
+                # A newer generation is already on its way; the caller
+                # gets that one, not this one.
+                return
             self.job_generation_finished.disconnect(_on_finished)
+            if handle is None and error is not None:
+                when_done(None, _encode_error(error))
+                return
             when_done(handle, None)
 
         self.job_generation_finished.connect(_on_finished, weak=False)
-        self._intent_ctl.force_rebuild()
+        if not ctl.is_rebuild_pending:
+            ctl.force_rebuild()
 
     async def generate_job_artifact_async(
         self,
