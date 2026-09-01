@@ -135,10 +135,6 @@ def two_step_doc(
     """A real engrave-then-cut document and the machine to encode it."""
     machine, _config = test_machine_and_config
     machine.hydrate()
-    # Ruida numbers its lasers from 1; the generic test machine's head
-    # is left at the model default of 0.
-    for head in machine.heads:
-        head.tool_number = 1
     doc = Doc()
     engrave, cut = _doc_with_two_steps(
         doc, context_initializer, engrave_step_class, contour_step_class

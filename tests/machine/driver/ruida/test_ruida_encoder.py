@@ -41,11 +41,11 @@ def mock_machine(isolated_machine):
     """Provides a machine with multiple laser heads for testing."""
     laser1 = Laser()
     laser1.uid = "laser-1"
-    laser1.tool_number = 1
+    laser1.tool_number = 0
 
     laser2 = Laser()
     laser2.uid = "laser-2"
-    laser2.tool_number = 2
+    laser2.tool_number = 1
 
     isolated_machine.heads.clear()
     isolated_machine.add_head(laser1)

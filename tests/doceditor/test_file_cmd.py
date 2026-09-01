@@ -1126,7 +1126,6 @@ class TestExportRdToPath:
         machine = Machine(context)
         machine.driver_name = "RuidaDriver"
         laser = Laser()
-        laser.tool_number = 1
         machine.heads.clear()
         machine.add_head(laser)
         return machine

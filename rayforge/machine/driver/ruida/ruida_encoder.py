@@ -566,7 +566,13 @@ class RuidaEncoder(OpsEncoder):
             )
             self.active_laser = 1
         else:
-            self.active_laser = laser_head.tool_number
+            # A head's tool_number counts from 0, as T0 does on every
+            # other driver, and Ruida numbers its lasers from 1.
+            # set_power makes the same +1, so a job and a test fire
+            # select the same laser. Read as-is, the model default
+            # was laser 0, and the second part of every job died on
+            # CA 10 <laser - 1>.
+            self.active_laser = laser_head.tool_number + 1
 
         if self._laser_selected != self.active_laser:
             self._laser_selected = self.active_laser

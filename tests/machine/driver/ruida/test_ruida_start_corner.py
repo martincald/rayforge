@@ -43,7 +43,6 @@ EXPECTED_RANGES = {
 def machine(isolated_machine):
     laser = Laser()
     laser.uid = "laser-1"
-    laser.tool_number = 1
     isolated_machine.heads.clear()
     isolated_machine.add_head(laser)
     isolated_machine.active_wcs = "MACHINE"
