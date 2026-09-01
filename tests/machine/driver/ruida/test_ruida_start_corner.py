@@ -2,9 +2,14 @@
 
 The operator parks the head on a corner of the stock and names it;
 the job is placed so that corner of its bounding box lands where the
-head already is. One helper decides the shift, and jobs, Go Scale and
-Cut Scale all ask it the same question about the same box -- so the
-outline a trace draws is the outline a job cuts.
+head already is.
+
+Translating the geometry cannot do that. The encoder normalizes a job
+to its own bounding box minimum and declares those bounds alongside
+it, so a shift moves the declared minimum by exactly as much as the
+geometry -- and a controller that anchors the job at its declared
+minimum sees no difference at all. The head is moved instead, before
+the job is sent, and the job itself is left alone.
 """
 
 import pytest
@@ -18,35 +23,27 @@ from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
 from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import (
-    Machine,
-    StartCorner,
-    start_corner_offset,
-)
+from rayforge.machine.models.machine import Machine, Origin, StartCorner
 
 WIDTH = 50.0
 HEIGHT = 30.0
 WIDTH_UM = 50000
 HEIGHT_UM = 30000
 
-# Where a 50 x 30 job's bounding box lands, in job-local micrometres,
-# for each corner the head might be standing on.
-EXPECTED_RANGES = {
-    StartCorner.TOP_LEFT: ((0, WIDTH_UM), (0, HEIGHT_UM)),
-    StartCorner.TOP_RIGHT: ((-WIDTH_UM, 0), (0, HEIGHT_UM)),
-    StartCorner.BOTTOM_LEFT: ((0, WIDTH_UM), (-HEIGHT_UM, 0)),
-    StartCorner.BOTTOM_RIGHT: ((-WIDTH_UM, 0), (-HEIGHT_UM, 0)),
+# Where the head stands before the job, in machine micrometres.
+HEAD = (500000, 400000)
+
+# Where the pre-move puts it, per corner. The head has to end up on
+# the corner the job starts at -- its bounding box minimum -- so a
+# head standing on the right edge moves west by the job's width, and
+# one standing on the bottom edge moves north by its height. None
+# means the head is already there and nothing is sent.
+EXPECTED_PREMOVE = {
+    StartCorner.TOP_LEFT: None,
+    StartCorner.TOP_RIGHT: (HEAD[0] - WIDTH_UM, HEAD[1]),
+    StartCorner.BOTTOM_LEFT: (HEAD[0], HEAD[1] - HEIGHT_UM),
+    StartCorner.BOTTOM_RIGHT: (HEAD[0] - WIDTH_UM, HEAD[1] - HEIGHT_UM),
 }
-
-
-@pytest.fixture
-def machine(isolated_machine):
-    laser = Laser()
-    laser.uid = "laser-1"
-    isolated_machine.heads.clear()
-    isolated_machine.add_head(laser)
-    isolated_machine.active_wcs = "MACHINE"
-    return isolated_machine
 
 
 def _rect_job() -> Ops:
@@ -79,80 +76,26 @@ def _cut_extents(commands) -> tuple[tuple[int, int], tuple[int, int]]:
     return (min(xs), max(xs)), (min(ys), max(ys))
 
 
-class TestStartCornerOffset:
-    """The helper itself, which everything else routes through."""
-
-    @pytest.mark.parametrize(
-        ("corner", "expected"),
-        [
-            (StartCorner.TOP_LEFT, (0.0, 0.0)),
-            (StartCorner.TOP_RIGHT, (-WIDTH, 0.0)),
-            (StartCorner.BOTTOM_LEFT, (0.0, -HEIGHT)),
-            (StartCorner.BOTTOM_RIGHT, (-WIDTH, -HEIGHT)),
-        ],
-    )
-    def test_offset_per_corner(self, corner, expected):
-        assert start_corner_offset(corner, WIDTH, HEIGHT) == expected
-
-    def test_the_machine_defaults_to_top_left(self, machine):
-        assert machine.start_corner is StartCorner.TOP_LEFT
+def _moves(commands: list[bytes]) -> list[tuple[int, int]]:
+    return [
+        (decode35(c[3:8]), decode35(c[8:13]))
+        for c in commands
+        if c[:2] == b"\xd9\x10"
+    ]
 
 
-class TestJobPlacement:
-    """A job lands where the operator says the head is."""
-
-    @pytest.mark.parametrize("corner", list(StartCorner))
-    def test_the_bbox_lands_in_the_expected_range(self, machine, corner):
-        machine.set_start_corner(corner)
-
-        commands = (
-            RuidaEncoder()
-            .encode(_rect_job(), machine, Doc())
-            .driver_data["commands"]
-        )
-
-        assert _cut_extents(commands) == EXPECTED_RANGES[corner]
-
-    def test_the_declared_bounds_follow_the_geometry(self, machine):
-        """E7 03 / E7 07 must describe where the job actually is."""
-        machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
-
-        commands = (
-            RuidaEncoder()
-            .encode(_rect_job(), machine, Doc())
-            .driver_data["commands"]
-        )
-
-        low = next(c for c in commands if c.startswith(b"\xe7\x03"))
-        high = next(c for c in commands if c.startswith(b"\xe7\x07"))
-        assert (decode35(low[2:7]), decode35(low[7:12])) == (
-            -WIDTH_UM,
-            -HEIGHT_UM,
-        )
-        assert (decode35(high[2:7]), decode35(high[7:12])) == (0, 0)
+async def _unknown_position(timeout: float = 2.0):
+    return None
 
 
-class TestCutScaleUsesTheSamePlacement:
-    """Cut Scale is a job, so it is placed like one."""
+class _ClientSpy:
+    """Records the moves and the job blob a run puts on the wire."""
 
-    @pytest.mark.parametrize("corner", list(StartCorner))
-    def test_cut_scale_matches_the_job(self, machine, corner):
-        machine.set_start_corner(corner)
-        ops = _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8)
-
-        commands = (
-            RuidaEncoder().encode(ops, machine, Doc()).driver_data["commands"]
-        )
-
-        assert _cut_extents(commands) == EXPECTED_RANGES[corner]
-
-
-class _ScaleClientSpy:
-    """Records the moves a Go Scale run sends."""
-
-    def __init__(self, position=(0, 0)):
+    def __init__(self, position=HEAD):
         self.commands: list[bytes] = []
+        self.blobs: list[bytes] = []
         self.position = position
+        self.is_connected = False
         self.state_changed = Signal()
         self.position_updated = Signal()
 
@@ -172,21 +115,26 @@ class _ScaleClientSpy:
     async def read_position(self, timeout: float = 2.0):
         return self.position
 
-
-def _corners(commands: list[bytes]) -> list[tuple[int, int]]:
-    return [
-        (decode35(c[3:8]), decode35(c[8:13]))
-        for c in commands
-        if c[:2] == b"\xd9\x10"
-    ]
+    async def send_job(self, blob, on_start=None, on_chunk=None):
+        self.blobs.append(blob)
 
 
 @pytest_asyncio.fixture
 async def ruida_driver(lite_context):
-    """A RuidaDriver with no transports; tests inject a client spy."""
+    """A RuidaDriver with no transports; tests inject a client spy.
+
+    The profile matches the controllers this driver is written for: a
+    top-left origin and no reversed axis, so machine +X runs east and
+    machine +Y runs south.
+    """
     machine = Machine(lite_context)
     machine.driver_name = "RuidaDriver"
-    machine.set_axis_extents(400.0, 300.0)
+    machine.set_origin(Origin.TOP_LEFT)
+    machine.set_axis_extents(800.0, 600.0)
+    laser = Laser()
+    laser.uid = "laser-1"
+    machine.heads.clear()
+    machine.add_head(laser)
     lite_context.machine_mgr.add_machine(machine)
     driver = RuidaDriver(lite_context, machine)
 
@@ -197,32 +145,180 @@ async def ruida_driver(lite_context):
     await machine.shutdown()
 
 
+@pytest.fixture
+def machine(ruida_driver):
+    return ruida_driver._machine
+
+
+async def _run_job(driver, ops) -> _ClientSpy:
+    """Run a job through the driver and return what it sent."""
+    spy = _ClientSpy()
+    driver._client = spy
+    doc = Doc()
+    encoded = RuidaEncoder().encode(ops, driver._machine, doc)
+    await driver.run(encoded, doc, ops)
+    return spy
+
+
+class TestTheJobIsNeverTranslated:
+    """The corner is not in the blob, and must not be."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_the_blob_is_the_same_for_every_corner(
+        self, ruida_driver, machine, corner
+    ):
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        baseline = (await _run_job(ruida_driver, _rect_job())).blobs
+
+        machine.set_start_corner(corner)
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        assert spy.blobs == baseline
+
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    def test_the_geometry_starts_at_the_bounding_box_minimum(
+        self, machine, corner
+    ):
+        """Whatever the corner, the job is normalized the same way."""
+        machine.set_start_corner(corner)
+
+        commands = (
+            RuidaEncoder()
+            .encode(_rect_job(), machine, Doc())
+            .driver_data["commands"]
+        )
+
+        assert _cut_extents(commands) == ((0, WIDTH_UM), (0, HEIGHT_UM))
+
+    def test_the_declared_bounds_follow_the_geometry(self, machine):
+        """E7 03 / E7 07 must describe where the job actually is."""
+        machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+
+        commands = (
+            RuidaEncoder()
+            .encode(_rect_job(), machine, Doc())
+            .driver_data["commands"]
+        )
+
+        low = next(c for c in commands if c.startswith(b"\xe7\x03"))
+        high = next(c for c in commands if c.startswith(b"\xe7\x07"))
+        assert (decode35(low[2:7]), decode35(low[7:12])) == (0, 0)
+        assert (decode35(high[2:7]), decode35(high[7:12])) == (
+            WIDTH_UM,
+            HEIGHT_UM,
+        )
+
+
+class TestJobPreMove:
+    """The head is stood on the job's own start corner first."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_the_head_is_moved_to_the_corner(
+        self, ruida_driver, machine, corner
+    ):
+        machine.set_start_corner(corner)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        expected = EXPECTED_PREMOVE[corner]
+        assert _moves(spy.commands) == ([] if expected is None else [expected])
+
+    @pytest.mark.asyncio
+    async def test_the_default_corner_never_reads_a_position(
+        self, ruida_driver, machine
+    ):
+        """A profile that never touched the setting sends nothing extra."""
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        assert spy.commands == []
+        assert len(spy.blobs) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_pre_move_runs_at_the_panel_jog_speed(
+        self, ruida_driver, machine
+    ):
+        """It is interactive motion the operator watches."""
+        machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+        await ruida_driver.set_jog_speed(12000)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        assert spy.commands[0] == b"\xc9\x02" + encode35(200000)
+
+    @pytest.mark.asyncio
+    async def test_the_pre_move_lands_before_the_job_is_sent(
+        self, ruida_driver, machine
+    ):
+        """A job that started mid-travel would cut its way there."""
+        machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        assert spy.blobs
+        assert spy.position == EXPECTED_PREMOVE[StartCorner.BOTTOM_RIGHT]
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_position_refuses_the_job(
+        self, ruida_driver, machine
+    ):
+        """Running it anyway would cut in the wrong place."""
+        machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+        spy = _ClientSpy()
+        spy.read_position = _unknown_position
+        ruida_driver._client = spy
+        doc = Doc()
+        ops = _rect_job()
+
+        await ruida_driver.run(
+            RuidaEncoder().encode(ops, machine, doc), doc, ops
+        )
+
+        assert spy.blobs == []
+
+
+class TestCutScaleIsPlacedLikeAJob:
+    """Cut Scale is a job, so it is placed like one."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_cut_scale_pre_moves_like_the_job(
+        self, ruida_driver, machine, corner
+    ):
+        machine.set_start_corner(corner)
+        ops = _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8)
+
+        spy = await _run_job(ruida_driver, ops)
+
+        expected = EXPECTED_PREMOVE[corner]
+        assert _moves(spy.commands) == ([] if expected is None else [expected])
+
+
 class TestGoScaleUsesTheSamePlacement:
     """The traced outline is the outline the job would cut."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("corner", list(StartCorner))
-    async def test_go_scale_corners_match_the_jobs(self, ruida_driver, corner):
-        """Same corner selection, same rectangle, measured from the head.
-
-        Go Scale traces from wherever the head is, so its corners are
-        the job's job-local ranges shifted by the head position -- the
-        same offset, applied by the same helper.
-        """
-        ruida_driver._machine.set_start_corner(corner)
-        head = (120000, 90000)
-        spy = _ScaleClientSpy(position=head)
+    async def test_go_scale_starts_where_the_job_starts(
+        self, ruida_driver, machine, corner
+    ):
+        """Same corner, same offset, measured from the same head."""
+        machine.set_start_corner(corner)
+        spy = _ClientSpy()
         ruida_driver._client = spy
 
         await ruida_driver.trace_frame(WIDTH, HEIGHT)
 
-        (x_lo, x_hi), (y_lo, y_hi) = EXPECTED_RANGES[corner]
-        assert _corners(spy.commands) == [
-            (head[0] + x_lo, head[1] + y_lo),
-            (head[0] + x_hi, head[1] + y_lo),
-            (head[0] + x_hi, head[1] + y_hi),
-            (head[0] + x_lo, head[1] + y_hi),
-            (head[0] + x_lo, head[1] + y_lo),
+        origin = EXPECTED_PREMOVE[corner] or HEAD
+        assert _moves(spy.commands) == [
+            origin,
+            (origin[0] + WIDTH_UM, origin[1]),
+            (origin[0] + WIDTH_UM, origin[1] + HEIGHT_UM),
+            (origin[0], origin[1] + HEIGHT_UM),
+            origin,
         ]
 
     @pytest.mark.asyncio
@@ -230,12 +326,12 @@ class TestGoScaleUsesTheSamePlacement:
         self, ruida_driver
     ):
         """The default is unchanged: the head is the box's corner."""
-        spy = _ScaleClientSpy(position=(0, 0))
+        spy = _ClientSpy()
         ruida_driver._client = spy
 
         await ruida_driver.trace_frame(WIDTH, HEIGHT)
 
-        assert _corners(spy.commands)[0] == (0, 0)
+        assert _moves(spy.commands)[0] == HEAD
 
 
 class TestStartCornerPersists:

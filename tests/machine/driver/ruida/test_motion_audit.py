@@ -274,17 +274,23 @@ class TestOneSpeedUnitPath:
         assert driver.DEFAULT_JOG_SPEED != driver.DEFAULT_TRAVEL_SPEED
 
     @pytest.mark.asyncio
-    async def test_go_scale_never_exceeds_the_profile(self, driver):
-        """MOT-26: the trace is clamped, not hard-coded."""
+    async def test_go_scale_runs_at_the_panel_speed(self, driver):
+        """MOT-26: the trace speed is the panel's, not a fixed one.
+
+        Nor the profile's: max travel speed bounds the moves the
+        application plans for itself, and a trace is the speed the
+        operator dialled in while watching the head.
+        """
         spy = MotionClientSpy(position=(0, 0))
         driver._client = spy
         driver._machine.set_max_travel_speed(600)
         driver.FRAME_CORNER_TIMEOUT = 0.05
         driver.FRAME_POLL_INTERVAL = 0.01
+        await driver.set_jog_speed(12000)
 
         await driver.trace_frame(10.0, 10.0)
 
-        assert spy.commands[0] == b"\xc9\x02" + encode35(10000)
+        assert spy.commands[0] == b"\xc9\x02" + encode35(200000)
 
 
 class TestOriginIsNeverInvented:

@@ -67,24 +67,6 @@ class StartCorner(Enum):
     BOTTOM_RIGHT = "bottom_right"
 
 
-def start_corner_offset(
-    corner: StartCorner, width: float, height: float
-) -> tuple[float, float]:
-    """
-    How far to shift job-local geometry so ``corner`` lands at (0, 0).
-
-    Job-local space already carries the profile's own origin and
-    reverse-axis settings, so this only picks which corner of the
-    bounding box the head is taken to be standing on. It re-derives
-    no direction of its own: jobs, Go Scale and Cut Scale all call
-    this one function with the same width and height, so the outline
-    a trace draws and the outline a job cuts cannot drift apart.
-    """
-    right = corner in (StartCorner.TOP_RIGHT, StartCorner.BOTTOM_RIGHT)
-    bottom = corner in (StartCorner.BOTTOM_LEFT, StartCorner.BOTTOM_RIGHT)
-    return (-width if right else 0.0, -height if bottom else 0.0)
-
-
 class JogDirection(Enum):
     """Visual direction for jog operations."""
 
@@ -824,17 +806,6 @@ class Machine:
             return
         self.start_corner = corner
         self.changed.send(self)
-
-    def job_placement_offset(
-        self, width: float, height: float
-    ) -> tuple[float, float]:
-        """
-        The shift that puts the start corner of a job at (0, 0).
-
-        The single site jobs, Go Scale and Cut Scale all ask, so the
-        outline that gets traced is the outline that gets cut.
-        """
-        return start_corner_offset(self.start_corner, width, height)
 
     @property
     def panel_orientation(self) -> PanelOrientation:

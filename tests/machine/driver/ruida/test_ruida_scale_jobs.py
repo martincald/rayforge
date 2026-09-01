@@ -95,15 +95,9 @@ class TestGoScale:
 
         await ruida_driver.trace_frame(100.0, 50.0)
 
-        # The trace runs at the jog panel's speed but never exceeds
-        # the profile's max travel speed.
-        expected_mm_min = min(
-            ruida_driver._jog_speed_mm_min,
-            ruida_driver._machine.max_travel_speed
-            or ruida_driver.DEFAULT_TRAVEL_SPEED,
-        )
+        # The trace runs at the jog panel's speed, whatever it is.
         assert spy.commands[0] == b"\xc9\x02" + encode35(
-            int(expected_mm_min * 1000 / 60)
+            int(ruida_driver._jog_speed_mm_min * 1000 / 60)
         )
         assert len(_corners(spy.commands)) == 5
         # A speed and five moves: nothing starts a process, and no
@@ -122,6 +116,25 @@ class TestGoScale:
         await ruida_driver.trace_frame(100.0, 50.0)
 
         assert spy.commands[0] == b"\xc9\x02" + encode35(40000)
+
+    @pytest.mark.asyncio
+    async def test_the_panel_speed_is_not_capped_by_the_profile(
+        self, ruida_driver
+    ):
+        """200 mm/s on the panel is 200 mm/s on the wire.
+
+        The profile's max travel speed bounds the moves the
+        application plans for itself. A trace is not one of those: it
+        is the speed the operator dialled in, watching the head.
+        """
+        spy = _ScaleClientSpy(position=(0, 0))
+        ruida_driver._client = spy
+        assert ruida_driver._machine.max_travel_speed < 12000
+        await ruida_driver.set_jog_speed(12000)  # 200 mm/s
+
+        await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert spy.commands[0] == b"\xc9\x02" + encode35(200000)
 
     @pytest.mark.asyncio
     async def test_corners_are_offset_from_the_start_position(

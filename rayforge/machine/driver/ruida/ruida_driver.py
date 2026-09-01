@@ -573,6 +573,16 @@ class RuidaDriver(Driver):
 
         self._dump_job_blob(blob)
 
+        if not await self._move_to_start_corner(ops):
+            logger.warning(
+                "Job not sent: the head position is unknown, so the "
+                "start corner cannot be honoured",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            await self._report_ops_done(on_command_done, 0, num_ops)
+            self.job_finished.send(self)
+            return
+
         self._job_running = True
         try:
             with self._polling_suspended():
@@ -840,12 +850,10 @@ class RuidaDriver(Driver):
         assert self._client
         width_um = int(width_mm * 1000)
         height_um = int(height_mm * 1000)
-        # The same helper the job's own placement uses, on the same
+        # The same offset the job's own pre-move uses, on the same
         # width and height, so the outline traced here is the outline
         # the job cuts.
-        offset_mm = self._machine.job_placement_offset(width_mm, height_mm)
-        off_x_um = int(offset_mm[0] * 1000)
-        off_y_um = int(offset_mm[1] * 1000)
+        off_x_um, off_y_um = self._start_corner_offset_um(width_mm, height_mm)
         logger.info(
             f"Go Scale: tracing {width_mm:.1f} x {height_mm:.1f} mm "
             f"from the current position, which is the "
@@ -879,6 +887,9 @@ class RuidaDriver(Driver):
                 extra=self._log_extra("USER_COMMAND"),
             )
             return
+        self._log_start_corner_premove(
+            start[0] + off_x_um, start[1] + off_y_um
+        )
         corners = [
             (start[0] + off_x_um + dx, start[1] + off_y_um + dy)
             for dx, dy in (
@@ -895,7 +906,7 @@ class RuidaDriver(Driver):
         self._jog_busy = True
         try:
             with self._polling_suspended():
-                await self._set_travel_speed(self._frame_speed_mm_min())
+                await self._set_travel_speed(self._jog_speed_mm_min)
                 for x_um, y_um in corners:
                     if self._frame_epoch != epoch:
                         logger.info(
@@ -909,17 +920,84 @@ class RuidaDriver(Driver):
             self._jog_busy = False
             self._frame_cancel_pending = False
 
-    def _frame_speed_mm_min(self) -> int:
+    def _start_corner_offset_um(
+        self, width_mm: float, height_mm: float
+    ) -> tuple[int, int]:
         """
-        The trace speed, in mm/min, clamped to the profile.
+        How far the head has to move before a job of this size starts.
 
-        Framing is interactive motion the user watches, so it runs at
-        the jog panel's own speed -- the same value the arrows use,
-        pushed here by set_jog_speed -- rather than a fixed one. It is
-        still never faster than the machine is configured for.
+        A job always begins at its own bounding box minimum: the
+        encoder normalizes it there, and shifting the geometry cannot
+        change that, because the bounds declared alongside it shift
+        with it. So the head is moved instead. The operator names the
+        corner of the job the head is standing on, and this is the
+        distance from that corner to the one the job starts at.
+
+        Which way is west and north is not decided here.
+        calculate_jog already answers that for the jog panel and for
+        the home park, so the axis mapping keeps its single home.
         """
-        profile = self._machine.max_travel_speed or self.DEFAULT_TRAVEL_SPEED
-        return int(min(self._jog_speed_mm_min, profile))
+        # Imported here, not at module scope: machine.py imports this
+        # package for get_driver_cls, which is why Machine itself is
+        # only a TYPE_CHECKING name above.
+        from ...models.machine import JogDirection, StartCorner
+
+        corner = self._machine.start_corner
+        dx_mm = dy_mm = 0.0
+        if corner in (StartCorner.TOP_RIGHT, StartCorner.BOTTOM_RIGHT):
+            dx_mm = self._machine.calculate_jog(JogDirection.WEST, width_mm)
+        if corner in (StartCorner.BOTTOM_LEFT, StartCorner.BOTTOM_RIGHT):
+            dy_mm = self._machine.calculate_jog(JogDirection.NORTH, height_mm)
+        return int(dx_mm * 1000), int(dy_mm * 1000)
+
+    def _log_start_corner_premove(self, x_um: int, y_um: int) -> None:
+        """Say where the start corner sends the head, in mm."""
+        logger.info(
+            f"Start corner {self._machine.start_corner.value}: head -> "
+            f"({x_um / 1000:.1f}, {y_um / 1000:.1f})",
+            extra=self._log_extra("USER_COMMAND"),
+        )
+
+    async def _move_to_start_corner(self, ops: "Ops") -> bool:
+        """
+        Rapid the head to the corner the job about to run starts at.
+
+        Returns whether the job may go ahead. The move is the same
+        D9 10 primitive a jog uses, and it is waited out before the
+        job is sent: a job that started while the head was still
+        travelling would cut its way to the corner.
+
+        The default corner needs no move, so a profile that never
+        touched the setting never reads a position here. When one is
+        needed and the position cannot be established, the job is
+        refused rather than run in the wrong place -- every D9 10 is
+        an absolute target, so a guessed origin is a full-bed
+        traverse.
+        """
+        assert self._client
+        rect = ops.rect()
+        dx_um, dy_um = self._start_corner_offset_um(
+            rect[2] - rect[0], rect[3] - rect[1]
+        )
+        if not (dx_um or dy_um):
+            return True
+
+        epoch = self._frame_epoch
+        self._jog_busy = True
+        try:
+            with self._polling_suspended():
+                origin = await self._jog_origin()
+                if origin is None:
+                    return False
+                target_x = origin[0] + dx_um
+                target_y = origin[1] + dy_um
+                self._log_start_corner_premove(target_x, target_y)
+                await self._set_travel_speed(self._jog_speed_mm_min)
+                target = await self._jog_move_to(target_x, target_y)
+                await self._wait_for_frame_corner(*target, epoch=epoch)
+        finally:
+            self._jog_busy = False
+        return True
 
     def _corners_fit(self, corners: list[tuple[int, int]]) -> bool:
         """
