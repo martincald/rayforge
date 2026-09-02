@@ -184,7 +184,7 @@ class JogWidget(Gtk.Widget):
         self.go_scale_btn.connect("clicked", self._on_go_scale_clicked)
 
         self.cut_scale_btn = create_button(
-            "frame-symbolic",
+            "laser-on-symbolic",
             _("Cut a rectangle around the job outline"),
             label=_("Cut Scale"),
         )

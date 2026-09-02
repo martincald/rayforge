@@ -204,6 +204,19 @@ _RULES = """
     font-feature-settings: "tnum" 1;
 }
 
+/* The chosen start corner is a selection, so it takes the solid
+   accent and a white glyph. */
+.sc-panel togglebutton:checked {
+    background-color: @sc_accent;
+    color: #FFFFFF;
+}
+
+/* Canvas overlay toggles read as active with the soft accent. */
+.visibility-overlay button:checked {
+    background-color: @sc_accent_soft;
+    color: @sc_accent_text;
+}
+
 /* --- Laser live -------------------------------------------------- */
 /* The only place the spark gradient is allowed. */
 .sc-laser-live:checked {
