@@ -217,6 +217,18 @@ _RULES = """
     color: @sc_accent_text;
 }
 
+/* --- Cut Scale sheet --------------------------------------------- */
+/* The deck fires a solid red Cut. libadwaita tints destructive
+   responses instead, which reads as one more row rather than as
+   the thing that starts the laser. Scoped to this sheet so every
+   other confirmation keeps the platform styling. */
+.sc-sheet .response-area button.destructive-action {
+    background-image: none;
+    background-color: @sc_danger;
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
 /* --- Job progress ---------------------------------------------- */
 /* Driven by the job monitor's distance estimate, since Ruida
    reports nothing granular. */

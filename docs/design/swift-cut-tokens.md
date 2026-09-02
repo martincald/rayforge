@@ -253,6 +253,7 @@ provider and leaves `apply_css()` alone.
 | **Traffic-light window buttons** | Decoration layout is the platform's. The deck itself says *"on Windows they'd stay on the right."* Forcing macOS-style controls would move a control, which Direction A forbids. |
 | **Device page "On connect" group** — home-on-start, clear-alarm-on-connect | Both settings exist and are already surfaced, on the **Advanced** page (`advanced_preferences_page.py`). Artboard 2d groups them under Device. Relocating them is a control move, which the constraints forbid outright, so they stay on Advanced and pick up the new material there. |
 | **Hold-jog speed on the Device page** | Same reason. It is the jog panel's existing Jog Speed row; duplicating or moving it onto Device would move a control. |
+| **Ruida connection on the Device page** | The connection *is* shown, but on **General**, not Device. Hostname, Main Port 50200 and Jog Port 50207 are the Ruida driver's setup `VarSet` (`RuidaDriver.get_setup_vars`), which this app renders in General's "Driver Settings" group; the Device page is for settings read back *off* the controller, and says so when the driver cannot. Artboard 2d puts both on one page. Merging them is a control move. Both pages are captured for review instead. |
 | **Canvas watermark** | There is no watermark to rename — the app draws none, and artboard 3a shows none either (the "Swift Cut" lettering in the mock is *document content*, a workpiece). Branding is the one `APP_NAME` string, which carries the window title, the About dialog and the file-dialog filter labels. |
 | **In-header menu bar** (File/Edit/View…) | The app has an in-window `PopoverMenuBar` already; the deck's flat spacing is a layout change, not a surface change. Existing placement kept. |
 | **Canvas backdrop blur** | §3.1. |
@@ -269,7 +270,7 @@ provider and leaves `apply_css()` alone.
 | **A** | `rayforge/ui_gtk/theme.py`: token blocks + rules, light/dark provider, installed from `MainWindow`. Typography sizes. Canvas background follows theme. | app starts; suite green |
 | **B** | Icon tint semantics in the theme CSS; `Cut Scale` icon → `laser-on-symbolic`. No asset import (§2.2). | jog/scale/corner tests pass unmodified |
 | **C** | Cut Scale sheet text and styling (same fields, same handler); job-progress in the toolbar driven by the **estimate**; inspector locked while running; Stop red; branding → "Swift Cut". | protected-behaviour tests + handler-count test |
-| **D** *(optional)* | Estimate-driven kerf hairline, labelled estimated. Skipped if it needs pipeline/driver changes. | — |
+| **D** *(optional)* | Estimate-driven kerf hairline. **Not built** — see §6. | — |
 
 Branding changes `APP_NAME` in `rayforge/const.py` only. Module and
 package names stay `rayforge`; there is no code rename.
@@ -296,3 +297,37 @@ pass **unmodified**:
 * Export Ruida job (`.rd`); layer colour magenta `#D63AD6`.
 * Every signal handler and `machine_cmd` wiring — **zero handler
   removals**, asserted by a test that counts `connect()` calls.
+
+## 6. Commit D — the kerf animation, and why it is not here
+
+A–C landed clean, which was the gate for attempting D, and the stated
+skip condition did not apply: a kerf overlay needs no pipeline,
+encoder or driver change. The machinery is already in the tree —
+`simulator/op_player.py` has `seek_to_fraction()` and `render_state()`,
+which the 3D playback view already drives, and after Commit C the live
+`progress_fraction` reaches the UI.
+
+It is still not built, for a reason the brief's own gate does not
+cover: **it cannot be verified here.** The overlay only draws while a
+job is actually running on the controller, and this machine has no
+reachable Ruida (the capture run logged straight through connect and
+disconnect against 192.168.1.100). Shipping an animated canvas
+element — in the part of the app with the least coverage of visual
+output — on the strength of "it compiles and the other commits pass"
+would be worse work than saying so.
+
+It is also the one item that stops being a reskin. A–C change
+surfaces, tokens, icons, typography and four in-place presentational
+details. A progress-driven animated overlay is a new feature wearing
+the reskin's clothes.
+
+What a follow-up needs, for whoever picks it up:
+
+1. An `OpPlayer` seeded from the running job's ops, seeked from the
+   `progress_fraction` the job monitor already publishes.
+2. A canvas2d overlay element drawing the traversed prefix as a
+   magenta hairline with the spark gradient at the head — the one
+   place §1.1 allows spark.
+3. A label saying the position is estimated, because Ruida reports no
+   granular progress and the head shown is inferred, not measured.
+4. A machine, or a `ruida_simulator` run, to watch it against.

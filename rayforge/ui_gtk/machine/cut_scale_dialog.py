@@ -29,6 +29,7 @@ class CutScaleDialog(Adw.MessageDialog):
             **kwargs,
         )
         self._on_confirm = on_confirm
+        self.add_css_class("sc-sheet")
 
         self.add_response("cancel", _("Cancel"))
         self.add_response("cut", _("Cut"))
@@ -37,7 +38,6 @@ class CutScaleDialog(Adw.MessageDialog):
         self.set_close_response("cancel")
 
         group = Adw.PreferencesGroup()
-        group.add_css_class("sc-sheet")
 
         self.speed_row = SpeedSpinRow(
             _("Speed"),
