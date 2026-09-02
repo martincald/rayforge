@@ -4,9 +4,9 @@ from gettext import gettext as _
 from blinker import Signal
 from gi.repository import Gdk, Gtk
 
+from ..shared.util.time_format import format_clock
 from .action_registry import action_registry
 from .icons import get_icon
-from ..shared.util.time_format import format_clock
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
 from .sim3d import initialized as canvas3d_initialized

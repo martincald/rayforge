@@ -137,8 +137,14 @@ def shoot(theme: str) -> None:
     time.sleep(SETTLE)
 
     run_on_main_thread(lambda: _capture(win, f"main-window-{theme}"))
+
+    # JogWidget is a bare Gtk.Widget and its container box paints
+    # nothing either, so capturing either alone yields buttons
+    # floating on transparency. The bottom panel is the nearest
+    # ancestor with a surface (.sc-dock), and it is the deck's
+    # controls area anyway.
     run_on_main_thread(
-        lambda: _capture(win.bottom_panel.jog_widget, f"jog-panel-{theme}")
+        lambda: _capture(win.bottom_panel, f"jog-panel-{theme}")
     )
 
     # The Ruida connection - hostname, main port 50200, jog port
