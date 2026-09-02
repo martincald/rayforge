@@ -217,6 +217,25 @@ _RULES = """
     color: @sc_accent_text;
 }
 
+/* --- Job progress ---------------------------------------------- */
+/* Driven by the job monitor's distance estimate, since Ruida
+   reports nothing granular. */
+.sc-job-progress progressbar trough {
+    min-height: 5px;
+    border-radius: 3px;
+    background-color: @sc_fill_subtle;
+}
+
+.sc-job-progress progressbar progress {
+    min-height: 5px;
+    border-radius: 3px;
+    background-color: @sc_accent;
+}
+
+.sc-job-progress label {
+    color: @sc_fg_dim;
+}
+
 /* --- Laser live -------------------------------------------------- */
 /* The only place the spark gradient is allowed. */
 .sc-laser-live:checked {

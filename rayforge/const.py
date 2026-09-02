@@ -1,6 +1,6 @@
 """Constants for Rayforge application."""
 
-APP_NAME = "Rayforge"
+APP_NAME = "Swift Cut"
 MIME_TYPE_PROJECT = "application/x-rayforge-project"
 MIME_TYPE_SKETCH = "application/x-rayforge-sketch"
 

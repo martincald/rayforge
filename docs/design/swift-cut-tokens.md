@@ -251,6 +251,9 @@ provider and leaves `apply_css()` alone.
 | Deck element | Why it is skipped |
 | --- | --- |
 | **Traffic-light window buttons** | Decoration layout is the platform's. The deck itself says *"on Windows they'd stay on the right."* Forcing macOS-style controls would move a control, which Direction A forbids. |
+| **Device page "On connect" group** — home-on-start, clear-alarm-on-connect | Both settings exist and are already surfaced, on the **Advanced** page (`advanced_preferences_page.py`). Artboard 2d groups them under Device. Relocating them is a control move, which the constraints forbid outright, so they stay on Advanced and pick up the new material there. |
+| **Hold-jog speed on the Device page** | Same reason. It is the jog panel's existing Jog Speed row; duplicating or moving it onto Device would move a control. |
+| **Canvas watermark** | There is no watermark to rename — the app draws none, and artboard 3a shows none either (the "Swift Cut" lettering in the mock is *document content*, a workpiece). Branding is the one `APP_NAME` string, which carries the window title, the About dialog and the file-dialog filter labels. |
 | **In-header menu bar** (File/Edit/View…) | The app has an in-window `PopoverMenuBar` already; the deck's flat spacing is a layout change, not a surface change. Existing placement kept. |
 | **Canvas backdrop blur** | §3.1. |
 | **`transform: scale(.96)` press state** | GTK4 CSS has no `transform` on widgets. Substituted with the existing `:active` background shift. |
@@ -265,11 +268,19 @@ provider and leaves `apply_css()` alone.
 | — | This document | committed before any code |
 | **A** | `rayforge/ui_gtk/theme.py`: token blocks + rules, light/dark provider, installed from `MainWindow`. Typography sizes. Canvas background follows theme. | app starts; suite green |
 | **B** | Icon tint semantics in the theme CSS; `Cut Scale` icon → `laser-on-symbolic`. No asset import (§2.2). | jog/scale/corner tests pass unmodified |
-| **C** | Cut Scale sheet styling (same fields, same handler); machine settings sidebar + Device page surface; job-progress in the toolbar driven by the **estimate**; inspector locked while running; Stop red; branding → "Swift Cut". | protected-behaviour tests + handler-count test |
+| **C** | Cut Scale sheet text and styling (same fields, same handler); job-progress in the toolbar driven by the **estimate**; inspector locked while running; Stop red; branding → "Swift Cut". | protected-behaviour tests + handler-count test |
 | **D** *(optional)* | Estimate-driven kerf hairline, labelled estimated. Skipped if it needs pipeline/driver changes. | — |
 
 Branding changes `APP_NAME` in `rayforge/const.py` only. Module and
 package names stay `rayforge`; there is no code rename.
+
+The machine settings dialog is already the System-Settings layout the
+deck draws: `Adw.NavigationSplitView` with a category list on the left
+and a page stack on the right, and a Device page that already renders
+the Ruida driver's own var set — host, port 50200, jog port 50207 —
+plus live connection state. It needed no restructuring; Commit A's
+`sidebar_bg_color` / `view_bg_color` overrides give it the new
+material where it stands.
 
 ## 5. Protected behaviour
 

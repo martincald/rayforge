@@ -721,7 +721,19 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_job_started(self, sender):
         logger.debug("Job started")
         self.machine_selector.update_eta(None)
+        self.toolbar.set_job_progress(0.0)
+        self._set_inspector_locked(True)
         self._update_actions_and_ui()
+
+    def _set_inspector_locked(self, locked: bool):
+        """
+        Lock the inspector while the machine is running a job.
+
+        Editing the workflow under a job that has already been
+        encoded and sent would show settings the running job is
+        not using.
+        """
+        self._right_pane.set_sensitive(not locked)
 
     def _on_addon_state_changed(self, sender, addon_name):
         """Handle addon enable/disable to refresh action handlers."""
@@ -732,11 +744,16 @@ class MainWindow(Adw.ApplicationWindow):
         """Callback for when job progress is updated."""
         eta_seconds = metrics.get("eta_seconds")
         self.machine_selector.update_eta(eta_seconds)
+        self.toolbar.set_job_progress(
+            metrics.get("progress_fraction"), eta_seconds
+        )
 
     def _on_job_finished(self, sender):
         """Handles the completion of a machine job."""
         logger.debug("Job finished")
         self.machine_selector.update_eta(None)
+        self.toolbar.set_job_progress(None)
+        self._set_inspector_locked(False)
 
     def _on_job_future_done(self, future: Future):
         """Callback for when the job submission task completes or fails."""
@@ -749,6 +766,8 @@ class MainWindow(Adw.ApplicationWindow):
             # will never fire, so we must stop the live view here to prevent
             # the UI from getting stuck.
             self.machine_selector.update_eta(None)
+            self.toolbar.set_job_progress(None)
+            self._set_inspector_locked(False)
 
         # Ensure UI is updated (e.g. Cancel button disabled, others enabled)
         self._update_actions_and_ui()

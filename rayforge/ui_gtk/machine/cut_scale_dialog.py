@@ -21,8 +21,11 @@ class CutScaleDialog(Adw.MessageDialog):
         **kwargs,
     ):
         super().__init__(
-            heading=_("Cut Scale"),
-            body=_("Cut a rectangle around the job's bounding box."),
+            heading=_("Cut a scale outline?"),
+            body=_(
+                "Cuts a rectangle around the job's bounding box "
+                "from the head's current corner. The laser fires."
+            ),
             **kwargs,
         )
         self._on_confirm = on_confirm
@@ -34,6 +37,7 @@ class CutScaleDialog(Adw.MessageDialog):
         self.set_close_response("cancel")
 
         group = Adw.PreferencesGroup()
+        group.add_css_class("sc-sheet")
 
         self.speed_row = SpeedSpinRow(
             _("Speed"),

@@ -6,6 +6,7 @@ from gi.repository import Gdk, Gtk
 
 from .action_registry import action_registry
 from .icons import get_icon
+from ..shared.util.time_format import format_clock
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
 from .sim3d import initialized as canvas3d_initialized
@@ -208,8 +209,52 @@ class MainToolbar(Gtk.Box):
         self.machine_warning_box.add_controller(warning_click)
         self.append(self.machine_warning_box)
 
+        # The running job's activity area. Hidden until a job
+        # starts.
+        self.job_progress_box = Gtk.Box(spacing=6)
+        self.job_progress_box.set_margin_start(12)
+        self.job_progress_box.set_valign(Gtk.Align.CENTER)
+        self.job_progress_box.add_css_class("sc-job-progress")
+        self.job_progress_bar = Gtk.ProgressBar()
+        self.job_progress_bar.set_valign(Gtk.Align.CENTER)
+        self.job_progress_bar.set_size_request(120, -1)
+        self.job_progress_label = Gtk.Label()
+        self.job_progress_label.add_css_class("caption")
+        self.job_progress_box.append(self.job_progress_bar)
+        self.job_progress_box.append(self.job_progress_label)
+        self.job_progress_box.set_visible(False)
+        self.append(self.job_progress_box)
+
         # Connect to action registry changes for dynamic toolbar updates
         action_registry.changed.connect(self._on_action_registry_changed)
+
+    def set_job_progress(
+        self,
+        fraction: float | None,
+        eta_seconds: float | None = None,
+    ):
+        """
+        Show how far along the running job is, or hide the area.
+
+        The Ruida controller reports no granular progress, so the
+        fraction is the job monitor's distance estimate rather than
+        a measurement, and the label beside it says so.
+        """
+        if fraction is None:
+            self.job_progress_box.set_visible(False)
+            return
+        self.job_progress_bar.set_fraction(
+            max(0.0, min(1.0, fraction))
+        )
+        if eta_seconds and eta_seconds > 0:
+            self.job_progress_label.set_text(
+                _("~{time} left").format(
+                    time=format_clock(eta_seconds)
+                )
+            )
+        else:
+            self.job_progress_label.set_text(_("Estimated"))
+        self.job_progress_box.set_visible(True)
 
     def _on_recalculate_pressed(self, gesture, n_press, x, y):
         self._recalculate_force = bool(
