@@ -40,6 +40,7 @@ class LaserControlWidget(Gtk.Box):
         self._toggle_btn = Gtk.ToggleButton()
         self._toggle_btn.set_child(get_icon("laser-off-symbolic"))
         self._toggle_btn.add_css_class("flat")
+        self._toggle_btn.add_css_class("sc-laser-live")
         self._toggle_btn.set_valign(Gtk.Align.CENTER)
         self._toggle_btn.set_tooltip_text(_("Toggle laser on/off"))
         self._toggle_btn.connect("clicked", self._on_toggle_clicked)

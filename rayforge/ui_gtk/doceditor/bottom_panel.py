@@ -53,6 +53,7 @@ class BottomPanel(Gtk.Box):
         **kwargs,
     ):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
+        self.add_css_class("sc-dock")
 
         self.notification_requested = Signal()
         self.click_to_zero_mode_changed = Signal()
@@ -290,6 +291,7 @@ class BottomPanel(Gtk.Box):
     def _setup_wcs_controls(self):
         self.wcs_group = Adw.PreferencesGroup()
         self.wcs_group.add_css_class("compact")
+        self.wcs_group.add_css_class("sc-panel")
 
         if self.machine:
             self.wcs_list = self.machine.supported_wcs

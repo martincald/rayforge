@@ -90,6 +90,7 @@ class JogWidget(Gtk.Widget):
         self._root_window: Gtk.Window | None = None
 
         self.set_focusable(True)
+        self.add_css_class("sc-jog")
 
         def create_button(icon_name, tooltip, label=None):
             button = Gtk.Button()

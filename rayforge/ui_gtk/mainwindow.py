@@ -66,6 +66,7 @@ from .sim3d import initialized as canvas3d_initialized
 from .sim3d.camera import ViewDirection
 from .sim3d.playback_overlay import PlaybackOverlay
 from .sim3d.viewport import ViewportConfig
+from .theme import install as install_theme
 from .toolbar import MainToolbar
 from .view_mode_cmd import ViewModeCmd
 
@@ -266,6 +267,7 @@ class MainWindow(Adw.ApplicationWindow):
             Gtk.StyleContext.add_provider_for_display(
                 display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )
+        install_theme()
 
         # Determine initial machine dimensions for canvases.
         context = get_context()

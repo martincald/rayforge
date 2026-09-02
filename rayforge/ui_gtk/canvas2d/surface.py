@@ -111,6 +111,7 @@ class WorkSurface(WorldSurface):
             reverse_y_axis=reverse_y_axis,
             **kwargs,
         )
+        self.add_css_class("sc-canvas")
 
         # Keep the grid unit labels in sync with the user's unit preference.
         self._axis_renderer.set_grid_unit_factor(

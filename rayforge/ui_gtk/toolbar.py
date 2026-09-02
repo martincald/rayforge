@@ -30,6 +30,7 @@ class MainToolbar(Gtk.Box):
         self.set_margin_top(2)
         self.set_margin_start(12)
         self.set_margin_end(12)
+        self.add_css_class("sc-toolbar")
 
         # File related buttons (open, save, import, export)
         self.open_button = Gtk.Button(child=get_icon("open-symbolic"))
@@ -182,6 +183,7 @@ class MainToolbar(Gtk.Box):
         self.focus_off_icon = get_icon("laser-off-symbolic")
         self.focus_button = Gtk.ToggleButton()
         self.focus_button.set_child(self.focus_on_icon)
+        self.focus_button.add_css_class("sc-laser-live")
         self.focus_button.set_tooltip_text(_("Toggle focus laser"))
         self.focus_button.set_action_name("win.toggle-focus")
         self.focus_button.connect("toggled", self._on_focus_toggled)
