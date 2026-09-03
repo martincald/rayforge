@@ -100,6 +100,21 @@ _SHARED_TOKENS = """
 @define-color destructive_color @sc_danger;
 @define-color success_color @sc_ok;
 @define-color borders @sc_hairline;
+
+/* The GTK3-era names, which 14 files still colour themselves with -
+   the dock, the layer column, the asset browser, the canvas and 3D
+   overlays, round_button, key, icon_tab_widget, expression_entry.
+   Until these are defined they resolve to the stock theme, which is
+   the main reason the reskin looked applied in some places and not
+   others. Every one of the 39 uses is a background, a subtle alpha()
+   fill or a selection highlight, so the mapping is exact; defining
+   the aliases beats editing 14 files and keeps working for code not
+   yet written. */
+@define-color theme_bg_color @sc_panel_bg;
+@define-color theme_fg_color @sc_fg;
+@define-color theme_base_color @sc_card_bg;
+@define-color theme_selected_bg_color @sc_accent;
+@define-color theme_selected_fg_color #FFFFFF;
 """
 
 # Rules are scoped to the surfaces the reskin actually covers. A bare
@@ -200,7 +215,8 @@ _RULES = """
 
 /* Readouts hold their column when the digits change. */
 .sc-jog .numeric,
-.numeric {
+.numeric,
+.sc-numeric {
     font-feature-settings: "tnum" 1;
 }
 
@@ -259,12 +275,89 @@ _RULES = """
 }
 """
 
+# The layout layer, from docs/design/swift-cut-layout.md. Kept apart
+# from _RULES because it answers a different question: _RULES says
+# what a surface is made of, this says how big it is and where it
+# sits. The Python half of the same map - margins, box spacing, size
+# requests - is in rayforge/ui_gtk/layout.py.
+_LAYOUT = """
+/* --- Control sizes: two density contexts ------------------------ */
+/* Compact is pointer work. Touch is the jog grid, and only the jog
+   grid: the one surface an operator hits while watching the machine
+   rather than the screen. */
+.sc-toolbar > button,
+.sc-toolbar > togglebutton,
+.sc-split > button,
+.sc-rail button,
+.sc-overlay button,
+.sc-icon-button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+}
+
+.sc-jog button {
+    min-width: 60px;
+    min-height: 60px;
+    padding: 0;
+}
+
+/* One glyph size in both contexts. A jog button is a bigger target,
+   not a bigger picture. */
+.sc-toolbar image,
+.sc-jog image,
+.sc-rail image,
+.sc-overlay image,
+.sc-icon-button image {
+    -gtk-icon-size: 16px;
+}
+
+/* --- Row rhythm -------------------------------------------------- */
+.sc-panel row {
+    min-height: 40px;
+}
+
+/* Trailing controls share one box, so their spacing and their
+   trailing edge are the same in every row. */
+.sc-suffix {
+    margin-right: 0;
+}
+
+/* --- Radii ------------------------------------------------------- */
+/* The map in swift-cut-tokens.md 1.4 is the whole set. These three
+   are the surfaces that predate the reskin and drifted off it. */
+list.boxed-list,
+.card {
+    border-radius: 10px;
+}
+
+.sc-overlay {
+    border-radius: 9px;
+}
+
+.sc-rail button {
+    border-radius: 5px;
+}
+
+/* --- Type roles -------------------------------------------------- */
+/* Four roles, one class each. dim-label, caption, title-4 and
+   caption-heading all collapse into these. */
+.sc-title {
+    font-weight: 600;
+}
+
+.sc-caption {
+    font-size: 11px;
+    color: @sc_fg_dim;
+}
+"""
+
 _provider: Gtk.CssProvider | None = None
 
 
 def _css_for(dark: bool) -> str:
     tokens = _DARK_TOKENS if dark else _LIGHT_TOKENS
-    return tokens + _SHARED_TOKENS + _RULES
+    return tokens + _SHARED_TOKENS + _RULES + _LAYOUT
 
 
 def _reload(style_manager: Adw.StyleManager, *args) -> None:

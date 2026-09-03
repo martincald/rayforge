@@ -48,7 +48,9 @@ def run_on_main_thread(func: Callable[[], T], timeout: float = 20.0) -> T:
 
 
 def _min_width(widget: Gtk.Widget) -> int:
-    minimum, _natural, _b1, _b2 = widget.measure(Gtk.Orientation.HORIZONTAL, -1)
+    minimum, _nat, _b1, _b2 = widget.measure(
+        Gtk.Orientation.HORIZONTAL, -1
+    )
     return minimum
 
 
