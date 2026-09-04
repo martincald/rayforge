@@ -103,59 +103,78 @@ class TestSetZoomAndRebuildViewTransform:
 
 
 class TestScrollZoomClamping:
-    """Pins on_scroll's MIN_ZOOM_FACTOR / MAX_PIXELS_PER_MM clamps."""
+    """
+    Pins on_scroll's zoom bounds. Package D changed two things this
+    class must account for:
 
-    def test_zoom_in_is_clamped_to_max_pixels_per_mm(
-        self, world_surface_factory
+    1. Wheel-notch zoom is now an animated discrete step (Package D3)
+       instead of an instant jump, so each step's ~180ms animation
+       must be finished (via the finish_animation fixture) before the
+       next scroll, for a loop of repeated notches to reach the clamp.
+    2. Package D5 added a soft "keep >=20% of the bed visible" clamp
+       (MIN_VISIBLE_BED_FRACTION) that is now the BINDING max-zoom
+       constraint for this 800x600px / 200x150mm setup: max zoom is
+       now 1/0.2 = 5.0, tighter than the old MAX_PIXELS_PER_MM-derived
+       ~26.2 this test used to pin (see
+       WorldSurface._update_zoom_bounds).
+    """
+
+    def test_zoom_in_is_clamped_to_the_visible_bed_fraction(
+        self, world_surface_factory, wheel_scroll_controller, finish_animation
     ):
         s = world_surface_factory()
         s._mouse_pos = (400.0, 300.0)
-        controller = MagicMock()
-        base_ppm = s._axis_renderer.get_base_pixels_per_mm(800, 600)
+        controller = wheel_scroll_controller()
 
         # Scroll "up" (dy < 0 means zoom in) far more than enough steps
         # to hit the clamp.
         for _ in range(200):
             s.on_scroll(controller, 0.0, -1.0)
+            finish_animation(s)
 
-        achieved_ppm = base_ppm * s.zoom_level
-        assert achieved_ppm == pytest.approx(s.MAX_PIXELS_PER_MM)
+        assert s.zoom_level == pytest.approx(
+            1.0 / s.MIN_VISIBLE_BED_FRACTION
+        )
 
     def test_zoom_out_is_clamped_to_min_zoom_factor(
-        self, world_surface_factory
+        self, world_surface_factory, wheel_scroll_controller, finish_animation
     ):
         s = world_surface_factory()
         s._mouse_pos = (400.0, 300.0)
-        controller = MagicMock()
+        controller = wheel_scroll_controller()
 
         # Scroll "down" (dy > 0 means zoom out) far more than enough
         # steps to hit the clamp.
         for _ in range(200):
             s.on_scroll(controller, 0.0, 1.0)
+            finish_animation(s)
 
         assert s.zoom_level == pytest.approx(s.MIN_ZOOM_FACTOR)
 
 
 class TestScrollZoomAboutCursor:
-    """Pins on_scroll's compensating set_pan (worldsurface.py:229-237)."""
+    """Pins on_scroll's zoom-about-pointer invariant."""
 
     def test_world_point_under_cursor_is_stable_across_a_zoom_step(
-        self, world_surface_factory
+        self, world_surface_factory, wheel_scroll_controller, finish_animation
     ):
         """
-        The world coordinate under the mouse before a single scroll
-        step matches the world coordinate under the mouse after the
-        step, to within floating-point noise (observed ~1.4e-14 for
-        this scenario, well inside the 1e-9 tolerance asserted here).
-        This is the CURRENT precision -- not an asserted ideal.
+        Package D3 made wheel-notch zoom an animated discrete step, so
+        this invariant now holds once the animation completes (fast-
+        forwarded here via finish_animation), rather than immediately
+        after on_scroll returns as in stage 1. The achieved precision
+        (within 1e-9) is unchanged: Package D2's exact closed-form
+        zoom-about-point (Camera.zoom_about_point) is algebraically
+        equivalent to stage 1's world-coordinate round-trip.
         """
         s = world_surface_factory()
         cursor_px = (300.0, 250.0)
         s._mouse_pos = cursor_px
         world_before = s._get_world_coords(*cursor_px)
 
-        controller = MagicMock()
+        controller = wheel_scroll_controller()
         s.on_scroll(controller, 0.0, -1.0)
+        finish_animation(s)
 
         world_after = s._get_world_coords(*cursor_px)
         assert world_after[0] == pytest.approx(world_before[0], abs=1e-9)

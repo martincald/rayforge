@@ -61,3 +61,63 @@ class Camera:
             start_pan_x_mm - delta_x_mm,
             start_pan_y_mm + delta_y_mm,
         )
+
+    def zoom_about_point(
+        self,
+        pointer_x_px: float,
+        pointer_y_px: float,
+        new_zoom: float,
+        base_scale_x_px_per_mm: float,
+        base_scale_y_px_per_mm: float,
+        content_x: float,
+        content_y: float,
+        content_h: float,
+    ) -> tuple[float, float, float]:
+        """
+        Computes the (zoom, pan_x_mm, pan_y_mm) that result from
+        zooming this camera to ``new_zoom`` (clamped to the current
+        bounds, see ``set_zoom_bounds``) while keeping the world point
+        currently under the screen point (pointer_x_px, pointer_y_px)
+        fixed under that same screen point. Does not mutate this
+        Camera -- callers apply the result via set_zoom/set_pan,
+        either immediately (for zero-lag gestures like pinch and
+        trackpad Ctrl+scroll) or as an animation target (for discrete
+        steps like a wheel notch).
+
+        ``base_scale_x_px_per_mm``/``base_scale_y_px_per_mm`` are the
+        view's pixels-per-mm scale at zoom=1.0, and
+        ``content_x``/``content_y``/``content_h`` are the content
+        area's layout in widget pixels (see
+        AxisRenderer.get_content_layout) -- both are independent of
+        zoom/pan and describe the same view transform composed by
+        WorldSurface._rebuild_view_transform:
+
+            screen_x = content_x + zoom*base_scale_x*(world_x - pan_x)
+            screen_y = content_y + zoom*content_h
+                       - zoom*base_scale_y*(world_y - pan_y)
+
+        Solving both for the world point under the pointer, before and
+        after the zoom change, and requiring it to stay identical,
+        gives this closed-form pan update -- exact to floating-point
+        precision, with no matrix inversion needed.
+        """
+        zoom = max(self._min_zoom, min(new_zoom, self._max_zoom))
+        old_zoom = self.zoom
+        if old_zoom == 0 or zoom == old_zoom:
+            return zoom, self.pan_x_mm, self.pan_y_mm
+
+        old_sx = old_zoom * base_scale_x_px_per_mm
+        old_sy = old_zoom * base_scale_y_px_per_mm
+        world_x = self.pan_x_mm + (pointer_x_px - content_x) / old_sx
+        world_y = self.pan_y_mm + (
+            content_y + old_zoom * content_h - pointer_y_px
+        ) / old_sy
+
+        new_sx = zoom * base_scale_x_px_per_mm
+        new_sy = zoom * base_scale_y_px_per_mm
+        new_pan_x = world_x - (pointer_x_px - content_x) / new_sx
+        new_pan_y = world_y - (
+            content_y + zoom * content_h - pointer_y_px
+        ) / new_sy
+
+        return zoom, new_pan_x, new_pan_y
