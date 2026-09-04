@@ -4,6 +4,7 @@ from gi.repository import Gdk, Graphene, Gtk
 from raygeo.geo import Matrix
 
 from .axis import AxisRenderer
+from .camera import Camera
 from .canvas import Canvas
 
 logger = logging.getLogger(__name__)
@@ -39,9 +40,7 @@ class WorldSurface(Canvas):
         logger.debug("WorldSurface.__init__ called")
         super().__init__(**kwargs)
         self.grid_size = 1.0  # Set snap grid to 1mm in world coordinates
-        self.zoom_level = 1.0
-        self.pan_x_mm = 0.0
-        self.pan_y_mm = 0.0
+        self._camera = Camera()
         self._last_view_scale_x: float = 0.0
         self._last_view_scale_y: float = 0.0
         self.width_mm = width_mm
@@ -99,6 +98,21 @@ class WorldSurface(Canvas):
         # track the motion event...
         self._mouse_pos = (0.0, 0.0)
 
+    @property
+    def zoom_level(self) -> float:
+        """The current zoom level. Use set_zoom to change it."""
+        return self._camera.zoom
+
+    @property
+    def pan_x_mm(self) -> float:
+        """The current pan X offset, in mm. Use set_pan to change it."""
+        return self._camera.pan_x_mm
+
+    @property
+    def pan_y_mm(self) -> float:
+        """The current pan Y offset, in mm. Use set_pan to change it."""
+        return self._camera.pan_y_mm
+
     def set_show_grid(self, show: bool):
         """Sets the visibility of the inner grid lines."""
         self._axis_renderer.show_grid = show
@@ -140,17 +154,27 @@ class WorldSurface(Canvas):
 
     def set_pan(self, pan_x_mm: float, pan_y_mm: float) -> None:
         """Sets the pan position in mm and updates the axis importer."""
-        self.pan_x_mm = pan_x_mm
-        self.pan_y_mm = pan_y_mm
+        self._camera.set_pan(pan_x_mm, pan_y_mm)
         self._rebuild_view_transform()
         self.queue_draw()
 
     def set_zoom(self, zoom_level: float) -> None:
         """
-        Sets the zoom level and updates the axis importer.
-        The caller is responsible for ensuring the zoom_level is clamped.
+        Sets the zoom level and updates the axis importer. The value is
+        clamped to [MIN_ZOOM_FACTOR, the zoom level that reaches
+        MAX_PIXELS_PER_MM for the current widget size] by the Camera,
+        so clamping cannot be bypassed by calling this directly.
         """
-        self.zoom_level = zoom_level
+        base_ppm = self._axis_renderer.get_base_pixels_per_mm(
+            self.get_width(), self.get_height()
+        )
+        max_zoom = (
+            self.MAX_PIXELS_PER_MM / base_ppm
+            if base_ppm > 0
+            else float("inf")
+        )
+        self._camera.set_zoom_bounds(self.MIN_ZOOM_FACTOR, max_zoom)
+        self._camera.set_zoom(zoom_level)
         self._rebuild_view_transform()
         self.queue_draw()
 
@@ -404,6 +428,36 @@ class WorldSurface(Canvas):
             return
         super().on_click_released(gesture, n_press, x, y)
 
+    def _pan_by_drag_offset(
+        self, offset_x_px: float, offset_y_px: float
+    ) -> None:
+        """
+        Pans the view by a pixel-space drag offset, relative to the pan
+        position stored in self._pan_start at the start of the drag.
+        Shared by middle-drag (on_pan_update) and Space+drag
+        (on_mouse_drag) so their math cannot drift apart.
+        """
+        widget_w, widget_h = self.get_width(), self.get_height()
+        if widget_w <= 0 or widget_h <= 0:
+            return
+
+        _, _, content_w, content_h = self._axis_renderer.get_content_layout(
+            widget_w, widget_h
+        )
+
+        base_scale_x = content_w / self.width_mm if self.width_mm > 0 else 1
+        base_scale_y = content_h / self.height_mm if self.height_mm > 0 else 1
+
+        new_pan_x, new_pan_y = self._camera.pan_by_pixel_offset(
+            self._pan_start[0],
+            self._pan_start[1],
+            offset_x_px,
+            offset_y_px,
+            base_scale_x * self.zoom_level,
+            base_scale_y * self.zoom_level,
+        )
+        self.set_pan(new_pan_x, new_pan_y)
+
     def on_mouse_drag(
         self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float
     ) -> None:
@@ -412,29 +466,7 @@ class WorldSurface(Canvas):
             ok, drag_offset_x, drag_offset_y = gesture.get_offset()
             if not ok:
                 return
-
-            widget_w, widget_h = self.get_width(), self.get_height()
-            if widget_w <= 0 or widget_h <= 0:
-                return
-
-            _, _, content_w, content_h = (
-                self._axis_renderer.get_content_layout(widget_w, widget_h)
-            )
-
-            base_scale_x = (
-                content_w / self.width_mm if self.width_mm > 0 else 1
-            )
-            base_scale_y = (
-                content_h / self.height_mm if self.height_mm > 0 else 1
-            )
-
-            delta_x_mm = drag_offset_x / (base_scale_x * self.zoom_level)
-            delta_y_mm = drag_offset_y / (base_scale_y * self.zoom_level)
-
-            new_pan_x = self._pan_start[0] - delta_x_mm
-            new_pan_y = self._pan_start[1] + delta_y_mm
-
-            self.set_pan(new_pan_x, new_pan_y)
+            self._pan_by_drag_offset(drag_offset_x, drag_offset_y)
             return
         super().on_mouse_drag(gesture, offset_x, offset_y)
 
@@ -463,32 +495,13 @@ class WorldSurface(Canvas):
 
         logger.debug(f"Pan update: offset=({offset_x:.2f}, {offset_y:.2f})")
 
-        # We need to convert the pixel offset into a mm delta. This delta
-        # is independent of the pan, so we can calculate it from the scale.
-        widget_w, widget_h = self.get_width(), self.get_height()
-        if widget_w <= 0 or widget_h <= 0:
-            return
-
-        _, _, content_w, content_h = self._axis_renderer.get_content_layout(
-            widget_w, widget_h
-        )
-
-        base_scale_x = content_w / self.width_mm if self.width_mm > 0 else 1
-        base_scale_y = content_h / self.height_mm if self.height_mm > 0 else 1
-
-        delta_x_mm = offset_x / (base_scale_x * self.zoom_level)
-        delta_y_mm = offset_y / (base_scale_y * self.zoom_level)
-
         # The world-to-view transform is always Y-inverting. To make the
         # content follow the mouse ("natural" panning), the logic must be
         # consistent. A rightward drag (positive offset_x) requires a
         # negative adjustment to pan_x. A downward drag (positive offset_y)
         # requires a positive adjustment to pan_y because of the Y-inversion
-        # in the transform matrix.
-        new_pan_x = self._pan_start[0] - delta_x_mm
-        new_pan_y = self._pan_start[1] + delta_y_mm
-
-        self.set_pan(new_pan_x, new_pan_y)
+        # in the transform matrix. See _pan_by_drag_offset / Camera.
+        self._pan_by_drag_offset(offset_x, offset_y)
 
     def on_pan_end(self, gesture: Gtk.GestureDrag, x: float, y: float) -> None:
         logger.debug(f"Pan end at ({x:.2f}, {y:.2f})")

@@ -88,16 +88,18 @@ class TestSetZoomAndRebuildViewTransform:
 
         assert s.view_transform.is_close(expected, tol=1e-9)
 
-    def test_set_zoom_is_unclamped(self, world_surface_factory):
+    def test_set_zoom_clamps_to_min_zoom_factor(self, world_surface_factory):
         """
-        set_zoom documents that "the caller is responsible for ensuring
-        the zoom_level is clamped" -- it applies whatever value it is
-        given, including values a real caller (on_scroll) would never
-        produce.
+        Package D stage 2 moved zoom clamping from the caller (on_scroll)
+        into the Camera, so it cannot be bypassed by calling set_zoom
+        directly. This intentionally changes the previous "unclamped"
+        behaviour: a value a real caller (on_scroll) would never produce,
+        like -5.0, is now clamped to MIN_ZOOM_FACTOR instead of being
+        applied as-is.
         """
         s = world_surface_factory()
         s.set_zoom(-5.0)
-        assert s.zoom_level == -5.0
+        assert s.zoom_level == pytest.approx(s.MIN_ZOOM_FACTOR)
 
 
 class TestScrollZoomClamping:
