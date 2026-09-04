@@ -10,6 +10,7 @@ from ...context import get_context
 from ...shared.tasker import task_mgr
 from ..driver.driver import ResourceBusyError
 from .controller import MachineController
+from .default_profile import ILAB_614_PROFILE
 from .machine import Machine
 
 logger = logging.getLogger(__name__)
@@ -206,7 +207,7 @@ class MachineManager:
         return sorted(self.machines.values(), key=lambda m: m.name)
 
     def create_default_machine(self):
-        machine = Machine(get_context())
+        machine = Machine.from_dict(ILAB_614_PROFILE, context=get_context())
         self.add_machine(machine)
         return machine
 

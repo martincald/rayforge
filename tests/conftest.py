@@ -92,6 +92,34 @@ if TYPE_CHECKING:
     from rayforge.machine.models.machine import Machine
 
 
+def _seed_inert_machine(machine_dir: Path, context) -> None:
+    """
+    Pre-seeds an isolated, empty machine directory with a driverless
+    placeholder machine.
+
+    Fixtures that point MachineManager at a fresh temp directory would
+    otherwise leave it empty, triggering
+    MachineManager.create_default_machine() and silently loading the
+    bundled ilab-614 profile -- a real, network-reachable Ruida machine
+    with auto_connect enabled. That is unsafe in tests (it schedules a
+    real connection attempt), so fixtures call this first to make the
+    directory non-empty with a driverless machine instead, matching
+    Machine's own built-in defaults (bare 200x200mm, no driver).
+    """
+    import yaml
+
+    from rayforge.machine.models.machine import Machine
+
+    machine_dir.mkdir(parents=True, exist_ok=True)
+    placeholder = machine_dir / "00000000-0000-0000-0000-000000000000.yaml"
+    machine = Machine(context)
+    data = machine.to_dict(include_frozen_dialect=False)
+    context.dialect_mgr.dialects_changed.disconnect(
+        machine._on_dialects_changed
+    )
+    placeholder.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+
 def _test_worker_initializer(shared_state: dict):
     """
     A top-level, picklable worker initializer for the test environment.
@@ -259,8 +287,12 @@ async def context_initializer(tmp_path, task_mgr, monkeypatch):
     # 2. Patch the global task_mgr proxy to use our test-isolated instance.
     monkeypatch.setattr(tasker.task_mgr, "_instance", task_mgr)
 
-    # 3. Get the context and configure for headless mode
+    # 3. Get the context and configure for headless mode. The machine
+    # directory must be seeded before anything can trigger the lazy
+    # machine_mgr property (e.g. below via addon_mgr, or in the test
+    # itself), or it would load the bundled ilab-614 default instead.
     context = get_context()
+    _seed_inert_machine(temp_machine_dir, context)
     context._headless = True
 
     # 4. Access addon_mgr to trigger lazy loading.
@@ -480,6 +512,7 @@ def ui_context_initializer(tmp_path, monkeypatch, ui_task_mgr):
     monkeypatch.setattr(tasker.task_mgr, "_instance", ui_task_mgr)
 
     context = get_context()
+    _seed_inert_machine(temp_machine_dir, context)
 
     # Trigger addon loading. task_mgr is passed at construction time
     # via the global proxy, so the manifest is built automatically.
