@@ -16,7 +16,6 @@ from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .addon_dialog import AddonRegistryDialog
-from .experimental_dialog import ExperimentalAddonDialog
 from .license_dialog import LicenseRequiredDialog
 
 logger = logging.getLogger(__name__)
@@ -346,11 +345,7 @@ class AddonListWidget(PreferencesGroupWithButton):
         am = context.addon_mgr
 
         if enable:
-            addon = am.get_installed_addon(addon_name)
-            if addon and addon.metadata.maturity == AddonMaturity.EXPERIMENTAL:
-                self._confirm_enable_experimental(addon_name, addon)
-            else:
-                self._enable_addon(addon_name)
+            self._enable_addon(addon_name)
         else:
             can_disable, reason = am.can_disable(addon_name)
             if not can_disable:
@@ -378,19 +373,6 @@ class AddonListWidget(PreferencesGroupWithButton):
                     )
 
             self.populate_addons()
-
-    def _confirm_enable_experimental(self, addon_name: str, addon: Addon):
-        """Ask for confirmation before enabling an experimental addon."""
-        display_name = addon.metadata.display_name or addon.metadata.name
-        dialog = ExperimentalAddonDialog(
-            addon_name=display_name,
-            on_enable=lambda: self._enable_addon(addon_name),
-            on_cancel=self.populate_addons,
-        )
-        root = cast(Gtk.Window, self.get_root())
-        if root:
-            dialog.set_transient_for(root)
-        dialog.present()
 
     def _enable_addon(self, addon_name: str):
         """Enable an addon, prompting for missing dependencies."""
