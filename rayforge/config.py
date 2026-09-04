@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from pathlib import Path
 
 from platformdirs import user_config_dir, user_log_dir
@@ -7,12 +8,31 @@ from platformdirs import user_config_dir, user_log_dir
 logger = logging.getLogger(__name__)
 
 
+def _migrate_legacy_config_dir(old_dir: Path, new_dir: Path) -> None:
+    """
+    Copy a pre-rebrand "rayforge" config directory into the new
+    "swiftcut" location on first run.
+
+    The old directory is only ever read from - it is never moved,
+    deleted, or modified, since it may hold the user's live machine
+    profile. This is a no-op (and logs nothing) if `new_dir` already
+    exists or if there is no legacy directory to migrate from, which
+    also makes it safe to call on every startup.
+    """
+    if new_dir.exists() or not old_dir.is_dir():
+        return
+    shutil.copytree(old_dir, new_dir)
+    logger.info(f"Migrated config from {old_dir} to {new_dir}")
+
+
 def _get_config_dir() -> Path:
     """Get the config directory, respecting RAYFORGE_CONFIG_DIR env var."""
     env_config = os.environ.get("RAYFORGE_CONFIG_DIR")
     if env_config:
         return Path(env_config)
-    return Path(user_config_dir("rayforge"))
+    new_dir = Path(user_config_dir("swiftcut"))
+    _migrate_legacy_config_dir(Path(user_config_dir("rayforge")), new_dir)
+    return new_dir
 
 
 CONFIG_DIR = _get_config_dir()
@@ -55,7 +75,7 @@ USER_DEVICES_DIR = CONFIG_DIR / "devices"
 BUILTIN_DEVICES_DIR = Path(__file__).parent / "resources" / "devices"
 
 # State files (like logs)
-LOG_DIR = Path(user_log_dir("rayforge"))
+LOG_DIR = Path(user_log_dir("swiftcut"))
 logger.info(f"Log dir is {LOG_DIR}")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
