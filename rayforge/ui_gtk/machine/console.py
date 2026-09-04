@@ -12,7 +12,6 @@ from ...logging_setup import (
 )
 from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
-from ...usage import get_usage_tracker
 from ..icons import get_icon
 from ..layout import SPACE_GROUP
 from ..shared.gtk import apply_css
@@ -527,8 +526,6 @@ class Console(Gtk.Box):
 
         commands = [line.strip() for line in text.split("\n") if line.strip()]
         self._set_input_text("")
-
-        get_usage_tracker().track_page_view("/console/send", "Console Send")
 
         for command in commands:
             self._add_to_history(command)

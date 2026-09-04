@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from ..core.item import DocItem
 from ..core.undo import ChangePropertyCommand
-from ..usage import get_usage_tracker
 from .layout import (
     BboxAlignBottomStrategy,
     BboxAlignCenterStrategy,
@@ -54,11 +53,6 @@ class LayoutCmd:
             transaction_name: Name for the undo transaction.
             use_async: If True, use async calculation for the strategy.
         """
-        slug = transaction_name.lower().replace(" ", "-")
-        get_usage_tracker().track_page_view(
-            f"/doc/layout/{slug}", transaction_name
-        )
-
         # Define the handler that will receive error signals from the strategy.
         def on_error_reported(sender, message: str):
             """

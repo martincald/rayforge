@@ -29,7 +29,6 @@ from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder import MachineCodeOpMap
 from ..shared.tasker import task_mgr
 from ..shared.util.time_format import format_hours_to_hm
-from ..usage import get_usage_tracker
 from .about import AboutDialog
 from .action_registry import action_registry
 from .actions import (
@@ -59,7 +58,6 @@ from .shared.gtk import get_monitor_geometry
 from .shared.progress_bar import ProgressBar
 from .shared.sanity_check_dialog import SanityCheckDialog
 from .shared.time_estimate_overlay import TimeEstimateOverlay
-from .shared.usage_consent_dialog import UsageConsentDialog
 from .shared.visibility_overlay import VisibilityOverlay
 from .sim3d import Canvas3D
 from .sim3d import initialized as canvas3d_initialized
@@ -537,17 +535,6 @@ class MainWindow(Adw.ApplicationWindow):
         """
         # Disconnect self to ensure it only runs once
         self.disconnect_by_func(self._trigger_startup_tasks)
-
-        # Initialize usage tracking based on saved consent
-        config = get_context().config
-        if config.has_consented_tracking:
-            get_usage_tracker().set_enabled(True)
-            get_usage_tracker().track_page_view("/view/2d", "2D View")
-        elif config.has_declined_tracking:
-            pass  # Explicitly do nothing, respecting the user's choice
-        else:
-            dialog = UsageConsentDialog(self)
-            dialog.present()
 
         # Trigger the non-blocking check for addon updates
         self.update_cmd.check_for_updates_on_startup()
@@ -1851,9 +1838,6 @@ class MainWindow(Adw.ApplicationWindow):
             full_height = self.vertical_paned.get_height()
             self.vertical_paned.set_position(
                 full_height - self._last_bottom_panel_height
-            )
-            get_usage_tracker().track_page_view(
-                "/bottom-panel/open", "Bottom Panel Opened"
             )
         else:
             self.bottom_panel.set_visible(False)

@@ -10,7 +10,6 @@ from ..core.stock import StockItem
 from ..core.stock_asset import StockAsset
 from ..core.undo import ChangePropertyCommand, Command
 from ..core.workpiece import WorkPiece
-from ..usage import get_usage_tracker
 
 if TYPE_CHECKING:
     from ..core.doc import Doc
@@ -161,9 +160,6 @@ class StockCmd:
             doc, stock_name, default_geometry, (stock_x, stock_y)
         )
         doc.history_manager.execute(command)
-        get_usage_tracker().track_page_view(
-            "/doc/add-asset/stock", "Add Stock Asset"
-        )
 
     def toggle_stock_visibility(self, stock_item: StockItem):
         """

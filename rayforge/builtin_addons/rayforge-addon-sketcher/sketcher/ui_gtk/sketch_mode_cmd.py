@@ -9,7 +9,6 @@ from rayforge.core.undo import ListItemCommand
 from rayforge.core.workpiece import WorkPiece
 from rayforge.doceditor.asset_cmd import UpdateAssetCommand
 from rayforge.ui_gtk.doceditor import file_dialogs
-from rayforge.usage import get_usage_tracker
 
 from ..core.sketch import Sketch
 
@@ -65,7 +64,6 @@ class SketchModeCmd:
             self._is_editing_new_sketch = is_new_sketch
             sketch_studio.set_sketch(sketch)
             self._win.open_modal_page("sketch")
-            get_usage_tracker().track_page_view("/sketcher", "Sketch Editor")
 
             self._win.menubar.set_menu_model(sketch_studio.menu_model)
             self._win.insert_action_group("sketch", sketch_studio.action_group)
@@ -97,7 +95,6 @@ class SketchModeCmd:
             self._is_editing_new_sketch = False
             sketch_studio.set_sketch(sketch)
             self._win.open_modal_page("sketch")
-            get_usage_tracker().track_page_view("/sketcher", "Sketch Editor")
 
             self._win.menubar.set_menu_model(sketch_studio.menu_model)
             self._win.insert_action_group("sketch", sketch_studio.action_group)

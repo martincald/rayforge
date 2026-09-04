@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass, fields
-from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -76,9 +75,6 @@ class Config:
         self.canvas_view: CanvasViewState = CanvasViewState()
         self.auto_pipeline: bool = True
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
-        # Usage tracking consent date: None = not asked, "" = declined,
-        # ISO date string = consent given on that date
-        self.usage_consent_date: str | None = None
         # Default DPI for unitless SVG imports
         self.import_dpi: float = 96.0
         # Cache budget for the raygeo pipeline (default 2 GiB)
@@ -185,34 +181,6 @@ class Config:
         self.language = language
         self.changed.send(self)
 
-    def set_usage_consent(self, consent: bool):
-        """Sets the usage tracking consent preference."""
-        new_value = ""
-        if consent:
-            new_value = datetime.now(tz=timezone.utc).isoformat()
-        if self.usage_consent_date == new_value:
-            return
-        self.usage_consent_date = new_value
-        self.changed.send(self)
-
-    @property
-    def has_consented_tracking(self) -> bool:
-        """Returns True if user has consented to usage tracking after
-        the current policy date."""
-        if not self.usage_consent_date or self.usage_consent_date == "":
-            return False
-        try:
-            consent_date = datetime.fromisoformat(self.usage_consent_date)
-            policy_date = datetime(2026, 2, 24, tzinfo=timezone.utc)
-            return consent_date >= policy_date
-        except (ValueError, TypeError):
-            return False
-
-    @property
-    def has_declined_tracking(self) -> bool:
-        """Returns True if user has explicitly declined usage tracking."""
-        return self.usage_consent_date == ""
-
     def to_dict(self) -> dict[str, Any]:
         return {
             "machine": self.machine.id if self.machine else None,
@@ -234,7 +202,6 @@ class Config:
             "canvas_view": self.canvas_view.to_dict(),
             "auto_pipeline": self.auto_pipeline,
             "ops_color_mode": self.ops_color_mode.value,
-            "usage_consent_date": self.usage_consent_date,
             "import_dpi": self.import_dpi,
             "cache_budget_bytes": self.cache_budget_bytes,
             "language": self.language,
@@ -301,9 +268,6 @@ class Config:
             config.ops_color_mode = OpsColorMode(ops_color_mode_str)
         except ValueError:
             config.ops_color_mode = OpsColorMode.LASER
-
-        # Load usage tracking consent date
-        config.usage_consent_date = data.get("usage_consent_date", None)
 
         # Load import DPI
         config.import_dpi = data.get("import_dpi", 96.0)
