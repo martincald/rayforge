@@ -11,11 +11,11 @@ from OpenGL.GL.shaders import (
     ShaderLinkError,
 )
 
-from ..sim3d.camera import Camera
-from ..sim3d.gl_state import render_pass
-from ..sim3d.renderer.base import BaseRenderer
-from ..sim3d.renderer.model_renderer import _load_mesh_data
-from ..sim3d.shader import Shader, SimpleShader
+from ..shared.model_preview.camera import Camera
+from ..shared.model_preview.gl_state import render_pass
+from ..shared.model_preview.mesh_loader import _load_mesh_data
+from ..shared.model_preview.renderer_base import BaseRenderer
+from ..shared.model_preview.shader import Shader, SimpleShader
 
 logger = logging.getLogger(__name__)
 

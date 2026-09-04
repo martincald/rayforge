@@ -10,7 +10,7 @@ from ...context import get_context
 from ...core.model import Model
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
-from ..sim3d import initialized as canvas3d_initialized
+from .model_preview import initialized as canvas3d_initialized
 
 logger = logging.getLogger(__name__)
 

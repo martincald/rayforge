@@ -10,7 +10,7 @@ from .assembly import Assembly, JointType, Link, LinkRole
 from .models.axis import AxisSet
 
 if TYPE_CHECKING:
-    from ..simulator.machine_state import MachineState
+    from .machine_state import MachineState
 
 RotarySpec = tuple[Axis, float, np.ndarray, Model | None]
 HeadSpec = tuple[Model | None, np.ndarray]

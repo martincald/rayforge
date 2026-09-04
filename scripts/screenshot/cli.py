@@ -46,8 +46,6 @@ TARGETS = {
     "machine-settings:maintenance": "machine_settings_maintenance",
     "machine-settings:nogo-zones": "machine_settings_nogo_zones",
     "main:standard": "main_standard",
-    "main:3d": "main_3d",
-    "main:3d-rotary": "main_3d_rotary",
     "main:array:grid": "array_grid",
     "main:array:point-rotation": "array_point_rotation",
     "main:array:circular": "array_circular",

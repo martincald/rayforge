@@ -554,13 +554,12 @@ def main():
     gi.require_version("Gtk", "4.0")
     gi.require_version("GdkPixbuf", "2.0")
 
-    # Initialize the 3D canvas module to check for OpenGL availability.
-    # This must be done after setting the platform env var and after
-    # making Gtk available in gi, as the canvas uses Gtk.
+    # Initialize the model-preview module to check for OpenGL
+    # availability. This must be done after setting the platform env var
+    # and after making Gtk available in gi, as the preview uses Gtk.
     # The rest of the app can now check
-    # `rayforge.ui_gtk.sim3d.initialized`.
-    # It is safe to import other modules that depend on canvas3d after this.
-    from rayforge.ui_gtk.sim3d import initialize
+    # `rayforge.ui_gtk.shared.model_preview.initialized`.
+    from rayforge.ui_gtk.shared.model_preview import initialize
 
     initialize()
 

@@ -10,7 +10,6 @@ from .icons import get_icon
 from .layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
-from .sim3d import initialized as canvas3d_initialized
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +74,6 @@ class MainToolbar(Gtk.Box):
         self.redo_button.set_tooltip_text(_("Redo"))
         self.redo_button.set_action_name("win.redo")
         self.append(self.redo_button)
-
-        # Add a button to open the 3D preview window.
-        view_3d_button = Gtk.ToggleButton(child=get_icon("3d-symbolic"))
-        view_3d_button.set_action_name("win.show_3d_view")
-        view_3d_button.set_sensitive(canvas3d_initialized)
-        if not canvas3d_initialized:
-            view_3d_button.set_tooltip_text(
-                _("3D view disabled (missing dependencies like PyOpenGL)")
-            )
-        else:
-            view_3d_button.set_tooltip_text(_("Show 3D Preview"))
-        self.append(view_3d_button)
 
         self.recalculate_button = Gtk.Button(
             child=get_icon("refresh-symbolic"),

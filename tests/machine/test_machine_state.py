@@ -2,13 +2,13 @@ from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 from raygeo.ops.state import AirAssistMode
 
+from rayforge.machine.machine_state import MachineState
 from rayforge.machine.models.axis import (
     AxisConfig,
     AxisDirection,
     AxisSet,
     AxisType,
 )
-from rayforge.simulator.machine_state import MachineState
 
 
 def _apply_all(state, ops):

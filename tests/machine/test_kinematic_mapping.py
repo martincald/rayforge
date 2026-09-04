@@ -20,7 +20,6 @@ from rayforge.machine.models.rotary_module import (
     RotaryModule,
     RotaryType,
 )
-from rayforge.simulator.op_player import OpPlayer, SnapshotBuilder
 
 
 class TestKinematicMappingApply:
@@ -335,14 +334,6 @@ class TestResolveLayerRotary:
         return Machine(RayforgeContext())
 
     @staticmethod
-    def _make_ops(layer_uid: str) -> Ops:
-        ops = Ops()
-        ops.move_to(0, 0, 0)
-        ops.layer_start(layer_uid)
-        ops.line_to(10, 20, 0)
-        return ops
-
-    @staticmethod
     def _expected(
         enabled: bool,
         module: RotaryModule | None,
@@ -363,7 +354,7 @@ class TestResolveLayerRotary:
         "uid_state",
         ["direct", "stale", "default", "none"],
     )
-    def test_resolver_matches_op_player_and_snapshot_builder(
+    def test_resolver_returns_expected_rotary_axis_config(
         self, mode, axis, enabled, uid_state
     ):
         machine = self._make_machine()
@@ -393,22 +384,6 @@ class TestResolveLayerRotary:
         cfg = resolve_layer_rotary(layer, machine)
         assert cfg == expected
 
-        ops = self._make_ops(layer.uid)
-        player = OpPlayer(ops, machine, doc)
-        player.seek(ops.len() - 1)
-        assert player._source_axis == cfg.source_axis
-        assert player._rotary_axis == cfg.rotary_axis
-
-        builder = SnapshotBuilder(
-            ops,
-            machine,
-            doc,
-            player._create_home_state(),
-        )
-        builder.advance_to(ops.len() - 1)
-        assert builder._source_axis == cfg.source_axis
-        assert builder._rotary_axis == cfg.rotary_axis
-
     def test_resolver_layer_uid_resolved_via_doc(self):
         machine = self._make_machine()
         rm = RotaryModule()
@@ -421,13 +396,8 @@ class TestResolveLayerRotary:
         doc.active_layer.set_rotary_enabled(True)
         doc.active_layer.set_rotary_module_uid(rm.uid)
 
-        ops = self._make_ops(doc.active_layer.uid)
-        player = OpPlayer(ops, machine, doc)
-        player.seek(ops.len() - 1)
         cfg = resolve_layer_rotary(doc.active_layer, machine)
-        assert player._source_axis == cfg.source_axis
-        assert player._rotary_axis == cfg.rotary_axis
-        assert player._rotary_axis == Axis.A
+        assert cfg.rotary_axis == Axis.A
 
     def test_resolver_none_for_unknown_uid(self):
         machine = self._make_machine()

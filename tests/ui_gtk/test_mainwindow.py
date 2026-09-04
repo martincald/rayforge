@@ -87,10 +87,10 @@ def test_file_path(assets_path: Path) -> Path:
 @pytest.fixture
 def app_and_window(ui_context_initializer, request):
     """Sets up the Adw.Application and MainWindow without blocking."""
-    from rayforge.ui_gtk import sim3d
+    from rayforge.ui_gtk.shared import model_preview
 
-    sim3d.initialize()
-    assert sim3d.initialized, "Canvas3D failed to initialize"
+    model_preview.initialize()
+    assert model_preview.initialized, "OpenGL model preview failed to init"
 
     win = None
 

@@ -4,15 +4,11 @@ Base class for OpenGL renderers that manage their own GPU resources.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, final
+from typing import Any, final
 
 from OpenGL import GL
 
-from ..shader.base import Shader
-
-if TYPE_CHECKING:
-    from ..gl_utils import ShaderSet
-    from ..render_context import RenderContext
+from .shader.base import Shader
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +18,12 @@ class BaseRenderer(ABC):
     resources."""
 
     @abstractmethod
-    def prepare(self, ctx: "RenderContext") -> None:
+    def prepare(self, ctx: Any) -> None:
         """Per-frame state setup before the draw."""
         raise NotImplementedError
 
     @abstractmethod
-    def render(
-        self, ctx: "RenderContext", shaders: "ShaderSet", **kwargs
-    ) -> None:
+    def render(self, ctx: Any, shaders: Any, **kwargs) -> None:
         """Performs the GL draw using the given shaders."""
         raise NotImplementedError
 

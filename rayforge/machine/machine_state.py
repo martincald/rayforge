@@ -9,7 +9,7 @@ from raygeo.ops.state import AirAssistMode
 from raygeo.ops.types import CommandCategory, CommandType
 
 if TYPE_CHECKING:
-    from ..machine.models.axis import AxisSet
+    from .models.axis import AxisSet
 
 
 class MachineState:

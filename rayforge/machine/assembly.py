@@ -13,7 +13,7 @@ from raygeo.ops.axis import Axis
 from ..core.model import Model
 
 if TYPE_CHECKING:
-    from ..simulator.machine_state import MachineState
+    from .machine_state import MachineState
 
 
 class JointType(Enum):

@@ -55,16 +55,8 @@ SHORTCUTS = {
     "win.toggle_camera_view": "<Ctrl><Alt>c",
     "win.toggle_bottom_panel": f"{PRIMARY_ACCEL}l",
     "win.toggle_travel_view": f"{PRIMARY_ACCEL}<Shift>t",
-    "win.show_3d_view": "F12",
     "win.recalculate": "F5",
     "win.force-recalculate": "<Shift>F5",
-    "win.view_top": "1",
-    "win.view_front": "2",
-    "win.view_right": "3",
-    "win.view_left": "4",
-    "win.view_back": "5",
-    "win.view_iso": "7",
-    "win.view_toggle_perspective": "p",
     # Object
     "win.add_stock": "<Ctrl><Alt>s",
     "win.add-tabs-equidistant": "<Ctrl><Alt>t",
@@ -257,11 +249,6 @@ class ActionManager:
         # View Actions
         cv = get_context().config.canvas_view
         self._add_stateful_action(
-            "show_3d_view",
-            self.win.on_show_3d_view,
-            GLib.Variant.new_boolean(False),
-        )
-        self._add_stateful_action(
             "show_workpieces",
             self.win.on_show_workpieces_state_change,
             GLib.Variant.new_boolean(cv.show_workpieces),
@@ -305,19 +292,6 @@ class ActionManager:
             "toggle_right_panel",
             self.win.on_toggle_right_panel_state_change,
             GLib.Variant.new_boolean(config.right_panel_visible),
-        )
-
-        # 3D View Control Actions
-        self._add_action("view_top", self.win.on_view_top)
-        self._add_action("view_front", self.win.on_view_front)
-        self._add_action("view_right", self.win.on_view_right)
-        self._add_action("view_left", self.win.on_view_left)
-        self._add_action("view_back", self.win.on_view_back)
-        self._add_action("view_iso", self.win.on_view_iso)
-        self._add_stateful_action(
-            "view_toggle_perspective",
-            self.win.on_view_perspective_state_change,
-            GLib.Variant.new_boolean(cv.perspective_mode),
         )
 
         # Edit & Clipboard Actions

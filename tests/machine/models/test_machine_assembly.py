@@ -6,10 +6,10 @@ from raygeo.ops.axis import Axis
 from rayforge.context import RayforgeContext
 from rayforge.core.layer import Layer
 from rayforge.machine.assembly import LinkRole
+from rayforge.machine.machine_state import MachineState
 from rayforge.machine.models.laser import Laser
 from rayforge.machine.models.machine import Machine
 from rayforge.machine.models.rotary_module import RotaryModule
-from rayforge.simulator.machine_state import MachineState
 
 
 def _make_machine():

@@ -6,6 +6,7 @@ from rayforge.machine.kinematics import (
     Kinematics,
     create_kinematics,
 )
+from rayforge.machine.machine_state import MachineState
 from rayforge.machine.models.axis import (
     AxisConfig,
     AxisSet,
@@ -13,7 +14,6 @@ from rayforge.machine.models.axis import (
 )
 from rayforge.machine.models.machine import Machine
 from rayforge.machine.models.rotary_module import RotaryModule
-from rayforge.simulator.machine_state import MachineState
 
 
 def _make_3axis_set():

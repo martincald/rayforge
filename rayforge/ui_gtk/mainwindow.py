@@ -58,14 +58,8 @@ from .shared.progress_bar import ProgressBar
 from .shared.sanity_check_dialog import SanityCheckDialog
 from .shared.time_estimate_overlay import TimeEstimateOverlay
 from .shared.visibility_overlay import VisibilityOverlay
-from .sim3d import Canvas3D
-from .sim3d import initialized as canvas3d_initialized
-from .sim3d.camera import ViewDirection
-from .sim3d.playback_overlay import PlaybackOverlay
-from .sim3d.viewport import ViewportConfig
 from .theme import install as install_theme
 from .toolbar import MainToolbar
-from .view_mode_cmd import ViewModeCmd
 
 logger = logging.getLogger(__name__)
 
@@ -137,9 +131,6 @@ class MainWindow(Adw.ApplicationWindow):
         self._last_bottom_panel_height = 200
         self._saved_bottom_panel_visible = False
         self._old_doc = None  # Track previous document for signal reconnection
-        self.canvas3d: Canvas3D | None = None
-        self._canvas3d_time_overlay: TimeEstimateOverlay | None = None
-        self._is_syncing_3d = False
 
         # The ToastOverlay will wrap the main content box
         self.toast_overlay = Adw.ToastOverlay()
@@ -168,7 +159,6 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         # Instantiate UI-specific command handlers
-        self.view_cmd = ViewModeCmd(self.doc_editor, self)
         self.project_cmd = ProjectCmd(self, self.doc_editor)
 
         geometry = get_monitor_geometry()
@@ -259,10 +249,6 @@ class MainWindow(Adw.ApplicationWindow):
         # Determine initial machine dimensions for canvases.
         context = get_context()
         config = context.config
-        if config.machine:
-            viewport = ViewportConfig.from_machine(config.machine)
-        else:
-            viewport = ViewportConfig.default()
 
         self.surface = WorkSurface(
             editor=self.doc_editor,
@@ -351,9 +337,6 @@ class MainWindow(Adw.ApplicationWindow):
             "pressed", self._on_canvas_area_click_pressed
         )
         # self.surface_overlay.add_controller(canvas_click_gesture)
-
-        if canvas3d_initialized:
-            self._create_canvas3d(context, viewport)
 
         self._sync_view_toggle_actions()
 
@@ -755,31 +738,11 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_gcode_line_activated(self, sender, *, line_number: int):
         """
         Handles the user activating a line in the G-code previewer.
-        Syncs the highlight and the 3D playback slider.
         """
-        # 1. Update the visual highlight to match the cursor, no scroll.
+        # Update the visual highlight to match the cursor, no scroll.
         self.bottom_panel.gcode_viewer.highlight_line(
             line_number, use_align=False
         )
-
-        # 2. If 3D playback is active, sync the slider.
-        op_map = self.bottom_panel.gcode_viewer.op_map
-        op_index = op_map.op_for_line(line_number) if op_map else None
-        if op_index is not None:
-            self._is_syncing_3d = True
-            self._canvas3d_playback.set_playback_position(op_index)
-            if self.canvas3d:
-                self.canvas3d.queue_render()
-            self._is_syncing_3d = False
-
-    def _on_3d_playback_step_changed(self, sender, *, ops_index: int):
-        """
-        Handles the 3D playback slider changing. Syncs the G-code viewer
-        highlight to the corresponding line.
-        """
-        if self._is_syncing_3d:
-            return
-        self.bottom_panel.gcode_viewer.highlight_op(ops_index)
 
     def _on_vertical_pane_position_changed(self, paned, param):
         position = paned.get_position()
@@ -792,22 +755,8 @@ class MainWindow(Adw.ApplicationWindow):
         pass
 
     def _on_view_stack_changed(self, stack: Gtk.Stack, param):
-        """Handles logic when switching between 2D and 3D views."""
-        child_name = stack.get_visible_child_name()
-        if child_name == "3d":
-            self._update_3d_view_content()
+        """Handles view-stack visibility changes."""
         self._update_actions_and_ui()
-
-    def _update_3d_view_content(self):
-        """
-        Updates the 3D canvas by delegating to its internal update method.
-        This is now a fast, non-blocking operation.
-        """
-        if not self.canvas3d:
-            return
-        if self.canvas3d.has_stale_job():
-            self.refresh_previews()
-        self.canvas3d.update_scene_from_doc()
 
     def _update_gcode_preview(
         self, gcode_string: str | None, op_map: MachineCodeOpMap | None
@@ -820,12 +769,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel.gcode_viewer.set_gcode(gcode_string)
         if op_map:
             self.bottom_panel.gcode_viewer.set_op_map(op_map)
-
-    def on_show_3d_view(
-        self, action: Gio.SimpleAction, value: GLib.Variant | None
-    ):
-        """Delegates the view switching logic to the command module."""
-        self.view_cmd.toggle_3d_view(action, value)
 
     def on_show_workpieces_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant
@@ -852,8 +795,6 @@ class MainWindow(Adw.ApplicationWindow):
     ):
         is_visible = value.get_boolean()
         self.surface.set_show_travel_moves(is_visible)
-        if self.canvas3d is not None:
-            self.canvas3d.set_show_travel_moves(is_visible)
         action.set_state(value)
         config = get_context().config
         config.canvas_view.show_travel_lines = is_visible
@@ -864,8 +805,6 @@ class MainWindow(Adw.ApplicationWindow):
     ):
         is_visible = value.get_boolean()
         self.surface.set_show_nogo_zones(is_visible)
-        if self.canvas3d is not None:
-            self.canvas3d.set_show_nogo_zones(is_visible)
         action.set_state(value)
         config = get_context().config
         config.canvas_view.show_nogo_zones = is_visible
@@ -875,8 +814,6 @@ class MainWindow(Adw.ApplicationWindow):
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
         is_visible = value.get_boolean()
-        if self.canvas3d is not None:
-            self.canvas3d.set_show_models(is_visible)
         action.set_state(value)
         config = get_context().config
         config.canvas_view.show_models = is_visible
@@ -886,42 +823,10 @@ class MainWindow(Adw.ApplicationWindow):
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
         is_visible = value.get_boolean()
-        if self.canvas3d is not None:
-            self.canvas3d.set_show_grid(is_visible)
         action.set_state(value)
         config = get_context().config
         config.canvas_view.show_grid = is_visible
         config.changed.send(config)
-
-    def on_view_top(self, action, param):
-        """Action handler to set the 3D view to top-down."""
-        self.view_cmd.set_view(ViewDirection.TOP, self.canvas3d)
-
-    def on_view_front(self, action, param):
-        """Action handler to set the 3D view to front."""
-        self.view_cmd.set_view(ViewDirection.FRONT, self.canvas3d)
-
-    def on_view_right(self, action, param):
-        """Action handler to set the 3D view to right."""
-        self.view_cmd.set_view(ViewDirection.RIGHT, self.canvas3d)
-
-    def on_view_left(self, action, param):
-        """Action handler to set the 3D view to left."""
-        self.view_cmd.set_view(ViewDirection.LEFT, self.canvas3d)
-
-    def on_view_back(self, action, param):
-        """Action handler to set the 3D view to back."""
-        self.view_cmd.set_view(ViewDirection.BACK, self.canvas3d)
-
-    def on_view_iso(self, action, param):
-        """Action handler to set the 3D view to isometric."""
-        self.view_cmd.set_view(ViewDirection.ISO, self.canvas3d)
-
-    def on_view_perspective_state_change(
-        self, action: Gio.SimpleAction, value: GLib.Variant
-    ):
-        """Handles state changes for the perspective view action."""
-        self.view_cmd.toggle_perspective(self.canvas3d, action, value)
 
     def _initialize_document(self):
         """
@@ -993,14 +898,6 @@ class MainWindow(Adw.ApplicationWindow):
         am.on_show_tabs_state_change(
             am.get_action("show_tabs"),
             GLib.Variant.new_boolean(cv.show_tabs),
-        )
-
-        am.get_action("view_toggle_perspective").set_state(
-            GLib.Variant.new_boolean(not cv.perspective_mode)
-        )
-        self.on_view_perspective_state_change(
-            am.get_action("view_toggle_perspective"),
-            GLib.Variant.new_boolean(cv.perspective_mode),
         )
 
     def _connect_toolbar_signals(self):
@@ -1299,9 +1196,8 @@ class MainWindow(Adw.ApplicationWindow):
 
             # 2. Update G-code Preview
             is_gcode_visible = self.bottom_panel.is_item_visible("gcode")
-            is_3d_visible = self.view_stack.get_visible_child_name() == "3d"
 
-            if final_artifact and (is_gcode_visible or is_3d_visible):
+            if final_artifact and is_gcode_visible:
                 self._update_gcode_preview(
                     final_artifact.machine_code, final_artifact.op_map
                 )
@@ -1319,9 +1215,8 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         is_gcode_visible = self.bottom_panel.is_item_visible("gcode")
-        is_3d_visible = self.view_stack.get_visible_child_name() == "3d"
 
-        if not is_gcode_visible and not is_3d_visible:
+        if not is_gcode_visible:
             return
 
         config = get_context().config
@@ -1346,41 +1241,6 @@ class MainWindow(Adw.ApplicationWindow):
         rebuild (e.g. triggered by a machine setting change)."""
         if self.bottom_panel.is_item_visible("gcode"):
             self.refresh_previews()
-
-    def _create_canvas3d(self, context, viewport: ViewportConfig):
-        """
-        Creates a Canvas3D instance and adds it to the view stack.
-        """
-        self.canvas3d = Canvas3D(
-            context,
-            self.doc_editor,
-            viewport=viewport,
-        )
-        self._canvas3d_overlay = Gtk.Overlay()
-        self._canvas3d_overlay.set_child(self.canvas3d)
-        self._canvas3d_vis_overlay = VisibilityOverlay(
-            show_workpiece=False,
-            show_models=True,
-            show_grid=True,
-            shortcuts=SHORTCUTS,
-        )
-        self._canvas3d_vis_overlay.set_margin_end(454)
-        self._canvas3d_overlay.add_overlay(self._canvas3d_vis_overlay)
-        self._canvas3d_playback = PlaybackOverlay()
-        self.canvas3d.set_playback_overlay(self._canvas3d_playback)
-        self._canvas3d_playback.step_changed.connect(
-            self._on_3d_playback_step_changed
-        )
-        self._canvas3d_time_overlay = TimeEstimateOverlay()
-        self._canvas3d_overlay.add_overlay(self._canvas3d_time_overlay)
-
-        # The playback bar lives below the canvas instead of overlapping it,
-        # so the canvas area stays unobstructed.
-        self._canvas3d_overlay.set_vexpand(True)
-        self._canvas3d_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._canvas3d_page.append(self._canvas3d_overlay)
-        self._canvas3d_page.append(self._canvas3d_playback)
-        self.view_stack.add_named(self._canvas3d_page, "3d")
 
     def _on_document_settled(self, sender):
         """
@@ -1427,7 +1287,6 @@ class MainWindow(Adw.ApplicationWindow):
 
         if machine_changed:
             self._on_machine_signals_changed(config)
-            self._update_canvas3d(config.machine)
 
         # Update the control panel to use the new machine
         self.bottom_panel.set_machine(config.machine, self.machine_cmd)
@@ -1498,15 +1357,6 @@ class MainWindow(Adw.ApplicationWindow):
             self._current_machine.controller.laser_power_changed.connect(
                 self._on_laser_power_changed
             )
-
-    def _update_canvas3d(self, new_machine):
-        if self.canvas3d is None:
-            return
-        if new_machine:
-            viewport = ViewportConfig.from_machine(new_machine)
-        else:
-            viewport = ViewportConfig.default()
-        self.canvas3d.set_machine(viewport=viewport)
 
     def apply_theme(self):
         """Reads the theme from config and applies it to the UI."""
@@ -1760,15 +1610,6 @@ class MainWindow(Adw.ApplicationWindow):
         can_move_layers = has_selection and len(doc.layers) > 1
         am.get_action("layer-move-up").set_enabled(can_move_layers)
         am.get_action("layer-move-down").set_enabled(can_move_layers)
-
-        # Update sensitivity for 3D view actions
-        is_3d_view_active = self.view_stack.get_visible_child_name() == "3d"
-        can_show_3d = is_3d_view_active or canvas3d_initialized
-        am.get_action("show_3d_view").set_enabled(can_show_3d)
-        am.get_action("view_top").set_enabled(is_3d_view_active)
-        am.get_action("view_front").set_enabled(is_3d_view_active)
-        am.get_action("view_iso").set_enabled(is_3d_view_active)
-        am.get_action("view_toggle_perspective").set_enabled(is_3d_view_active)
 
         # Update sensitivity for Arrangement actions
         can_distribute = len(self.surface.get_selected_workpieces()) >= 2
@@ -2269,5 +2110,3 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_job_time_updated(self, sender, *, total_seconds):
         self._time_estimate_overlay.set_estimated_time(total_seconds)
-        if self._canvas3d_time_overlay is not None:
-            self._canvas3d_time_overlay.set_estimated_time(total_seconds)

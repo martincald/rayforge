@@ -89,21 +89,6 @@ class MainMenu(Gio.Menu):
 
         self._view_addon_group = visibility_group
 
-        view_group = Gio.Menu()
-        view_group.append(_("3D View"), "win.show_3d_view")
-        view_menu.append_section(None, view_group)
-
-        view_3d_commands = Gio.Menu()
-        view_3d_commands.append(_("Top View"), "win.view_top")
-        view_3d_commands.append(_("Front View"), "win.view_front")
-        view_3d_commands.append(_("Right View"), "win.view_right")
-        view_3d_commands.append(_("Left View"), "win.view_left")
-        view_3d_commands.append(_("Back View"), "win.view_back")
-        view_3d_commands.append(_("Isometric View"), "win.view_iso")
-        view_3d_commands.append(
-            _("Toggle Perspective"), "win.view_toggle_perspective"
-        )
-        view_menu.append_section(None, view_3d_commands)
         self.append_submenu(_("_View"), view_menu)
 
         # Object Menu

@@ -372,36 +372,6 @@ def wait_for_settled(win: "MainWindow", timeout: float = 30.0) -> bool:
     return win.doc_editor.wait_until_settled_sync(timeout=timeout)
 
 
-def wait_for_3d_rendered(win: "MainWindow", timeout: float = 15.0) -> bool:
-    """
-    Wait for the 3D canvas to finish compiling and rendering the scene.
-
-    Waits until:
-    - The canvas has a compiled artifact
-    - All GL dirty flags have been consumed by a render frame
-    - No scene preparation task is in flight
-
-    Returns:
-        True if the scene is rendered within timeout.
-    """
-    start = time.time()
-
-    while time.time() - start < timeout:
-        canvas = run_on_main_thread(lambda: win.canvas3d)
-        if canvas is None:
-            time.sleep(0.1)
-            continue
-
-        ready = run_on_main_thread(lambda c=canvas: c.scene_is_ready())
-        if ready:
-            time.sleep(0.3)
-            logger.info("3D scene is compiled and rendered")
-            return True
-
-        time.sleep(0.1)
-
-    logger.warning("3D scene did not render within timeout")
-    return False
 
 
 def load_project(win: "MainWindow", project_name: str) -> None:
@@ -765,18 +735,6 @@ def clear_window_subtitle(win: "MainWindow") -> None:
             title_widget.set_subtitle("")
 
     run_on_main_thread(_clear)
-
-
-def seek_3d_playback(win: "MainWindow", fraction: float) -> None:
-    """
-    Seek the 3D playback to the given fraction (0.0 to 1.0).
-    """
-
-    def _seek() -> None:
-        win._canvas3d_playback.seek_to_fraction(fraction)
-
-    run_on_main_thread(_seek)
-    time.sleep(0.3)
 
 
 @contextmanager
