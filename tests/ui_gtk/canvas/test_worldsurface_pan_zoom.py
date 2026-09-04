@@ -104,27 +104,26 @@ class TestSetZoomAndRebuildViewTransform:
 
 class TestScrollZoomClamping:
     """
-    Pins on_scroll's zoom bounds. Package D changed two things this
-    class must account for:
+    Pins on_scroll's zoom bounds: MIN_ZOOM_FACTOR and the
+    MAX_PIXELS_PER_MM pixel-density ceiling (~26.2 for this
+    800x600px / 200x150mm setup). Package D5's "keep >=20% of the bed
+    visible" rule is a SOFT PAN clamp, not a zoom bound -- see
+    test_worldsurface_pan_clamp.py -- so it does not affect max zoom
+    here.
 
-    1. Wheel-notch zoom is now an animated discrete step (Package D3)
-       instead of an instant jump, so each step's ~180ms animation
-       must be finished (via the finish_animation fixture) before the
-       next scroll, for a loop of repeated notches to reach the clamp.
-    2. Package D5 added a soft "keep >=20% of the bed visible" clamp
-       (MIN_VISIBLE_BED_FRACTION) that is now the BINDING max-zoom
-       constraint for this 800x600px / 200x150mm setup: max zoom is
-       now 1/0.2 = 5.0, tighter than the old MAX_PIXELS_PER_MM-derived
-       ~26.2 this test used to pin (see
-       WorldSurface._update_zoom_bounds).
+    Wheel-notch zoom is an animated discrete step (Package D3) instead
+    of an instant jump, so each step's ~180ms animation must be
+    finished (via the finish_animation fixture) before the next
+    scroll, for a loop of repeated notches to reach the clamp.
     """
 
-    def test_zoom_in_is_clamped_to_the_visible_bed_fraction(
+    def test_zoom_in_is_clamped_to_max_pixels_per_mm(
         self, world_surface_factory, wheel_scroll_controller, finish_animation
     ):
         s = world_surface_factory()
         s._mouse_pos = (400.0, 300.0)
         controller = wheel_scroll_controller()
+        base_ppm = s._axis_renderer.get_base_pixels_per_mm(800, 600)
 
         # Scroll "up" (dy < 0 means zoom in) far more than enough steps
         # to hit the clamp.
@@ -132,9 +131,8 @@ class TestScrollZoomClamping:
             s.on_scroll(controller, 0.0, -1.0)
             finish_animation(s)
 
-        assert s.zoom_level == pytest.approx(
-            1.0 / s.MIN_VISIBLE_BED_FRACTION
-        )
+        achieved_ppm = base_ppm * s.zoom_level
+        assert achieved_ppm == pytest.approx(s.MAX_PIXELS_PER_MM)
 
     def test_zoom_out_is_clamped_to_min_zoom_factor(
         self, world_surface_factory, wheel_scroll_controller, finish_animation
@@ -150,6 +148,31 @@ class TestScrollZoomClamping:
             finish_animation(s)
 
         assert s.zoom_level == pytest.approx(s.MIN_ZOOM_FACTOR)
+
+
+class TestMaxZoomOnLargeBed:
+    """
+    REQUIRED REGRESSION TEST (Package D5 fix): on a large bed
+    (1400x900mm, the bundled ilab-614 profile's size), max zoom must
+    be governed by the MAX_PIXELS_PER_MM pixel-density bound, not a
+    constant 5.0x ceiling -- that was the D5 rejection: making the
+    MIN_VISIBLE_BED_FRACTION rule a max-zoom ceiling instead of a pan
+    clamp made 5.0x the closest zoom reachable on any realistic bed.
+    """
+
+    def test_max_zoom_is_the_density_bound_not_a_constant_ceiling(
+        self, world_surface_factory
+    ):
+        s = world_surface_factory(width_mm=1400.0, height_mm=900.0)
+        base_ppm = s._axis_renderer.get_base_pixels_per_mm(
+            s.get_width(), s.get_height()
+        )
+        expected_max_zoom = s.MAX_PIXELS_PER_MM / base_ppm
+
+        s.set_zoom(1_000_000.0)
+
+        assert s.zoom_level == pytest.approx(expected_max_zoom)
+        assert s.zoom_level > 50.0  # far greater than the old 5.0 cap
 
 
 class TestScrollZoomAboutCursor:

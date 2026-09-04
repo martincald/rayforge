@@ -5,9 +5,11 @@
 - D3: discrete zoom steps and zoom-to-fit ease in via CameraAnimator;
   continuous gestures update the live camera with zero lag.
 - D4: two-finger trackpad pan, and flick inertia.
-- D5: zoom limits (hard MIN_ZOOM_FACTOR, soft MIN_VISIBLE_BED_FRACTION)
-  and shortcuts (zoom_to_fit, zoom_to_actual_size, zoom_in/out,
-  double-click-to-fit).
+- D5: zoom limits (hard MIN_ZOOM_FACTOR, hard MAX_PIXELS_PER_MM
+  density bound) and shortcuts (zoom_to_fit, zoom_to_actual_size,
+  zoom_in/out, double-click-to-fit). D5's soft pan clamp
+  (MIN_VISIBLE_BED_FRACTION) is covered by
+  test_worldsurface_pan_clamp.py.
 
 D6's gesture-state-leak tests live in
 test_worldsurface_gesture_leaks.py.
@@ -337,16 +339,17 @@ class TestDoubleClickToFit:
 class TestZoomClampsAtExtremes:
     """REQUIRED TEST: clamps hold at both extremes."""
 
-    def test_repeated_zoom_in_stops_at_the_visible_bed_fraction(
+    def test_repeated_zoom_in_stops_at_max_pixels_per_mm(
         self, world_surface_factory, finish_animation
     ):
         s = world_surface_factory()
+        base_ppm = s._axis_renderer.get_base_pixels_per_mm(
+            s.get_width(), s.get_height()
+        )
         for _ in range(50):
             s.zoom_in()
             finish_animation(s)
-        assert s.zoom_level == pytest.approx(
-            1.0 / s.MIN_VISIBLE_BED_FRACTION
-        )
+        assert s.zoom_level == pytest.approx(s.MAX_PIXELS_PER_MM / base_ppm)
 
     def test_repeated_zoom_out_stops_at_min_zoom_factor(
         self, world_surface_factory, finish_animation
@@ -359,10 +362,11 @@ class TestZoomClampsAtExtremes:
 
     def test_pinch_zoom_in_is_also_clamped(self, world_surface_factory):
         s = world_surface_factory()
+        base_ppm = s._axis_renderer.get_base_pixels_per_mm(
+            s.get_width(), s.get_height()
+        )
         gesture = MagicMock()
         gesture.get_bounding_box_center.return_value = (True, 400.0, 300.0)
         s.on_pinch_begin(gesture, None)
         s.on_pinch_scale_changed(gesture, 1000.0)
-        assert s.zoom_level == pytest.approx(
-            1.0 / s.MIN_VISIBLE_BED_FRACTION
-        )
+        assert s.zoom_level == pytest.approx(s.MAX_PIXELS_PER_MM / base_ppm)

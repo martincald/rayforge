@@ -22,11 +22,46 @@ class Camera:
         self.pan_y_mm: float = 0.0
         self._min_zoom: float = 0.0
         self._max_zoom: float = float("inf")
+        self._min_pan_x: float = float("-inf")
+        self._max_pan_x: float = float("inf")
+        self._min_pan_y: float = float("-inf")
+        self._max_pan_y: float = float("inf")
 
     def set_zoom_bounds(self, min_zoom: float, max_zoom: float) -> None:
         """Sets the [min_zoom, max_zoom] range used to clamp set_zoom."""
         self._min_zoom = min_zoom
         self._max_zoom = max_zoom
+
+    def set_pan_bounds(
+        self,
+        min_pan_x: float,
+        max_pan_x: float,
+        min_pan_y: float,
+        max_pan_y: float,
+    ) -> None:
+        """
+        Sets the [min, max] pan range used by ``clamped_pan``. Unlike
+        zoom bounds, this does NOT clamp ``set_pan`` itself: the pan
+        clamp is soft (see ``clamped_pan``), so live gestures can
+        transiently overshoot it.
+        """
+        self._min_pan_x = min_pan_x
+        self._max_pan_x = max_pan_x
+        self._min_pan_y = min_pan_y
+        self._max_pan_y = max_pan_y
+
+    def clamped_pan(self) -> tuple[float, float]:
+        """
+        Returns the current (pan_x_mm, pan_y_mm) clamped to the
+        bounds set via ``set_pan_bounds``, without mutating this
+        Camera. Callers implement the soft pan clamp by easing the
+        live camera toward this value (e.g. via CameraAnimator) once
+        a gesture ends, rather than clamping set_pan directly.
+        """
+        return (
+            max(self._min_pan_x, min(self.pan_x_mm, self._max_pan_x)),
+            max(self._min_pan_y, min(self.pan_y_mm, self._max_pan_y)),
+        )
 
     def set_zoom(self, zoom: float) -> None:
         """Sets the zoom level, clamped to the current bounds."""

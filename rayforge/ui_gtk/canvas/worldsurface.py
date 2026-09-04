@@ -61,11 +61,12 @@ class WorldSurface(Canvas):
     # The maximum allowed pixel density when zooming in.
     MAX_PIXELS_PER_MM = 100.0
 
-    # Soft clamp: never zoom in so far that less than this fraction of
-    # the bed's width/height remains visible. Since the base ("fit")
-    # scale already shows exactly 100% of the bed at zoom=1.0, the
-    # visible fraction at any zoom level is simply 1.0/zoom, making the
-    # corresponding max-zoom bound a constant: 1.0/MIN_VISIBLE_BED_FRACTION.
+    # Soft pan clamp: panning may not move the bed so far that less
+    # than this fraction of its width/height remains visible in the
+    # viewport. Applied to the pan offset, not to zoom (see
+    # _update_pan_bounds / _ease_pan_into_bounds). It is "soft": an
+    # active gesture (drag/inertia) may transiently overshoot it, and
+    # is eased back into bounds once the gesture ends.
     MIN_VISIBLE_BED_FRACTION = 0.2
 
     def __init__(
@@ -242,11 +243,11 @@ class WorldSurface(Canvas):
 
     def set_zoom(self, zoom_level: float) -> None:
         """
-        Sets the zoom level and updates the axis importer. The value is
-        clamped by the Camera to [MIN_ZOOM_FACTOR, the tighter of the
-        MAX_PIXELS_PER_MM and MIN_VISIBLE_BED_FRACTION bounds for the
-        current widget size], so clamping cannot be bypassed by calling
-        this directly.
+        Sets the zoom level and updates the axis importer. The value
+        is clamped by the Camera to [MIN_ZOOM_FACTOR,
+        MAX_PIXELS_PER_MM's pixel-density bound for the current widget
+        size], so clamping cannot be bypassed by calling this
+        directly.
         """
         self._update_zoom_bounds()
         self._camera.set_zoom(zoom_level)
@@ -256,22 +257,64 @@ class WorldSurface(Canvas):
     def _update_zoom_bounds(self) -> None:
         """
         Refreshes the Camera's [min_zoom, max_zoom] clamp range from
-        the current widget size: the hard MAX_PIXELS_PER_MM pixel-
-        density ceiling, and the soft MIN_VISIBLE_BED_FRACTION ceiling
-        (never zoom in so far that less than 20% of the bed is
-        visible) -- whichever is more restrictive wins.
+        the current widget size: MIN_ZOOM_FACTOR as the minimum, and
+        the MAX_PIXELS_PER_MM pixel-density ceiling as the maximum.
         """
         base_ppm = self._axis_renderer.get_base_pixels_per_mm(
             self.get_width(), self.get_height()
         )
-        max_zoom_pixel_density = (
+        max_zoom = (
             self.MAX_PIXELS_PER_MM / base_ppm
             if base_ppm > 0
             else float("inf")
         )
-        max_zoom_visible_bed = 1.0 / self.MIN_VISIBLE_BED_FRACTION
-        max_zoom = min(max_zoom_pixel_density, max_zoom_visible_bed)
         self._camera.set_zoom_bounds(self.MIN_ZOOM_FACTOR, max_zoom)
+
+    def _update_pan_bounds(self) -> None:
+        """
+        Refreshes the Camera's pan bounds from the current widget size
+        and zoom level, so panning cannot move the bed so far that
+        less than MIN_VISIBLE_BED_FRACTION of its width/height remains
+        visible. This is the bound used by ``_ease_pan_into_bounds``;
+        it does not clamp pan updates directly (the clamp is soft).
+        """
+        zoom = self.zoom_level
+        effective_height = self._axis_renderer.get_effective_height()
+        visible_w = self.width_mm / zoom if zoom > 0 else self.width_mm
+        visible_h = (
+            effective_height / zoom if zoom > 0 else effective_height
+        )
+        min_visible_w = min(
+            self.MIN_VISIBLE_BED_FRACTION * self.width_mm, visible_w
+        )
+        min_visible_h = min(
+            self.MIN_VISIBLE_BED_FRACTION * effective_height, visible_h
+        )
+        self._camera.set_pan_bounds(
+            min_visible_w - visible_w,
+            self.width_mm - min_visible_w,
+            min_visible_h - visible_h,
+            effective_height - min_visible_h,
+        )
+
+    def _ease_pan_into_bounds(self) -> bool:
+        """
+        If the current pan violates the soft "keep at least
+        MIN_VISIBLE_BED_FRACTION of the bed visible" clamp, eases it
+        back into bounds via the camera animator (reusing Package D3's
+        CameraAnimator/tick machinery), leaving zoom unchanged.
+        Returns True if an easing animation was started (the pan was
+        out of bounds), False if it was already within bounds.
+        """
+        self._update_pan_bounds()
+        clamped_x, clamped_y = self._camera.clamped_pan()
+        if (
+            abs(clamped_x - self.pan_x_mm) < 1e-9
+            and abs(clamped_y - self.pan_y_mm) < 1e-9
+        ):
+            return False
+        self._start_camera_animation(self.zoom_level, clamped_x, clamped_y)
+        return True
 
     def _get_view_layout(
         self,
@@ -491,6 +534,7 @@ class WorldSurface(Canvas):
         Pans the live camera by an incremental pixel delta from a
         trackpad's two-finger scroll, with zero lag.
         """
+        self._cancel_camera_animation()
         scale_x, scale_y = self.get_view_scale()
         if scale_x <= 0 or scale_y <= 0:
             return
@@ -507,7 +551,9 @@ class WorldSurface(Canvas):
         GTK reports at the end of a smooth scroll gesture.
         """
         if not self.pan_inertia_enabled:
+            self._ease_pan_into_bounds()
             return
+        self._cancel_camera_animation()
         # GTK reports px/sec; the inertia decay formula is per-frame.
         # Assume a 60Hz frame clock, matching add_tick_callback's
         # typical cadence.
@@ -524,9 +570,16 @@ class WorldSurface(Canvas):
         )
         if decayed is None:
             self._stop_inertia()
+            self._ease_pan_into_bounds()
             return GLib.SOURCE_REMOVE
         self._pan_velocity_x, self._pan_velocity_y = decayed
         self._pan_by_scroll_delta(self._pan_velocity_x, self._pan_velocity_y)
+        if self._ease_pan_into_bounds():
+            # Crossed the soft clamp boundary mid-flight: hand off to
+            # the easing animation instead of continuing to coast
+            # (and potentially fighting it) further out of bounds.
+            self._stop_inertia()
+            return GLib.SOURCE_REMOVE
         return GLib.SOURCE_CONTINUE
 
     def _stop_inertia(self) -> None:
@@ -752,6 +805,7 @@ class WorldSurface(Canvas):
         """
         if self._space_pressed:
             self.grab_focus()
+            self._cancel_camera_animation()
             self._pan_start = (self.pan_x_mm, self.pan_y_mm)
             return
         if n_press == 2 and not self.edit_context:
@@ -819,6 +873,7 @@ class WorldSurface(Canvas):
         """Override to suppress drag end when Space was held."""
         if self._space_pressed:
             self._reset_transient_gesture_state()
+            self._ease_pan_into_bounds()
             return
         super().on_drag_end(gesture, offset_x, offset_y)
 
@@ -826,6 +881,7 @@ class WorldSurface(Canvas):
         self, gesture: Gtk.GestureDrag, x: float, y: float
     ) -> None:
         logger.debug(f"Pan begin at ({x:.2f}, {y:.2f})")
+        self._cancel_camera_animation()
         self._pan_start = (self.pan_x_mm, self.pan_y_mm)
 
     def on_pan_update(
@@ -850,3 +906,4 @@ class WorldSurface(Canvas):
     def on_pan_end(self, gesture: Gtk.GestureDrag, x: float, y: float) -> None:
         logger.debug(f"Pan end at ({x:.2f}, {y:.2f})")
         self._reset_transient_gesture_state()
+        self._ease_pan_into_bounds()
