@@ -15,8 +15,6 @@ from blinker import Signal
 from raygeo.geo.types import Point3D, Rect
 from raygeo.ops.axis import Axis
 
-from ...camera.models.camera import Camera
-from ...camera.v4l import migrate_camera_data
 from ...context import RayforgeContext, get_context
 from ...core.capability import MachineCapability
 from ...core.layer import Layer
@@ -149,7 +147,6 @@ class Machine:
         self.macros: dict[str, Macro] = {}
         self.heads: list[Head] = []
         self._explicit_capabilities: frozenset[MachineCapability] | None = None
-        self.cameras: list[Camera] = []
         self.max_travel_speed: int = 3000  # in mm/min
         self.max_cut_speed: int = 1000  # in mm/min
         self.acceleration: int = 3000  # in mm/s²
@@ -1092,19 +1089,6 @@ class Machine:
         self.invalidate_assembly()
         self.changed.send(self)
 
-    def add_camera(self, camera: Camera):
-        self.cameras.append(camera)
-        camera.changed.connect(self._on_camera_changed)
-        self.changed.send(self)
-
-    def remove_camera(self, camera: Camera):
-        camera.changed.disconnect(self._on_camera_changed)
-        self.cameras.remove(camera)
-        self.changed.send(self)
-
-    def _on_camera_changed(self, camera, *args):
-        self.changed.send(self)
-
     def add_rotary_module(self, module: RotaryModule):
         self.rotary_modules[module.uid] = module
         module.changed.connect(self._on_rotary_module_changed)
@@ -1501,7 +1485,6 @@ class Machine:
                     self.wcs_origin_is_workarea_origin
                 ),
                 "heads": [head.to_dict() for head in self.heads],
-                "cameras": [camera.to_dict() for camera in self.cameras],
                 "rotary_modules": [
                     rm.to_dict() for rm in self.rotary_modules.values()
                 ],
@@ -1794,9 +1777,6 @@ class Machine:
         ma._explicit_capabilities = cls._parse_capabilities(
             ma_data.get("capabilities")
         )
-        ma.cameras = []
-        for obj in ma_data.get("cameras", {}):
-            ma.add_camera(Camera.from_dict(migrate_camera_data(obj)))
         for obj in ma_data.get("rotary_modules", []):
             ma.add_rotary_module(RotaryModule.from_dict(obj))
         for obj in ma_data.get("nogo_zones", []):

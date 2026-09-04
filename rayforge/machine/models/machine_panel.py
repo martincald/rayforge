@@ -53,8 +53,6 @@ class MachinePanel:
     def __init__(self, machine: "Machine"):
         self._machine = machine
         self._orientation: PanelOrientation = PanelOrientation.NATIVE
-        self._cached_extents = machine.axis_extents
-        machine.changed.connect(self._on_machine_changed)
 
     @property
     def machine(self) -> "Machine":
@@ -78,67 +76,18 @@ class MachinePanel:
         All interactive changes of the orientation MUST go through this
         setter rather than assigning ``_orientation`` directly.
 
-        Camera calibration (``camera.image_to_world``) is stored in
-        presented coordinates because the camera pipeline consumes it
-        directly in that space. Changing the presentation therefore
-        re-projects the stored calibration points through the old and
-        new transforms so an existing physical alignment stays valid.
-        The rotation matrices contain only 0/+/-1 entries and exact
-        translations, so repeated re-projection does not accumulate
-        floating-point error.
-
         Deserialization (``Machine.from_dict``) assigns ``_orientation``
-        directly instead, because persisted camera calibration was
-        already saved in the matching orientation.
+        directly instead.
         """
         if self._orientation == orientation:
             return
-        old_matrix = self._panel_to_native_matrix
         self._orientation = orientation
-        new_inverse = np.linalg.inv(self._panel_to_native_matrix)
-        self._reproject_cameras(old_matrix, new_inverse)
         self._machine.changed.send(self._machine)
 
     @property
     def supports_rotary(self) -> bool:
         """Whether rotary mapping can compose with this panel setup."""
         return self._orientation is PanelOrientation.NATIVE
-
-    def _on_machine_changed(self, sender=None, **kwargs) -> None:
-        """Watch for bed-dimension changes that require camera
-        reprojection.
-
-        A rotated presentation's translation depends on the native bed
-        dimensions, so resizing the bed shifts where presented coordinates
-        land.  Camera calibration (stored in presented coordinates) is
-        re-projected so the physical alignment stays valid.
-        """
-        current = self._machine.axis_extents
-        if current == self._cached_extents:
-            return
-        old_p2n = self._compute_p2n(self._orientation, self._cached_extents)
-        new_n2p = np.linalg.inv(self._panel_to_native_matrix)
-        self._cached_extents = current
-        self._reproject_cameras(old_p2n, new_n2p)
-
-    def _reproject_cameras(
-        self,
-        old_p2n: np.ndarray,
-        new_n2p: np.ndarray,
-    ) -> None:
-        """Preserve physical camera calibration across orientation changes."""
-        for camera in self._machine.cameras:
-            if camera.image_to_world is None:
-                continue
-            image_points, world_points = camera.image_to_world
-            reprojected = []
-            for wx, wy in world_points:
-                native = old_p2n @ np.array([wx, wy, 0.0, 1.0])
-                new_world = new_n2p @ native
-                reprojected.append((float(new_world[0]), float(new_world[1])))
-            alignment_date = camera.alignment_date
-            camera.image_to_world = (image_points, reprojected)
-            camera.alignment_date = alignment_date
 
     # -- Rotation matrix ----------------------------------------------
 

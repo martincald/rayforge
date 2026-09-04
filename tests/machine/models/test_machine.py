@@ -450,6 +450,33 @@ class TestMachine:
         assert new_data["reverse_y_axis"] is False
 
     @pytest.mark.asyncio
+    async def test_from_dict_ignores_legacy_cameras_key(
+        self, lite_context, task_mgr: TaskManager
+    ):
+        """
+        Machines no longer have cameras, but existing user YAML files may
+        still carry a `cameras:` key. Loading such a file must not crash,
+        and the key must simply be ignored.
+        """
+        legacy_data = {
+            "machine": {
+                "name": "Legacy Camera Machine",
+                "cameras": [
+                    {"name": "Camera 1", "device_id": "0"},
+                ],
+            }
+        }
+
+        machine = Machine.from_dict(legacy_data, context=lite_context)
+        await wait_for_tasks_to_finish(task_mgr)
+
+        assert machine.name == "Legacy Camera Machine"
+        assert not hasattr(machine, "cameras")
+
+        # The key must not be resurrected on re-serialization either.
+        assert "cameras" not in machine.to_dict()["machine"]
+
+    @pytest.mark.asyncio
     async def test_send_job_calls_driver_run(
         self,
         doc: Doc,
