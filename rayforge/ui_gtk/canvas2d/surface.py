@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, cast
 from blinker import Signal
 from gi.repository import Gdk, GLib, Graphene, Gtk
 
-from ...camera.controller import CameraController
 from ...context import get_context
 from ...core.color import ColorRGBA, hex_to_rgba
 from ...core.group import Group
@@ -26,7 +25,6 @@ from .elements.axis_extent_frame import (
     AxisExtentFrameElement,
     WorkareaBackgroundElement,
 )
-from .elements.camera_image import CameraImageElement
 from .elements.dot import DotElement
 from .elements.group import GroupElement
 from .elements.layer import LayerElement
@@ -691,10 +689,6 @@ class WorkSurface(WorldSurface):
             self.reset_view()
             self._on_wcs_updated(self.machine)
 
-        # Synchronize camera elements to match the new machine. This is called
-        # after the machine is set (or cleared) to ensure the view is correct.
-        self._sync_camera_elements()
-
     def _on_wcs_updated(self, machine: Machine):
         """Handles updates to the machine's WCS state."""
         if self._is_rotary_active():
@@ -1023,7 +1017,7 @@ class WorkSurface(WorldSurface):
 
         def sort_key(element: CanvasElement):
             """
-            Sort key for root's children. Camera at bottom, then stock,
+            Sort key for root's children. WCS origin at bottom, then stock,
             then layers and laser dot on top.
             """
             if isinstance(element, DotElement):
@@ -1036,17 +1030,17 @@ class WorkSurface(WorldSurface):
                 )
                 return layer_order + 1000
             if isinstance(element, StockElement):
-                # Stock elements are below all layers but above camera images
+                # Stock elements are below all layers.
                 return 10
-            if isinstance(element, (CameraImageElement, WorkOriginElement)):
-                # Camera images and WCS origin are at the very bottom.
+            if isinstance(element, WorkOriginElement):
+                # WCS origin is at the very bottom.
                 return -2
             if isinstance(element, AxisExtentFrameElement):
-                # Extent frame is above camera but below everything else
+                # Extent frame is below everything else except the origin.
                 return -1.5
             if isinstance(element, NogoZoneElement):
                 return -1.4
-            # Other elements are above the camera but below stock and layers.
+            # Other elements are below stock and layers.
             return -1
 
         self.root.children.sort(key=sort_key)
@@ -1062,7 +1056,6 @@ class WorkSurface(WorldSurface):
             if not isinstance(
                 c,
                 (
-                    CameraImageElement,
                     DotElement,
                     NogoZoneElement,
                     WorkOriginElement,
@@ -1101,50 +1094,6 @@ class WorkSurface(WorldSurface):
             elem.set_visible(visible and elem.data.enabled)
         self.queue_draw()
 
-    def set_camera_controllers(self, controllers: list[CameraController]):
-        """
-        Manages camera elements and their subscriptions based on the
-        provided list of live controllers.
-        """
-        current_elements = {
-            cast(CameraImageElement, e).controller: e
-            for e in self.find_by_type(CameraImageElement)
-        }
-        current_controllers = set(current_elements.keys())
-        new_controllers = set(controllers)
-
-        # Remove elements for controllers that are no longer active
-        for controller in current_controllers - new_controllers:
-            element = current_elements[controller]
-            element.remove()  # This will disconnect signals
-            controller.unsubscribe()
-            logger.debug(
-                f"Unsubscribed and removed element for camera "
-                f"{controller.config.name}"
-            )
-
-        # Add elements for new controllers
-        for controller in new_controllers - current_controllers:
-            element = CameraImageElement(controller)
-            element.set_visible(
-                self._cam_visible and controller.config.enabled
-            )
-            self.root.insert(0, element)  # Insert at the bottom of the z-stack
-            controller.subscribe()
-            logger.debug(
-                f"Subscribed and added element for camera "
-                f"{controller.config.name}"
-            )
-
-        self.queue_draw()
-
-    def set_camera_image_visibility(self, visible: bool):
-        self._cam_visible = visible
-        for elem in self.find_by_type(CameraImageElement):
-            camera_elem = cast(CameraImageElement, elem)
-            camera_elem.set_visible(visible and camera_elem.camera.enabled)
-        self.queue_draw()
-
     @property
     def _machine_view(self) -> MachinePanel:
         """Display-facing projection of the current machine's coordinate
@@ -1161,7 +1110,6 @@ class WorkSurface(WorldSurface):
             f"machine={machine.name if machine else 'None'}"
         )
         if not machine:
-            self._sync_camera_elements()
             return
 
         extent_w, extent_h = machine.axis_extents
@@ -1193,7 +1141,6 @@ class WorkSurface(WorldSurface):
             self.reset_view()
         else:
             self._update_extent_frame()
-            self._sync_camera_elements()
             self._sync_nogo_zone_elements()
             self._on_wcs_updated(machine)
             self._update_pipeline_view_context()
@@ -1214,7 +1161,6 @@ class WorkSurface(WorldSurface):
             self._axis_renderer.set_y_axis_negative(False)
             super().reset_view()
             self.aspect_ratio_changed.send(self, ratio=1.0)
-            self._sync_camera_elements()
             return
 
         # Canvas shows full machine bed
@@ -1255,7 +1201,6 @@ class WorkSurface(WorldSurface):
 
         new_ratio = width_mm / height_mm if height_mm > 0 else 1.0
         self.aspect_ratio_changed.send(self, ratio=new_ratio)
-        self._sync_camera_elements()
         self._sync_nogo_zone_elements()
         self._on_wcs_updated(self.machine)
         self._update_pipeline_view_context()
@@ -1405,30 +1350,6 @@ class WorkSurface(WorldSurface):
         re-rendering of all cached workpiece views.
         """
         self._update_pipeline_view_context()
-
-    def _sync_camera_elements(self):
-        """
-        Synchronizes the camera elements on the canvas with the cameras
-        defined in the current machine model.
-        """
-        camera_mgr = get_context().camera_mgr
-        if not self.machine:
-            self.set_camera_controllers([])
-            return
-
-        # Get the controller for each camera model in the current machine
-        machine_camera_controllers = []
-        for camera_model in self.machine.cameras:
-            controller = camera_mgr.get_controller(camera_model.device_id)
-            if controller:
-                machine_camera_controllers.append(controller)
-            else:
-                logger.warning(
-                    "Could not find a live controller for camera "
-                    f"with device ID '{camera_model.device_id}'."
-                )
-
-        self.set_camera_controllers(machine_camera_controllers)
 
     def on_key_pressed(
         self,

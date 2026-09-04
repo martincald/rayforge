@@ -24,7 +24,6 @@ class VisibilityOverlay(Gtk.Box):
     def __init__(
         self,
         show_workpiece=True,
-        show_camera=False,
         show_models=False,
         show_grid=False,
         show_tabs=False,
@@ -77,23 +76,6 @@ class VisibilityOverlay(Gtk.Box):
             self.tabs_button.set_action_name("win.show_tabs")
             self.append(self.tabs_button)
 
-        self._cam_on_icon = get_icon("camera-on-symbolic")
-        self._cam_off_icon = get_icon("camera-off-symbolic")
-        self.camera_button = Gtk.ToggleButton()
-        self.camera_button.add_css_class("sc-icon-button")
-        self.camera_button.set_active(True)
-        self.camera_button.set_child(self._cam_on_icon)
-        self.camera_button.set_tooltip_text(
-            self._format_tooltip(
-                _("Toggle camera image visibility"),
-                "win.toggle_camera_view",
-            )
-        )
-        self.camera_button.set_action_name("win.toggle_camera_view")
-        self.camera_button.connect("toggled", self._on_camera_toggled)
-        self.append(self.camera_button)
-        self.camera_button.set_visible(show_camera)
-
         if show_models:
             self.models_button = Gtk.ToggleButton()
             self.models_button.add_css_class("sc-icon-button")
@@ -145,9 +127,6 @@ class VisibilityOverlay(Gtk.Box):
         self.nogo_button.set_action_name("win.show_nogo_zones")
         self.append(self.nogo_button)
 
-    def set_camera_visible(self, visible: bool):
-        self.camera_button.set_visible(visible)
-
     def _format_tooltip(self, text, action_name):
         if action_name in self._shortcuts:
             shortcut_str = self._shortcuts[action_name]
@@ -166,9 +145,3 @@ class VisibilityOverlay(Gtk.Box):
             button.set_child(self._vis_on_icon)
         else:
             button.set_child(self._vis_off_icon)
-
-    def _on_camera_toggled(self, button):
-        if button.get_active():
-            button.set_child(self._cam_on_icon)
-        else:
-            button.set_child(self._cam_off_icon)

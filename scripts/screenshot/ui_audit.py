@@ -75,7 +75,6 @@ MACHINE_PAGES = (
     "heads",
     "rotary-module",
     "nogo-zones",
-    "camera",
     "maintenance",
     "capabilities",
 )

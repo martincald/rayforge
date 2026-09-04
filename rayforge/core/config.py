@@ -33,7 +33,6 @@ class CanvasViewState:
     """Persistent view toggle states for the 2D/3D canvases."""
 
     show_workpieces: bool = True
-    show_camera: bool = True
     show_travel_lines: bool = False
     show_nogo_zones: bool = True
     show_grid: bool = True

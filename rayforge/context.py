@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     import pluggy
 
     from .addon_mgr.addon_manager import AddonManager
-    from .camera.manager import CameraManager
     from .core.addon_config import AddonConfig
     from .core.color_preset import ColorPresetManager
     from .core.config import Config, ConfigManager
@@ -58,7 +57,6 @@ class RayforgeContext:
         self._machine_mgr: MachineManager | None = None
         self._config_mgr: ConfigManager | None = None
         self._config: Config | None = None
-        self._camera_mgr: CameraManager | None = None
         self._material_mgr: LibraryManager | None = None
         self._model_mgr: ModelManager | None = None
         self._recipe_mgr: RecipeManager | None = None
@@ -230,17 +228,6 @@ class RayforgeContext:
         return self.config_mgr.config
 
     @property
-    def camera_mgr(self) -> "CameraManager":
-        """Returns the camera manager."""
-        if self._camera_mgr is None:
-            from .camera.manager import CameraManager
-
-            logger.info("Lazy loading camera manager")
-            self._camera_mgr = CameraManager(self)
-            self._camera_mgr.initialize()
-        return self._camera_mgr
-
-    @property
     def material_mgr(self) -> "LibraryManager":
         """Returns the material manager."""
         if self._material_mgr is None:
@@ -372,8 +359,6 @@ class RayforgeContext:
         Shuts down all managed services in the correct order.
         """
         logger.info("RayforgeContext shutting down...")
-        if self._camera_mgr:
-            self._camera_mgr.shutdown()
         if self._machine_mgr:
             await self._machine_mgr.shutdown()
         self.artifact_store.shutdown()

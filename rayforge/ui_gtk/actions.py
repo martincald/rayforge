@@ -52,7 +52,6 @@ SHORTCUTS = {
     # View
     "win.show_workpieces": "h",
     "win.show_tabs": "t",
-    "win.toggle_camera_view": "<Ctrl><Alt>c",
     "win.toggle_bottom_panel": f"{PRIMARY_ACCEL}l",
     "win.toggle_travel_view": f"{PRIMARY_ACCEL}<Shift>t",
     "win.recalculate": "F5",
@@ -252,11 +251,6 @@ class ActionManager:
             "show_workpieces",
             self.win.on_show_workpieces_state_change,
             GLib.Variant.new_boolean(cv.show_workpieces),
-        )
-        self._add_stateful_action(
-            "toggle_camera_view",
-            self.win.on_toggle_camera_view_state_change,
-            GLib.Variant.new_boolean(cv.show_camera),
         )
         self._add_stateful_action(
             "toggle_travel_view",

@@ -610,7 +610,7 @@ def main():
     async def shutdown_async():
         logger.info("Starting graceful async shutdown...")
         # The context now handles shutting down all its owned managers
-        # (machine_mgr, camera_mgr, artifact_store) in the correct order.
+        # (machine_mgr, artifact_store) in the correct order.
         await context.shutdown()
         logger.info("Async shutdown complete.")
 

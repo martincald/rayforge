@@ -33,16 +33,6 @@ TARGETS = {
     "machine-settings:hooks-macros": "machine_settings_hooks-macros",
     "machine-settings:laser": "machine_settings_laser",
     "machine-settings:rotary-module": "machine_settings_rotary_module",
-    "machine-settings:camera": "machine_settings_camera",
-    "machine-settings:camera:image-settings": "machine_settings_camera",
-    "machine-settings:camera:lens-calibration": "machine_settings_camera",
-    "machine-settings:camera:lens-calibration:wizard-card": (
-        "machine_settings_camera"
-    ),
-    "machine-settings:camera:lens-calibration:wizard-capture": (
-        "machine_settings_camera"
-    ),
-    "machine-settings:camera:image-alignment": "machine_settings_camera",
     "machine-settings:maintenance": "machine_settings_maintenance",
     "machine-settings:nogo-zones": "machine_settings_nogo_zones",
     "main:standard": "main_standard",
