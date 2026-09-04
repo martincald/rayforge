@@ -20,9 +20,7 @@ from rayforge.image import SVG_RENDERER
 from rayforge.machine.cmd import MachineCmd
 from rayforge.machine.driver.driver import DeviceState
 from rayforge.machine.driver.dummy import NoDeviceDriver
-from rayforge.machine.driver.grbl.grbl_network import GrblNetworkDriver
-from rayforge.machine.driver.grbl.grbl_serial import GrblSerialDriver
-from rayforge.machine.driver.smoothie import SmoothieDriver
+from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.models.dialect import (
     GRBL_DIALECT,
     SMOOTHIEWARE_DIALECT,
@@ -1017,12 +1015,12 @@ class TestMachine:
         assert not machine.dialect.can_g0_with_speed
 
     @pytest.mark.asyncio
-    async def test_new_driver_methods_smoothie(
+    async def test_new_driver_methods_smoothieware_dialect(
         self, machine: Machine, task_mgr: TaskManager
     ):
-        """Test new driver methods for SmoothieDriver."""
+        """Test new driver methods with the smoothieware dialect."""
         machine.set_dialect_uid("smoothieware")
-        machine.set_driver(SmoothieDriver, {"host": "test", "port": 23})
+        machine.set_driver(NoDeviceDriver, {})
         # Wait for the async set_driver operation to complete
         await wait_for_tasks_to_finish(task_mgr)
 
@@ -1043,12 +1041,12 @@ class TestMachine:
         assert machine.can_jog(Axis.Z)
 
     @pytest.mark.asyncio
-    async def test_new_driver_methods_grbl_network(
+    async def test_new_driver_methods_grbl_dialect(
         self, machine: Machine, lite_context, task_mgr: TaskManager
     ):
-        """Test new driver methods for GrblNetworkDriver."""
+        """Test new driver methods with the grbl dialect."""
         machine.set_dialect_uid("grbl")
-        machine.set_driver(GrblNetworkDriver, {"host": "test"})
+        machine.set_driver(NoDeviceDriver, {})
         await wait_for_tasks_to_finish(task_mgr)
 
         # Test G0 with speed support (GRBL doesn't support this)
@@ -1068,19 +1066,12 @@ class TestMachine:
         assert machine.can_jog(Axis.Z)
 
     @pytest.mark.asyncio
-    async def test_new_driver_methods_grbl_serial(
+    async def test_new_driver_methods_ruida(
         self, machine: Machine, lite_context, task_mgr: TaskManager
     ):
-        """Test new driver methods for GrblSerialDriver."""
-        machine.set_dialect_uid("grbl")
-        machine.set_driver(
-            GrblSerialDriver, {"port": "/dev/test", "baudrate": 115200}
-        )
+        """Test new driver methods for RuidaDriver."""
+        machine.set_driver(RuidaDriver, {"host": ""})
         await wait_for_tasks_to_finish(task_mgr)
-
-        # Test G0 with speed support (GRBL doesn't support this)
-        assert machine.dialect is not None
-        assert not machine.dialect.can_g0_with_speed
 
         # Test homing support
         assert machine.can_home()
@@ -1088,27 +1079,19 @@ class TestMachine:
         assert machine.can_home(Axis.Y)
         assert machine.can_home(Axis.Z)
 
-        # Test jogging support
+        # Test jogging support. Ruida does not implement Z jogging.
         assert machine.can_jog()
         assert machine.can_jog(Axis.X)
         assert machine.can_jog(Axis.Y)
-        assert machine.can_jog(Axis.Z)
+        assert not machine.can_jog(Axis.Z)
 
     @pytest.mark.asyncio
-    async def test_home_method_with_multiple_axes(
-        self, machine, mocker, lite_context, task_mgr
-    ):
+    async def test_home_method_with_multiple_axes(self, machine, mocker):
         """
         Test that home method accepts multiple axes using binary operators.
         """
-        # Mock the _send_and_wait method to avoid connection issues
-        mock_send_and_wait = mocker.AsyncMock()
-
-        # Create driver directly to avoid setup issues
-        machine.set_driver(SmoothieDriver, {"host": "test", "port": 23})
-        await wait_for_tasks_to_finish(task_mgr)
-
-        machine.driver._send_and_wait = mock_send_and_wait
+        home_mock = mocker.AsyncMock()
+        machine.driver.home = home_mock
 
         # Test home with single axis
         await machine.home(Axis.X)
@@ -1125,10 +1108,12 @@ class TestMachine:
         await machine.home()
         await machine.home(None)
 
-        # Verify that _send_and_wait was called for each home operation
-        # 3 single axes + 3*2 for multiple axes (2 axes each)
-        #  + 1*3 for all three axes + 2 for home all/home none
-        assert mock_send_and_wait.call_count == 14
+        # Verify that the driver's home method received each combination.
+        assert home_mock.call_count == 9
+        home_mock.assert_any_call(Axis.X)
+        home_mock.assert_any_call(Axis.X | Axis.Y)
+        home_mock.assert_any_call(Axis.X | Axis.Y | Axis.Z)
+        home_mock.assert_any_call(None)
 
     @pytest.mark.asyncio
     async def test_machine_jog_methods(self, machine: Machine, mocker):
@@ -1185,41 +1170,29 @@ class TestMachine:
         assert machine.reports_granular_progress
 
     @pytest.mark.asyncio
-    async def test_reports_granular_progress_grbl_serial(
+    async def test_reports_granular_progress_no_device_driver_explicit(
         self, machine: Machine, lite_context, task_mgr
     ):
-        """Test reports_granular_progress returns True for GrblSerialDriver."""
-        machine.set_driver(
-            GrblSerialDriver, {"port": "/dev/test", "baudrate": 115200}
-        )
+        """Test reports_granular_progress returns True for NoDeviceDriver
+        when set explicitly via set_driver()."""
+        machine.set_driver(NoDeviceDriver, {})
         await wait_for_tasks_to_finish(task_mgr)
 
-        # GrblSerialDriver should report granular progress
+        # NoDeviceDriver should report granular progress
         assert machine.reports_granular_progress
 
     @pytest.mark.asyncio
-    async def test_reports_granular_progress_grbl_network(
+    async def test_reports_granular_progress_ruida(
         self, machine: Machine, lite_context, task_mgr
     ):
         """
-        Test reports_granular_progress returns False for GrblNetworkDriver.
+        Test reports_granular_progress returns False for RuidaDriver.
         """
-        machine.set_driver(GrblNetworkDriver, {"host": "test"})
+        machine.set_driver(RuidaDriver, {"host": ""})
         await wait_for_tasks_to_finish(task_mgr)
 
-        # GrblNetworkDriver should not report granular progress
+        # RuidaDriver should not report granular progress
         assert not machine.reports_granular_progress
-
-    @pytest.mark.asyncio
-    async def test_reports_granular_progress_smoothie(
-        self, machine: Machine, lite_context, task_mgr
-    ):
-        """Test reports_granular_progress returns True for SmoothieDriver."""
-        machine.set_driver(SmoothieDriver, {"host": "test", "port": 23})
-        await wait_for_tasks_to_finish(task_mgr)
-
-        # SmoothieDriver should report granular progress
-        assert machine.reports_granular_progress
 
     @pytest.mark.asyncio
     async def test_hook_migration_full(

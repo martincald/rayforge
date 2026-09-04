@@ -100,10 +100,10 @@ class TestParseLBDev:
 
 class TestMapDriver:
     def test_serial(self):
-        assert _map_driver("Serial") == "GrblSerialDriver"
+        assert _map_driver("Serial") is None
 
     def test_network(self):
-        assert _map_driver("Network") == "GrblNetworkDriver"
+        assert _map_driver("Network") is None
 
     def test_ruida(self):
         assert _map_driver("Ruida") == "RuidaDriver"
@@ -193,8 +193,8 @@ class TestConvertToProfile:
         profile, summary = convert_to_profile(lbdev)
 
         assert profile.meta.name == "Test Laser"
-        assert profile.machine_config.driver == "GrblSerialDriver"
-        assert profile.machine_config.driver_args == {"baudrate": "115200"}
+        assert profile.machine_config.driver is None
+        assert profile.machine_config.driver_args is None
         assert profile.machine_config.axis_extents == (400.0, 390.0)
         assert profile.machine_config.home_on_start is False
         assert profile.machine_config.max_travel_speed == 400
@@ -203,8 +203,8 @@ class TestConvertToProfile:
 
         assert summary.name == "Test Laser"
         assert summary.axis_extents == (400.0, 390.0)
-        assert summary.driver == "GrblSerialDriver"
-        assert summary.driver_args == {"baudrate": "115200"}
+        assert summary.driver is None
+        assert summary.driver_args is None
 
     def test_convert_uses_display_name(self, tmp_path):
         lbdev = _make_lbdev(
@@ -228,8 +228,8 @@ class TestConvertToProfile:
             {"Type": "Network"},
         )
         profile, summary = convert_to_profile(lbdev)
-        assert profile.machine_config.driver == "GrblNetworkDriver"
-        assert summary.driver == "GrblNetworkDriver"
+        assert profile.machine_config.driver is None
+        assert summary.driver is None
 
     def test_convert_ruida_driver(self, tmp_path):
         lbdev = _make_lbdev(
@@ -374,7 +374,7 @@ class TestInstallFromLBDev:
         profile, summary = mgr.install_from_lbdev(lbdev)
 
         assert profile.meta.name == "Test Laser"
-        assert profile.machine_config.driver == "GrblSerialDriver"
+        assert profile.machine_config.driver is None
         assert profile.machine_config.axis_extents == (400.0, 390.0)
         assert profile.source_dir == install_dir / "Test Laser"
         assert mgr.get("Test Laser") is profile
@@ -384,14 +384,14 @@ class TestInstallFromLBDev:
         with open(manifest) as f:
             data = yaml.safe_load(f)
         assert data["device"]["name"] == "Test Laser"
-        assert data["machine"]["driver"] == "GrblSerialDriver"
+        assert "driver" not in data["machine"]
         assert data["machine"]["axis_extents"] == [400.0, 390.0]
 
         dialect = install_dir / "Test Laser" / DIALECT_FILENAME
         assert dialect.exists()
 
         assert summary.name == "Test Laser"
-        assert summary.driver == "GrblSerialDriver"
+        assert summary.driver is None
 
     def test_install_overwrites_existing(self, tmp_path):
         lbdev = _make_lbdev(tmp_path / "v1.lbdev")
@@ -437,7 +437,7 @@ class TestInstallFromLBDev:
         profile, _ = mgr.install_from_lbdev(lbdev)
 
         assert profile.meta.name == "Test Laser"
-        assert profile.machine_config.driver == "GrblSerialDriver"
+        assert profile.machine_config.driver is None
         assert profile.machine_config.axis_extents == (400.0, 390.0)
         assert profile.source_dir is not None
         assert profile.source_dir.exists()
@@ -466,8 +466,8 @@ class TestRealLBDevAsset:
     def test_convert_real_asset(self):
         profile, summary = convert_to_profile(self.ASSET_PATH)
         assert profile.meta.name == "ACMER P3 2-IN-1"
-        assert profile.machine_config.driver == "GrblSerialDriver"
-        assert profile.machine_config.driver_args == {"baudrate": "115200"}
+        assert profile.machine_config.driver is None
+        assert profile.machine_config.driver_args is None
         assert profile.machine_config.axis_extents == (400.0, 390.0)
         assert profile.machine_config.home_on_start is False
         assert profile.machine_config.max_travel_speed == 400
@@ -489,7 +489,7 @@ class TestRealLBDevAsset:
         assert cam["distortion_k3"] == pytest.approx(8.584, rel=1e-2)
 
         assert summary.name == "ACMER P3 2-IN-1"
-        assert summary.driver == "GrblSerialDriver"
+        assert summary.driver is None
         assert summary.axis_extents == (400.0, 390.0)
         assert summary.home_on_start is False
         assert summary.max_travel_speed == 400
@@ -500,8 +500,6 @@ class TestRealLBDevAsset:
         lines = summary.to_lines()
         assert any("ACMER P3 2-IN-1" in line for line in lines)
         assert any("400" in line and "390" in line for line in lines)
-        assert any("GrblSerialDriver" in line for line in lines)
-        assert any("115200" in line for line in lines)
         assert any("bottom_left" in line for line in lines)
         assert any("Camera calibration" in line for line in lines)
 
@@ -511,8 +509,8 @@ class TestRealLBDevAsset:
         pairs = dict(items)
         assert pairs["Device name"] == "ACMER P3 2-IN-1"
         assert pairs["Work area"] == "400 × 390 mm"
-        assert pairs["Driver"] == "GrblSerialDriver"
-        assert pairs["Baud rate"] == "115200"
+        assert "Driver" not in pairs
+        assert "Baud rate" not in pairs
         assert pairs["Home on start"] == "False"
         assert pairs["Max travel speed"] == "6.7 mm/s"
         assert pairs["Origin"] == "bottom_left"
@@ -525,7 +523,7 @@ class TestRealLBDevAsset:
         profile, _ = mgr.install_from_lbdev(self.ASSET_PATH)
 
         assert profile.meta.name == "ACMER P3 2-IN-1"
-        assert profile.machine_config.driver == "GrblSerialDriver"
+        assert profile.machine_config.driver is None
         assert profile.machine_config.axis_extents == (400.0, 390.0)
 
         manifest = install_dir / "ACMER P3 2-IN-1" / MANIFEST_FILENAME

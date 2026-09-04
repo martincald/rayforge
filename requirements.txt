@@ -22,4 +22,3 @@ semver==3.0.4
 svgelements==1.9.6
 trimesh==5.0.0
 vtracer==0.6.15
-websockets==17.0.1

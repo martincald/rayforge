@@ -46,7 +46,6 @@ TARGETS = {
     "machine-settings:advanced": "machine_settings_advanced",
     "machine-settings:gcode": "machine_settings_gcode",
     "machine-settings:hooks-macros": "machine_settings_hooks-macros",
-    "machine-settings:device": "machine_settings_device",
     "machine-settings:laser": "machine_settings_laser",
     "machine-settings:rotary-module": "machine_settings_rotary_module",
     "machine-settings:camera": "machine_settings_camera",

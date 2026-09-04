@@ -25,8 +25,8 @@ from .profile import (
 logger = logging.getLogger(__name__)
 
 _DRIVER_MAP: dict[str, str | None] = {
-    "Serial": "GrblSerialDriver",
-    "Network": "GrblNetworkDriver",
+    "Serial": None,
+    "Network": None,
     "Ruida": "RuidaDriver",
     "EZCAD": None,
     "LaserCAD": None,
@@ -276,11 +276,6 @@ def _convert(
         summary.driver = driver_name
 
     settings = device_data.get("Settings", {})
-
-    baud_rate = settings.get("BaudRate")
-    if baud_rate and driver_name == "GrblSerialDriver":
-        kwargs["driver_args"] = {"baudrate": str(baud_rate)}
-        summary.driver_args = {"baudrate": str(baud_rate)}
 
     width = device_data.get("Width")
     height = device_data.get("Height")

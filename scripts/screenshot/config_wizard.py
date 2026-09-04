@@ -50,7 +50,7 @@ FAKE_PROFILE = DeviceProfile(
         description="Auto-configured via unified wizard",
     ),
     machine_config=MachineConfig(
-        driver="GrblSerialDriver",
+        driver="NoDeviceDriver",
         driver_args={"port": "/dev/ttyUSB0", "baud_rate": 115200},
         axis_extents=(400.0, 430.0),
         origin=Origin.BOTTOM_LEFT,

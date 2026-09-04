@@ -6,7 +6,7 @@ import pytest_asyncio
 from rayforge.config import BUILTIN_DEVICES_DIR
 from rayforge.machine.device.profile import DeviceProfile
 from rayforge.machine.driver.dummy import NoDeviceDriver
-from rayforge.machine.driver.grbl.grbl_serial import GrblSerialDriver
+from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.shared import tasker
 
 if TYPE_CHECKING:
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 
 
 @pytest_asyncio.fixture
-async def sculpfun_icube_machine(
+async def omtech_polar_machine(
     context_initializer: "RayforgeContext",
 ) -> "Machine":
-    """Provides a Machine instance from the Sculpfun iCube device."""
-    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "sculpfun-icube")
+    """Provides a Machine instance from the OMTech Polar device."""
+    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "omtech-polar")
     machine = pkg.create_machine(context_initializer)
     context_initializer.machine_mgr.add_machine(machine)
 
@@ -29,17 +29,17 @@ async def sculpfun_icube_machine(
 
 
 @pytest.mark.asyncio
-async def test_sculpfun_icube_driver_assignment(
-    sculpfun_icube_machine: "Machine",
+async def test_omtech_polar_driver_assignment(
+    omtech_polar_machine: "Machine",
 ):
     """
-    Tests that creating a machine from the Sculpfun iCube device
-    correctly assigns the GrblSerialDriver instead of NoDeviceDriver.
+    Tests that creating a machine from the OMTech Polar device
+    correctly assigns the RuidaDriver instead of NoDeviceDriver.
     """
-    machine = sculpfun_icube_machine
+    machine = omtech_polar_machine
 
-    assert machine.driver_name == "GrblSerialDriver", (
-        f"Expected driver_name to be 'GrblSerialDriver', "
+    assert machine.driver_name == "RuidaDriver", (
+        f"Expected driver_name to be 'RuidaDriver', "
         f"got '{machine.driver_name}'"
     )
 
@@ -50,7 +50,7 @@ async def test_sculpfun_icube_driver_assignment(
         "Driver should not be NoDeviceDriver after device creation"
     )
 
-    assert isinstance(controller.driver, GrblSerialDriver), (
-        f"Expected driver to be GrblSerialDriver, "
+    assert isinstance(controller.driver, RuidaDriver), (
+        f"Expected driver to be RuidaDriver, "
         f"got {type(controller.driver).__name__}"
     )

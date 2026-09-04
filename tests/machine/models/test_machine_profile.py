@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
+import yaml
 from raygeo.ops import Ops
 
 from rayforge.config import BUILTIN_DEVICES_DIR
@@ -22,12 +24,93 @@ def _encode(ops, machine, doc):
     return encoder.encode(ops, machine, doc)
 
 
+# The Carvera Air device profile (a Smoothieware/GRBL device) was removed
+# along with the non-Ruida drivers. Its dialect is reconstructed here,
+# using NoDeviceDriver, so the G-code generation behaviour it exercised
+# stays covered.
+_CARVERA_AIR_DEVICE_YAML = {
+    "api_version": 1,
+    "device": {"name": "Carvera Air"},
+    "machine": {
+        "driver": "NoDeviceDriver",
+        "gcode_precision": 4,
+        "axis_extents": [300.0, 200.0],
+        "origin": "bottom_left",
+        "max_travel_speed": 3000,
+        "max_cut_speed": 3000,
+        "home_on_start": True,
+        "heads": [
+            {
+                "tool_number": 8888,
+                "max_power": 1.0,
+                "frame_power_percent": 1.0,
+                "focus_power_percent": 1.0,
+                "spot_size_mm": [0.1, 0.1],
+            }
+        ],
+    },
+}
+
+_CARVERA_AIR_DIALECT_YAML = {
+    "laser_on": "",
+    "laser_off": "G1 S0",
+    "focus_laser_on": "M3 S{power:.0f}",
+    "tool_change": "T{tool_number}",
+    "set_speed": "",
+    "travel_move": "G0 X{x} Y{y} Z{z}{extra_cmd}",
+    "linear_move": "G1 X{x} Y{y} Z{z}{extra_cmd}{s_command}{f_command}",
+    "arc_cw": "G2 X{x} Y{y} Z{z}{extra_cmd} I{i} J{j}{s_command}{f_command}",
+    "arc_ccw": "G3 X{x} Y{y} Z{z}{extra_cmd} I{i} J{j}{s_command}{f_command}",
+    "bezier_cubic": "",
+    "air_assist_on": "M8",
+    "air_assist_off": "M9",
+    "home_all": "$H",
+    "home_axis": "G28 {axis_letter}0",
+    "move_to": "G90 G0 X{x} Y{y}",
+    "jog": "G91 G0 F{speed}",
+    "clear_alarm": "M999",
+    "set_wcs_offset": "G10 L20 P{p_num} X{x} Y{y} Z{z}",
+    "probe_cycle": "G38.2 {axis_letter}{max_travel} F{feed_rate}",
+    "dwell": "G4 P{seconds:.3f}",
+    "preamble": [
+        "M321",
+        "G0Z0",
+        "G00 {machine.active_wcs}",
+        "M3",
+        "G21 ; Set units to mm",
+        "G90 ; Absolute positioning",
+    ],
+    "postscript": [
+        "M5 ; Ensure laser is off",
+        "G0 X0 Y0 ; Return to origin",
+        ";USER END SCRIPT",
+        "M322",
+        ";USER END SCRIPT",
+        "M2",
+    ],
+    "inject_wcs_after_preamble": False,
+    "can_g0_with_speed": True,
+    "omit_unchanged_coords": True,
+    "continuous_laser_mode": False,
+    "modal_feedrate": False,
+}
+
+
 @pytest_asyncio.fixture
 async def carvera_air_machine(
-    context_initializer: "RayforgeContext",
+    context_initializer: "RayforgeContext", tmp_path: Path
 ) -> "Machine":
-    """Provides a Machine instance configured from the Carvera Air device."""
-    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "carvera-air")
+    """Provides a Machine configured like the (removed) Carvera Air
+    device profile."""
+    device_dir = tmp_path / "carvera-air"
+    device_dir.mkdir()
+    (device_dir / "device.yaml").write_text(
+        yaml.safe_dump(_CARVERA_AIR_DEVICE_YAML, sort_keys=False)
+    )
+    (device_dir / "dialect.yaml").write_text(
+        yaml.safe_dump(_CARVERA_AIR_DIALECT_YAML, sort_keys=False)
+    )
+    pkg = DeviceProfile.from_path(device_dir)
     machine = pkg.create_machine(context_initializer)
     tasker.task_mgr.wait_until_settled(5000)
     return machine
@@ -165,7 +248,7 @@ async def test_device_without_rotary_modules(
     context_initializer: "RayforgeContext",
 ):
     """Devices without rotary_modules create machines with none."""
-    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "sculpfun-icube")
+    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "omtech-polar")
     machine = pkg.create_machine(context_initializer)
     tasker.task_mgr.wait_until_settled(5000)
     assert machine.rotary_modules == {}
