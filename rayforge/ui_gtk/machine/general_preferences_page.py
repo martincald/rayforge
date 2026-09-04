@@ -3,7 +3,7 @@ from gettext import gettext as _
 
 from gi.repository import Adw, Gtk
 
-from ...machine.driver import drivers, get_driver_cls
+from ...machine.driver import get_driver_cls
 from ...machine.models.machine import Machine
 from ...shared.units.system import UnitSystem
 from ..icons import get_icon
@@ -71,25 +71,6 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         self.driver_group.data_changed.connect(self.on_driver_param_changed)
         self.add(self.driver_group)
 
-        # Driver selector
-        self.driver_store = Gtk.StringList()
-        for d in drivers:
-            self.driver_store.append(d.label)
-
-        self.combo_row = Adw.ComboRow(
-            title=_("Select driver"),
-            model=self.driver_store,
-        )
-        self.combo_row.set_use_subtitle(True)
-        self.driver_group.add(self.combo_row)
-
-        # Set up a custom factory to display both title and subtitle in the
-        # dropdown
-        factory = Gtk.SignalListItemFactory()
-        factory.connect("setup", self.on_factory_setup)
-        factory.connect("bind", self.on_factory_bind)
-        self.combo_row.set_factory(factory)
-
         # Get the driver class from driver_name (not from driver instance
         # which may not be ready yet)
         driver_cls = None
@@ -112,20 +93,6 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         # Connect to the machine's changed signal to get updates
         self.machine.changed.connect(self._on_machine_changed)
         self.connect("destroy", self._on_destroy)
-
-        # Connect the signal for the combo row
-        self.combo_row.connect("notify::selected", self.on_combo_row_changed)
-
-        # Now, set the initial selection and update its title/subtitle
-        if driver_cls:
-            selected_index = drivers.index(driver_cls)
-            self.combo_row.set_selected(selected_index)
-            # Manually set title/subtitle for the initial state
-            self.combo_row.set_title(driver_cls.label)
-            self.combo_row.set_subtitle(driver_cls.subtitle)
-        else:
-            self.combo_row.set_title(_("Select driver"))
-            self.combo_row.set_subtitle("")
 
         # Group for Speeds
         speeds_group = Adw.PreferencesGroup(
@@ -293,39 +260,6 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
             return
         values = self.driver_group.get_values()
         self.machine.set_driver_args(values)
-
-    def on_factory_setup(self, factory, list_item):
-        row = Adw.ActionRow()
-        list_item.set_child(row)
-
-    def on_factory_bind(self, factory, list_item):
-        index = list_item.get_position()
-        driver_cls = drivers[index]
-        row = list_item.get_child()
-        row.set_title(driver_cls.label)
-        row.set_subtitle(driver_cls.subtitle)
-
-    def on_combo_row_changed(self, combo_row, _param):
-        if self._is_initializing:
-            return
-
-        selected_index = combo_row.get_selected()
-        if selected_index < 0:
-            self.combo_row.set_title(_("Select driver"))
-            self.combo_row.set_subtitle("")
-            self.driver_group.clear_dynamic_rows()
-            return  # No driver selected
-
-        driver_cls = drivers[selected_index]
-
-        self.combo_row.set_title(driver_cls.label)
-        self.combo_row.set_subtitle(driver_cls.subtitle)
-
-        # If the user selected a new driver, update the machine model.
-        # The `machine.changed` signal will then trigger _on_machine_changed
-        # to update the UI, including the driver settings widgets.
-        if self.machine.driver_name != driver_cls.__name__:
-            self.machine.set_driver(driver_cls, {})
 
     def on_name_changed(self, entry_row, _):
         """Update the machine name when the text changes."""

@@ -49,7 +49,6 @@ from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
 from .layout import SPACE_CONTROL, SPACE_GROUP
-from .machine.machine_dropdown import MachineDropdown
 from .machine.settings_dialog import MachineSettingsDialog
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
@@ -202,10 +201,6 @@ class MainWindow(Adw.ApplicationWindow):
             title=self.get_title() or "", subtitle=__version__ or ""
         )
         self.header_bar.set_title_widget(window_title)
-
-        # Add machine selector to the header bar (right side)
-        self.machine_selector = MachineDropdown()
-        self.header_bar.pack_end(self.machine_selector)
 
         # Create a vertical paned for main content and bottom control panel
         self.vertical_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
@@ -698,7 +693,6 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_job_started(self, sender):
         logger.debug("Job started")
-        self.machine_selector.update_eta(None)
         self.toolbar.set_job_progress(0.0)
         self._set_inspector_locked(True)
         self._update_actions_and_ui()
@@ -721,7 +715,6 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_job_progress_updated(self, metrics: dict):
         """Callback for when job progress is updated."""
         eta_seconds = metrics.get("eta_seconds")
-        self.machine_selector.update_eta(eta_seconds)
         self.toolbar.set_job_progress(
             metrics.get("progress_fraction"), eta_seconds
         )
@@ -729,7 +722,6 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_job_finished(self, sender):
         """Handles the completion of a machine job."""
         logger.debug("Job finished")
-        self.machine_selector.update_eta(None)
         self.toolbar.set_job_progress(None)
         self._set_inspector_locked(False)
 
@@ -743,7 +735,6 @@ class MainWindow(Adw.ApplicationWindow):
             # If the submission failed, the driver's 'job_finished' signal
             # will never fire, so we must stop the live view here to prevent
             # the UI from getting stuck.
-            self.machine_selector.update_eta(None)
             self.toolbar.set_job_progress(None)
             self._set_inspector_locked(False)
 
@@ -1020,9 +1011,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar.machine_warning_clicked.connect(
             self.on_machine_warning_clicked
         )
-        self.machine_selector.machine_selected.connect(
-            self.on_machine_selected_by_selector
-        )
 
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
@@ -1049,14 +1037,6 @@ class MainWindow(Adw.ApplicationWindow):
         """
         logger.debug("Clicked on canvas area dead space, focusing surface.")
         self.surface.grab_focus()
-
-    def on_machine_selected_by_selector(self, sender, *, machine: Machine):
-        """
-        Handles the 'machine_selected' signal from the MachineSelector widget,
-        delegating the logic to the MachineManager.
-        """
-        context = get_context()
-        context.machine_mgr.set_active_machine(machine)
 
     def _on_machine_status_changed(self, machine: Machine, state: DeviceState):
         """Called when the active machine's state changes."""
