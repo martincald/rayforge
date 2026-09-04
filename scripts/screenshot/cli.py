@@ -15,7 +15,6 @@ PROJECT_ROOT = SCRIPTS_DIR.parent.parent
 TEST_CONFIG_DIR = PROJECT_ROOT / "tests" / "config"
 
 TARGETS = {
-    "addon:ai-workpiece-generator": "ai_workpiece_generator",
     "addon:deepnest": "deepnest",
     "addon:print-and-cut:pick": "print_and_cut",
     "addon:print-and-cut:jog": "print_and_cut",
