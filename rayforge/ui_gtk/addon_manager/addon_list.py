@@ -7,7 +7,7 @@ from typing import cast
 from blinker import Signal
 from gi.repository import Adw, GLib, Gtk
 
-from ... import __version__
+from ... import __version__, const
 from ...addon_mgr.addon import Addon, AddonMaturity, AddonMetadata
 from ...addon_mgr.addon_manager import AddonState
 from ...context import get_context
@@ -79,8 +79,8 @@ class AddonRow(Gtk.Box):
             icon.set_tooltip_text(
                 _(
                     "This addon is incompatible with the current "
-                    "version of Rayforge"
-                )
+                    "version of {app_name}"
+                ).format(app_name=const.APP_NAME)
             )
             self.append(icon)
         elif addon.metadata.maturity == AddonMaturity.EXPERIMENTAL:

@@ -260,7 +260,7 @@ class AboutDialog(PatchedDialogWindow):
         hero_box.set_halign(Gtk.Align.CENTER)
         content_box.append(hero_box)
 
-        icon = get_icon("org.rayforge.rayforge")
+        icon = get_icon("org.ilab.SwiftCut")
         icon.set_pixel_size(128)
         hero_box.append(icon)
 
@@ -415,7 +415,7 @@ class AboutDialog(PatchedDialogWindow):
             "<i>"
             + _(
                 "Special thanks go to everyone who has donated to support "
-                "Rayforge! You keep the coffee and the AI tokens flowing!"
+                "SwiftCut! You keep the coffee and the AI tokens flowing!"
             )
             + "</i>"
         )

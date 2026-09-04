@@ -35,7 +35,7 @@ done
 
 echo ""
 print_info "======================================"
-print_info "    Rayforge macOS Build Script"
+print_info "    SwiftCut macOS Build Script"
 print_info "======================================"
 echo ""
 echo "Select build option:"
@@ -74,7 +74,7 @@ case "$BUILD_CHOICE" in
 esac
 
 if (( DO_RUN_APP == 1 )); then
-    APP_BIN="./dist/Rayforge.app/Contents/MacOS/Rayforge"
+    APP_BIN="./dist/SwiftCut.app/Contents/MacOS/SwiftCut"
     if [ ! -x "$APP_BIN" ]; then
         echo "$APP_BIN not found or not executable." >&2
         echo "Build the app bundle first (option 2)." >&2
@@ -92,7 +92,7 @@ fi
 source .mac_env
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is required to build Rayforge on macOS." >&2
+    echo "python3 is required to build SwiftCut on macOS." >&2
     exit 1
 fi
 
@@ -179,7 +179,7 @@ from scipy.signal import fftconvolve
 assert numpy.__version__ == sys.argv[1]
 assert scipy.__version__ == sys.argv[2]
 assert all((null_space, binary_dilation, least_squares, fftconvolve))
-print("Verified SciPy modules used by Rayforge.")
+print("Verified SciPy modules used by SwiftCut.")
 PY
 fi
 
@@ -196,8 +196,8 @@ if (( DO_BUILD == 1 )); then
     print_info "--------------------------------------"
     echo ""
     "$VENV_PY" -m build
-elif [ -d "dist/Rayforge.app" ] && (( DO_BUNDLE == 0 )); then
-    echo "Note: dist/Rayforge.app exists but was not rebuilt." >&2
+elif [ -d "dist/SwiftCut.app" ] && (( DO_BUNDLE == 0 )); then
+    echo "Note: dist/SwiftCut.app exists but was not rebuilt." >&2
 fi
 
 if (( DO_BUNDLE == 1 )); then
@@ -219,21 +219,21 @@ def _onerror(func, path, exc_info):
     except Exception:
         pass
 
-for target in ("dist/Rayforge", "dist/Rayforge.app"):
+for target in ("dist/SwiftCut", "dist/SwiftCut.app"):
     path = Path(target)
     if path.exists():
         shutil.rmtree(path, onerror=_onerror)
 PY
 
     # Compile .icon → Assets.car (macOS 26+ Liquid Glass icon format).
-    # Falls back to legacy .icns if rayforge.icon is not present.
+    # Falls back to legacy .icns if swiftcut.icon is not present.
     ICON_SOURCE=""
-    if [ -d "rayforge/resources/icons/rayforge.icon" ]; then
-        echo "Compiling rayforge.icon → Assets.car..."
+    if [ -d "rayforge/resources/icons/swiftcut.icon" ]; then
+        echo "Compiling swiftcut.icon → Assets.car..."
         rm -f "Assets.car"
-        if ! xcrun actool rayforge/resources/icons/rayforge.icon \
+        if ! xcrun actool rayforge/resources/icons/swiftcut.icon \
                 --compile "$(pwd)" \
-               --app-icon rayforge \
+               --app-icon swiftcut \
                 --platform macosx \
                 --target-device mac \
                 --minimum-deployment-target "$MACOS_MIN_VERSION" \
@@ -246,13 +246,13 @@ PY
             ICON_SOURCE="car"
         fi
     else
-        echo "rayforge.icon not found, using legacy .icns path."
+        echo "swiftcut.icon not found, using legacy .icns path."
         ICON_SOURCE="icns"
     fi
 
     if [ "$ICON_SOURCE" = "icns" ]; then
-        if [ ! -f "rayforge.icns" ] || \
-           [ "website/static/images/icon-app.svg" -nt "rayforge.icns" ]; then
+        if [ ! -f "swiftcut.icns" ] || \
+           [ "website/static/images/icon-app.svg" -nt "swiftcut.icns" ]; then
             echo "Generating macOS icon..."
             bash scripts/mac/mac_create_icon.sh
         else
@@ -260,14 +260,14 @@ PY
         fi
     fi
 
-    "$VENV_PY" -m PyInstaller --clean --noconfirm Rayforge.spec
+    "$VENV_PY" -m PyInstaller --clean --noconfirm SwiftCut.spec
 
-    APP_ROOT="dist/Rayforge.app/Contents"
+    APP_ROOT="dist/SwiftCut.app/Contents"
     FW_DIR="$APP_ROOT/Frameworks"
     BIN_DIR="$APP_ROOT/MacOS"
     RES_DIR="$APP_ROOT/Resources"
 
-    chmod -R u+w "dist/Rayforge.app" || true
+    chmod -R u+w "dist/SwiftCut.app" || true
 
     # Copy Assets.car into Resources and set CFBundleIconName in Info.plist.
     # This is what tells macOS to use the Liquid Glass .icon instead of .icns.
@@ -276,9 +276,9 @@ PY
         cp "Assets.car" "$RES_DIR/Assets.car"
         /usr/libexec/PlistBuddy -c "Delete :CFBundleIconFile" \
             "$APP_ROOT/Info.plist" 2>/dev/null || true
-        /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string rayforge" \
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string swiftcut" \
             "$APP_ROOT/Info.plist" 2>/dev/null || \
-        /usr/libexec/PlistBuddy -c "Set :CFBundleIconName rayforge" \
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconName swiftcut" \
             "$APP_ROOT/Info.plist" 2>/dev/null || true
     fi
 
@@ -286,27 +286,27 @@ PY
     rm -f "$FW_DIR/libiconv.2.dylib"
 
     # Replace the launcher with a wrapper that sets env vars,
-    # keeping the Mach-O as Rayforge.bin.
-    if [ -f "$BIN_DIR/Rayforge" ] && [ ! -f "$BIN_DIR/Rayforge.bin" ]; then
-        if file "$BIN_DIR/Rayforge" | grep -q "Mach-O"; then
-            mv "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"
+    # keeping the Mach-O as SwiftCut.bin.
+    if [ -f "$BIN_DIR/SwiftCut" ] && [ ! -f "$BIN_DIR/SwiftCut.bin" ]; then
+        if file "$BIN_DIR/SwiftCut" | grep -q "Mach-O"; then
+            mv "$BIN_DIR/SwiftCut" "$BIN_DIR/SwiftCut.bin"
         else
-            cp "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"
+            cp "$BIN_DIR/SwiftCut" "$BIN_DIR/SwiftCut.bin"
         fi
     fi
-    if [ -f "$BIN_DIR/Rayforge.bin" ]; then
-        cat > "$BIN_DIR/Rayforge" <<'SH'
+    if [ -f "$BIN_DIR/SwiftCut.bin" ]; then
+        cat > "$BIN_DIR/SwiftCut" <<'SH'
 #!/bin/bash
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 export DYLD_LIBRARY_PATH="$APP_DIR/Frameworks"
 export DYLD_FALLBACK_LIBRARY_PATH="$APP_DIR/Frameworks"
 export GI_TYPELIB_PATH="$APP_DIR/Resources/gi_typelibs"
 export GIO_EXTRA_MODULES="$APP_DIR/Frameworks/gio_modules"
-exec "$APP_DIR/MacOS/Rayforge.bin" "$@"
+exec "$APP_DIR/MacOS/SwiftCut.bin" "$@"
 SH
-        chmod +x "$BIN_DIR/Rayforge"
+        chmod +x "$BIN_DIR/SwiftCut"
         install_name_tool -add_rpath @executable_path/../Frameworks \
-            "$BIN_DIR/Rayforge.bin" 2>/dev/null || true
+            "$BIN_DIR/SwiftCut.bin" 2>/dev/null || true
     fi
 
     BREW_PREFIX=""
@@ -471,7 +471,7 @@ SH
                     "$FW_DIR/$libname"
                 changed=1
             fi
-        done < <(otool -L "$BIN_DIR/Rayforge.bin" \
+        done < <(otool -L "$BIN_DIR/SwiftCut.bin" \
             "$FW_DIR"/*.dylib 2>/dev/null | \
             awk '{print $1}' | \
             grep -E '^/usr/local/|^/opt/homebrew/|^@rpath/' | \
@@ -501,7 +501,7 @@ SH
                 fi
             done || true
         done
-        for bin in "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"; do
+        for bin in "$BIN_DIR/SwiftCut" "$BIN_DIR/SwiftCut.bin"; do
             [ -f "$bin" ] || continue
             if ! file "$bin" | grep -q "Mach-O"; then
                 continue
@@ -516,7 +516,7 @@ SH
         done
 
         # Force libpng references to @rpath to avoid runtime lookups in Homebrew.
-        for target in "$FW_DIR"/*.dylib "$BIN_DIR/Rayforge.bin"; do
+        for target in "$FW_DIR"/*.dylib "$BIN_DIR/SwiftCut.bin"; do
             [ -f "$target" ] || continue
             otool -L "$target" | awk '{print $1}' | \
                 grep -E '/opt/homebrew/opt/libpng/|/usr/local/opt/libpng/' | \
@@ -569,7 +569,7 @@ SH
     # Re-sign after install_name_tool and dylib rewrites to keep
     # macOS code-signing validation valid on Apple Silicon.
     if [ "$(uname -m)" = "arm64" ]; then
-        APP_BUNDLE="$(pwd)/dist/Rayforge.app"
+        APP_BUNDLE="$(pwd)/dist/SwiftCut.app"
         echo "Re-signing app bundle..."
         if [ ! -d "$APP_BUNDLE" ]; then
             echo "App bundle not found at $APP_BUNDLE" >&2
@@ -595,7 +595,7 @@ SH
     # fi
 
     # Make sure the plist still points to the wrapper.
-    /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable Rayforge" \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable SwiftCut" \
         "$APP_ROOT/Info.plist" 2>/dev/null || true
 
     echo "Cleaning dist/*.whl and dist/*.gz after app bundle..."
@@ -609,26 +609,26 @@ if (( DO_DMG == 1 )); then
     print_info "--------------------------------------"
     echo ""
     echo "Creating DMG..."
-    if [ ! -d "dist/Rayforge.app" ]; then
-        echo "dist/Rayforge.app not found.\nBuild the app bundle first." >&2
+    if [ ! -d "dist/SwiftCut.app" ]; then
+        echo "dist/SwiftCut.app not found.\nBuild the app bundle first." >&2
         exit 1
     fi
-    DMG_PATH="dist/Rayforge_${VERSION}.dmg"
+    DMG_PATH="dist/SwiftCut_${VERSION}.dmg"
     rm -f "$DMG_PATH"
-    hdiutil create -volname "Rayforge" -srcfolder "dist/Rayforge.app" \
+    hdiutil create -volname "SwiftCut" -srcfolder "dist/SwiftCut.app" \
         -ov -format UDZO "$DMG_PATH"
 fi
 
 if (( DO_BUILD == 1 )) && (( DO_BUNDLE == 1 )) && (( DO_DMG == 1 )); then
-    echo "Build artifacts created in dist/, dist/*.whl, dist/Rayforge.app, and dist/Rayforge.dmg"
+    echo "Build artifacts created in dist/, dist/*.whl, dist/SwiftCut.app, and dist/SwiftCut.dmg"
 elif (( DO_BUILD == 1 )) && (( DO_BUNDLE == 1 )); then
-    echo "Build artifacts created in dist/, dist/*.whl, and dist/Rayforge.app"
+    echo "Build artifacts created in dist/, dist/*.whl, and dist/SwiftCut.app"
 elif (( DO_BUILD == 1 )); then
     echo "Build artifacts created in dist/ and dist/*.whl"
 elif (( DO_BUNDLE == 1 )); then
-    echo "App bundle created in dist/Rayforge.app"
+    echo "App bundle created in dist/SwiftCut.app"
 elif (( DO_DMG == 1 )); then
-    echo "DMG created in dist/Rayforge.dmg"
+    echo "DMG created in dist/SwiftCut.dmg"
 fi
 
 echo ""

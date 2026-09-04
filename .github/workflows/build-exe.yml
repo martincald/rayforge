@@ -119,21 +119,21 @@ jobs:
       - name: Compress PyInstaller Bundle
         shell: msys2 {0}
         run: |
-          BUNDLE_DIR="dist/rayforge-v${{ env.VERSION }}"
-          ZIP_FILE="dist/rayforge-v${{ env.VERSION }}-windows-bundle.zip"
+          BUNDLE_DIR="dist/swiftcut-v${{ env.VERSION }}"
+          ZIP_FILE="dist/swiftcut-v${{ env.VERSION }}-windows-bundle.zip"
           zip -r9 "${ZIP_FILE}" "${BUNDLE_DIR}"
 
       - name: Upload PyInstaller bundle
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-v${{ steps.set-version.outputs.version }}-windows-bundle
-          path: dist/rayforge-v${{ steps.set-version.outputs.version }}-windows-bundle.zip
+          name: swiftcut-v${{ steps.set-version.outputs.version }}-windows-bundle
+          path: dist/swiftcut-v${{ steps.set-version.outputs.version }}-windows-bundle.zip
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-v${{ steps.set-version.outputs.version }}-installer.zip
-          path: dist/rayforge-v${{ steps.set-version.outputs.version }}-installer.exe
+          name: swiftcut-v${{ steps.set-version.outputs.version }}-installer.zip
+          path: dist/swiftcut-v${{ steps.set-version.outputs.version }}-installer.exe
           compression-level: 9
 
   test-exe:
@@ -148,12 +148,12 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-v${{ needs.build.outputs.version }}-windows-bundle
+          name: swiftcut-v${{ needs.build.outputs.version }}-windows-bundle
 
       - name: Extract Bundle
         shell: bash
         run: |
-          unzip rayforge-v${{ needs.build.outputs.version }}-windows-bundle.zip
+          unzip swiftcut-v${{ needs.build.outputs.version }}-windows-bundle.zip
 
       - name: Test Executable (CLI)
         shell: bash
@@ -162,8 +162,8 @@ jobs:
           ls -l
 
           # Define paths based on the extracted directory
-          BUNDLE_DIR="dist/rayforge-v${{ needs.build.outputs.version }}"
-          EXECUTABLE_NAME="rayforge-v${{ needs.build.outputs.version }}.exe"
+          BUNDLE_DIR="dist/swiftcut-v${{ needs.build.outputs.version }}"
+          EXECUTABLE_NAME="swiftcut-v${{ needs.build.outputs.version }}.exe"
 
           echo "Listing files in extracted directory:"
           ls -lR "${BUNDLE_DIR}"
@@ -175,8 +175,8 @@ jobs:
         shell: bash
         run: |
           bash scripts/win/win_run_ui_test.sh \
-            "dist/rayforge-v${{ needs.build.outputs.version }}" \
-            "rayforge-v${{ needs.build.outputs.version }}.exe"
+            "dist/swiftcut-v${{ needs.build.outputs.version }}" \
+            "swiftcut-v${{ needs.build.outputs.version }}.exe"
 
   release:
     name: Create GitHub Release
@@ -201,13 +201,13 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           # For the release, we use the installer artifact
-          name: rayforge-v${{ needs.build.outputs.version }}-installer.zip
+          name: swiftcut-v${{ needs.build.outputs.version }}-installer.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           # The file to attach to the release is the installer
-          files: rayforge-v${{ needs.build.outputs.version }}-installer.exe
+          files: swiftcut-v${{ needs.build.outputs.version }}-installer.exe
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           name: Release ${{ needs.build.outputs.version }}

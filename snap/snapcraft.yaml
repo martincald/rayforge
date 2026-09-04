@@ -7,8 +7,8 @@ apps:
   rayforge:
     extensions: [gnome]
     command: bin/rayforge
-    common-id: org.rayforge.rayforge
-    desktop: share/applications/org.rayforge.rayforge.desktop
+    common-id: org.ilab.SwiftCut
+    desktop: share/applications/org.ilab.SwiftCut.desktop
     plugs:
       - home
       - gsettings
@@ -37,7 +37,7 @@ slots:
   rayforge:
     interface: dbus
     bus: session
-    name: org.rayforge.rayforge
+    name: org.ilab.SwiftCut
 
 parts:
   semwraplib:
@@ -65,10 +65,10 @@ parts:
       - adwaita-icon-theme
       - hicolor-icon-theme
     organize:
-      data/org.rayforge.rayforge.desktop: share/applications/org.rayforge.rayforge.desktop
-      data/org.rayforge.rayforge.metainfo.xml: share/metainfo/org.rayforge.rayforge.metainfo.xml
-      data/org.rayforge.rayforge.xml: share/mime/packages/org.rayforge.rayforge.xml
-    parse-info: [share/metainfo/org.rayforge.rayforge.metainfo.xml]
+      data/org.ilab.SwiftCut.desktop: share/applications/org.ilab.SwiftCut.desktop
+      data/org.ilab.SwiftCut.metainfo.xml: share/metainfo/org.ilab.SwiftCut.metainfo.xml
+      data/org.ilab.SwiftCut.xml: share/mime/packages/org.ilab.SwiftCut.xml
+    parse-info: [share/metainfo/org.ilab.SwiftCut.metainfo.xml]
     override-pull: |
       craftctl default
       craftctl set version="$(git describe --tags)"

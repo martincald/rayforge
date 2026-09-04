@@ -25,7 +25,7 @@ from blinker import Signal
 
 from rayforge.shared.util.localized import register_addon_domain
 
-from .. import __version__
+from .. import __version__, const
 from ..config import ADDON_REGISTRY_URL
 from ..core.addon_config import AddonConfig
 from ..core.addon_config import AddonState as ConfigAddonState
@@ -656,7 +656,7 @@ class AddonManager:
             ):
                 logger.warning(
                     f"Addon '{addon_name}' is incompatible with "
-                    "this version of Rayforge"
+                    f"this version of {const.APP_NAME}"
                 )
                 self.incompatible_addons[addon_name] = addon
                 return

@@ -52,7 +52,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(
                     b"<html><body><h1>Authorization Successful</h1>"
-                    b"<p>You can close this window and return to Rayforge.</p>"
+                    b"<p>You can close this window and return to SwiftCut.</p>"
                     b"</body></html>"
                 )
                 self.callback(code, None)

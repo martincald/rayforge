@@ -4,7 +4,7 @@ from gettext import gettext as _
 
 from gi.repository import Adw, GLib, Gtk
 
-from ... import __version__
+from ... import __version__, const
 from ...addon_mgr.addon import AddonMetadata
 from ...addon_mgr.addon_manager import UpdateStatus
 from ...context import get_context
@@ -212,9 +212,13 @@ class AddonRegistryDialog(PatchedDialogWindow):
                 deps_str = ", ".join(addon.depends)
                 btn.set_tooltip_text(
                     _(
-                        "Requires {deps}, but current rayforge "
+                        "Requires {deps}, but current {app_name} "
                         "version is {current}"
-                    ).format(deps=deps_str, current=__version__)
+                    ).format(
+                        deps=deps_str,
+                        app_name=const.APP_NAME,
+                        current=__version__,
+                    )
                 )
 
             if not addon.url:  # Handle invalid registry entries

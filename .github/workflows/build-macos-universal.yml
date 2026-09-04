@@ -81,9 +81,9 @@ jobs:
 
       - name: Smoke test Intel app
         run: |
-          APP_BIN="dist/Rayforge.app/Contents/MacOS/Rayforge"
+          APP_BIN="dist/SwiftCut.app/Contents/MacOS/SwiftCut"
           if [ ! -x "$APP_BIN" ]; then
-            echo "Rayforge executable not found at $APP_BIN"
+            echo "SwiftCut executable not found at $APP_BIN"
             exit 1
           fi
           "$APP_BIN" --version
@@ -91,19 +91,19 @@ jobs:
 
       - name: Package Intel app
         run: |
-          APP_PATH="dist/Rayforge.app"
+          APP_PATH="dist/SwiftCut.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
             exit 1
           fi
-          ZIP_NAME="rayforge-${VERSION}-macos-intel-app.zip"
+          ZIP_NAME="swiftcut-${VERSION}-macos-intel-app.zip"
           ditto -c -k --keepParent "$APP_PATH" "$ZIP_NAME"
 
       - name: Upload Intel app artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-${{ env.VERSION }}-macos-intel-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-intel-app.zip
+          name: swiftcut-${{ env.VERSION }}-macos-intel-app.zip
+          path: swiftcut-${{ env.VERSION }}-macos-intel-app.zip
           compression-level: 9
 
   build-arm:
@@ -135,9 +135,9 @@ jobs:
 
       - name: Smoke test ARM app
         run: |
-          APP_BIN="dist/Rayforge.app/Contents/MacOS/Rayforge"
+          APP_BIN="dist/SwiftCut.app/Contents/MacOS/SwiftCut"
           if [ ! -x "$APP_BIN" ]; then
-            echo "Rayforge executable not found at $APP_BIN"
+            echo "SwiftCut executable not found at $APP_BIN"
             exit 1
           fi
           "$APP_BIN" --version
@@ -145,19 +145,19 @@ jobs:
 
       - name: Package ARM app
         run: |
-          APP_PATH="dist/Rayforge.app"
+          APP_PATH="dist/SwiftCut.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
             exit 1
           fi
-          ZIP_NAME="rayforge-${VERSION}-macos-arm-app.zip"
+          ZIP_NAME="swiftcut-${VERSION}-macos-arm-app.zip"
           ditto -c -k --keepParent "$APP_PATH" "$ZIP_NAME"
 
       - name: Upload ARM app artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-${{ env.VERSION }}-macos-arm-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-arm-app.zip
+          name: swiftcut-${{ env.VERSION }}-macos-arm-app.zip
+          path: swiftcut-${{ env.VERSION }}-macos-arm-app.zip
           compression-level: 9
 
   merge-universal:
@@ -170,27 +170,27 @@ jobs:
       - name: Download Intel app artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ env.VERSION }}-macos-intel-app.zip
+          name: swiftcut-${{ env.VERSION }}-macos-intel-app.zip
           path: artifacts/intel
 
       - name: Download ARM app artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ env.VERSION }}-macos-arm-app.zip
+          name: swiftcut-${{ env.VERSION }}-macos-arm-app.zip
           path: artifacts/arm
 
       - name: Create universal app
         shell: bash
         run: |
           mkdir -p build-universal
-          ditto -x -k "artifacts/intel/rayforge-${VERSION}-macos-intel-app.zip" \
+          ditto -x -k "artifacts/intel/swiftcut-${VERSION}-macos-intel-app.zip" \
             artifacts/intel/unpacked
-          ditto -x -k "artifacts/arm/rayforge-${VERSION}-macos-arm-app.zip" \
+          ditto -x -k "artifacts/arm/swiftcut-${VERSION}-macos-arm-app.zip" \
             artifacts/arm/unpacked
 
-          INTEL_APP="artifacts/intel/unpacked/Rayforge.app"
-          ARM_APP="artifacts/arm/unpacked/Rayforge.app"
-          UNI_APP="build-universal/Rayforge.app"
+          INTEL_APP="artifacts/intel/unpacked/SwiftCut.app"
+          ARM_APP="artifacts/arm/unpacked/SwiftCut.app"
+          UNI_APP="build-universal/SwiftCut.app"
 
           if [ ! -d "$INTEL_APP" ] || [ ! -d "$ARM_APP" ]; then
             echo "Intel or ARM app bundle not found after extraction"
@@ -225,7 +225,7 @@ jobs:
       - name: Set architecture priority
         shell: bash
         run: |
-          PLIST="build-universal/Rayforge.app/Contents/Info.plist"
+          PLIST="build-universal/SwiftCut.app/Contents/Info.plist"
           if [ -f "$PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Delete :LSArchitecturePriority" \
               "$PLIST" >/dev/null 2>&1 || true
@@ -240,7 +240,7 @@ jobs:
       - name: Re-sign universal app
         shell: bash
         run: |
-          APP_PATH="$(pwd)/build-universal/Rayforge.app"
+          APP_PATH="$(pwd)/build-universal/SwiftCut.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "Universal app bundle not found at $APP_PATH"
             exit 1
@@ -257,32 +257,32 @@ jobs:
             echo "Warning: codesign verification failed for $APP_PATH"
           fi
           spctl --assess --type execute --verbose=2 "$APP_PATH" || true
-          "$APP_PATH/Contents/MacOS/Rayforge" --version
-          "$APP_PATH/Contents/MacOS/Rayforge" --exit
+          "$APP_PATH/Contents/MacOS/SwiftCut" --version
+          "$APP_PATH/Contents/MacOS/SwiftCut" --exit
 
       - name: Package universal app
         shell: bash
         run: |
-          APP_ZIP="rayforge-${VERSION}-macos-universal-app.zip"
-          ditto -c -k --keepParent "build-universal/Rayforge.app" "$APP_ZIP"
+          APP_ZIP="swiftcut-${VERSION}-macos-universal-app.zip"
+          ditto -c -k --keepParent "build-universal/SwiftCut.app" "$APP_ZIP"
 
           TMP_DIR=$(mktemp -d)
           ditto -x -k "$APP_ZIP" "$TMP_DIR"
-          "$TMP_DIR/Rayforge.app/Contents/MacOS/Rayforge" --version
-          "$TMP_DIR/Rayforge.app/Contents/MacOS/Rayforge" --exit
+          "$TMP_DIR/SwiftCut.app/Contents/MacOS/SwiftCut" --version
+          "$TMP_DIR/SwiftCut.app/Contents/MacOS/SwiftCut" --exit
           rm -rf "$TMP_DIR"
 
       - name: Build universal DMG with retry
         shell: bash
         run: |
           mkdir -p build-universal/dmg
-          cp -R "build-universal/Rayforge.app" "build-universal/dmg/"
+          cp -R "build-universal/SwiftCut.app" "build-universal/dmg/"
           ln -sfn /Applications "build-universal/dmg/Applications"
 
-          DMG_NAME="rayforge-${VERSION}-macos-universal.dmg"
+          DMG_NAME="swiftcut-${VERSION}-macos-universal.dmg"
           tries=0
           max_tries=10
-          until hdiutil create -volname "Rayforge" \
+          until hdiutil create -volname "SwiftCut" \
             -srcfolder "build-universal/dmg" -ov -format ULMO "$DMG_NAME"
           do
             tries=$((tries + 1))
@@ -296,15 +296,15 @@ jobs:
       - name: Upload universal app artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-${{ env.VERSION }}-macos-universal-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-universal-app.zip
+          name: swiftcut-${{ env.VERSION }}-macos-universal-app.zip
+          path: swiftcut-${{ env.VERSION }}-macos-universal-app.zip
           compression-level: 9
 
       - name: Upload universal DMG artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rayforge-${{ env.VERSION }}-macos-universal-dmg
-          path: rayforge-${{ env.VERSION }}-macos-universal.dmg
+          name: swiftcut-${{ env.VERSION }}-macos-universal-dmg
+          path: swiftcut-${{ env.VERSION }}-macos-universal.dmg
 
   release:
     name: Create GitHub Release (Universal)
@@ -330,31 +330,31 @@ jobs:
       - name: Download Intel app artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-intel-app.zip
+          name: swiftcut-${{ needs.version.outputs.version }}-macos-intel-app.zip
 
       - name: Download ARM app artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-arm-app.zip
+          name: swiftcut-${{ needs.version.outputs.version }}-macos-arm-app.zip
 
       - name: Download universal app artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-universal-app.zip
+          name: swiftcut-${{ needs.version.outputs.version }}-macos-universal-app.zip
 
       - name: Download universal DMG artifact
         uses: actions/download-artifact@v8
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-universal-dmg
+          name: swiftcut-${{ needs.version.outputs.version }}-macos-universal-dmg
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            rayforge-${{ needs.version.outputs.version }}-macos-intel-app.zip
-            rayforge-${{ needs.version.outputs.version }}-macos-arm-app.zip
-            rayforge-${{ needs.version.outputs.version }}-macos-universal-app.zip
-            rayforge-${{ needs.version.outputs.version }}-macos-universal.dmg
+            swiftcut-${{ needs.version.outputs.version }}-macos-intel-app.zip
+            swiftcut-${{ needs.version.outputs.version }}-macos-arm-app.zip
+            swiftcut-${{ needs.version.outputs.version }}-macos-universal-app.zip
+            swiftcut-${{ needs.version.outputs.version }}-macos-universal.dmg
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           name: Release ${{ needs.version.outputs.version }}

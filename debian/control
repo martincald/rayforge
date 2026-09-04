@@ -17,7 +17,7 @@ Build-Depends: cargo,
                python3-wheel,
                rustc,
 Standards-Version: 4.6.2
-Homepage: https://github.com/barebaric/rayforge
+Homepage: https://github.com/ilab/swiftcut
 
 Package: rayforge
 Architecture: any
@@ -30,5 +30,5 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends},
   python3-blinker, python3-platformdirs, python3-opengl, desktop-file-utils,
   python3-svgelements, python3-semver, python3-fitz, python3-serial
 Description: Desktop application for laser cutting and engraving
-  Rayforge is a powerful, open-source, and cross-platform software for
+  SwiftCut is a powerful, open-source, and cross-platform software for
   controlling your laser cutter and engraver.

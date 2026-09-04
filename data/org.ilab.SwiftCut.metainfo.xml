@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.rayforge.rayforge</id>
+  <id>org.ilab.SwiftCut</id>
   <developer id="org.rayforge">
     <name translate="no">Samuel Abels</name>
   </developer>
   <content_rating type="oars-1.1" />
-  <url type="homepage">https://rayforge.org</url>
-  <url type="bugtracker">https://github.com/barebaric/rayforge/issues</url>
-  <url type="vcs-browser">https://github.com/barebaric/rayforge</url>
-  
-  <name>Rayforge</name>
+  <url type="homepage">https://github.com/ilab/swiftcut</url>
+  <url type="bugtracker">https://github.com/ilab/swiftcut/issues</url>
+  <url type="vcs-browser">https://github.com/ilab/swiftcut</url>
+
+  <name>SwiftCut</name>
   <summary>A desktop application for laser cutting and engraving</summary>
 
   <categories>
@@ -24,17 +24,17 @@
 
   <description>
     <p>
-      Rayforge is a desktop application for laser cutting and engraving.
+      SwiftCut is a desktop application for laser cutting and engraving.
       It provides an intuitive interface to create and manage laser
       cutting projects.
-      Rayforge support communicating with GRBL based laser cutters.
-      Rayforge supports importing SVG, DXF, PDF, and PNGs, and provides
+      SwiftCut support communicating with GRBL based laser cutters.
+      SwiftCut supports importing SVG, DXF, PDF, and PNGs, and provides
       advanced features such as multi step jobs, automatic path
       optimization, interpolation based on laser dot size, and much more.
     </p>
   </description>
-  
-  <launchable type="desktop-id">org.rayforge.rayforge.desktop</launchable>
+
+  <launchable type="desktop-id">org.ilab.SwiftCut.desktop</launchable>
 
   <provides>
     <mediatype>application/x-rayforge-project</mediatype>
@@ -53,7 +53,7 @@
     <display_length compare="ge">768</display_length>
   </recommends>
 
-  <icon type="remote">https://raw.githubusercontent.com/barebaric/rayforge/refs/heads/main/rayforge/resources/icons/org.rayforge.rayforge.svg</icon>
+  <icon type="remote">https://raw.githubusercontent.com/ilab/swiftcut/refs/heads/main/rayforge/resources/icons/org.ilab.SwiftCut.svg</icon>
 
   <branding>
     <color type="primary" scheme_preference="light">#efb0a1</color>
@@ -62,8 +62,8 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>The main window of Rayforge.</caption>
-      <image type="source" width="2522" height="1772">https://raw.githubusercontent.com/barebaric/rayforge/main/website/static/screenshots/main-standard.png</image>
+      <caption>The main window of SwiftCut.</caption>
+      <image type="source" width="2522" height="1772">https://raw.githubusercontent.com/ilab/swiftcut/main/website/static/screenshots/main-standard.png</image>
     </screenshot>
   </screenshots>
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs Rayforge from source in the configured MSYS2 environment.
+# Runs SwiftCut from source in the configured MSYS2 environment.
 # Usage: win_run.sh [args passed to rayforge]
 set -e
 

@@ -12,7 +12,7 @@ hiddenimports.append('rayforge.ui_gtk.canvas2d.elements.workpiece')
 
 # Use modern .icon (via Assets.car) when available, fall back to .icns.
 _use_car = os.path.exists('Assets.car')
-_icon = None if _use_car else 'rayforge.icns'
+_icon = None if _use_car else 'swiftcut.icns'
 
 _datas = [
     ('rayforge/version.txt', 'rayforge'),
@@ -49,7 +49,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Rayforge',
+    name='SwiftCut',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -69,15 +69,15 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Rayforge',
+    name='SwiftCut',
 )
 app = BUNDLE(
     coll,
-    name='Rayforge.app',
+    name='SwiftCut.app',
     icon=_icon,
-    bundle_identifier='org.rayforge.rayforge',
+    bundle_identifier='org.ilab.SwiftCut',
     info_plist={
-        **({'CFBundleIconName': 'rayforge'} if _use_car else {}),
+        **({'CFBundleIconName': 'swiftcut'} if _use_car else {}),
         'LSMinimumSystemVersion': '12.0',
     },
 )

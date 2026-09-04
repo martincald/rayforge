@@ -7,8 +7,8 @@
 
 set -e
 
-BUNDLE_DIR="${1:-dist/rayforge-latest}"
-EXECUTABLE_NAME="${2:-rayforge-latest.exe}"
+BUNDLE_DIR="${1:-dist/swiftcut-latest}"
+EXECUTABLE_NAME="${2:-swiftcut-latest.exe}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 UI_TEST_SCRIPT="${SCRIPT_DIR}/win_ui_test.py"
 TIMEOUT_SECONDS=60

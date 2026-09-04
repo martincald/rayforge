@@ -8,16 +8,16 @@
 <a href="https://flathub.org/apps/org.rayforge.rayforge"><img alt="Get it from Flathub" src="website/static/images/flathub-badge.svg" height="55"/></a>
 <a href="https://www.patreon.com/c/knipknap"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" height="55"/></a>
 
-# Rayforge
+# SwiftCut
 
-Rayforge is a modern, cross-platform 2D CAD, G-code sender and control software for GRBL, Marlin, Ruida, and
+SwiftCut is a modern, cross-platform 2D CAD, G-code sender and control software for GRBL, Marlin, Ruida, and
 Smoothieware-based laser cutters and engravers.
 Built with Gtk4 and Libadwaita, it provides a clean, native interface for Linux, MacOS and Windows, offering a full suite of tools
 for both hobbyists and professionals.
 
 ![Screenshot](website/static/screenshots/main-3d-rotary.png)
 
-You can also check the [official Rayforge homepage](https://rayforge.org).
+You can also check our [GitHub repository](https://github.com/ilab/swiftcut).
 We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ## Key Features
@@ -112,7 +112,7 @@ For installation instructions [refer to our homepage](https://rayforge.org/docs/
 
 ## Development
 
-For detailed information about developing for Rayforge, including setup instructions,
+For detailed information about developing for SwiftCut, including setup instructions,
 testing, and contribution guidelines, please see the
 [Developer Documentation](https://rayforge.org/docs/developer/getting-started).
 

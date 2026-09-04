@@ -5,6 +5,7 @@ from typing import ClassVar
 
 from gi.repository import Adw, GLib, Gtk
 
+from ... import const
 from ...context import get_context
 from ...core.config import OpsColorMode, StartupBehavior
 from ...shared.units.definitions import (
@@ -358,9 +359,9 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
             transient_for=window,
             heading=_("Restart required"),
             body=_(
-                "The language will take effect after restarting Rayforge. "
-                "Would you like to restart now?"
-            ),
+                "The language will take effect after restarting "
+                "{app_name}. Would you like to restart now?"
+            ).format(app_name=const.APP_NAME),
         )
         dialog.add_response("cancel", _("_Cancel"))
         dialog.add_response("restart", _("_Restart"))

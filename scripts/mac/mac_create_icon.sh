@@ -21,7 +21,7 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 # Paths
 SVG_PATH="$PROJECT_ROOT/website/static/images/icon-app.svg"
 ICONSET_PATH="$PROJECT_ROOT/build/icon.iconset"
-OUTPUT_PATH="$PROJECT_ROOT/rayforge.icns"
+OUTPUT_PATH="$PROJECT_ROOT/swiftcut.icns"
 
 # Check if SVG exists
 if [ ! -f "$SVG_PATH" ]; then

@@ -1,20 +1,20 @@
-; NSIS Script for Rayforge Installer
+; NSIS Script for SwiftCut Installer
 
 ;--------------------------------
 ; Defines
 ; These are variables passed from our build script using the -D flag
-!define PRODUCT_NAME "Rayforge"
+!define PRODUCT_NAME "SwiftCut"
 !ifndef APP_VERSION
   !define APP_VERSION "0.0.0"
 !endif
 !ifndef APP_DIR_NAME
-  !define APP_DIR_NAME "rayforge-v0.0.0"
+  !define APP_DIR_NAME "swiftcut-v0.0.0"
 !endif
 !ifndef EXECUTABLE_NAME
-  !define EXECUTABLE_NAME "rayforge.exe"
+  !define EXECUTABLE_NAME "swiftcut.exe"
 !endif
 !ifndef ICON_FILE
-  !define ICON_FILE "rayforge.ico"
+  !define ICON_FILE "swiftcut.ico"
 !endif
 
 ;--------------------------------
@@ -25,7 +25,7 @@ SetCompressor lzma ; Use modern, efficient compression
 
 ; Installer attributes
 Name "${PRODUCT_NAME} ${APP_VERSION}"
-OutFile "..\..\dist\rayforge-v${APP_VERSION}-installer.exe"
+OutFile "..\..\dist\swiftcut-v${APP_VERSION}-installer.exe"
 InstallDir "$PROGRAMFILES64\${PRODUCT_NAME}"
 InstallDirRegKey HKLM "Software\${PRODUCT_NAME}" "Install_Dir"
 Icon "..\..\${ICON_FILE}"
@@ -61,58 +61,58 @@ Section "MainSection" SEC01
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}" "NoRepair" 1
   
   ; Register .ryp file type
-  WriteRegStr HKCR ".ryp" "" "Rayforge.ProjectFile"
-  WriteRegStr HKCR "Rayforge.ProjectFile" "" "Rayforge Project File"
-  WriteRegStr HKCR "Rayforge.ProjectFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.ProjectFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".ryp" "" "SwiftCut.ProjectFile"
+  WriteRegStr HKCR "SwiftCut.ProjectFile" "" "SwiftCut Project File"
+  WriteRegStr HKCR "SwiftCut.ProjectFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.ProjectFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .rfs file type
-  WriteRegStr HKCR ".rfs" "" "Rayforge.SketchFile"
-  WriteRegStr HKCR "Rayforge.SketchFile" "" "Rayforge Sketch File"
-  WriteRegStr HKCR "Rayforge.SketchFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.SketchFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".rfs" "" "SwiftCut.SketchFile"
+  WriteRegStr HKCR "SwiftCut.SketchFile" "" "SwiftCut Sketch File"
+  WriteRegStr HKCR "SwiftCut.SketchFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.SketchFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .rd file type (Ruida)
-  WriteRegStr HKCR ".rd" "" "Rayforge.RuidaFile"
-  WriteRegStr HKCR "Rayforge.RuidaFile" "" "Ruida Laser Cutter File"
-  WriteRegStr HKCR "Rayforge.RuidaFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.RuidaFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".rd" "" "SwiftCut.RuidaFile"
+  WriteRegStr HKCR "SwiftCut.RuidaFile" "" "Ruida Laser Cutter File"
+  WriteRegStr HKCR "SwiftCut.RuidaFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.RuidaFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .png file type
-  WriteRegStr HKCR ".png" "" "Rayforge.PngFile"
-  WriteRegStr HKCR "Rayforge.PngFile" "" "PNG Image"
-  WriteRegStr HKCR "Rayforge.PngFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.PngFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".png" "" "SwiftCut.PngFile"
+  WriteRegStr HKCR "SwiftCut.PngFile" "" "PNG Image"
+  WriteRegStr HKCR "SwiftCut.PngFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.PngFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .bmp file type
-  WriteRegStr HKCR ".bmp" "" "Rayforge.BmpFile"
-  WriteRegStr HKCR "Rayforge.BmpFile" "" "BMP Image"
-  WriteRegStr HKCR "Rayforge.BmpFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.BmpFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".bmp" "" "SwiftCut.BmpFile"
+  WriteRegStr HKCR "SwiftCut.BmpFile" "" "BMP Image"
+  WriteRegStr HKCR "SwiftCut.BmpFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.BmpFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .jpeg file type
-  WriteRegStr HKCR ".jpeg" "" "Rayforge.JpegFile"
-  WriteRegStr HKCR "Rayforge.JpegFile" "" "JPEG Image"
-  WriteRegStr HKCR "Rayforge.JpegFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.JpegFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".jpeg" "" "SwiftCut.JpegFile"
+  WriteRegStr HKCR "SwiftCut.JpegFile" "" "JPEG Image"
+  WriteRegStr HKCR "SwiftCut.JpegFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.JpegFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .jpg file type
-  WriteRegStr HKCR ".jpg" "" "Rayforge.JpgFile"
-  WriteRegStr HKCR "Rayforge.JpgFile" "" "JPEG Image"
-  WriteRegStr HKCR "Rayforge.JpgFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.JpgFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".jpg" "" "SwiftCut.JpgFile"
+  WriteRegStr HKCR "SwiftCut.JpgFile" "" "JPEG Image"
+  WriteRegStr HKCR "SwiftCut.JpgFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.JpgFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .svg file type
-  WriteRegStr HKCR ".svg" "" "Rayforge.SvgFile"
-  WriteRegStr HKCR "Rayforge.SvgFile" "" "SVG Image"
-  WriteRegStr HKCR "Rayforge.SvgFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.SvgFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".svg" "" "SwiftCut.SvgFile"
+  WriteRegStr HKCR "SwiftCut.SvgFile" "" "SVG Image"
+  WriteRegStr HKCR "SwiftCut.SvgFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.SvgFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
 
   ; Register .dxf file type
-  WriteRegStr HKCR ".dxf" "" "Rayforge.DxfFile"
-  WriteRegStr HKCR "Rayforge.DxfFile" "" "DXF Drawing"
-  WriteRegStr HKCR "Rayforge.DxfFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
-  WriteRegStr HKCR "Rayforge.DxfFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
+  WriteRegStr HKCR ".dxf" "" "SwiftCut.DxfFile"
+  WriteRegStr HKCR "SwiftCut.DxfFile" "" "DXF Drawing"
+  WriteRegStr HKCR "SwiftCut.DxfFile\DefaultIcon" "" "$INSTDIR\${EXECUTABLE_NAME},0"
+  WriteRegStr HKCR "SwiftCut.DxfFile\shell\open\command" "" '"$INSTDIR\${EXECUTABLE_NAME}" "%1"'
   
   ; Create Start Menu shortcuts
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
@@ -130,39 +130,39 @@ Section "Uninstall"
   
   ; Unregister .ryp file type
   DeleteRegKey HKCR ".ryp"
-  DeleteRegKey HKCR "Rayforge.ProjectFile"
+  DeleteRegKey HKCR "SwiftCut.ProjectFile"
 
   ; Unregister .rfs file type
   DeleteRegKey HKCR ".rfs"
-  DeleteRegKey HKCR "Rayforge.SketchFile"
+  DeleteRegKey HKCR "SwiftCut.SketchFile"
 
   ; Unregister .rd file type (Ruida)
   DeleteRegKey HKCR ".rd"
-  DeleteRegKey HKCR "Rayforge.RuidaFile"
+  DeleteRegKey HKCR "SwiftCut.RuidaFile"
 
   ; Unregister .png file type
   DeleteRegKey HKCR ".png"
-  DeleteRegKey HKCR "Rayforge.PngFile"
+  DeleteRegKey HKCR "SwiftCut.PngFile"
 
   ; Unregister .bmp file type
   DeleteRegKey HKCR ".bmp"
-  DeleteRegKey HKCR "Rayforge.BmpFile"
+  DeleteRegKey HKCR "SwiftCut.BmpFile"
 
   ; Unregister .jpeg file type
   DeleteRegKey HKCR ".jpeg"
-  DeleteRegKey HKCR "Rayforge.JpegFile"
+  DeleteRegKey HKCR "SwiftCut.JpegFile"
 
   ; Unregister .jpg file type
   DeleteRegKey HKCR ".jpg"
-  DeleteRegKey HKCR "Rayforge.JpgFile"
+  DeleteRegKey HKCR "SwiftCut.JpgFile"
 
   ; Unregister .svg file type
   DeleteRegKey HKCR ".svg"
-  DeleteRegKey HKCR "Rayforge.SvgFile"
+  DeleteRegKey HKCR "SwiftCut.SvgFile"
 
   ; Unregister .dxf file type
   DeleteRegKey HKCR ".dxf"
-  DeleteRegKey HKCR "Rayforge.DxfFile"
+  DeleteRegKey HKCR "SwiftCut.DxfFile"
 
   ; Remove the entire installation directory
   ; We delete the uninstaller first, then recursively remove its parent directory.

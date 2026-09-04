@@ -2,7 +2,7 @@
 set -e
 
 SOURCE_PATH="website/static/images/favicon.png"
-ICO_PATH="rayforge.ico"
+ICO_PATH="swiftcut.ico"
 
 if [ ! -f "$SOURCE_PATH" ]; then
     echo "FATAL: Icon source file not found at $SOURCE_PATH"

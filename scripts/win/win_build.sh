@@ -17,7 +17,7 @@ source .msys2_env
 
 # Use Bash parameter expansion `${APP_VERSION#v}` to remove a leading 'v' if it exists.
 CLEAN_VERSION="${APP_VERSION#v}"
-BUNDLE_NAME="rayforge-v${CLEAN_VERSION}"
+BUNDLE_NAME="swiftcut-v${CLEAN_VERSION}"
 INSTALLER_EXE_NAME="${BUNDLE_NAME}-installer.exe"
 
 echo "--- Starting Windows Build Process (Version: $APP_VERSION) ---"
@@ -69,7 +69,7 @@ echo "Using Windows MSYS2 Path for PyInstaller assets: $WIN_MSYS2_PATH"
 if ! pyinstaller --onedir --hide-console hide-early \
   --log-level INFO \
   --name "${BUNDLE_NAME}" \
-  --icon="rayforge.ico" \
+  --icon="swiftcut.ico" \
   --add-data "rayforge/version.txt;rayforge" \
   --add-data "rayforge/resources;rayforge/resources" \
   --add-data "rayforge/locale;rayforge/locale" \
@@ -107,7 +107,7 @@ makensis -V2 \
   -DAPP_VERSION="${CLEAN_VERSION}" \
   -DAPP_DIR_NAME="${BUNDLE_NAME}" \
   -DEXECUTABLE_NAME="${BUNDLE_NAME}.exe" \
-  -DICON_FILE="rayforge.ico" \
+  -DICON_FILE="swiftcut.ico" \
   scripts/win/win_installer.nsi
 
 echo "✅ Installer build complete: dist/${INSTALLER_EXE_NAME}"
