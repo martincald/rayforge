@@ -21,7 +21,6 @@ from ..shared.patched_dialog_window import PatchedDialogWindow
 from .advanced_preferences_page import AdvancedPreferencesPage
 from .capabilities_page import CapabilitiesPage
 from .device_settings_page import DeviceSettingsPage
-from .gcode_settings_page import GcodeSettingsPage
 from .general_preferences_page import GeneralPreferencesPage
 from .hardware_page import HardwarePage
 from .head_preferences_page import HeadPreferencesPage
@@ -56,8 +55,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         self.machine = machine
         self._row_to_page_name = {}
         self._initial_page = initial_page
-        self._gcode_row: Gtk.ListBoxRow | None = None
-        self._gcode_stack_page: Gtk.StackPage | None = None
         if machine.name:
             self.set_title(
                 _("{machine_name} - Machine Settings").format(
@@ -154,11 +151,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         advanced_page = AdvancedPreferencesPage(machine=self.machine)
         self.content_stack.add_titled(advanced_page, "advanced", _("Advanced"))
 
-        # --- Page 4: G-code ---
-        gcode_page = GcodeSettingsPage(machine=self.machine)
-        self.content_stack.add_titled(gcode_page, "gcode", _("G-code"))
-        self._gcode_stack_page = self.content_stack.get_page(gcode_page)
-
         # --- Page 5: Hooks & Macros ---
         hooks_macros_page = HooksMacrosPage(machine=self.machine)
         self.content_stack.add_titled(
@@ -225,8 +217,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         self._add_sidebar_row(
             _("Advanced"), "machine-settings-advanced-symbolic", "advanced"
         )
-        self._add_sidebar_row(_("G-code"), "gcode-symbolic", "gcode")
-        self._gcode_row = self.sidebar_list.get_row_at_index(3)
         self._add_sidebar_row(
             _("Hooks & Macros"), "code-symbolic", "hooks-macros"
         )
@@ -255,12 +245,11 @@ class MachineSettingsDialog(PatchedDialogWindow):
         camera_mgr.controller_removed.connect(self._sync_camera_page)
         self.connect("destroy", self._on_destroy)
 
-        # React to driver changes (e.g. show/hide G-code page)
+        # React to driver changes (e.g. maturity banner)
         self.machine.changed.connect(self._on_machine_changed)
 
         # Initial population of all dependent pages
         self._sync_camera_page()
-        self._update_gcode_page_visibility()
         self._update_maturity_banner()
 
         # Select the specified page or first row by default
@@ -273,7 +262,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
             self.sidebar_list.select_row(self.sidebar_list.get_row_at_index(0))
 
     def _on_machine_changed(self, sender=None, **kwargs):
-        self._update_gcode_page_visibility()
         self._update_maturity_banner()
 
     def _update_maturity_banner(self):
@@ -287,24 +275,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
             self.maturity_banner.set_visible(True)
         else:
             self.maturity_banner.set_visible(False)
-
-    def _update_gcode_page_visibility(self):
-        uses_gcode = True
-        if self.machine.driver_name:
-            driver_cls = get_driver_cls(self.machine.driver_name)
-            uses_gcode = driver_cls.uses_gcode
-
-        if self._gcode_stack_page:
-            self._gcode_stack_page.set_visible(uses_gcode)
-        if self._gcode_row:
-            self._gcode_row.set_visible(uses_gcode)
-
-        if not uses_gcode:
-            selected = self.sidebar_list.get_selected_row()
-            if selected is self._gcode_row:
-                self.sidebar_list.select_row(
-                    self.sidebar_list.get_row_at_index(0)
-                )
 
     def _add_sidebar_row(
         self, label_text: str, icon_name: str, page_name: str
