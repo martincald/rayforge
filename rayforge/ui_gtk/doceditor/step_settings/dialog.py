@@ -31,7 +31,7 @@ class StepSettingsDialog(PatchedDialogWindow):
         step: Step,
         **kwargs,
     ):
-        super().__init__(skip_usage_tracking=True, **kwargs)
+        super().__init__(**kwargs)
         self.editor = editor
         self.step = step
         self.set_title(_("{name} Settings").format(name=step.name))

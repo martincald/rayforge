@@ -13,7 +13,7 @@ https://bugzilla.gnome.org/show_bug.cgi?id=112404
 
 
 class PatchedDialogWindow(Adw.Window):
-    def __init__(self, skip_usage_tracking: bool = False, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         key_controller = Gtk.EventControllerKey()
@@ -38,5 +38,5 @@ class PatchedDialogWindow(Adw.Window):
 
 
 class PatchedMessageDialog(Adw.MessageDialog):
-    def __init__(self, skip_usage_tracking: bool = False, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)

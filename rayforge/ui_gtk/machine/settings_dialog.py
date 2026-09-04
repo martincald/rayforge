@@ -50,7 +50,7 @@ class MachineSettingsDialog(PatchedDialogWindow):
         initial_page: str | None = None,
         **kwargs,
     ):
-        super().__init__(skip_usage_tracking=True, **kwargs)
+        super().__init__(**kwargs)
         if transient_for:
             self.set_transient_for(transient_for)
         self.machine = machine
