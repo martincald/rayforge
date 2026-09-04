@@ -43,8 +43,6 @@ from rayforge.pipeline.artifact.job import JobArtifact
 from rayforge.pipeline.artifact.workpiece import WorkPieceArtifact
 
 if TYPE_CHECKING:
-    from gi.repository import Gtk
-
     from rayforge.core.doc import Doc
     from rayforge.doceditor.editor import DocEditor
     from rayforge.pipeline.artifact.store import ArtifactStore
@@ -52,7 +50,6 @@ if TYPE_CHECKING:
     from rayforge.pipeline.pipeline import Pipeline
     from rayforge.pipeline.view.view_manager import ViewManager
     from rayforge.ui_gtk.mainwindow import MainWindow
-    from rayforge.ui_gtk.sim3d.scene_presenter import ScenePresenter
 
 logger = logging.getLogger("memsnapshot")
 
@@ -282,36 +279,6 @@ def _measure_view_manager(vm: ViewManager) -> OwnerReport:
     return r
 
 
-def _measure_scene_presenter(presenter: ScenePresenter) -> OwnerReport:
-    r = OwnerReport(name="ScenePresenter")
-    art = presenter._compiled_artifact
-    if art is None:
-        r.items.append(("compiled_artifact", 0))
-        return r
-    wrapper_sz = sys.getsizeof(art)
-    r.bytes += wrapper_sz
-    r.items.append(("compiled_artifact (wrapper)", wrapper_sz))
-    for i, vl in enumerate(art.vertex_layers):
-        label = f"VertexLayer[{i}]"
-        _claim_compressed(r, f"{label}.powered_verts", vl.powered_verts)
-        _claim_compressed(r, f"{label}.powered_attrib", vl.powered_attrib)
-        _claim_compressed(r, f"{label}.travel_verts", vl.travel_verts)
-        _claim_compressed(r, f"{label}.zero_power_verts", vl.zero_power_verts)
-        _claim_array(r, f"{label}.powered_cmd_offsets", vl.powered_cmd_offsets)
-        _claim_array(r, f"{label}.travel_cmd_offsets", vl.travel_cmd_offsets)
-    for i, tl in enumerate(art.texture_layers):
-        label = f"TextureLayer[{i}]"
-        _claim_compressed(r, f"{label}.power_texture", tl.power_texture)
-        _claim_array(r, f"{label}.model_matrix", tl.model_matrix)
-        _claim_array(r, f"{label}.cylinder_vertices", tl.cylinder_vertices)
-    for i, ol in enumerate(art.overlay_layers):
-        label = f"OverlayLayer[{i}]"
-        _claim_compressed(r, f"{label}.positions", ol.positions)
-        _claim_compressed(r, f"{label}.overlay_attrib", ol.overlay_attrib)
-        _claim_array(r, f"{label}.cmd_offsets", ol.cmd_offsets)
-    return r
-
-
 def _measure_pipeline(pipeline: Pipeline) -> OwnerReport:
     r = OwnerReport(name="Pipeline")
     # raygeo cache
@@ -538,27 +505,6 @@ class AppProtocol(Protocol):
     def quit_idle(self) -> None: ...
 
 
-def _find_scene_presenter(win: MainWindow) -> ScenePresenter | None:
-    """Locate the ScenePresenter on the 3D canvas, if it exists."""
-    try:
-        from rayforge.ui_gtk.sim3d.canvas3d import Canvas3D
-
-        def search(widget: Gtk.Widget) -> ScenePresenter | None:
-            if isinstance(widget, Canvas3D):
-                return widget._presenter
-            child = widget.get_first_child()
-            while child is not None:
-                found = search(child)
-                if found is not None:
-                    return found
-                child = child.get_next_sibling()
-            return None
-
-        return search(win)
-    except (RuntimeError, TypeError):
-        return None
-
-
 def _wait_for_settle(
     editor: DocEditor, quiet_seconds: float = 2.0, timeout: float = 300.0
 ) -> bool:
@@ -588,61 +534,11 @@ def _wait_for_settle(
     return False
 
 
-def _switch_to_3d_view(win: MainWindow) -> None:
-    """Switch the view stack to the 3D page so the GLArea realizes."""
-    try:
-        win.view_stack.set_visible_child_name("3d")
-        logger.info("snapshot_memory: switched to 3D view")
-    except (AttributeError, RuntimeError) as e:
-        logger.warning("snapshot_memory: failed to switch to 3D: %s", e)
-
-
-def _wait_for_gl(win: MainWindow, timeout: float = 30.0) -> None:
-    """Wait for the 3D canvas GL to initialize and scene to compile."""
-    canvas = win.canvas3d
-    if canvas is None:
-        logger.warning("snapshot_memory: no canvas3d on win")
-        return
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if canvas._gl_initialized:
-            logger.info("snapshot_memory: GL initialized")
-            return
-        time.sleep(0.3)
-    logger.warning(
-        "snapshot_memory: GL did not initialize within %.0fs", timeout
-    )
-
-
-def _wait_for_scene_compiled(win: MainWindow, timeout: float = 120.0) -> None:
-    """Wait for the ScenePresenter to have a compiled artifact."""
-    canvas = win.canvas3d
-    if canvas is None:
-        return
-    presenter = canvas._presenter
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if presenter._compiled_artifact is not None:
-            logger.info("snapshot_memory: scene compiled")
-            return
-        time.sleep(0.5)
-    logger.warning(
-        "snapshot_memory: scene did not compile within %.0fs", timeout
-    )
-
-
 def run_snapshot(app: AppProtocol, win: MainWindow) -> None:
     """Entry point — called from the UI script thread."""
     logger.info("snapshot_memory: waiting for document to settle...")
     editor = win.doc_editor
     _wait_for_settle(editor, quiet_seconds=3.0, timeout=300.0)
-
-    # Switch to 3D view so the GLArea realizes and the scene compiles.
-    _switch_to_3d_view(win)
-    _wait_for_gl(win, timeout=30.0)
-    _wait_for_scene_compiled(win, timeout=120.0)
-    # Wait again for any extra work triggered by the scene compilation.
-    _wait_for_settle(editor, quiet_seconds=3.0, timeout=60.0)
 
     logger.info("snapshot_memory: gc.collect() before snapshot")
     gc.collect()
@@ -653,7 +549,6 @@ def run_snapshot(app: AppProtocol, win: MainWindow) -> None:
     store = pipeline.artifact_store
     vm = editor.view_manager
     doc = editor.doc
-    presenter = _find_scene_presenter(win)
 
     global _seen_ids
     _seen_ids = set()
@@ -665,10 +560,6 @@ def run_snapshot(app: AppProtocol, win: MainWindow) -> None:
         _measure_view_manager(vm),
         _measure_source_assets(doc),
     ]
-    if presenter is not None:
-        owners.append(_measure_scene_presenter(presenter))
-    else:
-        owners.append(OwnerReport(name="ScenePresenter (no 3D canvas)"))
 
     sweep = _gc_type_sweep()
     rss = _read_rss_kb()
