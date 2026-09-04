@@ -30,8 +30,7 @@ class AdvancedPreferencesPage(TrackedPreferencesPage):
         self.arcs_row = Adw.SwitchRow(
             title=_("Support Arcs"),
             subtitle=_(
-                "Generate arc commands for smoother paths. "
-                "Disable if your machine does not support arcs"
+                "Smoother paths; turn off if the machine rejects arcs"
             ),
         )
         self.arcs_row.set_active(self.machine.supports_arcs)
@@ -41,8 +40,7 @@ class AdvancedPreferencesPage(TrackedPreferencesPage):
         self.curves_row = Adw.SwitchRow(
             title=_("Support Bézier Curves"),
             subtitle=_(
-                "Generate native cubic Bézier commands. "
-                "Disable if your machine does not support them"
+                "Turn off if the machine rejects Bézier commands"
             ),
         )
         self.curves_row.set_active(self.machine.supports_curves)
@@ -51,11 +49,7 @@ class AdvancedPreferencesPage(TrackedPreferencesPage):
 
         self.arc_tolerance_row = LengthSpinRow(
             _("Arc and Curve Tolerance"),
-            _(
-                "Maximum deviation from original path when "
-                "fitting arcs and curves. Lower values "
-                "drastically increase processing time and job size"
-            ),
+            _("Lower is truer to the path, and much slower"),
             lower=0.001,
             upper=10.0,
             step_increment=0.001,

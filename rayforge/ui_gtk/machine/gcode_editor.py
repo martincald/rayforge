@@ -5,6 +5,7 @@ from gi.repository import Adw, Gdk, GLib, Gtk
 from ...machine.models.macro import Macro
 from ...pipeline.encoder.context import GcodeContext
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 
 # Define characters that are not allowed in macro names
@@ -78,9 +79,11 @@ class GcodeEditorDialog(PatchedDialogWindow):
 
         self.name_row = Adw.EntryRow(title=_("Name"))
         self.name_row.set_text(self.macro.name)
-        self.name_row.set_margin_top(6)
+        self.name_row.set_margin_top(SPACE_CONTROL)
 
-        self.error_label = Gtk.Label(halign=Gtk.Align.START, margin_start=12)
+        self.error_label = Gtk.Label(
+            halign=Gtk.Align.START, margin_start=SPACE_GROUP
+        )
         self.error_label.add_css_class("error")
 
         if self._allow_name_edit:
@@ -96,10 +99,10 @@ class GcodeEditorDialog(PatchedDialogWindow):
             hscrollbar_policy=Gtk.PolicyType.NEVER,
             vscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
             vexpand=True,
-            margin_top=6,
-            margin_bottom=6,
-            margin_start=6,
-            margin_end=6,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_CONTROL,
         )
         main_box.append(scrolled_window)
 
@@ -138,11 +141,11 @@ class GcodeEditorDialog(PatchedDialogWindow):
 
         popover_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=6,
-            margin_top=6,
-            margin_bottom=6,
-            margin_start=6,
-            margin_end=6,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_CONTROL,
         )
         clamp.set_child(popover_box)
 
@@ -156,7 +159,11 @@ class GcodeEditorDialog(PatchedDialogWindow):
         scrolled_window.set_child(list_box)
 
         # Variables section
-        var_title = Gtk.Label(xalign=0, margin_bottom=6, margin_top=6)
+        var_title = Gtk.Label(
+            xalign=0,
+            margin_bottom=SPACE_CONTROL,
+            margin_top=SPACE_CONTROL,
+        )
         var_title.add_css_class("title-4")
         var_title.set_text(_("Available Variables"))
         var_header_row = Gtk.ListBoxRow(child=var_title, selectable=False)
@@ -184,11 +191,11 @@ class GcodeEditorDialog(PatchedDialogWindow):
 
         popover_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=6,
-            margin_top=6,
-            margin_bottom=6,
-            margin_start=6,
-            margin_end=6,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_CONTROL,
         )
         clamp.set_child(popover_box)
 
@@ -213,8 +220,8 @@ class GcodeEditorDialog(PatchedDialogWindow):
         else:
             placeholder = Gtk.Label(label=_("No other macros to include."))
             placeholder.add_css_class("dim-label")
-            placeholder.set_margin_top(12)
-            placeholder.set_margin_bottom(12)
+            placeholder.set_margin_top(SPACE_GROUP)
+            placeholder.set_margin_bottom(SPACE_GROUP)
             list_box.append(
                 Gtk.ListBoxRow(child=placeholder, selectable=False)
             )

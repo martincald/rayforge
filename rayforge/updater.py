@@ -8,7 +8,7 @@ import aiohttp
 from blinker import Signal
 
 from . import __version__
-from .const import DOWNLOAD_URL, GITHUB_RELEASES_API
+from .const import APP_NAME, DOWNLOAD_URL, GITHUB_RELEASES_API
 from .shared.util.versioning import is_newer_version
 
 if TYPE_CHECKING:
@@ -59,8 +59,10 @@ class AppUpdateChecker:
             logger.info(
                 f"New version available: {latest_tag} (current: {__version__})"
             )
-            msg = _("Rayforge {version} is available.").format(
-                version=latest_tag
+            # The one string that missed the rename: it said
+            # "Rayforge" under a window titled Swift Cut.
+            msg = _("{app} {version} is available.").format(
+                app=APP_NAME, version=latest_tag
             )
 
             def _open_download():

@@ -4,8 +4,8 @@ from ..shared.gtk import apply_css
 
 css = """
 .key {
-    padding: 5px 8px;
-    border-radius: 6px;
+    padding: 4px 8px;
+    border-radius: 5px;
     background-color: @theme_base_color;
     color: @theme_fg_color;
     border: 1px solid @borders;

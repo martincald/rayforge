@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from gi.repository import Adw, Gtk
 
+from ...layout import SPACE_CONTROL
+
 from rayforge.context import get_context
 from rayforge.core.step import Step
 from rayforge.ui_gtk.doceditor.step_settings.page_registry import (
@@ -216,7 +218,10 @@ class StepSettingsDialog(PatchedDialogWindow):
         """Creates a box with an icon and a label for a tab button."""
         icon = get_icon(icon_name)
         label = Gtk.Label(label=title_str)
-        box = Gtk.Box(spacing=6, orientation=Gtk.Orientation.HORIZONTAL)
+        box = Gtk.Box(
+            spacing=SPACE_CONTROL,
+            orientation=Gtk.Orientation.HORIZONTAL,
+        )
         box.append(icon)
         box.append(label)
         return box

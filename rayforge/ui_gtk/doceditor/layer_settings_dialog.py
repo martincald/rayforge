@@ -80,9 +80,7 @@ class LayerSettingsDialog(PatchedDialogWindow):
         self.wcs_row = Adw.ComboRow(
             title=_("Coordinate System"),
             subtitle=_(
-                "The work coordinate system origin to use for this layer. "
-                "By default, use the WCS selected in the main "
-                "window"
+                "Defaults to the WCS chosen in the main window"
             ),
             model=self._wcs_store,
         )

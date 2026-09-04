@@ -10,6 +10,12 @@ from rayforge.ui_gtk.icons import get_icon
 from rayforge.ui_gtk.shared.keyboard import PRIMARY_ACCEL
 from rayforge.ui_gtk.shared.status_bar import StatusBar
 from rayforge.ui_gtk.varset.varset_editor import VarSetEditorWidget
+from rayforge.ui_gtk.layout import (
+    SPACE_CONTROL,
+    SPACE_GROUP,
+    SPACE_PAGE,
+    SPACE_TIGHT,
+)
 
 from ..core.entities.text_box import TextBoxEntity
 from ..core.sketch import DEFAULT_FILL_COLOR, Sketch
@@ -59,11 +65,14 @@ class SketchStudio(Gtk.Box):
             self.canvas.set_size(width_mm, height_mm)
 
     def _build_toolbar(self):
-        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        toolbar.set_margin_bottom(2)
-        toolbar.set_margin_top(2)
-        toolbar.set_margin_start(12)
-        toolbar.set_margin_end(12)
+        toolbar = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
+        toolbar.set_margin_bottom(SPACE_TIGHT)
+        toolbar.set_margin_top(SPACE_TIGHT)
+        toolbar.set_margin_start(SPACE_GROUP)
+        toolbar.set_margin_end(SPACE_GROUP)
         self.append(toolbar)
 
         self.constraints_button = Gtk.ToggleButton()
@@ -110,7 +119,7 @@ class SketchStudio(Gtk.Box):
         )
 
         color_label = Gtk.Label(label=_("Fill color:"))
-        color_label.set_margin_start(6)
+        color_label.set_margin_start(SPACE_CONTROL)
 
         color_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         color_box.append(color_label)
@@ -186,12 +195,12 @@ class SketchStudio(Gtk.Box):
         main_paned.set_start_child(side_panel_scroller)
 
         side_panel_box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, spacing=24
+            orientation=Gtk.Orientation.VERTICAL, spacing=SPACE_PAGE
         )
-        side_panel_box.set_margin_top(12)
-        side_panel_box.set_margin_bottom(12)
-        side_panel_box.set_margin_start(12)
-        side_panel_box.set_margin_end(12)
+        side_panel_box.set_margin_top(SPACE_GROUP)
+        side_panel_box.set_margin_bottom(SPACE_GROUP)
+        side_panel_box.set_margin_start(SPACE_GROUP)
+        side_panel_box.set_margin_end(SPACE_GROUP)
         side_panel_scroller.set_child(side_panel_box)
 
         # Properties Group (Name)
@@ -229,14 +238,14 @@ class SketchStudio(Gtk.Box):
         self._camera_button.set_tooltip_text(_("Toggle camera view"))
         self._camera_button.connect("toggled", self._on_camera_toggled)
         self._camera_overlay_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=2
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_TIGHT
         )
         self._camera_overlay_box.add_css_class("visibility-overlay")
         self._camera_overlay_box.append(self._camera_button)
         self._camera_overlay_box.set_halign(Gtk.Align.END)
         self._camera_overlay_box.set_valign(Gtk.Align.START)
-        self._camera_overlay_box.set_margin_top(6)
-        self._camera_overlay_box.set_margin_end(6)
+        self._camera_overlay_box.set_margin_top(SPACE_CONTROL)
+        self._camera_overlay_box.set_margin_end(SPACE_CONTROL)
         self.canvas_overlay.add_overlay(self._camera_overlay_box)
 
         # The paned widget will handle expansion.

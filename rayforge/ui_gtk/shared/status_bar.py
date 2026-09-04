@@ -1,5 +1,6 @@
 from gi.repository import Gtk
 
+from ..layout import SPACE_PAGE
 from .shortcut import Shortcut
 
 
@@ -7,7 +8,7 @@ class StatusBar(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, **kwargs)
         self.add_css_class("status-bar")
-        self.set_spacing(24)
+        self.set_spacing(SPACE_PAGE)
 
     def add_shortcut_entry(
         self,

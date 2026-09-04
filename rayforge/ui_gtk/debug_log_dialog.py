@@ -8,6 +8,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from ..context import get_context
 from ..debug import DebugDumpManager
+from .layout import SPACE_GROUP
 
 if TYPE_CHECKING:
     from ..doceditor.editor import DocEditor
@@ -49,8 +50,11 @@ class DebugLogDialog(Adw.MessageDialog):
         )
         self._include_switch.set_active(True)
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_top(12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_top(SPACE_GROUP)
         content_box.append(self._include_switch)
         self.set_extra_child(content_box)
 

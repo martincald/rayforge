@@ -9,6 +9,7 @@ from gi.repository import Adw, Gdk, GLib, Gtk
 from rayforge.core.vectorization_spec import PassthroughSpec
 from rayforge.core.workpiece import WorkPiece
 from rayforge.ui_gtk.shared.patched_dialog_window import PatchedDialogWindow
+from rayforge.ui_gtk.layout import SPACE_CONTROL, SPACE_GROUP
 
 if TYPE_CHECKING:
     from rayforge.doceditor.editor import DocEditor
@@ -57,11 +58,11 @@ class AIWorkpieceGeneratorDialog(PatchedDialogWindow):
 
         content_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_start=12,
-            margin_end=12,
-            margin_top=12,
-            margin_bottom=12,
+            spacing=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         toolbar_view.set_content(content_box)
 
@@ -73,7 +74,7 @@ class AIWorkpieceGeneratorDialog(PatchedDialogWindow):
             wrap=True,
             xalign=0,
             css_classes=["dim-label", "caption"],
-            margin_bottom=6,
+            margin_bottom=SPACE_CONTROL,
         )
         content_box.append(description)
 
@@ -96,7 +97,7 @@ class AIWorkpieceGeneratorDialog(PatchedDialogWindow):
         self._error_label = Gtk.Label(
             wrap=True,
             css_classes=["error", "caption"],
-            margin_top=6,
+            margin_top=SPACE_CONTROL,
             visible=False,
         )
         content_box.append(self._error_label)

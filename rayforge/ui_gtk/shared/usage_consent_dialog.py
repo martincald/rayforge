@@ -4,6 +4,7 @@ from gi.repository import Adw, Gtk
 
 from ...context import get_context
 from ...usage import get_usage_tracker
+from ..layout import SPACE_GROUP
 
 
 class UsageConsentDialog(Adw.MessageDialog):
@@ -29,7 +30,7 @@ class UsageConsentDialog(Adw.MessageDialog):
             wrap=True,
             max_width_chars=50,
             halign=Gtk.Align.START,
-            margin_top=12,
+            margin_top=SPACE_GROUP,
         )
         self.set_extra_child(link_label)
 

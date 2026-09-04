@@ -35,7 +35,12 @@ class LengthChoiceSpinRow(LengthSpinRow):
         self._populate_dropdown()
         self._sync_dropdown_to_unit()
         self._unit_dropdown.connect("notify::selected", self._on_unit_selected)
-        self.add_suffix(self._unit_dropdown)
+        # The dropdown already names the unit, so the static suffix
+        # label every other unit row carries would say it twice. It is
+        # taken out of the box rather than hidden, so the dropdown is
+        # still the spin button's next sibling.
+        self._suffix.remove(self._unit_label)
+        self._suffix.append(self._unit_dropdown)
 
     def _resolve_unit_name(self) -> str | None:
         """Prefer the per-row choice over the global preference."""

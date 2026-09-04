@@ -16,6 +16,7 @@ from rayforge.ui_gtk.shared.patched_dialog_window import (
     PatchedDialogWindow,
 )
 from rayforge.ui_gtk.shared.pref_rows import LengthSpinRow
+from rayforge.ui_gtk.layout import SPACE_CONTROL, SPACE_GROUP
 
 from .pick_surface import PickSurface
 
@@ -95,10 +96,10 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         self._main_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=16,
-            margin_start=12,
-            margin_top=12,
-            margin_bottom=12,
+            spacing=SPACE_SECTION,
+            margin_start=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         content.append(self._main_box)
 
@@ -121,10 +122,10 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         self._button_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             halign=Gtk.Align.END,
-            margin_end=12,
-            margin_bottom=12,
+            margin_end=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         content.append(self._button_box)
 
@@ -186,14 +187,14 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        box.set_margin_start(12)
+        box.set_margin_start(SPACE_GROUP)
         box.set_margin_end(32)
-        box.set_margin_top(4)
-        box.set_margin_bottom(12)
+        box.set_margin_top(SPACE_TIGHT)
+        box.set_margin_bottom(SPACE_GROUP)
         scroll.set_child(box)
 
         intro_group = Adw.PreferencesGroup(
@@ -230,14 +231,14 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        box.set_margin_start(12)
+        box.set_margin_start(SPACE_GROUP)
         box.set_margin_end(32)
-        box.set_margin_top(4)
-        box.set_margin_bottom(12)
+        box.set_margin_top(SPACE_TIGHT)
+        box.set_margin_bottom(SPACE_GROUP)
         scroll.set_child(box)
 
         intro_group = Adw.PreferencesGroup(
@@ -255,11 +256,11 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         jog_inner = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=6,
-            margin_top=6,
-            margin_bottom=6,
-            margin_start=6,
-            margin_end=6,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_CONTROL,
             halign=Gtk.Align.CENTER,
         )
         jog_frame.set_child(jog_inner)
@@ -374,13 +375,13 @@ class PrintAndCutWizard(PatchedDialogWindow):
 
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             hexpand=True,
         )
-        box.set_margin_start(24)
-        box.set_margin_end(24)
-        box.set_margin_top(12)
-        box.set_margin_bottom(12)
+        box.set_margin_start(SPACE_PAGE)
+        box.set_margin_end(SPACE_PAGE)
+        box.set_margin_top(SPACE_GROUP)
+        box.set_margin_bottom(SPACE_GROUP)
         scroll.set_child(box)
 
         intro_group = Adw.PreferencesGroup(

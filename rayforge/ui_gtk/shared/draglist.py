@@ -4,6 +4,7 @@ from blinker import Signal
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from .gtk import apply_css
 
 css = """
@@ -79,11 +80,11 @@ class DragListBox(Gtk.ListBox):
         # Create a container box with a handle and the original content
         hbox = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
-            margin_start=6,
-            margin_end=6,
-            margin_top=6,
-            margin_bottom=6,
+            spacing=SPACE_CONTROL,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_CONTROL,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
         )
 
         # Create drag handle

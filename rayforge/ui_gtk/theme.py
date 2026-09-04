@@ -140,7 +140,8 @@ _RULES = """
    depending on the monitor. */
 .sc-toolbar > button,
 .sc-toolbar > togglebutton,
-.sc-toolbar > .sc-split > button,
+.sc-split > button,
+.sc-split > menubutton > button,
 .sc-jog button {
     border: 1px solid @sc_bezel;
     border-radius: 7px;
@@ -154,14 +155,36 @@ _RULES = """
     border-radius: 6px;
 }
 
+/* The two halves of a split button keep the bezel but stay joined,
+   so the pair still reads as one control. The action button is
+   always first and the menu button second in both split widgets. */
+.sc-split > button {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.sc-split > menubutton > button {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-width: 0;
+}
+
 .sc-toolbar > button:hover,
 .sc-toolbar > togglebutton:hover,
+.sc-split > button:hover,
+.sc-split > menubutton > button:hover,
 .sc-jog button:hover {
     background-color: @sc_button_hover;
 }
 
+/* Without the .sc-split arms here, a disabled split button keeps
+   libadwaita's insensitive grey fill while every disabled button
+   beside it fades - which is what made undo, redo, align and tabs
+   read as a different family of button in an empty document. */
 .sc-toolbar > button:disabled,
 .sc-toolbar > togglebutton:disabled,
+.sc-split > button:disabled,
+.sc-split > menubutton > button:disabled,
 .sc-jog button:disabled {
     opacity: 0.4;
 }
@@ -209,7 +232,7 @@ _RULES = """
     font-size: 11.5px;
 }
 
-.sc-jog .caption {
+.sc-jog .sc-caption {
     font-size: 9px;
 }
 
@@ -284,12 +307,15 @@ _LAYOUT = """
 /* --- Control sizes: two density contexts ------------------------ */
 /* Compact is pointer work. Touch is the jog grid, and only the jog
    grid: the one surface an operator hits while watching the machine
-   rather than the screen. */
+   rather than the screen.
+
+   Icon buttons only: a text button sizes itself from its label, and
+   a bare `.sc-overlay button` rule would crush the 3D playback speed
+   button ("1x") into a 32px square. */
 .sc-toolbar > button,
 .sc-toolbar > togglebutton,
 .sc-split > button,
 .sc-rail button,
-.sc-overlay button,
 .sc-icon-button {
     min-width: 32px;
     min-height: 32px;
@@ -315,12 +341,6 @@ _LAYOUT = """
 /* --- Row rhythm -------------------------------------------------- */
 .sc-panel row {
     min-height: 40px;
-}
-
-/* Trailing controls share one box, so their spacing and their
-   trailing edge are the same in every row. */
-.sc-suffix {
-    margin-right: 0;
 }
 
 /* --- Radii ------------------------------------------------------- */

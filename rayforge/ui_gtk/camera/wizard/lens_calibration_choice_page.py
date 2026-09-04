@@ -57,9 +57,7 @@ class LensCalibrationChoicePage(CameraWizardPage):
         automatic_row = Adw.ActionRow(
             title=_("Automatic Calibration"),
             subtitle=_(
-                "Print a calibration card and capture it at several "
-                "positions. The wizard solves the distortion "
-                "coefficients for you."
+                "Print a card, capture it, and the wizard solves the rest"
             ),
         )
         automatic_row.add_suffix(self._automatic_btn)

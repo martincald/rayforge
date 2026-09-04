@@ -35,11 +35,17 @@ Converting to the table above:
 | 6 | `SPACE_CONTROL` (8) | between controls |
 | 6 | `SPACE_TIGHT` (4) | when it is inside one control |
 | 9, 10 | `SPACE_GROUP` (12) | all are panel padding |
-| 18 | `SPACE_SECTION` (16) | |
-| 50 | left alone | a canvas dimension, not a gap |
+| 18, 20 | `SPACE_SECTION` (16) | |
+| 32, 50 | `SPACE_PAGE` (24) | all are dialog page insets |
 
 libadwaita's own internal row padding is not ours to move; the scale
 governs the space **we** put between widgets.
+
+One number stays as a number: `mainwindow.py`'s `set_margin_end(454)`
+on the canvas overlays. It is not a gap but the right pane's width
+plus its margins, used to keep the overlay clear of the pane, and it
+should really be derived from that width rather than restated — a
+separate fix from this one.
 
 ---
 
@@ -78,7 +84,7 @@ tightest contract.
 | --- | --- | --- |
 | `ROW_MIN_HEIGHT` | 48 | Dialog and page rows |
 | `ROW_MIN_HEIGHT_COMPACT` | 40 | Rows in a dock panel (`.sc-panel`) |
-| `PANEL_MAX_WIDTH` | 380 | A group inside a dock panel stops here |
+| `PANEL_MAX_WIDTH` | 340 | A group inside a dock panel stops here |
 
 Three rules follow from those numbers:
 
@@ -128,13 +134,21 @@ is a circle, not a radius.
 | --- | --- | --- |
 | Title | `.sc-title` | 13px, weight 600 |
 | Label | *(inherit)* | 13px, the row title |
+| Dimmed label | `dim-label` | 13px, dimmed — a full-size secondary label |
 | Caption | `.sc-caption` | 11px, `@sc_fg_dim`, **one line** |
+| Jog caption | `.sc-jog .sc-caption` | 9px, from `swift-cut-tokens.md` §1.5 |
 | Mono numeric | `.sc-numeric` | tabular figures |
 
-`dim-label` (42 uses), `caption` (10), `title-4` (2) and
-`caption-heading` (2) all collapse into these four. `.sc-title` is
-defined in `swift-cut-tokens.md` §1.5 but was never implemented;
-this is where it lands.
+The audit called `dim-label` and `caption` two vocabularies for one
+role (T1). They are not quite: a *dimmed label* is full-size
+secondary text (an empty-state placeholder, a hint) and a *caption*
+is 11px. The fault was that seven of the ten `caption` uses also
+carried `dim-label`, which is what made the pair look
+interchangeable — a caption is dim by definition, so `.sc-caption`
+sets the colour and the size together and the pairing is gone.
+
+`.sc-title` is defined in `swift-cut-tokens.md` §1.5 but was never
+implemented; this is where it lands.
 
 ### 5.2 A caption earns its line
 

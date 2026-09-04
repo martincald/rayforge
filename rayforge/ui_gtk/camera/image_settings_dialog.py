@@ -4,6 +4,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ...camera.controller import CameraController
+from ..layout import SPACE_GROUP, SPACE_PAGE
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .image_settings_widget import CameraImageSettings
 
@@ -31,10 +32,10 @@ class CameraImageSettingsDialog(PatchedDialogWindow):
         content.append(header)
 
         self._widget = CameraImageSettings(controller)
-        self._widget.set_margin_start(32)
-        self._widget.set_margin_end(32)
-        self._widget.set_margin_top(12)
-        self._widget.set_margin_bottom(12)
+        self._widget.set_margin_start(SPACE_PAGE)
+        self._widget.set_margin_end(SPACE_PAGE)
+        self._widget.set_margin_top(SPACE_GROUP)
+        self._widget.set_margin_bottom(SPACE_GROUP)
         content.append(self._widget)
 
     def do_close_request(self, *args) -> bool:

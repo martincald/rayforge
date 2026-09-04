@@ -43,8 +43,7 @@ class LeadInOutSettingsGroup(DebounceMixin, TransformerSettingsGroup):
         self.auto_row = Adw.SwitchRow(
             title=_("Automatic Distance"),
             subtitle=_(
-                "Calculate distance based on speed and acceleration "
-                "with safety factor"
+                "From speed and acceleration, with a safety factor"
             ),
         )
         self.auto_row.set_active(transformer.auto)

@@ -1,13 +1,14 @@
 from gi.repository import Gtk
 
 from ...shared.util.time_format import format_clock
+from ..layout import SPACE_CONTROL, SPACE_TIGHT
 from .gtk import apply_css
 
+# The radius comes from the layout layer (.sc-overlay).
 css = """
 .time-estimate-overlay {
     background-color: @theme_bg_color;
-    border-radius: 6px;
-    padding: 3px 8px;
+    padding: 4px 8px;
 }
 """
 
@@ -16,15 +17,16 @@ class TimeEstimateOverlay(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=4,
+            spacing=SPACE_TIGHT,
             **kwargs,
         )
         apply_css(css)
         self.add_css_class("time-estimate-overlay")
+        self.add_css_class("sc-overlay")
         self.set_halign(Gtk.Align.END)
         self.set_valign(Gtk.Align.END)
-        self.set_margin_bottom(6)
-        self.set_margin_end(6)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_end(SPACE_CONTROL)
 
         self._label = Gtk.Label()
         self._label.set_visible(False)

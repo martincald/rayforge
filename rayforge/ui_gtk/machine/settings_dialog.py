@@ -17,6 +17,7 @@ from ...machine.driver import (
 from ...machine.models.machine import Machine
 from ..camera.camera_preferences_page import CameraPreferencesPage
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.gtk import apply_css
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .advanced_preferences_page import AdvancedPreferencesPage
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 apply_css("""
 .maturity-warning {
     background-color: alpha(@warning_color, 0.15);
-    padding: 10px 28px;
+    padding: 12px 24px;
 }
 .maturity-link {
     text-decoration: underline;
@@ -91,7 +92,7 @@ class MachineSettingsDialog(PatchedDialogWindow):
         # Maturity warning banner
         self.maturity_banner = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             hexpand=True,
         )
         self.maturity_banner.add_css_class("maturity-warning")
@@ -352,11 +353,11 @@ class MachineSettingsDialog(PatchedDialogWindow):
         row = Gtk.ListBoxRow()
         box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
-            margin_start=12,
-            margin_end=12,
-            margin_top=6,
-            margin_bottom=6,
+            spacing=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
         )
         icon = get_icon(icon_name)
         label = Gtk.Label(label=label_text, xalign=0)

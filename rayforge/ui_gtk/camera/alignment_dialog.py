@@ -5,6 +5,7 @@ from gi.repository import Adw, Gtk
 
 from ...camera.controller import CameraController
 from ..icons import get_icon
+from ..layout import SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .alignment_widget import CameraAlignment
 
@@ -58,9 +59,9 @@ class CameraAlignmentDialog(PatchedDialogWindow):
 
         self._widget = CameraAlignment(controller)
         self._widget.applied.connect(lambda *_: self.close())
-        self._widget.set_margin_start(12)
-        self._widget.set_margin_end(12)
-        self._widget.set_margin_top(12)
+        self._widget.set_margin_start(SPACE_GROUP)
+        self._widget.set_margin_end(SPACE_GROUP)
+        self._widget.set_margin_top(SPACE_GROUP)
         content.append(self._widget)
 
         # The alignment surface owns its Reset/Clear/Apply buttons but
@@ -68,12 +69,12 @@ class CameraAlignmentDialog(PatchedDialogWindow):
         # bottom button row.
         btn_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             halign=Gtk.Align.END,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=12,
-            margin_end=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
         for btn in self._widget.footer_buttons():
             btn_box.append(btn)

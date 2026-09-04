@@ -1,6 +1,7 @@
 from blinker import Signal
 from gi.repository import Gdk, Gtk
 
+from ..layout import SPACE_TIGHT
 from .gtk import apply_css
 
 dock_area_css = """
@@ -8,12 +9,9 @@ box.dock-area {
     background: @theme_bg_color;
 }
 
+/* Size and radius come from the layout layer (.sc-rail), so the
+   rail, the toolbar and the canvas overlays are one size. */
 box.dock-area > box.dock-icon-strip button {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 2px;
-    margin: 1px;
-    border-radius: 4px;
     border: none;
     background: transparent;
 }
@@ -42,7 +40,7 @@ box.dock-area > box.dock-icon-strip button.drag-highlight-bottom {
 box.dock-area.drag-active {
     background: alpha(@theme_selected_bg_color, 0.06);
     border: 1px dashed alpha(@theme_selected_bg_color, 0.4);
-    border-radius: 6px;
+    border-radius: 10px;
 }
 """
 
@@ -72,7 +70,8 @@ class DockArea(Gtk.Box):
 
         self._icon_strip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._icon_strip.add_css_class("dock-icon-strip")
-        self._icon_strip.set_spacing(2)
+        self._icon_strip.add_css_class("sc-rail")
+        self._icon_strip.set_spacing(SPACE_TIGHT)
         self._icon_strip.set_visible(False)
 
         self._stack = Gtk.Stack()

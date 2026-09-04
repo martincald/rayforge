@@ -5,6 +5,7 @@ from gi.repository import Adw, Gtk
 
 from ...machine.models.machine import Machine
 from ...machine.models.zone import Zone, ZoneShape
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.pref_rows.length_spin_row import LengthSpinRow
 from ..shared.preferences_group import PreferencesGroupWithButton
 from ..shared.preferences_page import TrackedPreferencesPage
@@ -12,16 +13,19 @@ from ..shared.preferences_page import TrackedPreferencesPage
 
 class ZoneRow(Gtk.Box):
     def __init__(self, machine: Machine, zone: Zone):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.machine = machine
         self.zone = zone
         self._setup_ui()
 
     def _setup_ui(self):
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         info_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True
@@ -40,8 +44,7 @@ class ZoneRow(Gtk.Box):
             halign=Gtk.Align.START,
             xalign=0,
         )
-        self.subtitle_label.add_css_class("dim-label")
-        self.subtitle_label.add_css_class("caption")
+        self.subtitle_label.add_css_class("sc-caption")
         info_box.append(self.subtitle_label)
 
         self.enabled_switch = Gtk.Switch(
@@ -88,8 +91,8 @@ class ZoneListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No no-go zones configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)
@@ -262,14 +265,12 @@ class NogoZonesPage(TrackedPreferencesPage):
 
         self.w_row = LengthSpinRow(
             _("Width"),
-            _("Width"),
             upper=10000,
         )
         self.w_row.value_changed.connect(self._on_param_changed)
         self.config_group.add(self.w_row)
 
         self.h_row = LengthSpinRow(
-            _("Height"),
             _("Height"),
             upper=10000,
         )
@@ -294,7 +295,6 @@ class NogoZonesPage(TrackedPreferencesPage):
 
         self.cyl_height_row = LengthSpinRow(
             _("Cylinder Height"),
-            _("Cylinder height"),
             upper=10000,
         )
         self.cyl_height_row.value_changed.connect(self._on_param_changed)

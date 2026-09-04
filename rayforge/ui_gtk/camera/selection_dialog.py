@@ -8,6 +8,7 @@ from ...camera.controller import CameraController
 from ...camera.models.camera import Camera
 from ...camera.v4l import display_name
 from ...context import get_context
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
@@ -74,15 +75,15 @@ class CameraSelectionDialog(Adw.MessageDialog):
 
         self.indicator = Adw.CarouselIndicatorDots()
         self.indicator.set_carousel(self.carousel)
-        self.indicator.set_margin_bottom(6)
+        self.indicator.set_margin_bottom(SPACE_CONTROL)
 
         content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         content_box.append(carousel_box)
         content_box.append(self.indicator)
-        content_box.set_margin_start(12)
-        content_box.set_margin_end(12)
-        content_box.set_margin_top(12)
-        content_box.set_margin_bottom(6)
+        content_box.set_margin_start(SPACE_GROUP)
+        content_box.set_margin_end(SPACE_GROUP)
+        content_box.set_margin_top(SPACE_GROUP)
+        content_box.set_margin_bottom(SPACE_CONTROL)
 
         self.set_extra_child(content_box)
 
@@ -154,10 +155,10 @@ class CameraSelectionDialog(Adw.MessageDialog):
         image_widget.set_valign(Gtk.Align.CENTER)
         image_widget.set_size_request(200, 200)
         image_widget.add_css_class("rounded-image")
-        image_widget.set_margin_start(10)
-        image_widget.set_margin_end(10)
-        image_widget.set_margin_top(10)
-        image_widget.set_margin_bottom(5)
+        image_widget.set_margin_start(SPACE_GROUP)
+        image_widget.set_margin_end(SPACE_GROUP)
+        image_widget.set_margin_top(SPACE_GROUP)
+        image_widget.set_margin_bottom(SPACE_TIGHT)
 
         label_text = name
         dev_name = display_name(device_id)
@@ -167,9 +168,12 @@ class CameraSelectionDialog(Adw.MessageDialog):
         label = Gtk.Label(label=label_text)
         label.set_halign(Gtk.Align.CENTER)
         label.set_valign(Gtk.Align.CENTER)
-        label.set_margin_bottom(12)
+        label.set_margin_bottom(SPACE_GROUP)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+        )
         box.append(image_widget)
         box.append(label)
         box.set_halign(Gtk.Align.CENTER)

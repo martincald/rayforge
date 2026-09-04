@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 
 css = """
 .gcode-viewer {
-    border-radius: 3px;
+    border-radius: 5px;
 }
 .gcode-status-label {
     background-color: alpha(@window_bg_color, 0.8);
-    border-radius: 3px;
-    padding: 2px 6px;
+    border-radius: 5px;
+    padding: 4px 8px;
 }
 """
 

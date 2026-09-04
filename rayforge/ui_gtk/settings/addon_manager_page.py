@@ -4,6 +4,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ..addon_manager.addon_list import AddonListWidget
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.preferences_page import TrackedPreferencesPage
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,9 @@ class AddonManagerPage(TrackedPreferencesPage):
 
         self.progress_indicator = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
-            margin_top=12,
-            margin_bottom=12,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
             halign=Gtk.Align.CENTER,
         )
         spinner = Gtk.Spinner()

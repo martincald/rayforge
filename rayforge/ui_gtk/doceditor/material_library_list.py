@@ -9,7 +9,7 @@ from gi.repository import Adw, Gtk
 
 from ...context import get_context
 from ...core.material_library import MaterialLibrary
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,10 @@ class LibraryRow(Gtk.Box):
         on_delete_callback,
         on_edit_callback,
     ):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         logger.debug(
             f"LibraryRow.__init__: Creating instance for library "
             f"'{library.library_id if library is not None else 'None'}'"
@@ -40,10 +43,10 @@ class LibraryRow(Gtk.Box):
 
     def _setup_ui(self):
         """Builds the user interface for the row."""
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         labels_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True
@@ -68,16 +71,21 @@ class LibraryRow(Gtk.Box):
         # Add edit and delete buttons for writable libraries only
         if not self.library.read_only:
             # Suffix area for buttons
-            suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+            suffix_box = Gtk.Box(
+                spacing=SPACE_CONTROL,
+                valign=Gtk.Align.CENTER,
+            )
             self.append(suffix_box)
 
-            self.edit_button = Gtk.Button(child=get_icon("edit-symbolic"))
-            self.edit_button.add_css_class("flat")
+            self.edit_button = icon_button(
+                "edit-symbolic", _("Edit this library")
+            )
             self.edit_button.connect("clicked", self._on_edit_clicked)
             suffix_box.append(self.edit_button)
 
-            self.delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-            self.delete_button.add_css_class("flat")
+            self.delete_button = icon_button(
+                "delete-symbolic", _("Delete this library")
+            )
             self.delete_button.connect("clicked", self._on_delete_clicked)
             suffix_box.append(self.delete_button)
 

@@ -26,6 +26,7 @@ from rayforge.ui_gtk.shared.pref_rows import (
     LengthChoiceSpinRow,
     SpinRow,
 )
+from rayforge.ui_gtk.layout import SPACE_CONTROL
 
 from .tool import (
     CATEGORY_BY_NAME,
@@ -93,7 +94,10 @@ class AddEditToolDialog(PatchedDialogWindow):
     # --- Tab wiring -----------------------------------------------------
 
     def _create_tab_child(self, text: str, icon_name: str) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         box.append(get_icon(icon_name))
         box.append(Gtk.Label(label=text))
         return box

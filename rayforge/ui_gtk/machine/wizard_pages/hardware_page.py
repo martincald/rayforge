@@ -194,10 +194,7 @@ class HardwarePage(WizardPage):
 
         self.accel_row = AccelerationSpinRow(
             _("Acceleration"),
-            _(
-                "Used for time estimations and calculating the "
-                "default overscan distance"
-            ),
+            _("Drives time estimates and the default overscan"),
             upper=10000,
             digits=0,
         )

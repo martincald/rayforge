@@ -10,11 +10,15 @@ from ...machine.driver.driver import (
 from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 
 
 class MachineStatusIconWidget(Gtk.Box):
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
 
         # Placeholder for the image widget
         self.status_image: Gtk.Widget | None = None
@@ -78,7 +82,10 @@ class MachineStatusIconWidget(Gtk.Box):
 
 class MachineStatusWidget(Gtk.Box):
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         self.machine: Machine | None = None
 
         self.label = Gtk.Label()

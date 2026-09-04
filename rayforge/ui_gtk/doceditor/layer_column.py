@@ -15,6 +15,7 @@ from ...core.source_asset import SourceAsset
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_TIGHT
 from ..shared.gtk import apply_css
 from . import import_handler
 from .group_row import GroupRow
@@ -40,7 +41,7 @@ css = """
     background-color: alpha(@accent_bg_color, 0.05);
 }
 .layer-column-header {
-    padding: 6px 8px;
+    padding: 8px 8px;
     border-bottom: 1px solid @borders;
     border-radius: 8px 8px 0 0;
     background-color: alpha(@theme_fg_color, 0.05);
@@ -51,7 +52,7 @@ css = """
 .layer-column-header button.flat {
     min-width: 28px;
     min-height: 28px;
-    padding: 2px;
+    padding: 4px;
 }
 .layer-column-header .dim-label {
     font-size: smaller;
@@ -62,14 +63,14 @@ css = """
 }
 .layer-workpiece-list > row {
     background-color: transparent;
-    border-radius: 4px;
-    padding: 1px 4px;
+    border-radius: 5px;
+    padding: 4px 4px;
     margin: 0;
     border: none;
 }
 .layer-workpiece-list > row > * {
     margin: -1px -4px;
-    padding: 1px 4px;
+    padding: 4px 4px;
 }
 .layer-workpiece-list > row:drop(active) {
     background-color: transparent;
@@ -108,7 +109,7 @@ class LayerColumn(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         apply_css(css)
         self.add_css_class("layer-column")
-        self.set_margin_end(6)
+        self.set_margin_end(SPACE_CONTROL)
         self.set_hexpand(False)
 
         self.doc = doc
@@ -156,19 +157,19 @@ class LayerColumn(Gtk.Box):
 
     def _build_header(self, can_delete: bool):
         self.header = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=4
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_TIGHT
         )
         self.header.add_css_class("layer-column-header")
         self.header.set_hexpand(True)
 
         self.drag_label = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=4
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_TIGHT
         )
 
         self.icon_container = Gtk.Box()
         self.icon_container.set_valign(Gtk.Align.CENTER)
-        self.icon_container.set_margin_start(3)
-        self.icon_container.set_margin_end(3)
+        self.icon_container.set_margin_start(SPACE_TIGHT)
+        self.icon_container.set_margin_end(SPACE_TIGHT)
         self.drag_label.append(self.icon_container)
 
         self.name_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -372,7 +373,7 @@ class LayerColumn(Gtk.Box):
         icon.set_css_classes([css_class])
         apply_css(
             f".{css_class} "
-            f"{{ background: {bg}; border-radius: 4px; "
+            f"{{ background: {bg}; border-radius: 5px; "
             f"padding: 4px; }}"
         )
         self.icon_container.append(icon)

@@ -8,6 +8,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from .....pipeline.transformer.base import OpsTransformer
 from ....icons import get_icon
+from ....layout import SPACE_CONTROL
 from ....shared.gtk import apply_css
 
 if TYPE_CHECKING:
@@ -161,7 +162,10 @@ class TransformerSettingsGroup(Adw.PreferencesGroup):
         labels = self._tri_state_labels()
         label_widget = Gtk.Label(label=labels[initial_state])
         self._tri_state_label = label_widget
-        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        button_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         button_box.append(label_widget)
         button_box.append(get_icon("pan-down-symbolic"))
 

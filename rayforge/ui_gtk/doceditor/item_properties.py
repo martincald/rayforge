@@ -10,6 +10,7 @@ from ...core.group import Group
 from ...core.item import DocItem
 from ...core.stock import StockItem
 from ...core.workpiece import WorkPiece
+from ..layout import SPACE_CONTROL
 from ..shared.expander import Expander
 from .property_providers import (
     PropertyProvider,
@@ -119,7 +120,7 @@ class DocItemPropertiesWidget(Gtk.Box):
                     widget.set_visible(False)
                     container.append(widget)
                 self._separate_groups.append((provider, widgets, expander))
-                expander.set_margin_top(6)
+                expander.set_margin_top(SPACE_CONTROL)
                 self.append(expander)
             else:
                 self._provider_widget_map.append((provider, widgets))

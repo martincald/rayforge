@@ -5,6 +5,7 @@ from gettext import gettext as _
 from gi.repository import Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,11 @@ class SplitMenuButton(Gtk.Box):
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(0)
         self.add_css_class("linked")
+        # The theme styles `.sc-toolbar > .sc-split > button`; without
+        # the class the split buttons kept libadwaita's grey capsule
+        # while every plain toolbar button beside them was a white
+        # bezel button, so one toolbar read as two button families.
+        self.add_css_class("sc-split")
 
         if not actions:
             raise ValueError("SplitMenuButton requires at least one action.")
@@ -77,7 +83,7 @@ class SplitMenuButton(Gtk.Box):
             row = Gtk.ListBoxRow()
             button = Gtk.Button()
             button.set_has_frame(False)
-            content = Gtk.Box(spacing=6)
+            content = Gtk.Box(spacing=SPACE_CONTROL)
             content.append(get_icon(icon_name))
             content.append(Gtk.Label(label=name))
             button.set_child(content)

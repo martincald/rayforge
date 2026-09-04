@@ -6,6 +6,7 @@ from gi.repository import Adw, Gtk
 from ...camera.controller import CameraController
 from ...camera.models.camera import Camera
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from .alignment_dialog import CameraAlignmentDialog
 from .image_settings_dialog import CameraImageSettingsDialog
 from .lens_calibration_dialog import LensCalibrationDialog
@@ -91,7 +92,7 @@ class CameraProperties(Adw.PreferencesGroup):
         self.lens_calibration_button = Gtk.Button(
             label=_("Configure"),
             valign=Gtk.Align.CENTER,
-            margin_start=6,
+            margin_start=SPACE_CONTROL,
         )
         self.lens_calibration_button.connect(
             "clicked", self.on_lens_calibration_button_clicked
@@ -115,7 +116,7 @@ class CameraProperties(Adw.PreferencesGroup):
         self.image_alignment_button = Gtk.Button(
             label=_("Configure"),
             valign=Gtk.Align.CENTER,
-            margin_start=6,
+            margin_start=SPACE_CONTROL,
         )
         self.image_alignment_button.connect(
             "clicked", self.on_image_alignment_button_clicked

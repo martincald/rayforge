@@ -14,7 +14,14 @@ from ...machine.models.machine import Machine, StartCorner
 from ...shared.gcodeedit.viewer import GcodeViewer
 from ...shared.tasker import task_mgr
 from ..doceditor.layers_tab import LayersTab
-from ..icons import get_icon
+from ..layout import (
+    PANEL_MAX_WIDTH,
+    SPACE_GROUP,
+    axis_button,
+    format_position,
+    icon_button,
+    suffix_box,
+)
 from ..machine.console import Console
 from ..machine.jog_widget import DEFAULT_JOG_SPEED_BASE, JogWidget
 from ..machine.laser_control_widget import LaserControlWidget
@@ -94,8 +101,8 @@ class BottomPanel(Gtk.Box):
         self.gcode_viewer = GcodeViewer()
         self.gcode_viewer.set_margin_start(0)
         self.gcode_viewer.set_margin_end(0)
-        self.gcode_viewer.set_margin_top(9)
-        self.gcode_viewer.set_margin_bottom(9)
+        self.gcode_viewer.set_margin_top(SPACE_GROUP)
+        self.gcode_viewer.set_margin_bottom(SPACE_GROUP)
 
         self.jog_widget = JogWidget()
         if machine and machine_cmd:
@@ -106,16 +113,16 @@ class BottomPanel(Gtk.Box):
             self.laser_control.set_machine(machine, machine_cmd)
 
         self._laser_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._laser_box.set_margin_start(9)
-        self._laser_box.set_margin_end(9)
-        self._laser_box.set_margin_top(9)
-        self._laser_box.set_margin_bottom(9)
+        self._laser_box.set_margin_start(SPACE_GROUP)
+        self._laser_box.set_margin_end(SPACE_GROUP)
+        self._laser_box.set_margin_top(SPACE_GROUP)
+        self._laser_box.set_margin_bottom(SPACE_GROUP)
         self._laser_box.set_vexpand(True)
         self._laser_box.set_hexpand(False)
         self._laser_box.set_halign(Gtk.Align.START)
         self._laser_box.append(self.laser_control)
         self._jog_laser_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=12
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_GROUP
         )
         self._jog_laser_box.append(self.jog_widget)
         self._jog_laser_box.set_vexpand(True)
@@ -124,17 +131,23 @@ class BottomPanel(Gtk.Box):
         self._controls_widget.set_halign(Gtk.Align.FILL)
         self._controls_widget.set_vexpand(True)
         self._controls_widget.set_valign(Gtk.Align.FILL)
-        self._controls_widget.set_margin_start(9)
-        self._controls_widget.set_margin_end(9)
-        self._controls_widget.set_margin_top(9)
-        self._controls_widget.set_margin_bottom(9)
+        self._controls_widget.set_margin_start(SPACE_GROUP)
+        self._controls_widget.set_margin_end(SPACE_GROUP)
+        self._controls_widget.set_margin_top(SPACE_GROUP)
+        self._controls_widget.set_margin_bottom(SPACE_GROUP)
 
         if machine:
             self._setup_wcs_controls()
             self._connect_machine_signals()
-            self._controls_widget.set_children(
-                self.wcs_group, self._jog_laser_box
+            # Clamped, so the group stops at a readable width instead
+            # of stretching to the panel edge and leaving 100-140px of
+            # nothing between every label and its controls.
+            clamp = Adw.Clamp(
+                maximum_size=PANEL_MAX_WIDTH,
+                tightening_threshold=PANEL_MAX_WIDTH,
+                child=self.wcs_group,
             )
+            self._controls_widget.set_children(clamp, self._jog_laser_box)
         else:
             self._controls_widget.set_children(self._jog_laser_box)
 
@@ -315,125 +328,102 @@ class BottomPanel(Gtk.Box):
 
         self.offsets_row = Adw.ActionRow(title=_("Current Offsets"))
 
-        self.edit_offsets_btn = Gtk.Button(child=get_icon("edit-symbolic"))
-        self.edit_offsets_btn.set_tooltip_text(_("Edit Offsets Manually"))
-        self.edit_offsets_btn.add_css_class("flat")
-        self.edit_offsets_btn.set_valign(Gtk.Align.CENTER)
+        self.edit_offsets_btn = icon_button(
+            "edit-symbolic", _("Edit Offsets Manually")
+        )
         self.edit_offsets_btn.connect("clicked", self._on_edit_offsets_clicked)
-        self.wcs_row.add_suffix(self.edit_offsets_btn)
+        self.wcs_row.add_suffix(suffix_box(self.edit_offsets_btn))
 
-        self.position_row = Adw.ActionRow(title=_("Current Position"))
+        # The row used to be "Current Position" and carry the position
+        # in its subtitle, which made it the second of three readouts
+        # on this panel. The readout is the jog widget's now; what is
+        # left here is what the row's buttons always did.
+        self.position_row = Adw.ActionRow(title=_("Move To"))
         self.wcs_group.add(self.position_row)
 
-        position_button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        position_button_box.set_spacing(6)
-        self.position_row.add_suffix(position_button_box)
-
-        self.move_ll_btn = Gtk.Button(child=get_icon("bottom-left-symbolic"))
-        self.move_ll_btn.add_css_class("flat")
-        self.move_ll_btn.set_size_request(40, -1)
-        self.move_ll_btn.connect("clicked", self._on_move_to_position, "ll")
-        self.move_ll_btn.set_tooltip_text(
-            _("Move to Lower-Left of Selection or Workarea")
+        self.move_ll_btn = icon_button(
+            "bottom-left-symbolic",
+            _("Move to Lower-Left of Selection or Workarea"),
         )
-        position_button_box.append(self.move_ll_btn)
+        self.move_ll_btn.connect("clicked", self._on_move_to_position, "ll")
 
-        self.move_center_btn = Gtk.Button(child=get_icon("center-symbolic"))
-        self.move_center_btn.add_css_class("flat")
-        self.move_center_btn.set_size_request(40, -1)
+        self.move_center_btn = icon_button(
+            "center-symbolic",
+            _("Move to Center of Selection or Workarea"),
+        )
         self.move_center_btn.connect(
             "clicked", self._on_move_to_position, "center"
         )
-        self.move_center_btn.set_tooltip_text(
-            _("Move to Center of Selection or Workarea")
-        )
-        position_button_box.append(self.move_center_btn)
 
-        self.move_ur_btn = Gtk.Button(child=get_icon("top-right-symbolic"))
-        self.move_ur_btn.add_css_class("flat")
-        self.move_ur_btn.set_size_request(40, -1)
+        self.move_ur_btn = icon_button(
+            "top-right-symbolic",
+            _("Move to Upper-Right of Selection or Workarea"),
+        )
         self.move_ur_btn.connect("clicked", self._on_move_to_position, "ur")
-        self.move_ur_btn.set_tooltip_text(
-            _("Move to Upper-Right of Selection or Workarea")
-        )
-        position_button_box.append(self.move_ur_btn)
 
-        self.move_origin_btn = Gtk.Button(
-            child=get_icon("goto-origin-symbolic")
+        self.move_origin_btn = icon_button(
+            "goto-origin-symbolic", _("Move to Origin of Active WCS")
         )
-        self.move_origin_btn.add_css_class("flat")
-        self.move_origin_btn.set_size_request(40, -1)
         self.move_origin_btn.connect("clicked", self._on_move_to_wcs_zero)
-        self.move_origin_btn.set_tooltip_text(
-            _("Move to Origin of Active WCS")
+
+        self.position_row.add_suffix(
+            suffix_box(
+                self.move_ll_btn,
+                self.move_center_btn,
+                self.move_ur_btn,
+                self.move_origin_btn,
+            )
         )
-        position_button_box.append(self.move_origin_btn)
 
         self._setup_start_corner_row()
 
         self.zero_row = Adw.ActionRow(title=_("Zero Axes"))
         self.wcs_group.add(self.zero_row)
 
-        zero_button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        zero_button_box.set_spacing(6)
-        self.zero_row.add_suffix(zero_button_box)
-
-        self.zero_x_btn = Gtk.Button(label=_("X"))
-        self.zero_x_btn.add_css_class("flat")
-        self.zero_x_btn.set_size_request(40, -1)
+        self.zero_x_btn = axis_button(
+            _("X"), _("Set current X position as 0 for active WCS")
+        )
         self.zero_x_btn.connect("clicked", self._on_zero_axis_clicked, Axis.X)
-        self.zero_x_btn.set_tooltip_text(
-            _("Set current X position as 0 for active WCS")
-        )
-        zero_button_box.append(self.zero_x_btn)
 
-        self.zero_y_btn = Gtk.Button(label=_("Y"))
-        self.zero_y_btn.add_css_class("flat")
-        self.zero_y_btn.set_size_request(40, -1)
+        self.zero_y_btn = axis_button(
+            _("Y"), _("Set current Y position as 0 for active WCS")
+        )
         self.zero_y_btn.connect("clicked", self._on_zero_axis_clicked, Axis.Y)
-        self.zero_y_btn.set_tooltip_text(
-            _("Set current Y position as 0 for active WCS")
-        )
-        zero_button_box.append(self.zero_y_btn)
 
-        self.zero_z_btn = Gtk.Button(label=_("Z"))
-        self.zero_z_btn.add_css_class("flat")
-        self.zero_z_btn.set_size_request(40, -1)
+        self.zero_z_btn = axis_button(
+            _("Z"), _("Set current Z position as 0 for active WCS")
+        )
         self.zero_z_btn.connect("clicked", self._on_zero_axis_clicked, Axis.Z)
-        self.zero_z_btn.set_tooltip_text(
-            _("Set current Z position as 0 for active WCS")
-        )
-        zero_button_box.append(self.zero_z_btn)
 
-        self.zero_here_btn = Gtk.Button(child=get_icon("zero-here-symbolic"))
-        self.zero_here_btn.set_tooltip_text(
-            _("Set Work Zero at Current Position")
+        self.zero_here_btn = icon_button(
+            "zero-here-symbolic", _("Set Work Zero at Current Position")
         )
-        self.zero_here_btn.add_css_class("flat")
-        self.zero_here_btn.set_size_request(40, -1)
         self.zero_here_btn.connect(
             "clicked", self._on_zero_axis_clicked, Axis.X | Axis.Y | Axis.Z
         )
-        zero_button_box.append(self.zero_here_btn)
 
-        self._click_to_zero_icon = get_icon("crosshairs-symbolic")
-        self.click_to_zero_btn = Gtk.Button(child=self._click_to_zero_icon)
-        self.click_to_zero_btn.set_tooltip_text(
-            _("Click Canvas to Set Work Zero")
+        self.click_to_zero_btn = icon_button(
+            "crosshairs-symbolic", _("Click Canvas to Set Work Zero")
         )
-        self.click_to_zero_btn.add_css_class("flat")
-        self.click_to_zero_btn.set_size_request(40, -1)
         self.click_to_zero_btn.connect(
             "clicked", self._on_click_to_zero_toggled
         )
-        zero_button_box.append(self.click_to_zero_btn)
-        self.click_to_zero_btn.set_tooltip_text(
-            _("Click on canvas to set work zero")
+
+        self.zero_row.add_suffix(
+            suffix_box(
+                self.zero_x_btn,
+                self.zero_y_btn,
+                self.zero_z_btn,
+                self.zero_here_btn,
+                self.click_to_zero_btn,
+            )
         )
 
+        # Neither row carries a caption: "Speed" only restated the
+        # label, and "Distance in machine units" named no unit. The
+        # unit is in the field, once, for every unit-aware row.
         self.speed_row = SpeedSpinRow(
             _("Jog Speed"),
-            _("Speed"),
             lower=1,
             upper=60000,
             value_in_base=DEFAULT_JOG_SPEED_BASE,
@@ -443,7 +433,6 @@ class BottomPanel(Gtk.Box):
 
         self.distance_row = LengthSpinRow(
             _("Jog Distance"),
-            _("Distance in machine units"),
             lower=0.1,
             upper=1000,
             value_in_base=10.0,
@@ -462,15 +451,13 @@ class BottomPanel(Gtk.Box):
         offset.
         """
         self.start_corner_row = Adw.ActionRow(title=_("Start Corner"))
+        # Short enough to stay on one line at the panel's width; the
+        # long form wrapped to three and made this the tallest row in
+        # the group.
         self.start_corner_row.set_subtitle(
-            _("The current head position is this corner of the job")
+            _("The head is on this corner of the job")
         )
         self.wcs_group.add(self.start_corner_row)
-
-        corner_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        corner_box.set_spacing(6)
-        corner_box.set_valign(Gtk.Align.CENTER)
-        self.start_corner_row.add_suffix(corner_box)
 
         self._start_corner_buttons: dict[StartCorner, Gtk.ToggleButton] = {}
         buttons = (
@@ -487,14 +474,13 @@ class BottomPanel(Gtk.Box):
                 _("Bottom Right"),
             ),
         )
+        corner_buttons = []
         for corner, icon_name, label in buttons:
-            button = Gtk.ToggleButton(child=get_icon(icon_name))
-            button.add_css_class("flat")
-            button.set_size_request(40, -1)
-            button.set_tooltip_text(label)
+            button = icon_button(icon_name, label, toggle=True)
             button.connect("toggled", self._on_start_corner_toggled, corner)
-            corner_box.append(button)
+            corner_buttons.append(button)
             self._start_corner_buttons[corner] = button
+        self.start_corner_row.add_suffix(suffix_box(*corner_buttons))
 
         self._update_start_corner_buttons()
 
@@ -748,9 +734,11 @@ class BottomPanel(Gtk.Box):
             title = current_wcs
         self.wcs_row.set_title(title)
 
+        # Offsets are a different quantity from position, but they are
+        # read the same way, so they are written the same way.
         off_x, off_y, off_z = self.machine.get_active_wcs_offset()
         self.wcs_row.set_subtitle(
-            f"X: {off_x:.2f}   Y: {off_y:.2f}   Z: {off_z:.2f}"
+            f"{format_position(off_x, off_y)}  Z {off_z:.1f}"
         )
 
         n = self._wcs_model.get_n_items()
@@ -760,42 +748,6 @@ class BottomPanel(Gtk.Box):
         is_dummy = isinstance(self.machine.driver, NoDeviceDriver)
         is_connected = self.machine.is_connected()
         is_active = is_connected or is_dummy
-
-        m_pos = self.machine.device_state.machine_pos
-        m_x, m_y, m_z = (
-            (m_pos[0], m_pos[1], m_pos[2])
-            if m_pos and all(p is not None for p in m_pos)
-            else (None, None, None)
-        )
-
-        selected_idx = self.wcs_row.get_selected()
-        if 0 <= selected_idx < len(self.wcs_list):
-            selected_wcs_ui = self.wcs_list[selected_idx]
-        else:
-            selected_wcs_ui = self.machine.active_wcs
-
-        pos_x, pos_y, pos_z = (None, None, None)
-        if m_x is not None and m_y is not None and m_z is not None:
-            if selected_wcs_ui == self.machine.machine_space_wcs:
-                pos_x, pos_y, pos_z = m_x, m_y, m_z
-            else:
-                offset = self.machine.get_wcs_offset(selected_wcs_ui)
-                pos_x = m_x - offset[0]
-                pos_y = m_y - offset[1]
-                pos_z = m_z - offset[2]
-
-        pos_str = ""
-        if pos_x is not None:
-            pos_str += f"X: {pos_x:.2f}   "
-        if pos_y is not None:
-            pos_str += f"Y: {pos_y:.2f}   "
-        if pos_z is not None:
-            pos_str += f"Z: {pos_z:.2f}"
-
-        if not is_active:
-            self.position_row.set_subtitle(_("Offline - Position Unknown"))
-        else:
-            self.position_row.set_subtitle(pos_str if pos_str else "---")
 
         is_mcs = current_wcs == self.machine.machine_space_wcs
         can_zero = is_active and not is_mcs

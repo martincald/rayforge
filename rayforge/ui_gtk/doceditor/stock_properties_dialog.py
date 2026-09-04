@@ -6,6 +6,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from ...context import get_context
 from ...core.stock import StockItem
+from ..layout import SPACE_GROUP, SPACE_PAGE
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.pref_rows.length_spin_row import LengthSpinRow
 from .material_selector import MaterialSelectorDialog
@@ -55,11 +56,14 @@ class StockPropertiesDialog(PatchedDialogWindow):
         main_box.append(header)
 
         # Create the main content
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_top(24)
-        content_box.set_margin_bottom(24)
-        content_box.set_margin_start(24)
-        content_box.set_margin_end(24)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_top(SPACE_PAGE)
+        content_box.set_margin_bottom(SPACE_PAGE)
+        content_box.set_margin_start(SPACE_PAGE)
+        content_box.set_margin_end(SPACE_PAGE)
         main_box.append(content_box)
 
         # Properties group

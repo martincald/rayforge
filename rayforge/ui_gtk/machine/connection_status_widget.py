@@ -9,11 +9,15 @@ from ...machine.transport.transport import (
     TransportStatus,
 )
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 
 
 class ConnectionStatusIconWidget(Gtk.Box):
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
 
         # Placeholder for the image widget
         self.status_image: Gtk.Widget | None = None
@@ -62,7 +66,10 @@ class ConnectionStatusIconWidget(Gtk.Box):
 
 class ConnectionStatusWidget(Gtk.Box):
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         self.machine: Machine | None = None
 
         self.label = Gtk.Label()

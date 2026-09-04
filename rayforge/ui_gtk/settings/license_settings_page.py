@@ -100,8 +100,7 @@ class LicenseSettingsPage(TrackedPreferencesPage):
             empty_row = Adw.ActionRow(
                 title=_("No licenses installed"),
                 subtitle=_(
-                    "Purchase a premium addon and enter the license "
-                    "key during installation."
+                    "Enter the key when you install the addon"
                 ),
             )
             empty_row.set_sensitive(False)

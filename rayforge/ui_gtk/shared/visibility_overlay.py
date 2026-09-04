@@ -3,18 +3,14 @@ from gettext import gettext as _
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_TIGHT
 from .gtk import apply_css
 
+# Size and radius come from the layout layer (.sc-overlay).
 css = """
 .visibility-overlay {
     background-color: alpha(@theme_bg_color, 0.75);
-    border-radius: 6px;
-    padding: 3px;
-}
-.visibility-overlay button {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 0;
+    padding: 4px;
 }
 """
 
@@ -37,21 +33,23 @@ class VisibilityOverlay(Gtk.Box):
     ):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=2,
+            spacing=SPACE_TIGHT,
             **kwargs,
         )
         apply_css(css)
         self.add_css_class("visibility-overlay")
+        self.add_css_class("sc-overlay")
         self.set_halign(Gtk.Align.END)
         self.set_valign(Gtk.Align.START)
-        self.set_margin_top(6)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_end(SPACE_CONTROL)
         self._shortcuts = shortcuts or {}
 
         if show_workpiece:
             self._vis_on_icon = get_icon("visibility-on-symbolic")
             self._vis_off_icon = get_icon("visibility-off-symbolic")
             self.workpiece_button = Gtk.ToggleButton()
+            self.workpiece_button.add_css_class("sc-icon-button")
             self.workpiece_button.set_active(True)
             self.workpiece_button.set_child(self._vis_on_icon)
             self.workpiece_button.set_tooltip_text(
@@ -68,6 +66,7 @@ class VisibilityOverlay(Gtk.Box):
 
         if show_tabs:
             self.tabs_button = Gtk.ToggleButton()
+            self.tabs_button.add_css_class("sc-icon-button")
             self.tabs_button.set_child(get_icon("tabs-visible-symbolic"))
             self.tabs_button.set_active(True)
             self.tabs_button.set_tooltip_text(
@@ -81,6 +80,7 @@ class VisibilityOverlay(Gtk.Box):
         self._cam_on_icon = get_icon("camera-on-symbolic")
         self._cam_off_icon = get_icon("camera-off-symbolic")
         self.camera_button = Gtk.ToggleButton()
+        self.camera_button.add_css_class("sc-icon-button")
         self.camera_button.set_active(True)
         self.camera_button.set_child(self._cam_on_icon)
         self.camera_button.set_tooltip_text(
@@ -96,6 +96,7 @@ class VisibilityOverlay(Gtk.Box):
 
         if show_models:
             self.models_button = Gtk.ToggleButton()
+            self.models_button.add_css_class("sc-icon-button")
             self.models_button.set_child(get_icon("model-symbolic"))
             self.models_button.set_active(True)
             self.models_button.set_tooltip_text(
@@ -108,6 +109,7 @@ class VisibilityOverlay(Gtk.Box):
 
         if show_grid:
             self.grid_button = Gtk.ToggleButton()
+            self.grid_button.add_css_class("sc-icon-button")
             self.grid_button.set_child(get_icon("sketch-grid-symbolic"))
             self.grid_button.set_active(True)
             self.grid_button.set_tooltip_text(
@@ -119,6 +121,7 @@ class VisibilityOverlay(Gtk.Box):
             self.append(self.grid_button)
 
         self.travel_button = Gtk.ToggleButton()
+        self.travel_button.add_css_class("sc-icon-button")
         self.travel_button.set_child(get_icon("travel-path-symbolic"))
         self.travel_button.set_active(False)
         self.travel_button.set_tooltip_text(
@@ -131,6 +134,7 @@ class VisibilityOverlay(Gtk.Box):
         self.append(self.travel_button)
 
         self.nogo_button = Gtk.ToggleButton()
+        self.nogo_button.add_css_class("sc-icon-button")
         self.nogo_button.set_child(get_icon("block-symbolic"))
         self.nogo_button.set_active(True)
         self.nogo_button.set_tooltip_text(

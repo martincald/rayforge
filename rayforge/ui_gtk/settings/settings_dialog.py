@@ -4,6 +4,7 @@ from typing import ClassVar
 from gi.repository import Adw, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .addon_manager_page import AddonManagerPage
 from .ai_settings_page import AISettingsPage
@@ -121,11 +122,11 @@ class SettingsWindow(PatchedDialogWindow):
         row = Gtk.ListBoxRow()
         box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
-            margin_start=12,
-            margin_end=12,
-            margin_top=6,
-            margin_bottom=6,
+            spacing=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
         )
         icon = get_icon(page.get_icon_name())
         label = Gtk.Label(label=page_name, xalign=0)

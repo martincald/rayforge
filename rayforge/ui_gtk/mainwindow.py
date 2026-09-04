@@ -50,6 +50,7 @@ from .doceditor.item_properties import DocItemPropertiesWidget
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
+from .layout import SPACE_CONTROL, SPACE_GROUP
 from .machine.machine_dropdown import MachineDropdown
 from .machine.settings_dialog import MachineSettingsDialog
 from .main_menu import MainMenu
@@ -76,31 +77,31 @@ logger = logging.getLogger(__name__)
 css = """
 .right-panel-overlay {
     background-color: transparent;
-    border-radius: 8px;
-    margin: 6px 12px 12px 6px;
+    border-radius: 10px;
+    margin: 8px 12px 12px 8px;
     box-shadow: 0 2px 12px alpha(black, 0.2);
 }
 
 .status-message-overlay {
     background-color: @theme_bg_color;
-    border-radius: 6px;
-    padding: 4px 10px;
+    border-radius: 9px;
+    padding: 4px 12px;
     box-shadow: 0 2px 6px alpha(black, 0.15);
 }
 
 .in-header-menubar {
-    margin-left: 6px;
+    margin-left: 8px;
     box-shadow: none;
 }
 
 .in-header-menubar item {
-    padding: 6px 12px 6px 12px;
+    padding: 8px 12px 8px 12px;
 }
 
 .menu separator {
     border-top: 1px solid @borders;
-    margin-top: 5px;
-    margin-bottom: 5px;
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 .warning-label {
@@ -109,8 +110,8 @@ css = """
 }
 
 dropdown.machine-dropdown button {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 """
 
@@ -228,8 +229,8 @@ class MainWindow(Adw.ApplicationWindow):
         self._status_message_label = Gtk.Label(
             halign=Gtk.Align.END,
             valign=Gtk.Align.END,
-            margin_end=12,
-            margin_bottom=6,
+            margin_end=SPACE_GROUP,
+            margin_bottom=SPACE_CONTROL,
         )
         self._status_message_label.add_css_class("status-message-overlay")
         self._status_message_label.set_visible(False)
@@ -332,7 +333,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.view_stack.set_transition_type(
             Gtk.StackTransitionType.SLIDE_LEFT_RIGHT
         )
-        self.view_stack.set_margin_start(12)
+        self.view_stack.set_margin_start(SPACE_GROUP)
         self.view_stack.set_hexpand(True)
 
         # The view stack is the base child of the canvas overlay
@@ -405,8 +406,8 @@ class MainWindow(Adw.ApplicationWindow):
             self.doc_editor,
             initial_workflow,
         )
-        self.workflowview.set_margin_top(6)
-        self.workflowview.set_margin_end(12)
+        self.workflowview.set_margin_top(SPACE_CONTROL)
+        self.workflowview.set_margin_end(SPACE_GROUP)
         right_pane_box.append(self.workflowview)
 
         # Register built-in property providers before creating the widget
@@ -417,8 +418,8 @@ class MainWindow(Adw.ApplicationWindow):
             editor=self.doc_editor
         )
         item_props_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.item_props_widget.set_margin_top(6)
-        self.item_props_widget.set_margin_end(12)
+        self.item_props_widget.set_margin_top(SPACE_CONTROL)
+        self.item_props_widget.set_margin_end(SPACE_GROUP)
         item_props_container.append(self.item_props_widget)
 
         self.item_revealer = Gtk.Revealer()

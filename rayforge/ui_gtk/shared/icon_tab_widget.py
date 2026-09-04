@@ -2,6 +2,7 @@ from blinker import Signal
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_TIGHT
 from .gtk import apply_css
 
 css = """
@@ -9,7 +10,7 @@ box.icon-tab-strip button {
     min-width: 36px;
     min-height: 36px;
     padding: 4px;
-    margin: 2px;
+    margin: 4px;
     border-radius: 6px;
     border: none;
     background: transparent;
@@ -52,7 +53,7 @@ class IconTabWidget(Gtk.Box):
 
         self._icon_strip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._icon_strip.add_css_class("icon-tab-strip")
-        self._icon_strip.set_spacing(2)
+        self._icon_strip.set_spacing(SPACE_TIGHT)
 
         self._stack = Gtk.Stack()
         self._stack.set_hexpand(True)

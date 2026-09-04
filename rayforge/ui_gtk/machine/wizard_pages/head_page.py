@@ -100,7 +100,7 @@ class HeadPage(WizardPage):
         self.laser_group.add(self.spot_y_row)
 
         self.pwm_freq_row = SpinRow(
-            _("PWM Frequency (Hz)"),
+            _("PWM Frequency"),
             _("Laser modulation frequency"),
             lower=1,
             upper=100000,

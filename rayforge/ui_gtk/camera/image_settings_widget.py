@@ -10,6 +10,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ...camera.controller import CameraController
+from ..layout import SPACE_GROUP, SPACE_SECTION, SPACE_TIGHT
 from ..shared.pref_rows.base import SpinRow
 from ..shared.slider import create_slider_row
 from .display_widget import CameraDisplay
@@ -30,7 +31,7 @@ class CameraImageSettings(Gtk.Box):
         self.controller.resolutions_probed.connect(self._on_resolutions_probed)
 
     def _build_ui(self) -> None:
-        self.set_spacing(16)
+        self.set_spacing(SPACE_SECTION)
 
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         left_box.set_hexpand(True)
@@ -50,14 +51,14 @@ class CameraImageSettings(Gtk.Box):
 
         settings_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        settings_box.set_margin_start(12)
+        settings_box.set_margin_start(SPACE_GROUP)
         settings_box.set_margin_end(0)
-        settings_box.set_margin_top(4)
-        settings_box.set_margin_bottom(12)
+        settings_box.set_margin_top(SPACE_TIGHT)
+        settings_box.set_margin_bottom(SPACE_GROUP)
         right_scroll.set_child(settings_box)
 
         image_group = Adw.PreferencesGroup(
@@ -119,9 +120,7 @@ class CameraImageSettings(Gtk.Box):
         self.yuyv_row = Adw.ActionRow(
             title=_("Prefer YUYV Format"),
             subtitle=_(
-                "Use uncompressed YUYV instead of MJPEG. Fixes green "
-                "artifacts on some USB cameras but may reduce "
-                "resolution or frame rate on USB 2.0."
+                "Fixes green artifacts, but can cost resolution on USB 2.0"
             ),
         )
         self.yuyv_switch = Gtk.Switch()

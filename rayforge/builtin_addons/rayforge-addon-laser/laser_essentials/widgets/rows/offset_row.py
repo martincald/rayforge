@@ -20,10 +20,7 @@ class OffsetRow(SpinRow):
             step,
             "offset_mm",
             _("Offset"),
-            _(
-                "Shifts the path inward/outward per Cut Side (none on "
-                "Centerline). Defaults to kerf compensation for the head"
-            ),
+            _("Defaults to the head's kerf; none on Centerline"),
             0.0,
             100.0,
             0.1,

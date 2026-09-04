@@ -6,6 +6,13 @@ from raygeo.ops.axis import Axis
 from ...machine.cmd import MachineCmd
 from ...machine.models.machine import JogDirection, Machine, Origin
 from ..icons import get_icon
+from ..layout import (
+    JOG_CELL,
+    SPACE_CONTROL,
+    SPACE_GROUP,
+    SPACE_TIGHT,
+    format_position,
+)
 from .cut_scale_dialog import CutScaleDialog
 
 # The widget carries its jog speed in application base units, which
@@ -35,10 +42,10 @@ _ORIGIN_LABELS = {
     Origin.BOTTOM_RIGHT: _("bottom-right"),
 }
 
-_GAP = 12
-_SPACING = 6
+_GAP = SPACE_GROUP
+_SPACING = SPACE_CONTROL
 _ROWS = 5
-_MAX_HEIGHT = _ROWS * 60 + (_ROWS - 1) * _SPACING
+_MAX_HEIGHT = _ROWS * JOG_CELL + (_ROWS - 1) * _SPACING
 
 
 class JogWidget(Gtk.Widget):
@@ -94,17 +101,20 @@ class JogWidget(Gtk.Widget):
 
         def create_button(icon_name, tooltip, label=None):
             button = Gtk.Button()
-            button.set_size_request(60, 60)
+            button.set_size_request(JOG_CELL, JOG_CELL)
             button.set_tooltip_text(tooltip)
             icon = get_icon(icon_name)
             if label is None:
                 button.set_child(icon)
             else:
-                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+                box = Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL,
+                    spacing=SPACE_TIGHT,
+                )
                 box.set_halign(Gtk.Align.CENTER)
                 box.set_valign(Gtk.Align.CENTER)
                 caption = Gtk.Label(label=label)
-                caption.add_css_class("caption")
+                caption.add_css_class("sc-caption")
                 box.append(icon)
                 box.append(caption)
                 button.set_child(box)
@@ -200,7 +210,7 @@ class JogWidget(Gtk.Widget):
 
         # Row 4: position readout.
         self.position_label = Gtk.Label(label=self._format_position(None))
-        self.position_label.add_css_class("numeric")
+        self.position_label.add_css_class("sc-numeric")
         self.position_label.set_halign(Gtk.Align.START)
         self.position_label.set_hexpand(True)
 
@@ -692,12 +702,8 @@ class JogWidget(Gtk.Widget):
     @staticmethod
     def _format_position(pos) -> str:
         """Render a machine position, or dashes where it is unknown."""
-
-        def axis(value) -> str:
-            return "—" if value is None else f"{value:.1f}"
-
         x, y = (pos[0], pos[1]) if pos else (None, None)
-        return f"X {axis(x)}  Y {axis(y)}"
+        return format_position(x, y)
 
     def _position_origin_hint(self) -> str:
         """Name the corner the readout is measured from."""

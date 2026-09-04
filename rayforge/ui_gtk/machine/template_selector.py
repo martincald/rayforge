@@ -4,6 +4,7 @@ from gettext import gettext as _
 from gi.repository import Adw, GLib, Gtk
 
 from ...machine.models.dialect import BUILTIN_DIALECTS, GcodeDialect
+from ..layout import SPACE_GROUP
 from ..shared.gtk import apply_css
 
 css = """
@@ -51,8 +52,11 @@ class DialectTemplateSelectorDialog(Adw.MessageDialog):
 
         apply_css(css)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content.set_margin_top(12)
+        content = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content.set_margin_top(SPACE_GROUP)
         content.set_size_request(460, 400)
 
         scrolled_window = Gtk.ScrolledWindow()

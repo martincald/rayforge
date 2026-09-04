@@ -15,6 +15,7 @@ from ...context import get_context
 from ...core.ai.ai_service import AIService
 from ...core.ai.provider import AIProviderConfig, AIProviderType
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.preferences_group import PreferencesGroupWithButton
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -33,7 +34,10 @@ class ProviderRow(Gtk.Box):
         on_delete_callback: Callable[[str, str], None],
         on_set_default_callback: Callable[[str], None],
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.provider_id = provider_id
         self.config = config
         self.is_default = is_default
@@ -43,10 +47,10 @@ class ProviderRow(Gtk.Box):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         self.default_icon = get_icon("check-circle-symbolic")
         self.default_icon.set_tooltip_text(_("Default provider"))
@@ -73,10 +77,10 @@ class ProviderRow(Gtk.Box):
             xalign=0,
         )
         self.subtitle_label.add_css_class("dim-label")
-        self.subtitle_label.add_css_class("caption")
+        self.subtitle_label.add_css_class("sc-caption")
         labels_box.append(self.subtitle_label)
 
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         self.enable_switch = Gtk.Switch(valign=Gtk.Align.CENTER)
@@ -144,8 +148,8 @@ class ProviderListWidget(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No providers configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

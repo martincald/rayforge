@@ -20,6 +20,7 @@ from blinker import Signal
 from gi.repository import Adw, Gtk
 
 from ....machine.device.profile import DeviceMeta, DeviceProfile, MachineConfig
+from ...layout import SPACE_GROUP, SPACE_PAGE
 
 if TYPE_CHECKING:
     from ..unified_wizard import UnifiedWizard
@@ -67,11 +68,11 @@ class WizardPage(Adw.Bin):
 
         self.content = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_top=24,
-            margin_bottom=24,
-            margin_start=24,
-            margin_end=24,
+            spacing=SPACE_GROUP,
+            margin_top=SPACE_PAGE,
+            margin_bottom=SPACE_PAGE,
+            margin_start=SPACE_PAGE,
+            margin_end=SPACE_PAGE,
         )
         scrolled.set_child(self.content)
         self.build_ui()

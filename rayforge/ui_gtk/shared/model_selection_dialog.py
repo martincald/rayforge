@@ -9,6 +9,7 @@ from gi.repository import Adw, Gtk
 from ...context import get_context
 from ...core.model import Model
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..sim3d import initialized as canvas3d_initialized
 
 logger = logging.getLogger(__name__)
@@ -35,10 +36,13 @@ class ModelSelectionDialog(Adw.MessageDialog):
     def _setup_ui(self):
         self.set_heading(_("Select Model"))
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
 
         self._preview_box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, spacing=6
+            orientation=Gtk.Orientation.VERTICAL, spacing=SPACE_CONTROL
         )
         self._preview_box.set_size_request(512, 288)
 

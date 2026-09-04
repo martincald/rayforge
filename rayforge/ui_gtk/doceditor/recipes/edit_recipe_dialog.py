@@ -10,6 +10,7 @@ from ....core.step import Step
 from ....core.step_registry import step_registry
 from ....core.varset import VarSet
 from ...icons import get_icon
+from ...layout import SPACE_CONTROL
 from ...shared.patched_dialog_window import PatchedDialogWindow
 from .pages.applicability import RecipeApplicabilityPage
 from .pages.general import RecipeGeneralPage
@@ -119,7 +120,10 @@ class AddEditRecipeDialog(PatchedDialogWindow):
 
     def _create_tab_child(self, text: str, icon_name: str) -> Gtk.Widget:
         """Creates a box with an icon and a label for the toggle button."""
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         box.append(get_icon(icon_name))
         box.append(Gtk.Label(label=text))
         return box

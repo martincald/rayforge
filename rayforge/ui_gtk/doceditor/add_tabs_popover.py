@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from gi.repository import Gtk
 
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.pref_rows.base import SpinRow
 from ..shared.pref_rows.length_spin_row import LengthSpinRow
 
@@ -27,11 +28,14 @@ class AddTabsPopover(Gtk.Popover):
         self.workpieces = workpieces
         self._in_update = False
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        content_box.set_margin_top(12)
-        content_box.set_margin_bottom(12)
-        content_box.set_margin_start(12)
-        content_box.set_margin_end(12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+        )
+        content_box.set_margin_top(SPACE_GROUP)
+        content_box.set_margin_bottom(SPACE_GROUP)
+        content_box.set_margin_start(SPACE_GROUP)
+        content_box.set_margin_end(SPACE_GROUP)
         self.set_child(content_box)
 
         rows_container = Gtk.ListBox()

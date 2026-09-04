@@ -4,6 +4,7 @@ from gi.repository import Gdk, Gtk, Pango
 
 from ...core.workpiece import WorkPiece
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_TIGHT
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +21,15 @@ _ICON_MAP = {
 
 class WorkpieceRow(Gtk.Box):
     def __init__(self, workpiece: WorkPiece):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         self.workpiece = workpiece
-        self.set_margin_start(6)
-        self.set_margin_end(6)
-        self.set_margin_top(4)
-        self.set_margin_bottom(4)
+        self.set_margin_start(SPACE_CONTROL)
+        self.set_margin_end(SPACE_CONTROL)
+        self.set_margin_top(SPACE_TIGHT)
+        self.set_margin_bottom(SPACE_TIGHT)
 
         icon_name = self._get_icon_name()
         self.icon = get_icon(icon_name)

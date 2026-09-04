@@ -168,10 +168,7 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         # Acceleration
         self.acceleration_row = AccelerationSpinRow(
             _("Acceleration"),
-            _(
-                "Used for time estimations and calculating the "
-                "default overscan distance"
-            ),
+            _("Drives time estimates and the default overscan"),
             lower=1,
             upper=100000,
             digits=0,

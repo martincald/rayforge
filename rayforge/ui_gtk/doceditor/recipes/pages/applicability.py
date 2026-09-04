@@ -76,8 +76,7 @@ class RecipeApplicabilityPage(Adw.PreferencesPage):
         self.step_types_row = Adw.ActionRow(
             title=_("Step Types"),
             subtitle=_(
-                "The step types this recipe applies to. Leave empty to "
-                "match any step type."
+                "Empty matches any step type"
             ),
             activatable=True,
         )

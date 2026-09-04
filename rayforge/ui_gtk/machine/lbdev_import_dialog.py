@@ -4,6 +4,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ...machine.device.lightburn_importer import ImportSummary
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 
 
 class LBDevImportDialog(Adw.MessageDialog):
@@ -50,8 +51,11 @@ class LBDevImportDialog(Adw.MessageDialog):
         self.connect("response", self._on_response)
 
     def _build_extra_child(self, summary: ImportSummary):
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        outer.set_margin_top(12)
+        outer = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+        )
+        outer.set_margin_top(SPACE_GROUP)
 
         heading = Gtk.Label(
             label=_("The following values will be imported:"),

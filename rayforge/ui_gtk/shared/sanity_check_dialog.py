@@ -8,6 +8,7 @@ from ...machine.sanity.result import (
     IssueSeverity,
     SanityReport,
 )
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT
 
 
 class SanityCheckDialog(Adw.MessageDialog):
@@ -66,8 +67,11 @@ class SanityCheckDialog(Adw.MessageDialog):
         ).format(summary=", ".join(parts))
 
     def _build_issue_list(self) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        box.set_margin_top(12)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+        )
+        box.set_margin_top(SPACE_GROUP)
 
         errors = [
             i for i in self._report.issues if i.severity == IssueSeverity.ERROR
@@ -105,9 +109,12 @@ class SanityCheckDialog(Adw.MessageDialog):
         return label
 
     def _make_issue_row(self, issue) -> Gtk.Box:
-        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        row.set_margin_top(2)
-        row.set_margin_bottom(2)
+        row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
+        row.set_margin_top(SPACE_TIGHT)
+        row.set_margin_bottom(SPACE_TIGHT)
 
         icon_name = self._get_icon_name(issue.severity)
         icon = Gtk.Image.new_from_icon_name(icon_name)
@@ -115,7 +122,10 @@ class SanityCheckDialog(Adw.MessageDialog):
         icon.set_valign(Gtk.Align.START)
         row.append(icon)
 
-        desc = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        desc = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_TIGHT,
+        )
 
         title_text = self._format_title(issue)
         title = Gtk.Label(label=title_text, xalign=0.0, wrap=True)
@@ -129,7 +139,7 @@ class SanityCheckDialog(Adw.MessageDialog):
                 xalign=0.0,
                 wrap=True,
             )
-            sub.add_css_class("caption")
+            sub.add_css_class("sc-caption")
             sub.add_css_class("dim-label")
             desc.append(sub)
 

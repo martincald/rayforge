@@ -24,8 +24,11 @@ class _HistoryButton(Gtk.Box):
         self.set_orientation(Gtk.Orientation.HORIZONTAL)
         self.set_spacing(0)
         # The "linked" style class makes the two buttons appear joined
-        # together.
+        # together; "sc-split" is what the theme styles, so undo and
+        # redo wear the same bezel as the toolbar buttons beside them
+        # instead of libadwaita's own.
         self.add_css_class("linked")
+        self.add_css_class("sc-split")
 
         self.manager: HistoryManager | None = None
 

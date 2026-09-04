@@ -6,7 +6,9 @@ Run with::
         --uiscript scripts/screenshot/ui_audit.py
 
 Output goes to ``docs/design/audit/`` as
-``<target>-<theme>-<width>.png``.
+``<target>-<theme>-<width>.png``, or to ``$UI_AUDIT_OUT`` when that is
+set - which is how the "after" set was captured without overwriting
+the audit's own.
 
 Like ``swift_cut_review.py`` this renders through GTK's own renderer
 rather than shelling out to ``gnome-screenshot`` or ImageMagick's
@@ -23,6 +25,7 @@ wide one.
 """
 
 import logging
+import os
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -38,7 +41,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-OUTPUT_DIR = PROJECT_ROOT / "docs" / "design" / "audit"
+# Where the PNGs land. The neighbouring scripts read TARGET from the
+# environment the same way; set UI_AUDIT_OUT to capture a second set
+# without overwriting the first.
+OUTPUT_DIR = Path(
+    os.environ.get(
+        "UI_AUDIT_OUT", PROJECT_ROOT / "docs" / "design" / "audit"
+    )
+)
 
 # GTK draws on the next frame-clock tick, not on the property write,
 # so every capture waits out a theme swap and a relayout first.

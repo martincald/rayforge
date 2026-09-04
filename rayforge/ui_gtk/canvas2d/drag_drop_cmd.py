@@ -65,7 +65,7 @@ class DragDropCmd:
             font-weight: bold;
             color: white;
             background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 12px;
+            border-radius: 10px;
             padding: 24px 48px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }

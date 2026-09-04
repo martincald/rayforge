@@ -13,6 +13,7 @@ from ...machine.models.machine import Machine
 from ...machine.models.spindle import SpindleHead
 from ...shared.util.glib import DebounceMixin
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.model_selection_dialog import ModelSelectionDialog
 from ..shared.pref_rows.angle_spin_row import AngleSpinRow
 from ..shared.pref_rows.base import SpinRow
@@ -27,7 +28,10 @@ class HeadRow(Gtk.Box):
     """A widget representing a single head in the ListBox."""
 
     def __init__(self, machine: Machine, head: Head):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.machine = machine
         self.head = head
         self.delete_button: Gtk.Button
@@ -37,10 +41,10 @@ class HeadRow(Gtk.Box):
 
     def _setup_ui(self):
         """Builds the user interface for the row."""
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         labels_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True
@@ -63,8 +67,9 @@ class HeadRow(Gtk.Box):
         self.subtitle_label.add_css_class("dim-label")
         labels_box.append(self.subtitle_label)
 
-        self.delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        self.delete_button.add_css_class("flat")
+        self.delete_button = icon_button(
+            "delete-symbolic", _("Remove this head")
+        )
         self.delete_button.connect("clicked", self._on_remove_clicked)
         self.append(self.delete_button)
 
@@ -120,8 +125,8 @@ class HeadListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No heads configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)
@@ -210,12 +215,12 @@ class HeadListEditor(PreferencesGroupWithButton):
         menu_btn = Gtk.MenuButton()
         content = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
+            spacing=SPACE_CONTROL,
             halign=Gtk.Align.CENTER,
-            margin_top=10,
-            margin_end=12,
-            margin_bottom=10,
-            margin_start=12,
+            margin_top=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
         )
         content.append(get_icon("add-symbolic"))
         content.append(Gtk.Label(label=button_label))
@@ -541,7 +546,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.pwm_frequency_row = SpinRow(
             _("PWM Frequency"),
-            _("Default PWM frequency in Hz"),
+            _("Used unless a step overrides it"),
             lower=1,
             upper=100000,
             step_increment=100,
@@ -553,7 +558,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.max_pwm_frequency_row = SpinRow(
             _("Max PWM Frequency"),
-            _("Maximum supported PWM frequency in Hz"),
+            _("The highest this head accepts"),
             lower=1,
             upper=100000,
             step_increment=100,
@@ -565,7 +570,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.pulse_width_row = SpinRow(
             _("Pulse Width"),
-            _("Default pulse width in µs"),
+            _("Used unless a step overrides it"),
             lower=1,
             upper=100000,
         )
@@ -576,7 +581,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.min_pulse_width_row = SpinRow(
             _("Min Pulse Width"),
-            _("Minimum pulse width in µs"),
+            _("The shortest this head accepts"),
             lower=1,
             upper=100000,
         )
@@ -587,7 +592,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.max_pulse_width_row = SpinRow(
             _("Max Pulse Width"),
-            _("Maximum pulse width in µs"),
+            _("The longest this head accepts"),
             lower=1,
             upper=100000,
         )
@@ -611,10 +616,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.frame_speed_row = SpeedSpinRow(
             _("Frame Speed"),
-            _(
-                "Speed for frame outline. Leave at 0 to use "
-                "the machine's max travel speed"
-            ),
+            _("0 uses the machine's max travel speed"),
             upper=60000,
             digits=0,
         )
@@ -638,10 +640,7 @@ class LaserHeadDetailWidget(DebounceMixin):
 
         self.frame_corner_pause_row = SpinRow(
             _("Pause at Corners"),
-            _(
-                "Pause duration in seconds at each corner "
-                "of the frame outline. 0 to disable"
-            ),
+            _("Pause at each corner of the frame; 0 disables"),
             upper=10,
             step_increment=0.1,
             digits=1,

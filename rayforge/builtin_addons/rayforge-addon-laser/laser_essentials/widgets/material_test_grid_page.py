@@ -423,10 +423,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         default_line_interval_mm = laser.spot_size_mm[1] if laser else 0.1
         self.line_interval_row = SpinRow(
             _("Line Interval"),
-            _(
-                "Distance between scan lines in machine units "
-                "(for Engrave mode). Leave at 0 to use laser spot size."
-            ),
+            _("Engrave mode; 0 uses the laser spot size"),
             lower=0.01,
             upper=10.0,
             step_increment=0.01,

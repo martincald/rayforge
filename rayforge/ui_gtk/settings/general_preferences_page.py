@@ -14,6 +14,7 @@ from ...shared.units.definitions import (
 from ...shared.util.localized import SUPPORTED_LANGUAGES
 from ...ui_gtk.doceditor import file_dialogs
 from ...usage import get_usage_tracker
+from ..layout import SPACE_CONTROL
 from ..shared.pref_rows.base import SpinRow
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -249,8 +250,7 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         self.auto_pipeline_row = Adw.SwitchRow(
             title=_("Auto-update operations"),
             subtitle=_(
-                "Recalculate operations automatically after each change. "
-                "Disable for manual recalculation via the toolbar button"
+                "Off means the toolbar button recalculates instead"
             ),
         )
         self.auto_pipeline_row.set_active(config.auto_pipeline)
@@ -366,7 +366,7 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
             ),
             use_markup=True,
             halign=Gtk.Align.START,
-            margin_top=6,
+            margin_top=SPACE_CONTROL,
         )
         privacy_group.add(learn_more_label)
 

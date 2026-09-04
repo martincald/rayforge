@@ -7,6 +7,7 @@ from ...context import get_context
 from ...core.step_registry import step_registry
 from ...core.undo.list_cmd import ListItemCommand, ReorderListCommand
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from ..shared.gtk import apply_css
 from ..shared.popover_menu import PopoverMenu
 from .step_settings.dialog import StepSettingsDialog
@@ -19,8 +20,8 @@ if TYPE_CHECKING:
 css = """
 .workflow-row {
     min-height: 36px;
-    padding: 0px 3px;
-    margin-bottom: 3px;
+    padding: 0px 4px;
+    margin-bottom: 4px;
     background-color: alpha(@theme_fg_color, 0.04);
     border-bottom: 1px solid @borders;
 }
@@ -28,7 +29,7 @@ css = """
     min-width: 28px;
     min-height: 28px;
     padding: 0px;
-    margin: 2px;
+    margin: 4px;
     border-radius: 6px;
 }
 .workflow-step-button:hover {
@@ -202,8 +203,8 @@ class WorkflowRow(Gtk.Box):
         if not workflow or not workflow.steps:
             label = Gtk.Label(label=_("No Operations"))
             label.add_css_class("dim-label")
-            label.add_css_class("caption")
-            label.set_margin_start(6)
+            label.add_css_class("sc-caption")
+            label.set_margin_start(SPACE_CONTROL)
             self.append(label)
         else:
             for i, step in enumerate(workflow.steps):

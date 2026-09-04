@@ -17,6 +17,7 @@ from ...camera.controller import CameraController
 from ...camera.models.camera import Pos
 from ..canvas.worldsurface import WorldSurface
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_PAGE, icon_button
 from ..shared.gtk import apply_css
 from .point_bubble_widget import PointBubbleWidget
 
@@ -221,7 +222,7 @@ class CameraAlignment(Gtk.Box):
             .info-highlight {
                 background-color: @accent_bg_color;
                 color: @accent_fg_color;
-                border-radius: 6px;
+                border-radius: 9px;
                 padding: 8px 12px;
             }
             """
@@ -230,7 +231,7 @@ class CameraAlignment(Gtk.Box):
         self._build_ui()
 
     def _build_ui(self) -> None:
-        self.set_spacing(6)
+        self.set_spacing(SPACE_CONTROL)
 
         self.main_overlay = Gtk.Overlay()
         self.append(self.main_overlay)
@@ -254,10 +255,10 @@ class CameraAlignment(Gtk.Box):
 
         self.info_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
-            margin_top=24,
-            margin_start=12,
-            margin_end=12,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_PAGE,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
         self.info_box.add_css_class("info-highlight")
         self.info_box.set_valign(Gtk.Align.START)
@@ -278,9 +279,9 @@ class CameraAlignment(Gtk.Box):
         info_label.set_hexpand(True)
         self.info_box.append(info_label)
 
-        dismiss_button = Gtk.Button(child=get_icon("close-symbolic"))
-        dismiss_button.add_css_class("flat")
-        dismiss_button.set_valign(Gtk.Align.CENTER)
+        dismiss_button = icon_button(
+            "close-symbolic", _("Dismiss this hint")
+        )
         dismiss_button.connect("clicked", lambda btn: self.info_box.hide())
         self.info_box.append(dismiss_button)
 

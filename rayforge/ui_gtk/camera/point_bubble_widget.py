@@ -5,6 +5,7 @@ from blinker import Signal
 from gi.repository import Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT, icon_button
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ css = """
     background-color: @window_bg_color;
     border: 1px solid @borders;
     border-radius: 8px;
-    padding: 10px;
+    padding: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,0.3);
 }
 .active-point-bubble {
@@ -32,7 +33,9 @@ css = """
 class PointBubbleWidget(Gtk.Box):
     def __init__(self, point_index: int, **kwargs):
         super().__init__(
-            orientation=Gtk.Orientation.VERTICAL, spacing=8, **kwargs
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+            **kwargs,
         )
         self.point_index = point_index
         self.image_x: float | None = None
@@ -48,7 +51,10 @@ class PointBubbleWidget(Gtk.Box):
         self.nudge_requested = Signal()  # Sends: sender, dx, dy
 
         # --- Header Row (Title & Delete) ---
-        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        header_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         self.title_label = Gtk.Label(
             label=_("Point {n}").format(n=point_index + 1)
         )
@@ -67,11 +73,14 @@ class PointBubbleWidget(Gtk.Box):
 
         # --- Coordinates Row ---
         coords_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=12
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_GROUP
         )
 
         # World X
-        x_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        x_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_TIGHT,
+        )
         x_box.append(Gtk.Label(label="X:"))
         adjustment_x = Gtk.Adjustment.new(
             0.0, -10000.0, 10000.0, 0.1, 1.0, 0.0
@@ -83,7 +92,10 @@ class PointBubbleWidget(Gtk.Box):
         coords_box.append(x_box)
 
         # World Y
-        y_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        y_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_TIGHT,
+        )
         y_box.append(Gtk.Label(label="Y:"))
         adjustment_y = Gtk.Adjustment.new(
             0.0, -10000.0, 10000.0, 0.1, 1.0, 0.0
@@ -101,21 +113,31 @@ class PointBubbleWidget(Gtk.Box):
         self.world_y_spin.connect("value-changed", self.on_value_changed)
 
         # --- Image Nudge Row ---
-        nudge_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        nudge_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_TIGHT,
+        )
         nudge_box.set_halign(Gtk.Align.CENTER)
 
         nudge_label = Gtk.Label(label=_("Nudge Pixel:"))
         nudge_label.add_css_class("dim-label")
-        nudge_label.set_margin_end(8)
+        nudge_label.set_margin_end(SPACE_CONTROL)
         nudge_box.append(nudge_label)
 
-        btn_left = Gtk.Button(child=get_icon("go-previous-symbolic"))
-        btn_up = Gtk.Button(child=get_icon("go-up-symbolic"))
-        btn_down = Gtk.Button(child=get_icon("go-down-symbolic"))
-        btn_right = Gtk.Button(child=get_icon("go-next-symbolic"))
+        btn_left = icon_button(
+            "go-previous-symbolic", _("Nudge half a pixel left")
+        )
+        btn_up = icon_button(
+            "go-up-symbolic", _("Nudge half a pixel up")
+        )
+        btn_down = icon_button(
+            "go-down-symbolic", _("Nudge half a pixel down")
+        )
+        btn_right = icon_button(
+            "go-next-symbolic", _("Nudge half a pixel right")
+        )
 
         for btn in (btn_left, btn_up, btn_down, btn_right):
-            btn.add_css_class("flat")
             btn.add_css_class("circular")
 
         # Arrow buttons emit a 0.5 sub-pixel nudge to the image coordinate

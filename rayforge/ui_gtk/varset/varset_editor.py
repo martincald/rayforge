@@ -24,6 +24,7 @@ from ...core.varset import (
     get_editable_var_types,
 )
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT
 from ..shared.pref_rows.base import SpinRow
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .adapter import NULL_CHOICE_LABEL, create_row_for_var
@@ -93,8 +94,11 @@ class VarDefinitionRowWidget(Adw.ExpanderRow):
         self._update_header()
 
         # --- Prefix Area (Drag Handle & Delete) ---
-        prefix_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        prefix_box.set_margin_end(8)
+        prefix_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_TIGHT,
+        )
+        prefix_box.set_margin_end(SPACE_CONTROL)
 
         # Drag Handle
         drag_handle = get_icon("drag-handle-symbolic")
@@ -679,11 +683,14 @@ class VarSetEditorWidget(PreferencesGroupWithButton):
         """Overrides the base class to create a Gtk.MenuButton."""
         add_button = Gtk.MenuButton()
 
-        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        button_box.set_margin_top(10)
-        button_box.set_margin_end(12)
-        button_box.set_margin_bottom(10)
-        button_box.set_margin_start(12)
+        button_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
+        button_box.set_margin_top(SPACE_GROUP)
+        button_box.set_margin_end(SPACE_GROUP)
+        button_box.set_margin_bottom(SPACE_GROUP)
+        button_box.set_margin_start(SPACE_GROUP)
         button_box.append(get_icon("add-symbolic"))
         lbl = Gtk.Label(label=_("Add Parameter"))
         button_box.append(lbl)

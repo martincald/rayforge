@@ -12,7 +12,7 @@ from ...context import get_context
 from ...core.color import normalize_color
 from ...core.color_preset import ColorPreset
 from ...core.step_registry import step_registry
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -161,13 +161,16 @@ class ColorPresetRow(Gtk.Box):
     """A widget representing a single ColorPreset in a ListBox."""
 
     def __init__(self, preset: ColorPreset, on_edit, on_delete):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.preset = preset
 
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         self.append(self._create_swatch(preset.color))
 
@@ -190,7 +193,7 @@ class ColorPresetRow(Gtk.Box):
         subtitle.add_css_class("dim-label")
         labels_box.append(subtitle)
 
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         if self._step_type_unavailable():
@@ -200,13 +203,13 @@ class ColorPresetRow(Gtk.Box):
             )
             suffix_box.append(warning)
 
-        edit_button = Gtk.Button(child=get_icon("edit-symbolic"))
-        edit_button.add_css_class("flat")
+        edit_button = icon_button("edit-symbolic", _("Edit this colour rule"))
         edit_button.connect("clicked", lambda w: on_edit(preset))
         suffix_box.append(edit_button)
 
-        delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        delete_button.add_css_class("flat")
+        delete_button = icon_button(
+            "delete-symbolic", _("Delete this colour rule")
+        )
         delete_button.connect("clicked", lambda w: on_delete(preset))
         suffix_box.append(delete_button)
 
@@ -246,8 +249,8 @@ class ColorPresetListWidget(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No color rules found."),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

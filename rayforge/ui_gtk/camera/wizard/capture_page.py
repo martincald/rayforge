@@ -8,6 +8,7 @@ from gi.repository import Adw, Gtk
 from ....camera.calibration.calibrator import CameraCalibrator
 from ....camera.calibration.charuco import CharucoBoard
 from ....camera.calibration.result import CalibrationResult
+from ...layout import SPACE_CONTROL, SPACE_GROUP, SPACE_SECTION, SPACE_TIGHT
 from ..capture_surface import CalibrationCaptureSurface
 from .base_page import CameraWizardPage
 
@@ -45,7 +46,10 @@ class CapturePage(CameraWizardPage):
             self._capture_surface.board = board
 
     def build(self) -> Gtk.Box:
-        self.root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        self.root = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_SECTION,
+        )
 
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         left_box.set_hexpand(True)
@@ -72,14 +76,14 @@ class CapturePage(CameraWizardPage):
 
         settings_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        settings_box.set_margin_start(12)
-        settings_box.set_margin_end(12)
-        settings_box.set_margin_top(4)
-        settings_box.set_margin_bottom(12)
+        settings_box.set_margin_start(SPACE_GROUP)
+        settings_box.set_margin_end(SPACE_GROUP)
+        settings_box.set_margin_top(SPACE_TIGHT)
+        settings_box.set_margin_bottom(SPACE_GROUP)
         right_scroll.set_child(settings_box)
 
         info_group = Adw.PreferencesGroup(
@@ -117,7 +121,7 @@ class CapturePage(CameraWizardPage):
         self.progress_bar = Gtk.ProgressBar(
             show_text=True,
             text=_("Capture Progress"),
-            margin_top=6,
+            margin_top=SPACE_CONTROL,
         )
         status_group.add(self.progress_bar)
 

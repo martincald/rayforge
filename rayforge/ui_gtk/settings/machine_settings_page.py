@@ -7,6 +7,7 @@ from ...context import get_context
 from ...machine.device.profile import DeviceProfile
 from ...machine.models.machine import Machine
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..machine.settings_dialog import MachineSettingsDialog
 from ..machine.unified_wizard import UnifiedWizard
 from ..shared.gtk import apply_css
@@ -126,24 +127,20 @@ class MachineSettingsPage(TrackedPreferencesPage):
             else:
                 row.set_subtitle(machine.id)
 
-            buttons_box = Gtk.Box(spacing=6)
+            buttons_box = Gtk.Box(spacing=SPACE_CONTROL)
             row.add_suffix(buttons_box)
 
-            edit_button = Gtk.Button(
-                child=get_icon("edit-symbolic"),
-                valign=Gtk.Align.CENTER,
+            edit_button = icon_button(
+                "edit-symbolic", _("Edit this machine")
             )
-            edit_button.add_css_class("flat")
             edit_button.connect(
                 "clicked", self._on_edit_machine_clicked, machine
             )
             buttons_box.append(edit_button)
 
-            delete_button = Gtk.Button(
-                child=get_icon("delete-symbolic"),
-                valign=Gtk.Align.CENTER,
+            delete_button = icon_button(
+                "delete-symbolic", _("Delete this machine")
             )
-            delete_button.add_css_class("flat")
             delete_button.add_css_class("destructive-action")
             delete_button.connect(
                 "clicked", self._on_delete_machine_clicked, machine
@@ -232,12 +229,12 @@ class MachineSettingsPage(TrackedPreferencesPage):
 
         button_content = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
+            spacing=SPACE_CONTROL,
             halign=Gtk.Align.CENTER,
-            margin_top=10,
-            margin_end=12,
-            margin_bottom=10,
-            margin_start=12,
+            margin_top=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
         )
         button.set_child(button_content)
         button_content.append(get_icon("add-symbolic"))

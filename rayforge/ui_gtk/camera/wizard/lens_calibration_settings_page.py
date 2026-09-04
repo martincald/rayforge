@@ -5,6 +5,7 @@ from gettext import gettext as _
 from gi.repository import Gtk
 
 from ....camera.controller import CameraController
+from ...layout import SPACE_GROUP
 from ..lens_calibration_widget import LensCalibrationWidget
 from .base_page import CameraWizardPage
 
@@ -27,12 +28,12 @@ class LensCalibrationSettingsPage(CameraWizardPage):
         right_scroll.set_vexpand(True)
 
         settings_box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL, spacing=12
+            orientation=Gtk.Orientation.VERTICAL, spacing=SPACE_GROUP
         )
-        settings_box.set_margin_start(12)
-        settings_box.set_margin_end(12)
-        settings_box.set_margin_top(12)
-        settings_box.set_margin_bottom(12)
+        settings_box.set_margin_start(SPACE_GROUP)
+        settings_box.set_margin_end(SPACE_GROUP)
+        settings_box.set_margin_top(SPACE_GROUP)
+        settings_box.set_margin_bottom(SPACE_GROUP)
         right_scroll.set_child(settings_box)
 
         self._widget = LensCalibrationWidget(self.camera)

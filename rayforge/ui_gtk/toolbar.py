@@ -7,6 +7,7 @@ from gi.repository import Gdk, Gtk
 from ..shared.util.time_format import format_clock
 from .action_registry import action_registry
 from .icons import get_icon
+from .layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
 from .sim3d import initialized as canvas3d_initialized
@@ -22,15 +23,17 @@ class MainToolbar(Gtk.Box):
 
     def __init__(self, **kwargs):
         super().__init__(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=6, **kwargs
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+            **kwargs,
         )
         # Signals for View-State controls (not app actions)
         self.machine_warning_clicked = Signal()
 
-        self.set_margin_bottom(2)
-        self.set_margin_top(2)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
+        self.set_margin_bottom(SPACE_TIGHT)
+        self.set_margin_top(SPACE_TIGHT)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_GROUP)
         self.add_css_class("sc-toolbar")
 
         # File related buttons (open, save, import, export)
@@ -191,8 +194,8 @@ class MainToolbar(Gtk.Box):
         self.append(self.focus_button)
 
         # Add clickable warning for misconfigured machine
-        self.machine_warning_box = Gtk.Box(spacing=6)
-        self.machine_warning_box.set_margin_end(12)
+        self.machine_warning_box = Gtk.Box(spacing=SPACE_CONTROL)
+        self.machine_warning_box.set_margin_end(SPACE_GROUP)
         warning_icon = get_icon("warning-symbolic")
         self.warning_label = Gtk.Label(label=_("Machine not fully configured"))
         self.warning_label.add_css_class("warning-label")
@@ -211,15 +214,15 @@ class MainToolbar(Gtk.Box):
 
         # The running job's activity area. Hidden until a job
         # starts.
-        self.job_progress_box = Gtk.Box(spacing=6)
-        self.job_progress_box.set_margin_start(12)
+        self.job_progress_box = Gtk.Box(spacing=SPACE_CONTROL)
+        self.job_progress_box.set_margin_start(SPACE_GROUP)
         self.job_progress_box.set_valign(Gtk.Align.CENTER)
         self.job_progress_box.add_css_class("sc-job-progress")
         self.job_progress_bar = Gtk.ProgressBar()
         self.job_progress_bar.set_valign(Gtk.Align.CENTER)
         self.job_progress_bar.set_size_request(120, -1)
         self.job_progress_label = Gtk.Label()
-        self.job_progress_label.add_css_class("caption")
+        self.job_progress_label.add_css_class("sc-caption")
         self.job_progress_box.append(self.job_progress_bar)
         self.job_progress_box.append(self.job_progress_label)
         self.job_progress_box.set_visible(False)

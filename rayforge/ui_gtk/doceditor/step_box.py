@@ -7,7 +7,7 @@ from gi.repository import Gtk, Pango
 from ...context import get_context
 from ...core.step import Step
 from ...core.undo.property_cmd import ChangePropertyCommand
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT, icon_button
 from ..shared.number_badge import NumberBadge
 from ..shared.tag import TagWidget
 from .step_settings.dialog import StepSettingsDialog
@@ -23,11 +23,14 @@ class StepBox(Gtk.Box):
         step: Step,
         step_number: int = 0,
     ):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        self.set_margin_start(4)
-        self.set_margin_end(4)
-        self.set_margin_top(4)
-        self.set_margin_bottom(4)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
+        self.set_margin_start(SPACE_TIGHT)
+        self.set_margin_end(SPACE_TIGHT)
+        self.set_margin_top(SPACE_TIGHT)
+        self.set_margin_bottom(SPACE_TIGHT)
         self.editor = editor
         self.doc = editor.doc
         self.step = step
@@ -43,7 +46,10 @@ class StepBox(Gtk.Box):
         content.set_valign(Gtk.Align.CENTER)
         self.append(content)
 
-        title_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        title_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_CONTROL,
+        )
         content.append(title_row)
 
         self.title_label = Gtk.Label(xalign=0)
@@ -58,8 +64,7 @@ class StepBox(Gtk.Box):
         title_row.append(self.mode_tag)
 
         self.subtitle_label = Gtk.Label(xalign=0)
-        self.subtitle_label.add_css_class("caption")
-        self.subtitle_label.add_css_class("dim-label")
+        self.subtitle_label.add_css_class("sc-caption")
         self.subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.subtitle_label.set_max_width_chars(40)
         self.subtitle_label.set_hexpand(True)
@@ -71,15 +76,11 @@ class StepBox(Gtk.Box):
         self.append(self.visibility_switch)
         self.visibility_switch.connect("state-set", self.on_switch_state_set)
 
-        button = Gtk.Button()
-        button.set_child(get_icon("settings-symbolic"))
-        button.set_valign(Gtk.Align.CENTER)
+        button = icon_button("settings-symbolic", _("Step settings"))
         self.append(button)
         button.connect("clicked", self.on_button_properties_clicked)
 
-        button = Gtk.Button()
-        button.set_child(get_icon("delete-symbolic"))
-        button.set_valign(Gtk.Align.CENTER)
+        button = icon_button("delete-symbolic", _("Delete this step"))
         self.append(button)
         button.connect("clicked", self.on_button_delete_clicked)
 

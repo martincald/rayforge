@@ -17,6 +17,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ....camera.controller import CameraController
+from ...layout import SPACE_GROUP, SPACE_PAGE
 from ...shared.patched_dialog_window import PatchedDialogWindow
 from .alignment_page import AlignmentPage
 from .base_page import CameraWizardPage
@@ -71,11 +72,11 @@ class CameraWizard(PatchedDialogWindow):
 
         self._main_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=32,
-            margin_end=32,
+            spacing=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_PAGE,
+            margin_end=SPACE_PAGE,
         )
         content.append(self._main_box)
 
@@ -87,9 +88,9 @@ class CameraWizard(PatchedDialogWindow):
 
         self._button_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             halign=Gtk.Align.END,
-            margin_top=12,
+            margin_top=SPACE_GROUP,
         )
         self._main_box.append(self._button_box)
 
@@ -104,7 +105,7 @@ class CameraWizard(PatchedDialogWindow):
         self._button_box.append(self._cancel_btn)
 
         self._action_slot = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=12
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_GROUP
         )
         self._button_box.append(self._action_slot)
 

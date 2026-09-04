@@ -8,6 +8,7 @@ from typing import Any
 from gi.repository import Adw, GLib, Gtk
 
 from ....core.varset import AppKeyVar, Var
+from ...layout import SPACE_CONTROL, SPACE_GROUP
 from .base import RowAdapter, escape_title, register_adapter
 
 logger = logging.getLogger(__name__)
@@ -67,12 +68,12 @@ class AppKeyAdapter(RowAdapter):
         row.add_row(entry_row)
 
         btn_box = Gtk.Box(
-            spacing=6,
+            spacing=SPACE_CONTROL,
             valign=Gtk.Align.CENTER,
-            margin_top=8,
-            margin_bottom=8,
-            margin_start=12,
-            margin_end=12,
+            margin_top=SPACE_CONTROL,
+            margin_bottom=SPACE_CONTROL,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
 
         request_btn = Gtk.Button(

@@ -32,6 +32,7 @@ from ....machine.models.machine import Origin
 from ....shared.tasker import Task, task_mgr
 from ....shared.tasker.context import ExecutionContext
 from ....shared.units.formatter import format_value
+from ...layout import SPACE_CONTROL, SPACE_GROUP
 from . import WizardPage, _makePreferencesGroup
 
 if TYPE_CHECKING:
@@ -204,10 +205,10 @@ class AILookupPage(WizardPage):
     def _show_not_configured_banner(self) -> None:
         box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
         )
         box.add_css_class("card")
-        box.set_margin_top(6)
+        box.set_margin_top(SPACE_CONTROL)
         label = Gtk.Label(
             label=_(
                 "No AI provider is configured in Settings. "
@@ -218,10 +219,10 @@ class AILookupPage(WizardPage):
             xalign=0.0,
             hexpand=True,
         )
-        label.set_margin_start(12)
-        label.set_margin_end(12)
-        label.set_margin_top(12)
-        label.set_margin_bottom(12)
+        label.set_margin_start(SPACE_GROUP)
+        label.set_margin_end(SPACE_GROUP)
+        label.set_margin_top(SPACE_GROUP)
+        label.set_margin_bottom(SPACE_GROUP)
         box.append(label)
         self.banner.set_child(box)
         self.lookup_button.set_sensitive(False)
@@ -307,13 +308,16 @@ class AILookupPage(WizardPage):
         task_mgr.schedule_on_main_thread(_update)
 
     def _show_lookup_error(self, message: str) -> None:
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         box.add_css_class("card")
         label = Gtk.Label(label=message, wrap=True, xalign=0.0, hexpand=True)
-        label.set_margin_start(12)
-        label.set_margin_end(12)
-        label.set_margin_top(12)
-        label.set_margin_bottom(12)
+        label.set_margin_start(SPACE_GROUP)
+        label.set_margin_end(SPACE_GROUP)
+        label.set_margin_top(SPACE_GROUP)
+        label.set_margin_bottom(SPACE_GROUP)
         box.append(label)
         self.banner.set_child(box)
 

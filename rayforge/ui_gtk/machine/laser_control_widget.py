@@ -6,6 +6,7 @@ from ...machine.cmd import MachineCmd
 from ...machine.models.laser import Laser, LaserHead
 from ...machine.models.machine import Machine
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from ..shared.gtk import apply_css
 from ..shared.pref_rows.base import SpinRow
 from ..shared.slider import create_slider
@@ -90,7 +91,7 @@ class LaserControlWidget(Gtk.Box):
 
         self._power_row = Adw.ActionRow(title=_("Power"))
         self._power_row.set_subtitle(_("Laser power in percent"))
-        suffix_box = Gtk.Box(spacing=6)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL)
         suffix_box.set_hexpand(False)
         suffix_box.append(self._power_entry)
         suffix_box.append(self._power_scale)
@@ -99,7 +100,7 @@ class LaserControlWidget(Gtk.Box):
 
         self._frequency_row = SpinRow(
             _("Frequency"),
-            _("PWM frequency in Hz"),
+            _("Modulation frequency"),
             lower=1,
             upper=100000,
             step_increment=100,
@@ -108,7 +109,7 @@ class LaserControlWidget(Gtk.Box):
 
         self._pulse_width_row = SpinRow(
             _("Pulse Width"),
-            _("Pulse width in µs"),
+            _("Length of each pulse"),
             lower=1,
             upper=100000,
         )

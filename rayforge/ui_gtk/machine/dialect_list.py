@@ -6,6 +6,7 @@ from gi.repository import Adw, Gtk
 from ...context import get_context
 from ...machine.models.dialect import GcodeDialect
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .dialect_editor import DialectEditorDialog
 from .template_selector import DialectTemplateSelectorDialog
@@ -15,17 +16,20 @@ class DialectRow(Gtk.Box):
     """A widget representing a single Dialect in a ListBox."""
 
     def __init__(self, dialect: GcodeDialect, machine=None):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.dialect = dialect
         self.dialect_mgr = get_context().dialect_mgr
         self.machine = machine
         self._setup_ui()
 
     def _setup_ui(self):
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         info_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         info_box.set_hexpand(True)
@@ -47,19 +51,19 @@ class DialectRow(Gtk.Box):
                 wrap=True,
             )
             desc_label.add_css_class("dim-label")
-            desc_label.add_css_class("caption")
+            desc_label.add_css_class("sc-caption")
             info_box.append(desc_label)
 
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
-        edit_button = Gtk.Button(child=get_icon("edit-symbolic"))
-        edit_button.add_css_class("flat")
+        edit_button = icon_button("edit-symbolic", _("Edit this dialect"))
         edit_button.connect("clicked", self._on_edit_clicked)
         suffix_box.append(edit_button)
 
-        delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        delete_button.add_css_class("flat")
+        delete_button = icon_button(
+            "delete-symbolic", _("Delete this dialect")
+        )
         delete_button.connect("clicked", self._on_delete_clicked)
         suffix_box.append(delete_button)
 
@@ -164,8 +168,8 @@ class DialectListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No custom dialects configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

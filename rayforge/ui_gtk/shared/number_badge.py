@@ -4,7 +4,7 @@ from .gtk import apply_css
 
 css = """
 .number-badge {
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid transparent;
     background-color: @accent_bg_color;
     color: @accent_fg_color;
@@ -83,7 +83,7 @@ class NumberBadge(Gtk.Widget):
             class_name = f"badge-{hex_color.lstrip('#').lower()}"
             color_css = (
                 f".{class_name} {{"
-                f"  border-radius: 6px;"
+                f"  border-radius: 5px;"
                 f"  border: 1px solid @borders;"
                 f"  background-color: {hex_color};"
                 f"  color: {fg};"

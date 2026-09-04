@@ -8,6 +8,7 @@ from ...machine.models.machine import Machine
 from ...machine.models.machine_hours import ResettableCounter
 from ...shared.util.time_format import format_hours_to_hm
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.pref_rows.base import SpinRow
 from ..shared.preferences_group import PreferencesGroupWithButton
@@ -20,7 +21,10 @@ class CounterRow(Gtk.Box):
     """A widget representing a single counter in a ListBox."""
 
     def __init__(self, machine: Machine, counter: ResettableCounter):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.machine = machine
         self.counter = counter
         self._setup_ui()
@@ -28,10 +32,10 @@ class CounterRow(Gtk.Box):
     def _setup_ui(self):
         """Builds the user interface for the row."""
         # Match margins exactly to MacroRow
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         # Icon
         icon = get_icon("hourglass-symbolic")
@@ -68,7 +72,7 @@ class CounterRow(Gtk.Box):
         info_box.append(value_label)
 
         # Suffix area for buttons
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         # Reset button
@@ -175,8 +179,8 @@ class CounterListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No counters configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)
@@ -272,10 +276,7 @@ class CounterEditDialog(PatchedDialogWindow):
         # Notification interval
         notify_row = SpinRow(
             _("Notification Interval"),
-            _(
-                "Show notification when counter reaches this value (hours). "
-                "Set to 0 to disable."
-            ),
+            _("Notify at this many hours; 0 disables"),
             upper=100000,
             step_increment=0.1,
             digits=1,

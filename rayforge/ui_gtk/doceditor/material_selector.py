@@ -8,6 +8,7 @@ from gi.repository import Adw, Gtk
 from ...context import get_context
 from ...core.material import Material
 from ...core.material_library import MaterialLibrary
+from ..layout import SPACE_GROUP
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,11 @@ class MaterialSelectorDialog(Adw.MessageDialog):
         apply_css(css)
 
         # Main content area
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_top(12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_top(SPACE_GROUP)
         self.set_extra_child(content_box)
 
         # Library dropdown

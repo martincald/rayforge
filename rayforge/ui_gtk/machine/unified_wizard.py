@@ -32,6 +32,7 @@ from ...machine.device.profile import (
 from ...machine.driver import get_driver_cls
 from ...machine.driver.dummy import NoDeviceDriver
 from ..camera.wizard.wizard import CameraWizard
+from ..layout import SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .wizard_pages import WizardPage, empty_profile
 from .wizard_pages.ai_lookup_page import AILookupPage
@@ -108,11 +109,11 @@ class UnifiedWizard(PatchedDialogWindow):
 
         self._main_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=12,
-            margin_end=12,
+            spacing=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
         content.append(self._main_box)
 
@@ -155,9 +156,9 @@ class UnifiedWizard(PatchedDialogWindow):
     def _build_buttons(self, main_box: Gtk.Box) -> None:
         self._button_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             halign=Gtk.Align.END,
-            margin_top=12,
+            margin_top=SPACE_GROUP,
         )
         # Like the camera calibration wizard, the button bar lives
         # inside the main box, directly under the stack, so it shares
@@ -185,7 +186,7 @@ class UnifiedWizard(PatchedDialogWindow):
         # "Look Up Specs"). Repopulated per page in _update_footer().
         self._action_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
         )
         self._button_box.append(self._action_box)
         self._footer_action_buttons: list[Gtk.Button] = []

@@ -15,6 +15,7 @@ from ...machine.models.machine import Machine
 from ...machine.transport.transport import TransportStatus
 from ...shared.util.time_format import format_seconds
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,7 @@ class MachineDropdown(Gtk.DropDown):
         self.update_model_and_selection()
 
     def _on_factory_setup(self, factory, list_item):
-        box = Gtk.Box(spacing=8)
+        box = Gtk.Box(spacing=SPACE_CONTROL)
 
         icon_box = Gtk.Box(valign=Gtk.Align.CENTER)
         box.append(icon_box)
@@ -139,7 +140,7 @@ class MachineDropdown(Gtk.DropDown):
             xalign=0,
             ellipsize=Pango.EllipsizeMode.END,
         )
-        status_label.add_css_class("caption")
+        status_label.add_css_class("sc-caption")
         status_label.add_css_class("dim-label")
 
         text_box.append(name_label)

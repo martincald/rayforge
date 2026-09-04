@@ -15,6 +15,7 @@ from gi.repository import Adw, GdkPixbuf, GLib, Gtk
 from ....camera.calibration.charuco import CharucoBoard
 from ....context import get_context
 from ....shared.units.formatter import format_value
+from ...layout import SPACE_GROUP, SPACE_SECTION, SPACE_TIGHT
 from ...shared.pref_rows.length_spin_row import LengthSpinRow
 from ..capture_surface import numpy_to_pixbuf
 from .base_page import CameraWizardPage
@@ -46,7 +47,10 @@ class CardPage(CameraWizardPage):
         return self._board
 
     def build(self) -> Gtk.Box:
-        self.root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        self.root = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_SECTION,
+        )
 
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         left_box.set_hexpand(True)
@@ -76,14 +80,14 @@ class CardPage(CameraWizardPage):
 
         settings_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        settings_box.set_margin_start(12)
-        settings_box.set_margin_end(12)
-        settings_box.set_margin_top(4)
-        settings_box.set_margin_bottom(12)
+        settings_box.set_margin_start(SPACE_GROUP)
+        settings_box.set_margin_end(SPACE_GROUP)
+        settings_box.set_margin_top(SPACE_TIGHT)
+        settings_box.set_margin_bottom(SPACE_GROUP)
         right_scroll.set_child(settings_box)
 
         intro_group = Adw.PreferencesGroup(
@@ -103,7 +107,7 @@ class CardPage(CameraWizardPage):
 
         self._width_row = LengthSpinRow(
             _("Width"),
-            _("Card width"),
+            _("Measured on the long edge"),
             lower=20.0,
             upper=300.0,
             value_in_base=self._card_width,
@@ -113,7 +117,7 @@ class CardPage(CameraWizardPage):
 
         self._height_row = LengthSpinRow(
             _("Height"),
-            _("Card height"),
+            _("Measured on the short edge"),
             lower=20.0,
             upper=300.0,
             value_in_base=self._card_height,
@@ -124,7 +128,7 @@ class CardPage(CameraWizardPage):
         info_group = Adw.PreferencesGroup(
             title=_("Generated Pattern"),
             description=_("Details about the calibration pattern."),
-            margin_top=12,
+            margin_top=SPACE_GROUP,
         )
         settings_box.append(info_group)
 

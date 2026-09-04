@@ -166,10 +166,7 @@ class HardwarePage(TrackedPreferencesPage):
         self.wcs_origin_row = Adw.SwitchRow()
         self.wcs_origin_row.set_title(_("Workarea Origin Is Coordinate Zero"))
         self.wcs_origin_row.set_subtitle(
-            _(
-                "Treat workarea origin as coordinate zero. "
-                "Hides WCS controls and uses workarea margins as offsets."
-            )
+            _("Zero at the workarea origin; hides the WCS controls")
         )
         self.wcs_origin_row.set_active(machine.wcs_origin_is_workarea_origin)
         self.wcs_origin_row.connect(

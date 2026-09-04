@@ -24,6 +24,7 @@ from ...doceditor.file_cmd import PreviewResult
 from ...image.base_importer import ImporterFeature
 from ...image.geo_renderer import geometry_to_cairo
 from ...image.structures import ImportManifest
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.pref_rows.base import SpinRow
 from ..shared.slider import create_slider
@@ -161,10 +162,10 @@ class ImportDialog(PatchedDialogWindow):
             orientation=Gtk.Orientation.VERTICAL,
             width_request=500,
             hexpand=False,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=12,
-            margin_end=6,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_CONTROL,
         )
         content_box.append(sidebar)
 
@@ -188,11 +189,7 @@ class ImportDialog(PatchedDialogWindow):
         config = get_context().config
         self.dpi_row = SpinRow(
             _("DPI"),
-            _(
-                "Pixels per inch for unitless SVG dimensions. "
-                "Inkscape ≥0.92 uses 96, older Inkscape uses 90, "
-                "Illustrator uses 72"
-            ),
+            _("For unitless SVGs: Inkscape 96, Illustrator 72"),
             lower=1.0,
             upper=10000.0,
             numeric=True,
@@ -274,10 +271,10 @@ class ImportDialog(PatchedDialogWindow):
         preview_frame = Gtk.Frame(
             vexpand=True,
             hexpand=True,
-            margin_top=12,
-            margin_bottom=12,
-            margin_start=6,
-            margin_end=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_CONTROL,
+            margin_end=SPACE_GROUP,
         )
         preview_frame.add_css_class("card")
         content_box.append(preview_frame)

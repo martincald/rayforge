@@ -11,7 +11,7 @@ from gi.repository import Adw, Gdk, Gtk
 from ...context import get_context
 from ...core.material import Material, MaterialAppearance
 from ...core.material_library import MaterialLibrary
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .add_material_dialog import AddMaterialDialog
 
@@ -28,7 +28,10 @@ class MaterialRow(Gtk.Box):
         on_delete_callback,
         on_edit_callback,
     ):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.material = material
         self.library = library
         self.on_delete_callback = on_delete_callback
@@ -37,10 +40,10 @@ class MaterialRow(Gtk.Box):
 
     def _setup_ui(self):
         """Builds the user interface for the row."""
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         color_box = Gtk.Box()
         color_box.set_size_request(24, 24)
@@ -82,16 +85,19 @@ class MaterialRow(Gtk.Box):
 
         if not self.library.read_only:
             # Suffix area for buttons
-            suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+            suffix_box = Gtk.Box(
+                spacing=SPACE_CONTROL,
+                valign=Gtk.Align.CENTER,
+            )
             self.append(suffix_box)
 
-            edit_button = Gtk.Button(child=get_icon("edit-symbolic"))
-            edit_button.add_css_class("flat")
+            edit_button = icon_button("edit-symbolic", _("Edit this material"))
             edit_button.connect("clicked", self._on_edit_clicked)
             suffix_box.append(edit_button)
 
-            delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-            delete_button.add_css_class("flat")
+            delete_button = icon_button(
+                "delete-symbolic", _("Delete this material")
+            )
             delete_button.connect("clicked", self._on_delete_clicked)
             suffix_box.append(delete_button)
 

@@ -14,6 +14,7 @@ from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
 from ...usage import get_usage_tracker
 from ..icons import get_icon
+from ..layout import SPACE_GROUP
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ css = """
 }
 .console-input-scrolled {
     background-color: alpha(@window_fg_color, 0.05);
-    border-radius: 4px;
+    border-radius: 5px;
 }
 """
 
@@ -43,8 +44,8 @@ class Console(Gtk.Box):
 
         self.set_margin_start(0)
         self.set_margin_end(0)
-        self.set_margin_top(9)
-        self.set_margin_bottom(9)
+        self.set_margin_top(SPACE_GROUP)
+        self.set_margin_bottom(SPACE_GROUP)
 
         self._show_verbose = False
         self._command_history: list[str] = []
@@ -88,8 +89,8 @@ class Console(Gtk.Box):
             _("Show verbose output (status polls)")
         )
         self.verbose_toggle.connect("toggled", self._on_verbose_toggled)
-        self.verbose_toggle.set_margin_top(9)
-        self.verbose_toggle.set_margin_end(9)
+        self.verbose_toggle.set_margin_top(SPACE_GROUP)
+        self.verbose_toggle.set_margin_end(SPACE_GROUP)
         self.verbose_toggle.set_halign(Gtk.Align.END)
         self.verbose_toggle.set_valign(Gtk.Align.START)
         verbose_icon = get_icon("code-symbolic")

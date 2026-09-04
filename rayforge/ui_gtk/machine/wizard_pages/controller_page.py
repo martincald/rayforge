@@ -17,6 +17,7 @@ from ....machine.device.profile import DeviceProfile
 from ....machine.driver import drivers
 from ....machine.driver.driver import Driver
 from ...icons import get_icon
+from ...layout import SPACE_CONTROL, SPACE_GROUP, SPACE_SECTION
 from . import WizardPage, _makePreferencesGroup
 
 # Symbolic icon shown on each driver's tile. New drivers without an
@@ -80,8 +81,8 @@ class ControllerPage(WizardPage):
         self.flow_box.set_homogeneous(True)
         self.flow_box.set_min_children_per_line(2)
         self.flow_box.set_max_children_per_line(4)
-        self.flow_box.set_column_spacing(12)
-        self.flow_box.set_row_spacing(12)
+        self.flow_box.set_column_spacing(SPACE_GROUP)
+        self.flow_box.set_row_spacing(SPACE_GROUP)
         self.flow_box.set_activate_on_single_click(True)
         self.flow_box.connect("child-activated", self._on_child_activated)
         self.content.append(self.flow_box)
@@ -127,11 +128,11 @@ class ControllerPage(WizardPage):
 
         box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=6,
-            margin_top=16,
-            margin_bottom=16,
-            margin_start=12,
-            margin_end=12,
+            spacing=SPACE_CONTROL,
+            margin_top=SPACE_SECTION,
+            margin_bottom=SPACE_SECTION,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
         image = get_icon(icon_name)
         image.set_pixel_size(40)

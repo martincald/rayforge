@@ -5,7 +5,7 @@ from gi.repository import Gtk
 
 from ...machine.models.machine import Machine
 from ...machine.models.macro import Macro
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .gcode_editor import GcodeEditorDialog
 
@@ -14,17 +14,20 @@ class MacroRow(Gtk.Box):
     """A widget representing a single Macro in a ListBox."""
 
     def __init__(self, machine: Machine, macro: Macro):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.machine = machine
         self.macro = macro
         self._setup_ui()
 
     def _setup_ui(self):
         """Builds the user interface for the row."""
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         title_label = Gtk.Label(
             label=self.macro.name,
@@ -35,7 +38,7 @@ class MacroRow(Gtk.Box):
         self.append(title_label)
 
         # Suffix area for switch and buttons
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         switch = Gtk.Switch(valign=Gtk.Align.CENTER)
@@ -43,13 +46,11 @@ class MacroRow(Gtk.Box):
         switch.connect("notify::active", self._on_enable_toggled)
         suffix_box.append(switch)
 
-        edit_button = Gtk.Button(child=get_icon("edit-symbolic"))
-        edit_button.add_css_class("flat")
+        edit_button = icon_button("edit-symbolic", _("Edit this macro"))
         edit_button.connect("clicked", self._on_edit_clicked)
         suffix_box.append(edit_button)
 
-        delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        delete_button.add_css_class("flat")
+        delete_button = icon_button("delete-symbolic", _("Delete this macro"))
         delete_button.connect("clicked", self._on_remove_clicked)
         suffix_box.append(delete_button)
 
@@ -103,8 +104,8 @@ class MacroListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No macros configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

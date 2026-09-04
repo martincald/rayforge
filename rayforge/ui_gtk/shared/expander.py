@@ -1,18 +1,19 @@
 from gi.repository import Gtk, Pango
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from .gtk import apply_css
 
 css = """
 .expander-card {
     background-color: @headerbar_bg_color;
-    border-radius: 12px;
+    border-radius: 10px;
     box-shadow: 0 4px 10px alpha(black, 0.06);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .expander-header {
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 .expander-header:hover {
@@ -20,12 +21,12 @@ css = """
 }
 
 .expander-card.expanded .expander-header {
-    border-radius: 12px 12px 0 0;
+    border-radius: 10px 10px 0 0;
     border-bottom: 1px solid @borders;
 }
 
 .expander-card.expanded .expander-header:hover {
-    border-radius: 12px 12px 0 0;
+    border-radius: 10px 10px 0 0;
 }
 
 .expander-title, .expander-subtitle {
@@ -76,11 +77,11 @@ class Expander(Gtk.Box):
 
         header_content_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
-            margin_top=10,
-            margin_bottom=10,
-            margin_start=12,
-            margin_end=12,
+            spacing=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
         )
         self.header.append(header_content_box)
 
@@ -103,7 +104,7 @@ class Expander(Gtk.Box):
         label_box.append(self.subtitle_label)
 
         self.suffix_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=6
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_CONTROL
         )
         header_content_box.append(self.suffix_box)
 

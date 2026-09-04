@@ -11,6 +11,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from .. import __version__, const
 from .icons import get_icon
+from .layout import SPACE_CONTROL, SPACE_GROUP, SPACE_PAGE
 from .shared.patched_dialog_window import PatchedDialogWindow
 
 logger = logging.getLogger(__name__)
@@ -245,12 +246,15 @@ class AboutDialog(PatchedDialogWindow):
     def _build_main_page(self):
         content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         content_box.set_halign(Gtk.Align.FILL)
-        content_box.set_margin_start(24)
-        content_box.set_margin_end(24)
-        content_box.set_margin_top(12)
-        content_box.set_margin_bottom(24)
+        content_box.set_margin_start(SPACE_PAGE)
+        content_box.set_margin_end(SPACE_PAGE)
+        content_box.set_margin_top(SPACE_GROUP)
+        content_box.set_margin_bottom(SPACE_PAGE)
 
-        hero_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        hero_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_CONTROL,
+        )
         hero_box.set_vexpand(True)
         hero_box.set_valign(Gtk.Align.CENTER)
         hero_box.set_halign(Gtk.Align.CENTER)
@@ -264,13 +268,13 @@ class AboutDialog(PatchedDialogWindow):
         title.set_markup(
             f"<span size='xx-large' weight='bold'>{const.APP_NAME}</span>"
         )
-        title.set_margin_top(6)
+        title.set_margin_top(SPACE_CONTROL)
         hero_box.append(title)
 
         copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
         hero_box.append(copyright_label)
 
-        links_box = Gtk.Box(halign=Gtk.Align.CENTER, margin_top=12)
+        links_box = Gtk.Box(halign=Gtk.Align.CENTER, margin_top=SPACE_GROUP)
         links_box.add_css_class("linked")
         hero_box.append(links_box)
 
@@ -367,11 +371,14 @@ class AboutDialog(PatchedDialogWindow):
             Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
         )
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_start(24)
-        content_box.set_margin_end(24)
-        content_box.set_margin_top(12)
-        content_box.set_margin_bottom(24)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_start(SPACE_PAGE)
+        content_box.set_margin_end(SPACE_PAGE)
+        content_box.set_margin_top(SPACE_GROUP)
+        content_box.set_margin_bottom(SPACE_PAGE)
         scrolled_window.set_child(content_box)
 
         dep_info = get_dependency_info()
@@ -393,11 +400,14 @@ class AboutDialog(PatchedDialogWindow):
             Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
         )
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_start(24)
-        content_box.set_margin_end(24)
-        content_box.set_margin_top(12)
-        content_box.set_margin_bottom(24)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_start(SPACE_PAGE)
+        content_box.set_margin_end(SPACE_PAGE)
+        content_box.set_margin_top(SPACE_GROUP)
+        content_box.set_margin_bottom(SPACE_PAGE)
         scrolled_window.set_child(content_box)
 
         thank_you_label = Gtk.Label()
@@ -409,8 +419,8 @@ class AboutDialog(PatchedDialogWindow):
             )
             + "</i>"
         )
-        thank_you_label.set_margin_top(6)
-        thank_you_label.set_margin_bottom(6)
+        thank_you_label.set_margin_top(SPACE_CONTROL)
+        thank_you_label.set_margin_bottom(SPACE_CONTROL)
         thank_you_label.set_wrap(True)
         thank_you_label.set_max_width_chars(60)
         content_box.append(thank_you_label)

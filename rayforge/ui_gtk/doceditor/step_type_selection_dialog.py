@@ -7,6 +7,7 @@ from gi.repository import Adw, Gtk
 
 from ...core.step_registry import step_registry
 from ..icons import get_icon
+from ..layout import SPACE_GROUP
 from ..shared.gtk import apply_css
 
 css = """
@@ -44,8 +45,11 @@ class StepTypeSelectionDialog(Adw.MessageDialog):
 
         apply_css(css)
 
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_top(12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_top(SPACE_GROUP)
         self.set_extra_child(content_box)
 
         self.search_entry = Gtk.SearchEntry(placeholder_text=_("Search..."))

@@ -6,6 +6,7 @@ from blinker import Signal
 from gi.repository import GLib, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
@@ -48,18 +49,18 @@ TICK_SECONDS = 1.0 / 60.0
 STEP_ANIMATION_TICKS = 12
 STEP_ANIMATION_SECONDS = STEP_ANIMATION_TICKS * TICK_SECONDS
 
+# The radius comes from the layout layer (.sc-overlay).
 css = """
 .playback-overlay {
     background-color: alpha(@theme_bg_color, 0.75);
-    border-radius: 6px;
-    padding: 3px 6px;
+    padding: 4px 8px;
 }
 .playback-overlay scale {
     min-width: 250px;
 }
 .speed-button {
     min-width: 36px;
-    padding: 2px 6px;
+    padding: 4px 8px;
     font-size: small;
 }
 """
@@ -78,15 +79,16 @@ class PlaybackOverlay(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
+            spacing=SPACE_CONTROL,
             **kwargs,
         )
         apply_css(css)
         self.add_css_class("playback-overlay")
+        self.add_css_class("sc-overlay")
         self.set_halign(Gtk.Align.FILL)
         self.set_hexpand(True)
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
 
         self._play_icon = get_icon("play-arrow-symbolic")
         self._pause_icon = get_icon("pause-symbolic")

@@ -20,6 +20,7 @@ from rayforge.ui_gtk.settings.registry import SettingsPageRegistry
 from rayforge.ui_gtk.shared.gtk import apply_css
 from rayforge.ui_gtk.shared.preferences_group import PreferencesGroupWithButton
 from rayforge.ui_gtk.shared.preferences_page import TrackedPreferencesPage
+from rayforge.ui_gtk.layout import SPACE_CONTROL, SPACE_GROUP
 
 from . import get_tool_manager
 from .edit_dialog import AddEditToolDialog
@@ -31,7 +32,7 @@ ADDON_NAME = "tool_library"
 apply_css("""
 .maturity-warning {
     background-color: alpha(@warning_color, 0.15);
-    padding: 10px 28px;
+    padding: 12px 24px;
 }
 """)
 
@@ -45,12 +46,15 @@ class ToolRow(Gtk.Box):
         on_edit: Callable[[Tool], None],
         on_delete: Callable[[Tool], None],
     ):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.tool = tool
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         icon = get_icon("tool-change-symbolic")
         icon.set_valign(Gtk.Align.CENTER)
@@ -73,7 +77,7 @@ class ToolRow(Gtk.Box):
         subtitle.add_css_class("dim-label")
         labels.append(subtitle)
 
-        suffix = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix)
 
         edit_btn = Gtk.Button(child=get_icon("edit-symbolic"))
@@ -165,7 +169,7 @@ class ToolManagerPage(TrackedPreferencesPage):
         warning_group = Adw.PreferencesGroup()
         banner = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             hexpand=True,
         )
         banner.add_css_class("maturity-warning")

@@ -38,11 +38,11 @@ css = """
 /* Label for displaying validation errors below the entry */
 .expression-error-label {
     color: @error_color;
-    margin: 10px;
+    margin: 12px;
 }
 
 .autocomplete-selector > contents {
-  padding: 1px;
+  padding: 4px;
 }
 """
 

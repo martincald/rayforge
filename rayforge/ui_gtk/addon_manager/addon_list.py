@@ -13,6 +13,7 @@ from ...addon_mgr.addon_manager import AddonState
 from ...context import get_context
 from ...shared.util.versioning import UnknownVersion
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.preferences_group import PreferencesGroupWithButton
 from .addon_dialog import AddonRegistryDialog
 from .experimental_dialog import ExperimentalAddonDialog
@@ -34,17 +35,20 @@ class AddonRow(Gtk.Box):
         error_message: str | None = None,
         is_builtin: bool = False,
     ):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.addon = addon
         self.state = state
         self.on_toggle = on_toggle
         self.on_unlock = on_unlock
         self.is_builtin = is_builtin
 
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         provides = addon.metadata.provides
         is_asset_only = not (provides.worker or provides.frontend)
@@ -133,7 +137,7 @@ class AddonRow(Gtk.Box):
         subtitle.add_css_class("dim-label")
         labels_box.append(subtitle)
 
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         if state == AddonState.LICENSE_REQUIRED.value:
@@ -204,8 +208,8 @@ class AddonListWidget(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No addons installed."),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

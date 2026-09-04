@@ -10,6 +10,7 @@ from .....core.step import Step
 from .....pipeline.transformer import OpsTransformer
 from .....pipeline.transformer.placeholder import PlaceholderTransformer
 from ....icons import get_icon
+from ....layout import SPACE_PAGE
 from ....shared.preferences_page import TrackedPreferencesPage
 from ...post_processor.groups import (
     PlaceholderSettingsGroup,
@@ -97,8 +98,8 @@ class PostProcessingPage(TrackedPreferencesPage):
         placeholder_label = Gtk.Label(
             label=_("No post-processing options available for this step."),
             halign=Gtk.Align.CENTER,
-            margin_top=24,
-            margin_bottom=24,
+            margin_top=SPACE_PAGE,
+            margin_bottom=SPACE_PAGE,
             wrap=True,
         )
         placeholder_label.add_css_class("dim-label")

@@ -4,8 +4,8 @@ from .gtk import apply_css
 
 css = """
 .tag {
-    border-radius: 6px;
-    padding: 2px 8px;
+    border-radius: 5px;
+    padding: 4px 8px;
     transition: background-color 0.15s;
 }
 

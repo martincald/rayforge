@@ -1,6 +1,8 @@
 import logging
 from gettext import gettext as _
 
+from gi.repository import Gtk
+
 from ....context import get_context
 from ....shared.units.definitions import Unit, get_unit
 from .base import SpinRow
@@ -13,9 +15,16 @@ class UnitSpinRow(SpinRow):
     A unit-aware spin row.
 
     Builds on :class:`SpinRow`, showing the current unit (e.g. ``"mm"``)
-    as a tooltip on the entry box, live conversion on display-unit
-    changes, and base-unit get/set. The unit is shown via the tooltip
-    rather than repeated in every subtitle or as a suffix.
+    after the entry box, live conversion on display-unit changes, and
+    base-unit get/set.
+
+    The unit used to live only in the entry's tooltip, so that it was
+    not "repeated in every subtitle or as a suffix". The audit found
+    the cost of that: rows like Max Cut Speed, Acceleration, Offset
+    and Overcut showed a bare number with no unit visible anywhere,
+    and a unit an operator has to hover to find is a unit they will
+    get wrong. It is a suffix now - once, in the field, never also in
+    the title or the caption.
 
     Values are exchanged with the caller in application base units through
     :meth:`get_value_in_base_units` / :meth:`set_value_in_base_units`.
@@ -59,6 +68,11 @@ class UnitSpinRow(SpinRow):
         self._lower = lower
         self._upper = upper
 
+        self._unit_label = Gtk.Label()
+        self._unit_label.add_css_class("sc-caption")
+        self._unit_label.set_valign(Gtk.Align.CENTER)
+        self._suffix.append(self._unit_label)
+
         self._config_handler_id = get_context().config.changed.connect(
             self._on_config_changed
         )
@@ -99,8 +113,10 @@ class UnitSpinRow(SpinRow):
             logger.warning(
                 "UnitSpinRow: no unit found for quantity %r", self.quantity
             )
+            self._unit_label.set_label("")
             return
 
+        self._unit_label.set_label(self._unit.label)
         self._spin_button.set_tooltip_text(
             _("Value in {unit}").format(unit=self._unit.label)
         )

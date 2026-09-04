@@ -15,6 +15,13 @@ from ...core.geometry_provider import IGeometryProvider
 from ...core.stock import StockItem
 from ...core.undo import ListItemCommand
 from ..icons import get_icon
+from ..layout import (
+    SPACE_CONTROL,
+    SPACE_GROUP,
+    SPACE_PAGE,
+    SPACE_SECTION,
+    SPACE_TIGHT,
+)
 from ..shared.gtk import apply_css
 from ..shared.popover_menu import PopoverMenu
 
@@ -28,7 +35,7 @@ CARD_SIZE = THUMBNAIL_SIZE + 36
 
 css = """
 .asset-browser {
-    padding: 9px;
+    padding: 12px;
 }
 .asset-flowbox > flowboxchild {
     padding: 0;
@@ -46,7 +53,7 @@ css = """
 }
 .asset-card {
     background: @card_bg_color;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 4px;
     border: 2px solid transparent;
 }
@@ -55,12 +62,12 @@ css = """
 }
 .asset-card-label {
     font-size: 13px;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 .asset-type-icon {
     opacity: 0.9;
     background-color: alpha(@card_bg_color, 0.95);
-    border-radius: 4px;
+    border-radius: 5px;
 }
 .asset-browser-empty {
     padding: 24px;
@@ -104,7 +111,7 @@ class AssetCard(Gtk.Box):
 
         type_icon = get_icon(asset.display_icon_name)
         type_icon.set_pixel_size(12)
-        type_icon.set_margin_end(4)
+        type_icon.set_margin_end(SPACE_TIGHT)
         type_icon.set_tooltip_text(asset.type_display_name)
 
         self._label = Gtk.Label()
@@ -114,7 +121,7 @@ class AssetCard(Gtk.Box):
 
         label_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         label_box.set_halign(Gtk.Align.CENTER)
-        label_box.set_margin_top(4)
+        label_box.set_margin_top(SPACE_TIGHT)
         label_box.append(type_icon)
         label_box.append(self._label)
 
@@ -188,8 +195,8 @@ class AssetBrowser(Gtk.Box):
 
         self._flowbox = Gtk.FlowBox()
         self._flowbox.add_css_class("asset-flowbox")
-        self._flowbox.set_column_spacing(6)
-        self._flowbox.set_row_spacing(6)
+        self._flowbox.set_column_spacing(SPACE_CONTROL)
+        self._flowbox.set_row_spacing(SPACE_CONTROL)
         self._flowbox.set_min_children_per_line(3)
         self._flowbox.set_max_children_per_line(200)
         self._flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -226,9 +233,9 @@ class AssetBrowser(Gtk.Box):
         self._main_box.append(self._empty_state)
 
         toolbar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        toolbar.set_spacing(4)
-        toolbar.set_margin_start(9)
-        toolbar.set_margin_top(9)
+        toolbar.set_spacing(SPACE_TIGHT)
+        toolbar.set_margin_start(SPACE_GROUP)
+        toolbar.set_margin_top(SPACE_GROUP)
 
         self._add_btn = Gtk.Button(child=get_icon("add-symbolic"))
         self._add_btn.add_css_class("flat")
@@ -245,12 +252,15 @@ class AssetBrowser(Gtk.Box):
         self._sync_cards(self.doc)
 
     def _create_empty_state(self) -> Gtk.Box:
-        empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        empty_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_SECTION,
+        )
         empty_box.add_css_class("asset-browser-empty")
         empty_box.set_halign(Gtk.Align.CENTER)
         empty_box.set_valign(Gtk.Align.CENTER)
-        empty_box.set_margin_top(24)
-        empty_box.set_margin_bottom(24)
+        empty_box.set_margin_top(SPACE_PAGE)
+        empty_box.set_margin_bottom(SPACE_PAGE)
         empty_box.set_hexpand(True)
         empty_box.set_vexpand(True)
 
@@ -261,7 +271,7 @@ class AssetBrowser(Gtk.Box):
 
         buttons_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             halign=Gtk.Align.CENTER,
         )
         buttons_box.add_css_class("asset-browser-empty-buttons")

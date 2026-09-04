@@ -3,6 +3,7 @@ from gi.repository import Adw, Gtk
 
 from ...context import get_context
 from ...shared.units.definitions import get_unit
+from ..layout import suffix_box
 
 
 class OptionalSpinRowController:
@@ -37,8 +38,14 @@ class OptionalSpinRowController:
 
         self.switch = Gtk.Switch(valign=Gtk.Align.CENTER)
 
-        self.row.add_suffix(self.switch)
-        self.row.add_suffix(self.spin_button)
+        # The switch stays ahead of the field - it is what enables it -
+        # but the unit is named here the same as in every other row.
+        self._unit_label = Gtk.Label(label=self.unit.label)
+        self._unit_label.add_css_class("sc-caption")
+        self._unit_label.set_valign(Gtk.Align.CENTER)
+        self.row.add_suffix(
+            suffix_box(self.switch, self.spin_button, self._unit_label)
+        )
 
         self.switch.connect("notify::active", self._on_toggled)
         self._value_changed_handler_id = self.spin_button.connect(
@@ -70,6 +77,7 @@ class OptionalSpinRowController:
         if not new_unit:
             return
         self.unit = new_unit
+        self._unit_label.set_label(new_unit.label)
         self.spin_button.handler_block(self._value_changed_handler_id)
         try:
             self.spin_button.set_digits(new_unit.precision)

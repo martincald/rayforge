@@ -4,6 +4,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from ...camera.controller import CameraController
+from ..layout import SPACE_GROUP, SPACE_PAGE, SPACE_SECTION, SPACE_TIGHT
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .display_widget import CameraDisplay
 from .lens_calibration_widget import LensCalibrationWidget
@@ -38,10 +39,13 @@ class LensCalibrationDialog(PatchedDialogWindow):
         header = Adw.HeaderBar()
         content.append(header)
 
-        main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
-        main_box.set_margin_start(32)
-        main_box.set_margin_top(12)
-        main_box.set_margin_bottom(12)
+        main_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_SECTION,
+        )
+        main_box.set_margin_start(SPACE_PAGE)
+        main_box.set_margin_top(SPACE_GROUP)
+        main_box.set_margin_bottom(SPACE_GROUP)
         content.append(main_box)
 
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -62,14 +66,14 @@ class LensCalibrationDialog(PatchedDialogWindow):
 
         settings_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             width_request=500,
             hexpand=False,
         )
-        settings_box.set_margin_start(12)
-        settings_box.set_margin_end(32)
-        settings_box.set_margin_top(4)
-        settings_box.set_margin_bottom(12)
+        settings_box.set_margin_start(SPACE_GROUP)
+        settings_box.set_margin_end(SPACE_PAGE)
+        settings_box.set_margin_top(SPACE_TIGHT)
+        settings_box.set_margin_bottom(SPACE_GROUP)
         right_scroll.set_child(settings_box)
 
         self.calibration_widget = LensCalibrationWidget(self.camera)

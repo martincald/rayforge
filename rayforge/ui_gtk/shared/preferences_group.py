@@ -5,6 +5,7 @@ from typing import Any
 from gi.repository import Adw, Gtk
 
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from .gtk import apply_css
 
 css = """
@@ -85,8 +86,8 @@ class PreferencesGroupWithButton(Adw.PreferencesGroup):
             placeholder_label = Gtk.Label(label=self._empty_placeholder)
             placeholder_label.add_css_class("dim-label")
             placeholder_label.set_halign(Gtk.Align.CENTER)
-            placeholder_label.set_margin_top(12)
-            placeholder_label.set_margin_bottom(12)
+            placeholder_label.set_margin_top(SPACE_GROUP)
+            placeholder_label.set_margin_bottom(SPACE_GROUP)
             row = Gtk.ListBoxRow(child=placeholder_label, selectable=False)
             self.list_box.append(row)
         else:
@@ -111,12 +112,12 @@ class PreferencesGroupWithButton(Adw.PreferencesGroup):
 
         button_content = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
+            spacing=SPACE_CONTROL,
             halign=Gtk.Align.CENTER,
-            margin_top=10,
-            margin_end=12,
-            margin_bottom=10,
-            margin_start=12,
+            margin_top=SPACE_GROUP,
+            margin_end=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_start=SPACE_GROUP,
         )
         button.set_child(button_content)
         button_content.append(get_icon("add-symbolic"))

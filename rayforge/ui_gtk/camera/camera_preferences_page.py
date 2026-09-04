@@ -7,7 +7,7 @@ from gi.repository import Adw, Gtk
 from ...camera.controller import CameraController
 from ...camera.models.camera import Camera
 from ...camera.v4l import display_name
-from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
 from ..shared.preferences_group import PreferencesGroupWithButton
 from ..shared.preferences_page import TrackedPreferencesPage
 from ..shared.slider import create_slider
@@ -19,7 +19,10 @@ class CameraRow(Gtk.Box):
     """A widget representing a single Camera in a ListBox."""
 
     def __init__(self, camera: Camera):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.camera = camera
         self.delete_button: Gtk.Button
         self.title_label: Gtk.Label
@@ -34,10 +37,10 @@ class CameraRow(Gtk.Box):
 
     def _setup_ui(self):
         """Builds the user interface for the row."""
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         labels_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True
@@ -59,8 +62,9 @@ class CameraRow(Gtk.Box):
         self.subtitle_label.add_css_class("dim-label")
         labels_box.append(self.subtitle_label)
 
-        self.delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        self.delete_button.add_css_class("flat")
+        self.delete_button = icon_button(
+            "delete-symbolic", _("Remove this camera")
+        )
         self.delete_button.connect("clicked", self._on_remove_clicked)
         self.append(self.delete_button)
 
@@ -94,8 +98,8 @@ class CameraListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No cameras configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)

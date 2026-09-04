@@ -8,6 +8,7 @@ from gi.repository import Adw, Gtk
 from ...machine.models.dialect import GcodeDialect
 from ...pipeline.encoder.context import GcodeContext
 from ..icons import get_icon
+from ..layout import SPACE_GROUP, SPACE_PAGE, SPACE_SECTION
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..varset.varsetwidget import VarSetWidget
 from .template_selector import DialectTemplateSelectorDialog
@@ -128,11 +129,14 @@ class DialectEditorDialog(PatchedDialogWindow):
         self.templates_widget.populate(varsets["templates"])
         self.scripts_widget.populate(varsets["scripts"])
 
-        form_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        form_box.set_margin_top(20)
-        form_box.set_margin_start(50)
-        form_box.set_margin_end(50)
-        form_box.set_margin_bottom(50)
+        form_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        form_box.set_margin_top(SPACE_SECTION)
+        form_box.set_margin_start(SPACE_PAGE)
+        form_box.set_margin_end(SPACE_PAGE)
+        form_box.set_margin_bottom(SPACE_PAGE)
         form_box.append(self.info_widget)
         form_box.append(self.settings_widget)
         form_box.append(self.templates_widget)

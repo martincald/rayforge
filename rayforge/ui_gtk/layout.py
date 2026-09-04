@@ -5,14 +5,12 @@ The rule these constants exist to enforce is that a widget never
 picks its own spacing, control size or row height - it names a role,
 and the role has one value. Anything GTK CSS can express lives in
 :mod:`rayforge.ui_gtk.theme` instead; this module holds what only
-Python can set (margins, box spacing, size requests) plus the two
-helpers that keep row suffixes and position readouts identical
-wherever they are built.
+Python can set (margins, box spacing, size requests) plus the few
+helpers that keep row suffixes, icon buttons and position readouts
+identical wherever they are built.
 
 The values come from ``docs/design/swift-cut-layout.md``.
 """
-
-from gettext import gettext as _
 
 from gi.repository import Gtk
 
@@ -63,7 +61,7 @@ ROW_MIN_HEIGHT_COMPACT = 40
 
 #: A settings group inside a dock panel stops here instead of
 #: stretching to the panel edge and leaving a hole in the middle.
-PANEL_MAX_WIDTH = 380
+PANEL_MAX_WIDTH = 340
 
 
 # --- Placeholders ----------------------------------------------------
@@ -111,34 +109,19 @@ def icon_button(
     return button
 
 
-def row_actions(
-    on_edit=None,
-    on_delete=None,
-    *,
-    edit_tooltip: str = "",
-    delete_tooltip: str = "",
-) -> tuple[Gtk.Box, Gtk.Button | None, Gtk.Button | None]:
-    """Build the edit/delete pair every list row grows by hand.
+def axis_button(label: str, tooltip: str) -> Gtk.Button:
+    """Build a short-label button that matches the icon buttons beside it.
 
-    Eight list widgets build this same pair - material, material
-    library, recipe, macro, dialect, machine, colour preset and head
-    lists - and none of them tooltips it. Returns the box and the two
-    buttons so callers can still reach them.
+    The X / Y / Z zeroing buttons sit in a row of icon buttons, so
+    they take the same box: a text button that sizes itself from its
+    label would be a different width in every language.
     """
-    edit = None
-    delete = None
-    children: list[Gtk.Widget] = []
-    if on_edit is not None:
-        edit = icon_button("edit-symbolic", edit_tooltip or _("Edit"))
-        edit.connect("clicked", on_edit)
-        children.append(edit)
-    if on_delete is not None:
-        delete = icon_button(
-            "delete-symbolic", delete_tooltip or _("Delete")
-        )
-        delete.connect("clicked", on_delete)
-        children.append(delete)
-    return suffix_box(*children), edit, delete
+    button = Gtk.Button(label=label)
+    button.set_tooltip_text(tooltip)
+    button.set_valign(Gtk.Align.CENTER)
+    button.add_css_class("flat")
+    button.add_css_class("sc-icon-button")
+    return button
 
 
 def format_position(x: float | None, y: float | None) -> str:

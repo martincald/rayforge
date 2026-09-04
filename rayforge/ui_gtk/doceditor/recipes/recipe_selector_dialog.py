@@ -8,6 +8,7 @@ from gi.repository import Adw, Gtk
 from ....context import get_context
 from ....core.recipe import Recipe
 from ...icons import get_icon
+from ...layout import SPACE_GROUP
 from ...shared.gtk import apply_css
 
 if TYPE_CHECKING:
@@ -60,8 +61,11 @@ class RecipeSelectorDialog(Adw.MessageDialog):
         apply_css(css)
 
         # Main content area
-        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content_box.set_margin_top(12)
+        content_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        content_box.set_margin_top(SPACE_GROUP)
         self.set_extra_child(content_box)
 
         self.filter_switch = Adw.SwitchRow(

@@ -156,6 +156,10 @@ derived from a token. The brief's rule — *one size per type per
 density context* — needs the density contexts named first: toolbar,
 panel row, jog grid, rail, overlay.
 
+A sixth size, `min-width/height: 36px` with padding 4 and margin 2,
+sits in `shared/icon_tab_widget.py`. It is **dead code** — nothing in
+the tree imports it — so it is reported, not changed.
+
 **S6 — Icon glyph sizes are set ad hoc where they are set at all.**
 `get_icon()` (`ui_gtk/icons.py:45`) never sets a pixel size, so
 almost every icon inherits GTK's 16px. The exceptions are hand-picked:
@@ -321,12 +325,18 @@ Found while tracing the above; each is a rule that exists and does
 nothing.
 
 **X1 — `.sc-split` matches nothing.** `theme.py:128` styles
-`.sc-toolbar > .sc-split > button`, but `SplitMenuButton`
-(`shared/splitbutton.py:37`) adds only `linked`. The undo/redo,
-arrange and tabs split buttons therefore keep libadwaita's grey
-capsule while every plain toolbar button beside them is a white
-bezel button — plainly visible in `toolbar-light-1280.png`, where the
-row reads as two different button families.
+`.sc-toolbar > .sc-split > button`, but neither split widget adds the
+class: `SplitMenuButton` (`shared/splitbutton.py:37`) and
+`_HistoryButton` (`shared/undo_button.py:29`) add only `linked`.
+
+The visible symptom in `toolbar-light-1280.png` is that undo, redo,
+arrange and tabs read as a different family of button from every
+plain toolbar button beside them. Painting the selector red in a
+probe run showed *why*, and it is not what it looks like: those four
+are **disabled** in an empty document, and the theme's
+`:disabled { opacity: .4 }` arm does not cover `.sc-split` either, so
+they keep libadwaita's insensitive grey fill while their neighbours
+fade. Two gaps in one rule, not one.
 
 **X2 — `.sc-rail` matches nothing.** `theme.py:189` styles
 `.sc-dock .sc-rail`; no widget adds `sc-rail`. The dock rail is

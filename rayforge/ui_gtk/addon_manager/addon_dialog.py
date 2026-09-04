@@ -9,6 +9,7 @@ from ...addon_mgr.addon import AddonMetadata
 from ...addon_mgr.addon_manager import UpdateStatus
 from ...context import get_context
 from ..icons import get_icon
+from ..layout import SPACE_GROUP, SPACE_PAGE
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .license_dialog import LicenseRequiredDialog
 
@@ -46,7 +47,7 @@ class AddonRegistryDialog(PatchedDialogWindow):
         # 1. Loading Page
         loading_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
+            spacing=SPACE_GROUP,
             valign=Gtk.Align.CENTER,
             halign=Gtk.Align.CENTER,
         )
@@ -66,10 +67,10 @@ class AddonRegistryDialog(PatchedDialogWindow):
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         clamp = Adw.Clamp(maximum_size=800)
-        clamp.set_margin_top(24)
-        clamp.set_margin_bottom(24)
-        clamp.set_margin_start(12)
-        clamp.set_margin_end(12)
+        clamp.set_margin_top(SPACE_PAGE)
+        clamp.set_margin_bottom(SPACE_PAGE)
+        clamp.set_margin_start(SPACE_GROUP)
+        clamp.set_margin_end(SPACE_GROUP)
 
         self.list_box = Gtk.ListBox()
         self.list_box.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -82,9 +83,9 @@ class AddonRegistryDialog(PatchedDialogWindow):
         # Manual Install Button Footer
         footer_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=12,
-            margin_bottom=12,
-            margin_top=12,
+            spacing=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
+            margin_top=SPACE_GROUP,
         )
         manual_btn = Gtk.Button(label=_("Install from URL..."))
         manual_btn.get_style_context().add_class("flat")
@@ -158,7 +159,7 @@ class AddonRegistryDialog(PatchedDialogWindow):
 
         if not data:
             empty_label = Gtk.Label(
-                label=_("No addons found in registry."), margin_top=24
+                label=_("No addons found in registry."), margin_top=SPACE_PAGE
             )
             self.list_box.append(empty_label)
             return

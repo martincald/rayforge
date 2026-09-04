@@ -30,6 +30,7 @@ from ..doceditor.array import (
 from ..doceditor.array_cmd import ArrayCmd
 from .canvas2d.elements.crosshair import CrosshairElement
 from .canvas2d.elements.outline import OutlineElement
+from .layout import SPACE_GROUP, SPACE_SECTION
 from .shared.patched_dialog_window import PatchedDialogWindow
 from .shared.pref_rows.angle_spin_row import AngleSpinRow
 from .shared.pref_rows.base import SpinRow
@@ -289,11 +290,14 @@ class GridArrayDialog(_BaseArrayDialog):
         )
 
     def _mode_content(self) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        box.set_margin_top(18)
-        box.set_margin_bottom(18)
-        box.set_margin_start(18)
-        box.set_margin_end(18)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        box.set_margin_top(SPACE_SECTION)
+        box.set_margin_bottom(SPACE_SECTION)
+        box.set_margin_start(SPACE_SECTION)
+        box.set_margin_end(SPACE_SECTION)
         group = Adw.PreferencesGroup()
         group.set_title(_("Grid"))
 
@@ -408,18 +412,21 @@ class PointRotationArrayDialog(_BaseArrayDialog):
         )
 
     def _mode_content(self) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        box.set_margin_top(18)
-        box.set_margin_bottom(18)
-        box.set_margin_start(18)
-        box.set_margin_end(18)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        box.set_margin_top(SPACE_SECTION)
+        box.set_margin_bottom(SPACE_SECTION)
+        box.set_margin_start(SPACE_SECTION)
+        box.set_margin_end(SPACE_SECTION)
         group = Adw.PreferencesGroup()
         group.set_title(_("Point Rotation"))
         group.set_description(
             _("Rotates copies in place around the selection's centre.")
         )
         self._pr_count_row = self._make_spin_row(_("Count"), 1, 360, 1, 6, 0)
-        self._pr_angle_row = AngleSpinRow(_("Total angle (deg)"), value=360.0)
+        self._pr_angle_row = AngleSpinRow(_("Total Angle"), value=360.0)
         self._pr_angle_row.value_changed.connect(
             lambda *a: self._update_preview()
         )
@@ -474,18 +481,21 @@ class CircularArrayDialog(_BaseArrayDialog):
         )
 
     def _mode_content(self) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        box.set_margin_top(18)
-        box.set_margin_bottom(18)
-        box.set_margin_start(18)
-        box.set_margin_end(18)
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=SPACE_GROUP,
+        )
+        box.set_margin_top(SPACE_SECTION)
+        box.set_margin_bottom(SPACE_SECTION)
+        box.set_margin_start(SPACE_SECTION)
+        box.set_margin_end(SPACE_SECTION)
         group = Adw.PreferencesGroup()
         group.set_title(_("Circular"))
         group.set_description(
             _("Places copies along a circular arc around a centre.")
         )
         self._c_count_row = self._make_spin_row(_("Count"), 1, 360, 1, 6, 0)
-        self._c_angle_row = AngleSpinRow(_("Total angle (deg)"), value=360.0)
+        self._c_angle_row = AngleSpinRow(_("Total Angle"), value=360.0)
         self._c_angle_row.value_changed.connect(
             lambda *a: self._update_preview()
         )

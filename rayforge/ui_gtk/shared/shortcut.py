@@ -1,11 +1,12 @@
 from gi.repository import Gtk
 
+from ..layout import SPACE_TIGHT
 from ..shared.gtk import apply_css
 from .key import Key
 
 css = """
 .shortcut-description {
-    margin-left: 6px;
+    margin-left: 8px;
 }
 """
 
@@ -20,7 +21,7 @@ class Shortcut(Gtk.Box):
     ):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, **kwargs)
         apply_css(css)
-        self.set_spacing(1)
+        self.set_spacing(SPACE_TIGHT)
 
         for i, key in enumerate(keys):
             key_widget = Key(label=key)
@@ -28,7 +29,7 @@ class Shortcut(Gtk.Box):
 
             if i < len(keys) - 1:
                 separator_label = Gtk.Label(label=separator)
-                separator_label.add_css_class("caption")
+                separator_label.add_css_class("sc-caption")
                 separator_label.set_opacity(0.7)
                 self.append(separator_label)
 

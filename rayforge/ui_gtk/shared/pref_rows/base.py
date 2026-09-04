@@ -3,6 +3,7 @@ import logging
 from blinker import ANY, Signal
 from gi.repository import Adw, GLib, Gtk
 
+from ...layout import suffix_box
 from ..adwfix import ensure_spinrow_min_width
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,10 @@ class SpinRow(Adw.ActionRow):
         # live consumers (e.g. array previews) responsive while typing.
         self._spin_button.connect("notify::text", self._on_text_changed)
 
-        self.add_suffix(self._spin_button)
+        # Through the shared suffix box, so this row's field lines up
+        # with the icon buttons in the rows around it.
+        self._suffix = suffix_box(self._spin_button)
+        self.add_suffix(self._suffix)
 
         self.value_changed = _StrongSignal()
         self._destroy_handler_id = self.connect("destroy", self._on_destroy)

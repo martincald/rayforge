@@ -11,6 +11,7 @@ from ...machine.driver.driver import (
     ResourceBusyError,
 )
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL
 from ..shared.preferences_page import TrackedPreferencesPage
 from ..varset.varsetwidget import VarSet, VarSetWidget
 
@@ -57,7 +58,7 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         self.read_button = Gtk.Button(child=get_icon("refresh-symbolic"))
         self.read_button.set_tooltip_text(_("Read from Device"))
         self.read_button.connect("clicked", self._on_read_clicked)
-        self.header_box = Gtk.Box(spacing=6)
+        self.header_box = Gtk.Box(spacing=SPACE_CONTROL)
         self.header_box.append(self.spinner)
         self.header_box.append(self.read_button)
         self.main_group.set_header_suffix(self.header_box)

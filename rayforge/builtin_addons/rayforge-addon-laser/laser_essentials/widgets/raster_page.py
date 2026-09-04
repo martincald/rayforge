@@ -293,8 +293,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
         self.scan_mode_row = Adw.ComboRow(
             title=_("Scan Mode"),
             subtitle=_(
-                "Segmented: moves between content regions. "
-                "Full Sweep: scans full width with laser toggling."
+                "Segmented skips gaps; Full Sweep crosses them"
             ),
             model=Gtk.StringList.new(scan_mode_choices),
         )
@@ -336,10 +335,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
 
         self.sample_interval_row = LengthSpinRow(
             _("Sample Interval"),
-            _(
-                "Distance between power samples along scan line. "
-                "Lower values improve accuracy, but increase output size. "
-            ),
+            _("Lower is more accurate, and a bigger job"),
             lower=0.001,
             upper=20.0,
             step_increment=0.01,
@@ -363,10 +359,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
         )
         self.dot_width_correction_row = LengthSpinRow(
             _("Dot Width Correction"),
-            _(
-                "Reduces engrave length at both ends to compensate "
-                "for physical dot width"
-            ),
+            _("Trims both ends by the dot width"),
             upper=5.0,
             step_increment=0.01,
             digits=3,
@@ -386,10 +379,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
 
         self.bidir_x_offset_row = LengthSpinRow(
             _("Bidirectional Scan Offset"),
-            _(
-                "Corrects X misalignment between left-to-right and "
-                "right-to-left raster passes"
-            ),
+            _("Corrects X drift between passes in each direction"),
             lower=-5.0,
             upper=5.0,
             step_increment=0.01,

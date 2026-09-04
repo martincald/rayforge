@@ -14,6 +14,7 @@ from ...machine.models.rotary_module import (
     RotaryType,
 )
 from ..icons import get_icon
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.model_selection_dialog import ModelSelectionDialog
 from ..shared.pref_rows.angle_spin_row import AngleSpinRow
 from ..shared.pref_rows.base import SpinRow
@@ -27,17 +28,20 @@ class RotaryModuleRow(Gtk.Box):
     """A widget representing a single RotaryModule in a ListBox."""
 
     def __init__(self, machine: Machine, module: RotaryModule):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        super(
+            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=SPACE_GROUP,
+        )
         self.machine = machine
         self.module = module
         self._toggle_handler_id = None
         self._setup_ui()
 
     def _setup_ui(self):
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(12)
-        self.set_margin_end(6)
+        self.set_margin_top(SPACE_CONTROL)
+        self.set_margin_bottom(SPACE_CONTROL)
+        self.set_margin_start(SPACE_GROUP)
+        self.set_margin_end(SPACE_CONTROL)
 
         info_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL, spacing=0, hexpand=True
@@ -60,7 +64,7 @@ class RotaryModuleRow(Gtk.Box):
         self.subtitle_label.add_css_class("dim-label")
         info_box.append(self.subtitle_label)
 
-        suffix_box = Gtk.Box(spacing=6, valign=Gtk.Align.CENTER)
+        suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
         self.delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
@@ -126,8 +130,8 @@ class RotaryModuleListEditor(PreferencesGroupWithButton):
         placeholder = Gtk.Label(
             label=_("No rotary modules configured"),
             halign=Gtk.Align.CENTER,
-            margin_top=12,
-            margin_bottom=12,
+            margin_top=SPACE_GROUP,
+            margin_bottom=SPACE_GROUP,
         )
         placeholder.add_css_class("dim-label")
         self.list_box.set_placeholder(placeholder)
@@ -383,10 +387,7 @@ class RotaryModulePage(TrackedPreferencesPage):
 
         self.mm_per_rotation_row = SpinRow(
             _("Travel per Rotation"),
-            _(
-                "Firmware distance for one full 360° rotation. "
-                "0 = raw circumferential output."
-            ),
+            _("Firmware distance per full turn; 0 is raw output"),
             upper=100000,
             digits=2,
         )

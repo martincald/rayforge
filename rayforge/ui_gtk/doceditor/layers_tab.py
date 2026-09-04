@@ -8,6 +8,7 @@ from gi.repository import Gdk, Gtk
 from ...core.doc import Doc
 from ...core.layer import Layer
 from ..icons import get_icon
+from ..layout import SPACE_GROUP, SPACE_SECTION
 from .layer_column import _LAYER_UID_PREFIX, LayerColumn
 
 if TYPE_CHECKING:
@@ -39,9 +40,9 @@ class LayersTab(Gtk.Box):
         self.columns_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=0
         )
-        self.columns_box.set_margin_start(9)
-        self.columns_box.set_margin_top(9)
-        self.columns_box.set_margin_bottom(9)
+        self.columns_box.set_margin_start(SPACE_GROUP)
+        self.columns_box.set_margin_top(SPACE_GROUP)
+        self.columns_box.set_margin_bottom(SPACE_GROUP)
         self.columns_box.set_valign(Gtk.Align.FILL)
         self.scrolled.set_child(self.columns_box)
         self.append(self.scrolled)
@@ -65,9 +66,9 @@ class LayersTab(Gtk.Box):
         add_button.add_css_class("flat")
         add_button.set_tooltip_text(_("Add New Layer"))
         add_button.set_valign(Gtk.Align.START)
-        add_button.set_margin_top(18)
-        add_button.set_margin_start(9)
-        add_button.set_margin_end(9)
+        add_button.set_margin_top(SPACE_SECTION)
+        add_button.set_margin_start(SPACE_GROUP)
+        add_button.set_margin_end(SPACE_GROUP)
         add_button.connect("clicked", self._on_add_clicked)
         self.append(add_button)
 
