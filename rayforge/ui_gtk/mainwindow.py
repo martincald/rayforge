@@ -766,6 +766,32 @@ class MainWindow(Adw.ApplicationWindow):
         if op_map:
             self.bottom_panel.gcode_viewer.set_op_map(op_map)
 
+    def on_zoom_to_fit(self, action, param):
+        """Handler for the 'zoom_to_fit' action (Ctrl+0)."""
+        self.surface.zoom_to_fit()
+
+    def on_zoom_actual_size(self, action, param):
+        """Handler for the 'zoom_actual_size' action (Ctrl+1)."""
+        self.surface.zoom_to_actual_size()
+
+    def on_zoom_in(self, action, param):
+        """Handler for the 'zoom_in' action (+)."""
+        self.surface.zoom_in()
+
+    def on_zoom_out(self, action, param):
+        """Handler for the 'zoom_out' action (-)."""
+        self.surface.zoom_out()
+
+    def on_toggle_pan_inertia_state_change(
+        self, action: Gio.SimpleAction, value: GLib.Variant
+    ):
+        is_enabled = value.get_boolean()
+        action.set_state(value)
+        self.surface.pan_inertia_enabled = is_enabled
+        config = get_context().config
+        config.canvas_view.pan_inertia_enabled = is_enabled
+        config.changed.send(config)
+
     def on_show_workpieces_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
@@ -876,6 +902,14 @@ class MainWindow(Adw.ApplicationWindow):
         am.on_show_tabs_state_change(
             am.get_action("show_tabs"),
             GLib.Variant.new_boolean(cv.show_tabs),
+        )
+
+        am.get_action("toggle_pan_inertia").set_state(
+            GLib.Variant.new_boolean(not cv.pan_inertia_enabled)
+        )
+        self.on_toggle_pan_inertia_state_change(
+            am.get_action("toggle_pan_inertia"),
+            GLib.Variant.new_boolean(cv.pan_inertia_enabled),
         )
 
     def _connect_toolbar_signals(self):

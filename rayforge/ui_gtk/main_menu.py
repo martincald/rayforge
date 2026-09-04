@@ -85,6 +85,9 @@ class MainMenu(Gio.Menu):
         visibility_group.append(
             _("Show Bottom Panel"), "win.toggle_bottom_panel"
         )
+        visibility_group.append(
+            _("Trackpad-Flick Inertia"), "win.toggle_pan_inertia"
+        )
         view_menu.append_section(None, visibility_group)
 
         self._view_addon_group = visibility_group

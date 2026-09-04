@@ -56,6 +56,10 @@ SHORTCUTS = {
     "win.toggle_travel_view": f"{PRIMARY_ACCEL}<Shift>t",
     "win.recalculate": "F5",
     "win.force-recalculate": "<Shift>F5",
+    "win.zoom_to_fit": f"{PRIMARY_ACCEL}0",
+    "win.zoom_actual_size": f"{PRIMARY_ACCEL}1",
+    "win.zoom_in": "plus",
+    "win.zoom_out": "minus",
     # Object
     "win.add_stock": "<Ctrl><Alt>s",
     "win.add-tabs-equidistant": "<Ctrl><Alt>t",
@@ -286,6 +290,17 @@ class ActionManager:
             "toggle_right_panel",
             self.win.on_toggle_right_panel_state_change,
             GLib.Variant.new_boolean(config.right_panel_visible),
+        )
+
+        # Canvas navigation (Package D)
+        self._add_action("zoom_to_fit", self.win.on_zoom_to_fit)
+        self._add_action("zoom_actual_size", self.win.on_zoom_actual_size)
+        self._add_action("zoom_in", self.win.on_zoom_in)
+        self._add_action("zoom_out", self.win.on_zoom_out)
+        self._add_stateful_action(
+            "toggle_pan_inertia",
+            self.win.on_toggle_pan_inertia_state_change,
+            GLib.Variant.new_boolean(cv.pan_inertia_enabled),
         )
 
         # Edit & Clipboard Actions
