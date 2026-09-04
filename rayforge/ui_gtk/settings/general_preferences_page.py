@@ -273,18 +273,6 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         )
         startup_group.add(self.cache_budget_row)
 
-        self.check_updates_row = Adw.SwitchRow(
-            title=_("Check for updates"),
-            subtitle=_(
-                "Automatically check for new Rayforge versions on startup"
-            ),
-        )
-        self.check_updates_row.set_active(config.check_for_app_updates)
-        self.check_updates_row.connect(
-            "notify::active", self.on_check_updates_changed
-        )
-        startup_group.add(self.check_updates_row)
-
         # Startup behavior selector
         self.startup_behavior_row = Adw.ComboRow(
             title=_("Startup behavior"),
@@ -522,8 +510,3 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         """Called when the user adjusts the cache budget."""
         mb = int(row.get_value())
         get_context().config.set_cache_budget_bytes(mb * 1024 * 1024)
-
-    def on_check_updates_changed(self, switch_row, _):
-        """Called when the user toggles the update check setting."""
-        enabled = switch_row.get_active()
-        get_context().config.set_check_for_app_updates(enabled)

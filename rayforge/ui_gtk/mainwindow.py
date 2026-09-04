@@ -29,7 +29,6 @@ from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder import MachineCodeOpMap
 from ..shared.tasker import task_mgr
 from ..shared.util.time_format import format_hours_to_hm
-from ..updater import AppUpdateChecker
 from ..usage import get_usage_tracker
 from .about import AboutDialog
 from .action_registry import action_registry
@@ -168,12 +167,6 @@ class MainWindow(Adw.ApplicationWindow):
         # Instantiate and connect the UpdateCommand's notification signal
         self.update_cmd = UpdateCommand(task_mgr, context)
         self.update_cmd.notification_requested.connect(
-            self._on_editor_notification
-        )
-
-        # Instantiate the app version update checker
-        self.app_update_checker = AppUpdateChecker(task_mgr, context)
-        self.app_update_checker.notification_requested.connect(
             self._on_editor_notification
         )
 
@@ -558,9 +551,6 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Trigger the non-blocking check for addon updates
         self.update_cmd.check_for_updates_on_startup()
-
-        # Trigger the non-blocking check for app version updates
-        self.app_update_checker.check_on_startup()
 
     def _on_click_to_zero_mode_changed(self, sender, *, active: bool):
         """Handle click-to-zero mode toggle from control panel."""
