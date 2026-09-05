@@ -1,28 +1,28 @@
-# Graph Report - rayforge  (2026-09-02)
+# Graph Report - rayforge  (2026-09-04)
 
 ## Corpus Check
-- 2058 files · ~1,983,771 words
+- 2063 files · ~2,339,244 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 40527 nodes · 74466 edges · 1532 communities (1269 shown, 263 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 2902 edges (avg confidence: 0.93)
+- 40595 nodes · 74675 edges · 1507 communities (1263 shown, 244 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 2904 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `903a38fe`
+- Built from commit: `298180af`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- .__init__
+- AddEditRecipeDialog
 - ChoiceVar
 - Machine
-- sketch.py
+- core/commands/__init__.py
 - PassthroughSpec
 - RotaryModule
 - RuidaClient
-- TestDummyDriverCallback
+- MultiPassTransformer
 - RendererRegistry
 - generate_thumbnail.py
 - AddonManager
@@ -30,21 +30,21 @@
 - OSError
 - TextBoxCommand
 - SimpleAction
-- CncAssemblerStep
+- cnc_assembler_step.py
 - TaskManager
-- TestMarlinSerialDriverProperties
-- asyncio
-- OffsetRow
+- TransportStatus
+- RecipeManager
+- ModifyTextPropertyCommand
 - Pipeline
-- Var
-- test_rectangle_cmd.py
+- var.py
+- post_processors/widgets/__init__.py
 - RuidaSimulator
 - RasterSettingsPage
 - GrblSerialDriver
 - Frame
 - RuidaTransport
 - DimensionInputHandler
-- patch
+- test_addon_manager.py
 - SceneRenderer
 - ArcCommand
 - RadiusConstraint
@@ -55,10 +55,10 @@
 - MachineSpace
 - BaseArtifactHandle
 - Shader
-- DocEditor
-- SnapLineType
+- get_context
+- SnapLine
 - DeviceState
-- TextBoxEntity
+- Fill
 - VarDefinitionRowWidget
 - FileCmd
 - Doc
@@ -66,12 +66,12 @@
 - convert_to_profile
 - checker.py
 - Entity
-- addon_manager.py
+- Addon
 - SketchElement
 - ._panel
-- test_ruida_scale_jobs.py
+- Command
 - Config
-- TestRecipe
+- Recipe
 - test_intent_builder.py
 - MainWindow
 - RuidaParser
@@ -82,18 +82,18 @@
 - asyncio
 - get_icon
 - ElementRegion
-- MaterialAppearance
+- test_laser.py
 - test_dither.py
 - ActionManager
 - MaterialLibrary
 - Material Definition Schema
 - RuidaDriver
-- AxisSet
-- test_doc.py
-- LaserHead
+- MachineState
+- EngraveStep
+- ContourStep
 - decode35
-- ProceduralSpec
-- run_on_main_thread
+- .render_base_image
+- array_circular.py
 - test_circle_cmd.py
 - AttributeError
 - is_newer_version
@@ -118,7 +118,7 @@
 - type
 - Відстеження використання
 - test_ruida_driver.py
-- pt-BR/docusaurus-plugin-content-docs/current/machine/general.md
+- pt-BR/docusaurus-plugin-content-docs/current/ui/3d-preview.md
 - CameraAlignment
 - CanvasElement
 - Arc
@@ -130,45 +130,45 @@
 - StockItem
 - DockLayout
 - PieMenu
-- ChangePropertyCommand
+- HistoryManager
 - KinematicMapping
-- overlays.py
+- RotaryModulePage
 - test_render_context_update.py
 - LayerColumn
-- GeometrySvgExporter
+- LayoutStrategy
 - NogoZonesPage
 - TangentConstraint
-- sketcher/core/__init__.py
+- EqualLengthConstraint
 - ExecutionContext
-- test_status_messages.py
+- core/step.py
 - ImportDialog
-- MaterialListWidget
+- ArtifactStore
 - Camera
-- uk/docusaurus-plugin-content-docs/current/ui/3d-preview.md
-- get_usage_tracker
-- display_name
+- uk/docusaurus-plugin-content-docs/current/machine/general.md
+- SketchModeCmd
+- test_v4l.py
 - GrblNetworkDriver
 - AddonListWidget
 - IntentController
 - Smart Stock
-- CompiledSceneArtifact
+- compile_scene
 - WorkPieceElement
-- es/docusaurus-plugin-content-docs/current/machine/general.md
+- es/docusaurus-plugin-content-docs/current/ui/3d-preview.md
 - Regras de Cor
-- test_line_cmd.py
-- test_text_box_tool.py
+- test_gl_state.py
+- constraints/__init__.py
 - SymmetryConstraint
 - SketchRenderer
 - DragDropCmd
-- _ScaleClientSpy
-- KinematicMath
+- encode35
+- intent_builder.py
 - Nutzungsanalyse
 - 使用情况跟踪
 - AddonMetadata
 - BottomPanel
-- de/docusaurus-plugin-content-docs/current/machine/general.md
+- de/docusaurus-plugin-content-docs/current/ui/3d-preview.md
 - ProviderListWidget
-- zh-CN/docusaurus-plugin-content-docs/current/machine/general.md
+- zh-CN/docusaurus-plugin-content-docs/current/ui/3d-preview.md
 - FakePlayer
 - ColorSet
 - Doc
@@ -181,12 +181,12 @@
 - CameraController
 - Changelog
 - dict
-- PerpendicularConstraint
+- Point
 - CameraListEditor
 - ScenePresenter
-- UdpTransport
+- MergeLinesTransformer
 - AspectRatioConstraint
-- MachineState
+- LaserHead
 - MockUdpServer
 - docs/ui/3d-preview.md
 - RayforgeSpecs
@@ -194,7 +194,7 @@
 - Core Concepts
 - Kernkonzepte
 - Conceptos Clave
-- TransformCmd
+- Layer
 - Extension
 - snapshot_memory.py
 - test_step.py
@@ -207,7 +207,7 @@
 - Parametrischer 2D-Sketcher
 - Diseñador paramétrico 2D
 - DxfImporter
-- ValidationError
+- ._create_var_from_dict
 - .get_world_transform
 - TestRoundTripSketch
 - Core Materials Addon Manifest
@@ -227,17 +227,17 @@
 - MarlinSerialDriver
 - ExecutionContext
 - tuple
-- test_dialect.py
+- test_text_box_entity.py
 - generate_affiliate_link.py
 - Tool
 - ViewManager
-- ImporterRegistry
+- BaseExporter
 - ExecutionContextProxy
 - GrblSerialDriver
 - print_and_cut.py
-- CounterListEditor
-- Material
-- UnifiedWizard
+- format_hours_to_hm
+- SpindleHead
+- cnc_essentials/widgets/rows/__init__.py
 - Localized Material Metadata
 - Structure
 - de/docusaurus-plugin-content-docs/current/features/operations/contour.md
@@ -249,7 +249,7 @@
 - ModuleNotFoundError
 - PdfVectorImporter
 - _DefragResultBase
-- TestVar
+- simple_coro
 - docs/features/operations/contour.md
 - WorkflowRow
 - Shrink Wrap
@@ -258,8 +258,8 @@
 - Envoltura Contraída
 - Bezier
 - Shrink Wrap
-- Overscan
-- ._perform_visual_jog
+- _parse_pos
+- JogDirection
 - AddonConfig
 - Shrink Wrap
 - uk/docusaurus-plugin-content-docs/current/features/operations/contour.md
@@ -269,7 +269,7 @@
 - zh-CN/docusaurus-plugin-content-docs/current/features/operations/contour.md
 - 收缩包裹
 - OctoPrintDriver
-- test_producer_entity_points.py
+- drag_context
 - test_camera_controller.py
 - ._move_to_start_corner
 - StepRegistry
@@ -278,21 +278,21 @@
 - Engrave
 - Gravur
 - Grabado
-- EditableElement
+- ShrinkWrapGroup
 - OverscanTransformer
 - Gravure
 - Gravação
 - ArithmeticError
 - Гравіювання
 - 雕刻
-- CameraImageSettings
-- build_grbl_profile
+- CollinearConstraint
+- extract_device_name
 - utils.py
-- ArtifactStore
+- RenderConfig3D
 - test_jog_widget_hold.py
 - Bottom Panel
 - AssetBrowser
-- TestCheckWorker
+- AppUpdateChecker
 - Unteres Panel
 - _ExceptionTableEntryBase
 - PatreonProvider
@@ -303,10 +303,10 @@
 - Нижня панель
 - 底部面板
 - ToggleConstructionCommand
-- GcodeDialect
-- ListItemCommand
+- rust_helpers.py
+- Workflow
 - PlaybackOverlay
-- EqualDistanceConstraint
+- Layer
 - Frame Outline
 - Keyboard Shortcuts
 - _SimpleCData
@@ -323,17 +323,17 @@
 - LaserControlWidget
 - Рамковий контур
 - Клавіатурні скорочення
-- ColorLutProvider
+- PixelPerfectLayoutStrategy
 - 框架轮廓
 - _VarSetRowManager
 - 键盘快捷键
-- UpdateCommand
+- create_mock_addon
 - TextureArtifactRenderer
 - HostnameVar
 - RuidaServerTransport
 - Circle
 - Firmware-Kompatibilität
-- MaterialSelectorDialog
+- StressTestController
 - Compatibilidad de Firmware
 - ._update_actions_and_ui
 - Compatibilité des firmwares
@@ -341,7 +341,7 @@
 - Сумісність прошивки
 - 固件兼容性
 - .from_geometry
-- LibraryListWidget
+- LibraryRow
 - Material Test Grid
 - Importing Files
 - Materialtest-Raster
@@ -357,10 +357,10 @@
 - 材料测试网格
 - 导入文件
 - timeout: waiters = self._pending_mem_reads.get(mem_address, []) # if
-- AILookupPage
+- Any
 - test_chunked_upload.py
-- import_file
-- ai_settings_page.py
+- test_machine_cmd.py
+- AIProviderConfig
 - Contour Cutting
 - MaterialTestGridSettingsPage
 - Kontur-Schneiden
@@ -368,14 +368,14 @@
 - Reader
 - Coupe de Contour
 - Corte de Contorno
-- Transport
+- test_arc_entity.py
 - Контурне різання
 - 轮廓切割
 - encode14
-- MacroListEditor
+- MacroRow
 - Firmware Compatibility
-- FloatVar
-- create_lut_from_color
+- ValidationError
+- color.py
 - check_rayforge_compatibility
 - .from_machine
 - Snap Permissions (Linux)
@@ -387,18 +387,18 @@
 - Snap 权限（Linux）
 - SketchStudio
 - test_laser_pages.py
-- _apply
+- Optimize
 - SanityChecker
-- render_geometry_to_png
+- IAsset
 - _HistoryButton
 - test_expression_map.py
+- Rohmaterial-Verwaltung
 - Smart Stock
-- Manejo de Material Base
 - Panel Inferior
 - Smart Stock
-- Manuseio de Material
 - Smart Stock
-- 材料处理
+- Smart Stock
+- Smart Stock
 - FontPropertiesWidget
 - BidirScanOffsetTransformer
 - TestAddonManagerHelpers
@@ -421,7 +421,7 @@
 - Workpiece Positioning Guide
 - Werkstückpositionierung
 - Guía de Posicionamiento de Piezas de Trabajo
-- Path
+- register_addon_domain
 - Guide de Positionnement de la Pièce
 - Line
 - Guia de Posicionamento de Peça de Trabalho
@@ -429,10 +429,10 @@
 - 工件定位指南
 - What You Must Do When Invoked
 - test_base_cmd.py
-- GeneralPreferencesPage
+- .from_path
 - ProgressContext
 - AppKeyVar
-- TestPipelineGeneration
+- ComboRow
 - TestProjectRoundTrip
 - UndoDelegator
 - MultiSelectionGroup
@@ -445,9 +445,9 @@
 - Exception
 - tool_library/__init__.py
 - MachineManager
-- format_hours_to_hm
+- MainToolbar
 - Macro
-- StockPropertiesDialog
+- Axis
 - .__init__
 - Work Coordinate Systems (WCS)
 - Arbeitskoordinatensysteme (WCS)
@@ -456,11 +456,11 @@
 - Sistemas de Coordenadas de Trabalho (WCS)
 - Робочі системи координат (WCS)
 - 工作坐标系（WCS）
-- set_window_size
+- run_on_main_thread
 - CallbackProgressContext
 - ConnectionResetError
 - TestAxisRendererLayout
-- CircleTool
+- ParallelogramConstraint
 - test_revision_counters.py
 - InterpreterError
 - Pen
@@ -473,10 +473,10 @@
 - 宏和钩子
 - ActionRegistry
 - Model
-- DeviceSettingsPage
+- SignalTracker
 - Group
 - check_constraint
-- test_slider_row.py
+- test_doceditor.py
 - EOFError
 - generate_blender_setup.py
 - test_job_time_estimate.py
@@ -512,7 +512,7 @@
 - DocItem
 - IconTabWidget
 - _InnerMockProgressContext
-- TestApplyToJobOps
+- Head
 - AppKeyAdapter
 - test_ruida_production_path.py
 - Addon-Registries
@@ -521,27 +521,27 @@
 - Реєстри аддонів
 - test_spec_lookup.py
 - Findings
-- WorkPiece
+- core/workpiece.py
 - test_sketcher_params.py
 - _MockProgressContextImpl
-- GumroadProvider
+- LicenseResult
 - DocItemPropertiesWidget
-- ImportSummary
+- DockArea
 - 2026-03-10-rayforge-1.2-addons-camera-ai.md
 - Getting the Code
 - expr_context
 - ColorPreset
-- TestPipelineInvalidation
+- PickSurface
 - translate_assembly_warning
-- parse_m503_settings
-- gcode_to_p_number
-- is_boot_message
+- AddEditToolDialog
+- ReorderListCommand
+- LayoutCmd
 - HistogramPreview
 - .render
 - test_scene_presenter.py
 - Importer Architecture
 - Connection Issues
-- test_angle_constraint_cmd.py
+- AngleConstraint
 - 3D View
 - StepSettingsPage
 - Importer-Architektur
@@ -567,7 +567,7 @@
 - ActionExtensionRegistry
 - test_distance_constraint_cmd.py
 - TestLicenseValidator
-- is_ok_response
+- vips.py
 - UdpServerTransport
 - test_array_dialog.py
 - RuidaCodec
@@ -605,28 +605,28 @@
 - 激光安全
 - 第 2 步：使用向导创建机器
 - G 代码方言支持
-- test_cnc_pages.py
-- .get_geometry
+- cnc_step_page.py
+- CncAssemblerStep
 - .value
 - test_transparency.py
 - color_png_data
 - ABCMeta
-- Context
+- SwitchRow
 - preprocess_raster_image
-- .draw
-- ._on_visibility_changed
+- SketchPropertyProvider
+- ArrayCmd
 - .refresh_previews
 - comfyui_client.py
-- .seek
-- review_page.py
+- ProfileOuterStep
+- test_bezier_entity.py
 - 2026-05-04-rayforge-1.7-co2-lasers-ruida-octoprint-config-wizard.md
-- Den Code erhalten
+- Windows
 - Lasersicherheit
 - Obteniendo el Código
 - Seguridad Láser
 - Obtenir le code
 - Отримання коду
-- Windows
+- 获取代码
 - Findings
 - test_tabs_transformer.py
 - UnknownVariableInfo
@@ -638,7 +638,7 @@
 - classmethod
 - LocalizedField
 - CapturePage
-- WebSocketTransport
+- test_assembler.py
 - Exporting Documents
 - Laser Head Properties
 - Dokumente exportieren
@@ -650,79 +650,79 @@
 - Exportando do Rayforge
 - Propriedades da Cabeça de Laser
 - Експорт G-code
-- test_ruida_speed_units.py
+- test_speed_range_ends_survive_the_mm_min_boundary
 - Властивості лазерної головки
 - 从 Rayforge 导出
 - 激光头属性
-- datetime
-- CutScaleDialog
-- ArrayParams
-- parse_m114_position
+- LicenseValidator
+- CardPage
+- array_dialog.py
+- ShrinkWrapStep
 - str
-- TestScheduleDelayedOnMainThread
+- test_manager.py
 - ColorPresetListWidget
 - PlaybackPlayer
-- SerialServerTransport
-- .handle_key_event
+- TestSerialServerTransport
+- _AddStockCommand
 - AxisRenderer
-- PanelOrientation
+- TestMachinePanelOrientationState
 - Console
 - 2026-06-09-rayforge-1.8-rust-pipeline-faster-rasterizing-grbl-simple.md
 - Erforderliche Methoden
 - Méthodes requises
 - Métodos Obrigatórios
-- RecipeSelectorDialog
-- AddMaterialDialog
-- test_base_tool.py
-- ._prepare_point_drag
-- HttpTransport
+- test_fill_tool.py
+- .mm_to_degrees
+- FrameStep
+- ModelLibrary
+- TestDeclaredMotionExtent
 - ProviderEditorWidget
 - IndexError
 - LayoutStrategyRegistry
 - test_vips.py
-- LicenseResult
-- is_error_response
-- TestPipeline
+- AIProvider
+- Path
+- OverscanSettingsGroup
 - GcodeViewer
 - ThemeColorService
 - PostProcessingPage
 - property
-- Optimize
-- EllipsePreviewState
+- SpeedVar
+- parse_po_file
 - test_expression_context.py
 - SketchHitTester
-- ValueError
+- MaterialTestStep
 - Tasker: Background Task Management
 - Holding Tabs
-- LicenseValidator
+- LicenseSettingsPage
 - Tasker: Hintergrund-Task-Verwaltung
 - Halte-Laschen
 - Manifiesto del Addon
 - Tasker: Gestión de Tareas en Segundo Plano
 - Pestañas de Sujeción
 - Tasker : Gestion des tâches en arrière-plan
-- CameraManager
-- LibraryManager
+- TestPngImporterContract
+- ToolManager
 - Ponts de Maintien
-- ndarray
-- TestWebsocketUrlVar
+- UpdateCommand
+- WebsocketUrlVar
 - DeviceProfileManager
 - Tasker: Gerenciamento de Tarefas em Segundo Plano
-- TestJpgImporterContract
+- JpgImporter
 - Abas de Fixação
-- TestAxisRendererDrawing
+- StepSettingsPageRegistry
 - Tasker: Керування фоновими завданнями
 - Утримуючі лапки
 - Tasker：后台任务管理
 - 固定标签
 - PropertyProviderRegistry
-- ._update_status_bar
-- ConflictingConstraintsWidget
-- PointRotationParams
+- material_test_helpers.py
+- SplitMenuButton
+- .from_dict
 - CommandRegistry
-- Layer
-- build_marlin_profile
-- SketcherApp
+- basic_workpiece
+- _FakeGesture
+- Swift Cut layout tokens
 - lru_cache_unless_forced
 - sizes_are_close
 - ._jog_to_limit
@@ -741,16 +741,16 @@
 - 插件钩子
 - 插件清单文件
 - 矢量格式
-- ._send_and_wait
+- GridArrayStrategy
 - ImageMetadataDialog
 - StockElement
-- ProfilePage
-- LayerSettingsDialog
+- MacroTrigger
+- SettingsWindow
 - machine_settings_camera.py
-- asyncio
+- ConcreteSvgImporter
 - Registration Hooks
 - Framing Your Job
-- TestUrlVar
+- UrlVar
 - Quick Start Guide
 - Registrierungs-Hooks
 - Deinen Job einrahmen
@@ -773,18 +773,18 @@
 - 注册钩子
 - 框定您的工作
 - 快速入门指南
-- ._step_stage
-- ._build_transformer_specs
+- TestJogDelegation
+- _parse_buffer_state
 - OpsCacheRegistry
 - TestGumroadProvider
-- TestPatreonProvider
+- _parse_feed_rate
 - TestMarlinSerialDriverRealSerial
-- Layer
-- TestSvgRenderer
+- test_layer.py
+- _split_status_line
 - blog/2026-01-29-rayforge-1.0-first-birthday.md
 - 2026-04-09-rayforge-1.5-3d-simulator-bezier-nogozones.md
 - 2026-06-16-rayforge-1.8-rust-pipeline-lightburn-import.md
-- Color Rules
+- SerialServerTransport
 - Submitting Changes
 - Multi-Layer Workflow
 - de/docusaurus-plugin-content-blog/2026-01-29-rayforge-1.0-first-birthday.md
@@ -792,12 +792,12 @@
 - Änderungen einreichen
 - Multi-Ebenen-Workflow
 - es/docusaurus-plugin-content-blog/2026-01-29-rayforge-1.0-first-birthday.md
-- MockSmoothieServer
+- UsageTracker
 - Guía de Desarrollo de Drivers
 - Enviando Cambios
 - Flujo de trabajo multicapa
 - fr/docusaurus-plugin-content-blog/2026-01-29-rayforge-1.0-first-birthday.md
-- Règles de couleur
+- Suivi d'utilisation
 - Soumettre des changements
 - Flux de travail multi-calques
 - Configuration de l'axe rotatif
@@ -818,27 +818,27 @@
 - 提交更改
 - 多图层工作流程
 - 旋转轴设置
-- LicenseEntryDialog
+- addon_list.py
 - Sketch
-- ._build_ui
+- PWMParams
 - .__init__
-- ._draw_fills
+- display_name
 - .from_lists
 - TransformerRegistry
 - MockPlugin
-- .execute_interactive_command
-- Axis
+- call_registration_hooks
+- file_filter_to_gtk
 - update_supporters.py
-- JobArtifact
+- parse_lbdev
 - test_step_row.py
-- TestParseGrblParserState
+- frame_packet
 - blog/2025-01-10-multi-laser-support.md
 - 2026-04-24-rayforge-1.6-device-profiles-rotary-print-cut.md
 - Material Properties Explained
 - Addon Development Overview
 - Window Layout
 - de/docusaurus-plugin-content-blog/2025-01-10-multi-laser-support.md
-- Materialeigenschaften erklärt
+- write_mo_file
 - Addon-Entwicklung Übersicht
 - Rotationsachse einrichten
 - Canvas-Werkzeuge
@@ -846,7 +846,7 @@
 - es/docusaurus-plugin-content-blog/2025-01-10-multi-laser-support.md
 - Resumen del Desarrollo de Addons
 - Configuración de Eje Rotativo
-- MarlinSimulator
+- PointBubbleWidget
 - Diseño de la Ventana
 - fr/docusaurus-plugin-content-blog/2025-01-10-multi-laser-support.md
 - Matériaux
@@ -865,28 +865,28 @@
 - 画布工具
 - 窗口布局
 - TestRecipeKeys
-- Deepnest
-- .apply_best_recipe_to_step
-- scene_presenter.py
-- test_kinematics.py
-- EntityID
+- MachineDropdown
+- ZoneRenderer
+- Canvas3D
+- TestFitAndPositionAtReferenceOrigin
+- TestDefaultRefPoint
 - test_ops_renderer_update_from_vertex_layer.py
 - 2026-03-23-rayforge-1.3-bezier-curves-sketcher-addon.md
 - 2026-05-01-rayforge-1.7-co2-octoprint-parametric-text.md
 - 2026-05-02-rayforge-1.7-beta2-sanity-checks-device-profiles-layers.md
 - Usage Tracking
 - Addon Hooks
-- sketcher/worker.py
+- SignalTracker
 - Advanced Settings
-- DxfRenderer
+- RenderSpecification
 - Addon-Hooks
 - Bogen- und Kurveneinstellungen
 - Hooks de Addons
 - Ajustes Avanzados
-- ._handle_response_line
-- TextAreaVar
+- test_project_import.py
+- ToolListWidget
 - Comportement de Connexion
-- Maintenance
+- category_to_name
 - Hooks de Addons
 - Obtendo o Código
 - Comportamento de Conexão
@@ -895,23 +895,23 @@
 - 弧线和曲线设置
 - pages/index.js
 - graphify reference: extra exports and benchmark
-- _MarlinProbeDriver
+- _RevisionSignal
 - Any
 - _GrblProbeDriver
 - ConnectionStatusIconWidget
-- format_byte_size
-- ProbePage
+- falsify
+- CameraAlignmentSurface
 - TransformerWidgetRegistry
 - WorkpieceRow
-- Any
+- test_texture_renderer_update_from_artifact.py
 - TestCoordinateSpaces
-- TestDialectManagerBasics
+- test_doc_signals.py
 - TestMigrateBuiltinDialectToCopy
-- .evaluate_all
+- Herramientas del Lienzo
 - TestBedOverrunWarning
-- _run_full_pipeline
+- _extract_cut_coords
 - What Makes Rayforge Different?
-- wavefront.py
+- _save_png_deterministic
 - Lead-In / Lead-Out
 - General Settings
 - Hardware Settings
@@ -925,13 +925,13 @@
 - Ajustes de Hardware
 - Mantenimiento
 - Qu'est-ce qui différencie Rayforge ?
-- .format_string
+- UI consistency audit — after the Swift Cut reskin
 - Approche / Sortie
 - OutlineElement
 - Paramètres généraux
 - Paramètres Matériels
 - O que Torna o Rayforge Diferente?
-- GeoPoint
+- test_snap_types.py
 - Aproximação / Saída
 - Definições gerais
 - Configurações de Hardware
@@ -944,8 +944,8 @@
 - 引入 / 引出
 - 常规设置
 - 硬件设置
-- RuidaResponse
-- _FakeProvider
+- tool.py
+- WavefrontStep
 - _AddonDomainChain
 - GroupRow
 - ColorPresetRow
@@ -953,7 +953,7 @@
 - create_feature_image
 - TestGetImporterInfo
 - TestStateMapping
-- test_spin_row.py
+- SpinRow
 - Arrays
 - Crop to Stock
 - Multi-Pass
@@ -961,7 +961,7 @@
 - Arrays
 - Auf Rohmaterial zuschneiden
 - Mehrfach-Durchgang
-- .draw_grid_and_labels
+- .hidden
 - Pfad-Glättung
 - Arrays
 - Recortar al Material
@@ -988,28 +988,28 @@
 - devices.js
 - AGENTS.md
 - CLAUDE.md
-- ._query_snap_engine
+- CrosshairElement
 - rayforge-addon-sketcher/tests/conftest.py
 - TestIsFullyConstrained
 - .hidden
 - test_marlin_util.py
-- ._update_scale_buttons
+- ResponsiveBox
 - CanvasProjection
 - TestExportRdToPath
 - test_step_cmd.py
 - generate_supporters_image.py
-- parse_error_message
+- TestSrgbToLinear
 - TestClassAttributes
 - TestOncePerObject
-- test_jog_button_limit_warning
-- _ClientSpy
+- test_serial_server_transport.py
+- test_ruida_start_corner.py
 - ControllableTimer
 - blog/2025-02-20-5-tips-better-engraving.md
 - G-code Settings
 - ProgressBar
 - de/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md
 - TestWaitsAreBounded
-- Maintenance
+- Wartung
 - G-Code-Einstellungen
 - es/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md
 - Seguimiento de uso
@@ -1020,13 +1020,13 @@
 - Print & Cut
 - Créer des Recettes
 - Optimisation de Parcours
-- Suivi d'utilisation
-- Rastreamento de uso
+- 维护
+- Any
 - pt-BR/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md
-- widgets/dialog.py
-- get_color_preset_mgr
+- hooks.py
+- .on_config_changed
 - uk/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md
-- .create
+- TestLinearToSrgb
 - Налаштування G-code
 - zh-CN/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md
 - 打印与切割
@@ -1034,17 +1034,17 @@
 - [1.0] - 2026-02-01
 - graphify reference: query, path, explain
 - Motion subsystem audit
-- ._build_toolbar
-- .add_preset
+- TestMachineController
+- normalize_color
 - .render_preview_image
-- test_canvas_axis.py
-- mainwindow.py
+- MockUdpClient
+- _UngroupCommand
 - .draw
-- DragListBox
-- .get_preset_data
+- WorkflowView
+- test_cylinder_renderer_update_from_state.py
 - mac_build.sh
 - cli.py
-- test_grbl_serial_simple_driver.py
+- Addons
 - TestPushMessages
 - TestSockJSProcessing
 - test_surface.py
@@ -1055,8 +1055,8 @@
 - de/docusaurus-plugin-content-pages/index.js
 - Campos Requeridos
 - Registro de Acciones
-- .from_dict
-- Addons
+- Аддони
+- TestRecipeVarsetGroups
 - es/docusaurus-plugin-content-pages/index.js
 - Champs requis
 - Champs optionnels
@@ -1065,8 +1065,8 @@
 - Campos Obrigatórios
 - Campos Opcionais
 - Registro de Ações
-- es/docusaurus-plugin-content-docs/current/machine/nogo-zones.md
-- Addons
+- TestCropTransformerProperties
+- friendly_name_from_by_id
 - pt-BR/docusaurus-plugin-content-pages/index.js
 - Обов'язкові поля
 - Опціональні поля
@@ -1080,14 +1080,14 @@
 - 1.2
 - 1.7.6
 - 1.9.0
-- fr/docusaurus-plugin-content-docs/current/machine/nogo-zones.md
-- Addons
-- TestRecipeKeys
-- MaterialTestRenderer
+- migrate_camera_data
+- WorkOriginElement
+- test_recipe_keys.py
+- ._draw_grid
 - ConversionEngine
-- SettingsPageRegistry
-- DebugLogDialog
-- SignalTracker
+- ._clear_drag_state
+- .get_world_coords_on_plane
+- ui_min_width.py
 - .add_stack_page
 - target_to_filename
 - mac_setup.sh
@@ -1143,17 +1143,17 @@
 - graphify reference: commit hook and native CLAUDE.md integration
 - graphify reference: incremental update and cluster-only
 - test_swift_cut_icons.py
-- Overscan
+- TestSetup
 - Smart Stock
 - RoundButton
 - get_pixel_color
 - lightburn/conftest.py
-- Context
+- Оверскан
 - de/docusaurus-plugin-content-pages/contributing.js
 - Puntos de Entrada
 - AIConfigManager
-- .from_path
-- .home
+- HeadModelGroup
+- Axis
 - es/docusaurus-plugin-content-pages/contributing.js
 - fr/docusaurus-plugin-content-pages/contributing.js
 - pt-BR/docusaurus-plugin-content-pages/contributing.js
@@ -1171,11 +1171,11 @@
 - 1.8.0
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
-- ._on_name_changed
+- ChangePropertyCommand
 - WorkPieceArtifact
-- ._ping_pong
-- ._compute_playback_progress
-- GestureClick
+- AddonRegistry
+- plunge_speed_row.py
+- machine
 - mac_create_icon.sh
 - win_setup.sh
 - ._insert_text_at_cursor
@@ -1254,11 +1254,11 @@
 - .test_wcs_offset_with_top_left_origin
 - .test_wcs_z_offset_not_subtracted
 - .test_wcs_zero_z_offset
-- StateAwaiter
-- TestHeadlessDocEditor
+- resolve_device_id
+- WorkPiece
 - Print & Cut
-- Pfad-Optimierung
-- get_context
+- po_compiler.py
+- ValueError
 - ABC
 - ArrayStrategy
 - BaseArtifactHandle
@@ -1302,7 +1302,7 @@
 - stubs_to_markdown.py
 - FrameDecorator
 - ImportError
-- CameraWizard
+- CharucoBoard
 - Renderer
 - RowAdapter
 - Shader
@@ -1317,129 +1317,110 @@
 - WorkPiece
 - WorldSurface
 - wxFrame
-- TestAddonStateEnum
-- render_context/base.py
+- theme.py
+- CameraContext
 - Materiales
-- Materiais
+- Rastreamento de uso
 - Ferramentas de Tela
-- Proveedor de IA
-- Smart Stock
-- Overscan
-- General
-- Fournisseur IA
-- .draw
-- Paramètres G-code
-- Général
-- Print & Cut
-- Modo Projetor
-- .amount
-- Creando Recetas
-- Provedor de IA
-- Otimização de Caminho
-- Geral
-- Print & Cut
-- 路径优化
-- PointOnLineConstraint
+- Mallinfo
+- ConcreteRasterRenderer
 - ControllableTimer
 - Print & Cut
-- Optimización de Trayectoria
+- Режим проектора
+- Оптимізація шляху
+- Paramètres G-code
+- Інструменти полотна
+- Print & Cut
+- step_length_row.py
+- tool_diameter_row.py
+- _CreateGroupCommand
+- get_physical_size_mm
+- ._on_readable
+- CameraDistortionGroup
+- ._on_library_selected
+- .__init__
+- PointOnLineConstraint
+- PyvipsLogFilter
+- TestSwizzleEncodingVariants
+- real_workpiece
 - Configurações de G-code
-- test_run_optimization
-- .on_key_pressed
-- material_test_cmd.py
+- real_workpiece
+- real_workpiece
+- TestMoFileWithGettext
+- MaterialTestCmd
 - ._popup_context_menu
 - Draggable
-- TestExportMachine
+- test_proxy.py
 - TestLightBurnImporter
 - .test_the_first_move_after_each_switch_is_absolute
-- Deepnest
-- Як створити звіт про debug
-- assembler_helpers.py
-- 获取代码
-- .update_from_context
-- asset_cmd
+- Den Code erhalten
+- So erstellst du einen Debug-Bericht
+- build_part_vector
+- Cómo Crear un Reporte de Depuración
+- .send_event_and_wait
+- AssetCmd
 - .test_go_scale_runs_at_the_panel_speed
 - TestInteractiveBytes
 - How to Create a Debug Report
 - Assembly
-- circle_tool
+- .__init__
 - GcodeEditor
-- get_addon_data_dir
-- .get_geometry_world_bbox
-- Smart Stock
-- 过扫描
-- ._stream_gcode_ping_pong
+- .trace_frame
+- .set_focus_power
+- ._on_add_clicked
+- test_conversion_shuffles_channels_to_bgra
+- .language
 - Como Criar um Relatório de Depuração
 - .get_axis_label_origin
-- .draw
-- text_box_tool
-- ._update_theme_colors
+- .magic
+- .__init__
+- TestHeadlessTaskManager
 - screenshot/material_test.py
-- svg_renderer
-- ._on_text_editing_started
+- .keys
+- .build_compute_payload
 - Canvas Tools
 - pt-BR/docusaurus-plugin-content-docs/current/features/operations/contour.md
-- .get_all_assets
-- .remove_asset
-- .__init__
-- SnapEngine
-- ._from_controller
+- register_steps
+- ._last_known_pos
+- _PlaceholderCanvas3D
+- DragContext
+- ._axis_um_from_controller
 - test_file_cmd.py
 - int
 - test_swift_cut_handlers.py
-- LeadInOutTransformerType
-- LeadInOutTransformerType
+- MachineCapability
+- mock_draw_func
 - Task
 - _HomingClient
-- OverscanTransformerType
-- OverscanTransformerType
+- .test_is_connected_reflects_state
+- .test_slave_path_is_valid_tty
 - .test_release_path_stops_and_clears
-- LeadInOutTransformerType
-- ctx
+- .test_connect_creates_pty
+- .test_connect_when_already_connected
 - AIService
-- complex_sketch
 - .clone_with_geometry
 - .to_dict
-- .layer
-- .to_part
-- .source_file
 - .__init__
 - Token
-- .wcs_offset
-- ._on_save_clicked
+- encoder/context.py
 - ._on_assembly_for_preview_finished
-- .__init__
 - win_ui_test.py
-- get_pixel_bgra
-- .test_strip_comments
 - driver
-- test_circle_tool_on_deactivate_with_preview
-- test_circle_tool_on_press_no_hit
-- test_circle_tool_on_release_with_preview
-- test_circle_tool_on_release_ignores_preview_points
-- test_circle_tool_on_release_with_modifiers
-- test_circle_tool_on_hover_motion_with_modifiers
-- test_circle_tool_on_hover_motion_error_deactivates
 - TemplateFormatter
-- test_circle_tool_on_hover_motion_key_error_deactivates
-- test_circle_tool_on_modifier_change_with_preview
-- test_circle_tool_get_active_shortcuts_with_preview
-- test_circle_tool_get_preview_state
-- .test_the_park_follows_a_top_origin
 - test_raster_step_is_position_sensitive
 - .test_the_park_follows_the_reversed_axis
 - LeadInOutTransformer
 - fetch_download_stats.py
 - test_dialect_gcode.py
 - OpsTransformer
-- test_units.py
+- LaserStep
 - test_expression_parser.py
 - Traversable
 - test_gcode_encoder.py
 - SketchRenderer
 - Text
 - _make_grbl_transport
-- array/__init__.py
+- ArrayStrategy
 - DialectEditorDialog
 - Command
 - TestWorkPiece
@@ -1452,7 +1433,7 @@
 - SanityCheckDialog
 - BufferedIOBase
 - Form
-- TrackedPreferencesPage
+- MachineSettingsDialog
 - ExpressionContext
 - test_producer_midpoints.py
 - estimate_packet_length
@@ -1461,8 +1442,6 @@
 - UserWarning
 - SyntaxError
 - BaseArtifact
-- ControllerPage
-- test_optimize_transformer.py
 - analyze_grbl_acks.py
 - normalize_icons.py
 - VipsCairoWidget
@@ -1471,23 +1450,20 @@
 - test_mainwindow.py
 - SystemError
 - InteractiveConsole
-- .highlight
 - LaserHeadDetailWidget
 - sync_requirements.py
-- GcodeHighlighter
 - OStream
 - DistutilsMSVCCompiler
 - wxApp
 - semwraplib.c
-- test_producer_centers.py
+- drag_context
 - ModelManager
 - IStream
 - Generic
 - build-deb.sh
-- ._on_map
 - update_translations.sh
-- DragContext
-- Layer
+- SnapLineType
+- test_layer_cmd.py
 - deploy_website.sh
 - pixi-raygeo.sh
 - print_untranslated.sh
@@ -1495,14 +1471,14 @@
 - docusaurus.config.js
 - JobMonitor
 - MainMenu
-- ._on_editor_notification
+- DebugLogDialog
 - MockProgressContext
 
 ## God Nodes (most connected - your core abstractions)
 1. `Machine` - 662 edges
 2. `WorkPiece` - 568 edges
 3. `Sketch` - 480 edges
-4. `get_context()` - 360 edges
+4. `get_context()` - 364 edges
 5. `EntityRegistry` - 340 edges
 6. `Doc` - 273 edges
 7. `DocItem` - 245 edges
@@ -1523,26 +1499,26 @@
   tests/addon_mgr/test_addon.py → rayforge/addon_mgr/addon.py
 
 ## Import Cycles
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
 - 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/editor.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/text_box_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchcanvas.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/editor.py`
+- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
 - 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/snap_mixin.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/diameter.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/equal_distance.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/equal_length.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/perpendicular.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/point_on_line.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/radius.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/tangent.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/circle.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/radius.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/entities/arc.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/radius.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/sketch.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/aspect_ratio_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/grid_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/delete_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/coincident_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/diameter_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/fillet_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
-- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/rounded_rect_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 3-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/sketch.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/core/constraints/__init__.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/waypoint_smooth_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/radius_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/waypoint_sharp_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/angle_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/construction_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
 - 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/horizontal_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/coincident_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/vertical_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/editor.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/text_box_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchcanvas.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/editor.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchcanvas.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/text_box_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchcanvas.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/rounded_rect_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/symmetry_constraint_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/arc_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/arc_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/snap_mixin.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/rectangle_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/base.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
+- 4-file cycle: `rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/rectangle_tool.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/snap_mixin.py -> rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py`
 
 ## Hyperedges (group relationships)
 - **Built-in Addon Capability Contract** — rayforge_builtin_addons_rayforge_addon_laser_rayforge_addon, rayforge_builtin_addons_rayforge_addon_cnc_rayforge_addon, rayforge_builtin_addons_rayforge_addon_ai_workpiece_rayforge_addon, builtin_addons_addon_manifest_contract, builtin_addons_post_processors_capability, builtin_addons_sketcher_capability [EXTRACTED 1.00]
@@ -1564,11 +1540,11 @@
 - **Byte-Identical GRBL Diode Dialect Template** — rayforge_resources_devices_creality_falcon_10w_dialect_grbl_dialect, rayforge_resources_devices_creality_falcon_a1_dialect_grbl_dialect, rayforge_resources_devices_longer_ray5_dialect_grbl_dialect, rayforge_resources_devices_neje_master_3_max_dialect_grbl_dialect, rayforge_resources_devices_ortur_laser_master_3_dialect_grbl_dialect, rayforge_resources_devices_ortur_laser_master_4_dialect_grbl_dialect [INFERRED 0.95]
 - **Material Category Taxonomy Shared Across Definitions** — rayforge_builtin_addons_rayforge_addon_materials_materials_marble_material_definition_schema, rayforge_builtin_addons_rayforge_addon_materials_materials_marble_localized_material_metadata, rayforge_builtin_addons_rayforge_addon_materials_materials_mdf_category_wood, rayforge_builtin_addons_rayforge_addon_materials_materials_nickel_category_metal, rayforge_builtin_addons_rayforge_addon_materials_materials_nylon_category_plastic, rayforge_builtin_addons_rayforge_addon_materials_materials_marble_category_stone, rayforge_builtin_addons_rayforge_addon_materials_materials_paper_category_paper, rayforge_builtin_addons_rayforge_addon_materials_materials_rubber_category_organic [INFERRED 0.95]
 
-## Communities (1532 total, 263 thin omitted)
+## Communities (1507 total, 244 thin omitted)
 
-### Community 0 - ".__init__"
-Cohesion: 0.11
-Nodes (11): Any, Step, Widget, Window, Creates a box with an icon and a label for the toggle button., Register a page in the view stack with a toggle button. The first page…, Resolve the step classes for the current step-type selection. Returns an empty…, Resolve the (title, varset) groups for the current selection. With exactly one… (+3 more)
+### Community 0 - "AddEditRecipeDialog"
+Cohesion: 0.06
+Nodes (42): AddEditRecipeDialog, Any, Step, Widget, Window, Creates a box with an icon and a label for the toggle button., Register a page in the view stack with a toggle button. The first page…, Resolve the step classes for the current step-type selection. Returns an empty… (+34 more)
 
 ### Community 1 - "ChoiceVar"
 Cohesion: 0.10
@@ -1576,27 +1552,27 @@ Nodes (21): ChoiceVar, Any, Initializes a new ChoiceVar instance. Args: key: The
 
 ### Community 2 - "Machine"
 Cohesion: 0.01
-Nodes (206): _create_driver_encoder(), MachineCmd, Axis, Laser, Ops, Signal, Signal handler for job progress updates., Internal helper to execute a job on a driver while managing a JobMonitor for… (+198 more)
+Nodes (146): _create_driver_encoder(), Axis, Ops, Internal helper to execute a job on a driver while managing a JobMonitor for…, The specific machine action for a framing job., The specific machine action for a send job., Generic, awaitable job starter that orchestrates assembly and execution., Asynchronously generates ops and runs a framing job. This is an awaitable… (+138 more)
 
-### Community 3 - "sketch.py"
-Cohesion: 0.02
-Nodes (167): AngleConstraintCommand, PreviewState, Updates the preview geometry based on new cursor position. Args: registry: The…, Removes all preview entities and points from the registry. The preview_state is…, Captures the current coordinates of all points and entity states., Restores coordinates and entity states from the snapshot., Base class for preview state returned by start_preview(). Subclass this to…, Returns IDs of temporary preview points that shouldn't be snapped to.… (+159 more)
+### Community 3 - "core/commands/__init__.py"
+Cohesion: 0.01
+Nodes (219): ArcPreviewState, Preview state for arc tool's 3-click workflow., Returns True if start point has been set., Sets the arc radius from numeric input. Args: registry: The entity registry to…, Returns the arc radius dimension for preview. Args: registry: The entity…, PreviewState, Updates the preview geometry based on new cursor position. Args: registry: The…, Removes all preview entities and points from the registry. The preview_state is… (+211 more)
 
 ### Community 4 - "PassthroughSpec"
-Cohesion: 0.02
-Nodes (229): Path, Phase 2: Parse JSON into Sketch model and solve it for bounds., Phase 3: Extract geometry from the solved sketch., Parses a .rfs file (serialized Sketch data) and prepares it for integration…, Scans the sketch JSON to extract its name., Overrides the base importer hook to add sketch-specific data. This links the…, Creates a SourceAsset for Sketch import., SketchImporter (+221 more)
+Cohesion: 0.01
+Nodes (188): Path, Parses a .rfs file (serialized Sketch data) and prepares it for integration…, Scans the sketch JSON to extract its name., Overrides the base importer hook to add sketch-specific data. This links the…, Creates a SourceAsset for Sketch import., SketchImporter, complex_sketch(), fixture (+180 more)
 
 ### Community 5 - "RotaryModule"
 Cohesion: 0.02
-Nodes (55): euler_rotation_matrix(), ndarray, Build a 3x3 rotation matrix from Euler angles in degrees. The rotation order is…, Resolve the effective rotary module for *layer*. Returns the module referenced…, Any, Axis, ndarray, Return the axis position in world space. The axis position is the module's… (+47 more)
+Nodes (33): _is_valid_replacement_module(), Return the Layer if it has rotary enabled. Job layer markers carry the step…, Check whether an AXIS_REPLACEMENT module is valid for mapping. Modules in…, _resolve_rotary_layer_by_uid(), Any, Public API for the UI to apply a single setting., Checks for legacy JOB_START/JOB_END hooks and migrates them to a new custom…, Parses a list of capability strings into a frozenset of MachineCapability.… (+25 more)
 
 ### Community 6 - "RuidaClient"
-Cohesion: 0.02
-Nodes (72): Return tuple of valid reference point names including MACHINE., Select a reference point mode on the controller. Args: ref_point: "MACHINE",…, Seed the locally tracked reference point mode. The controller cannot report its…, Ruida client-side protocol handler. Generates commands to send to a Ruida…, Get the current reference point mode. The ref point mode cannot be read back…, Get the card ID from the controller. Returns: Card ID (e.g., 0x65106510) or…, Get the controller model name. Returns: Model name (e.g., "RDC6442S") or None…, Get card ID and model name from the controller. Returns: Tuple of (card_id,… (+64 more)
+Cohesion: 0.01
+Nodes (137): Return tuple of valid reference point names including MACHINE., Select a reference point mode on the controller. Args: ref_point: "MACHINE",…, Seed the locally tracked reference point mode. The controller cannot report its…, Ruida client-side protocol handler. Generates commands to send to a Ruida…, Get the current reference point mode. The ref point mode cannot be read back…, Get the card ID from the controller. Returns: Card ID (e.g., 0x65106510) or…, Get the controller model name. Returns: Model name (e.g., "RDC6442S") or None…, Get card ID and model name from the controller. Returns: Tuple of (card_id,… (+129 more)
 
-### Community 7 - "TestDummyDriverCallback"
-Cohesion: 0.06
-Nodes (25): asyncio, fixture, Test that the callback receives op_index in the correct order., Test that run() handles empty Ops correctly., Test that run() works correctly with more complex operations., Test suite for the dummy driver's on_command_done callback., Test that exceptions in the callback don't stop execution., Test that multiple concurrent runs work correctly. (+17 more)
+### Community 7 - "MultiPassTransformer"
+Cohesion: 0.04
+Nodes (37): MultiPassSpec, MultiPassTransformer, Any, Geometry, setter, Creates a MultiPassTransformer instance from a dictionary., Repeats the sequence of operations multiple times. This transformer is…, Initializes the MultiPassTransformer. Args: enabled: Whether the transformer is… (+29 more)
 
 ### Community 8 - "RendererRegistry"
 Cohesion: 0.15
@@ -1608,55 +1584,55 @@ Nodes (13): create_thumbnail(), find_font(), generate_ai_background(), get_app_l
 
 ### Community 10 - "AddonManager"
 Cohesion: 0.03
-Nodes (66): BytesIO, PluginManager, AddonManager, Path, VersionType, Install an addon from a remote Git repository. Falls back to downloading a zip…, Deletes the addon directory and unloads the module., Manages the lifecycle of Rayforge addons (install, load, list). (+58 more)
+Nodes (56): BytesIO, PluginManager, AddonManager, Path, VersionType, Install an addon from a remote Git repository. Falls back to downloading a zip…, Deletes the addon directory and unloads the module., Manages the lifecycle of Rayforge addons (install, load, list). (+48 more)
 
 ### Community 11 - "test_circle_tool.py"
-Cohesion: 0.09
-Nodes (33): ui, Test that on_deactivate works when no preview state., Test on_deactivate when start was snapped (not temp)., Test on_press when already in preview mode does nothing., Test on_drag does nothing., Test on_release when no preview state does nothing., Test on_release snaps to existing point., Test on_hover_motion when not in preview stage. (+25 more)
+Cohesion: 0.02
+Nodes (139): EllipseCommand, EllipsePreviewState, EntityID, GeoPoint, Preview state for ellipse tool's drag-to-create workflow., A command to create an ellipse., CircleTool, Context (+131 more)
 
 ### Community 13 - "TextBoxCommand"
-Cohesion: 0.03
-Nodes (81): LiveTextEditCommand, EntityID, Any, GeoPoint, A command to create a text box with its default constraints., Calculates all points, entities, and constraints for a text box., TextBoxCommand, ParallelogramConstraint (+73 more)
+Cohesion: 0.04
+Nodes (64): LiveTextEditCommand, EntityID, Any, GeoPoint, A command to create a text box with its default constraints., Calculates all points, entities, and constraints for a text box., TextBoxCommand, MockTime (+56 more)
 
 ### Community 14 - "SimpleAction"
 Cohesion: 0.17
 Nodes (8): SimpleAction, Variant, Handles the 'change-state' signal for the 'hold' action. This is the correct…, Handles the 'change-state' signal for the 'toggle-focus' action. This toggles…, Handler for the 'execute-macro' action., Delegates the view switching logic to the command module., Handles state changes for the perspective view action., Re-triggers each persisted view toggle action so that both the canvas surfaces…
 
-### Community 15 - "CncAssemblerStep"
-Cohesion: 0.02
-Nodes (61): AdaptiveClearingSpec, HelixSpec, RampSpec, AdaptiveClearStep, Any, ComputePayload, Part, CncAssemblerStep (+53 more)
+### Community 15 - "cnc_assembler_step.py"
+Cohesion: 0.05
+Nodes (27): AdaptiveClearingSpec, HelixSpec, RampSpec, AdaptiveClearStep, Any, FlatSpiralStep, Any, HelixPlungeStep (+19 more)
 
 ### Community 16 - "TaskManager"
-Cohesion: 0.01
-Nodes (160): AbstractEventLoop, Any, DictProxy, Shuts down the current worker pool and starts a new one., Lazily creates the TaskManager instance in a thread-safe manner., Connects to signals emitted by the WorkerPoolManager., Delegates attribute access to the real TaskManager instance, creating it on…, Delegate iteration to the real TaskManager instance. (+152 more)
-
-### Community 17 - "TestMarlinSerialDriverProperties"
-Cohesion: 0.04
-Nodes (31): str, A string subclass for identifying serial ports, for UI generation., A non-crashing implementation of list_ports for sandboxed Linux envs.…, Lists available serial ports., Like list_ports, but only returns USB serial ports., On POSIX systems, checks if there are visible serial ports that the user cannot…, safe_list_ports_linux(), SerialPort (+23 more)
-
-### Community 18 - "asyncio"
 Cohesion: 0.02
-Nodes (62): _ack_each_chunk(), asyncio, parametrize, Test stop_process builds correct command., Test pause_process builds correct command., Test resume_process builds correct command., Tests for air assist commands., Test air_assist_on sends correct command. (+54 more)
+Nodes (85): AbstractEventLoop, DictProxy, Return the number of active tasks., Return True if there are any active tasks, False otherwise., Run the asyncio event loop in a background thread., Schedules a callable to be executed on the main thread's event loop. This is…, Runs a synchronous callable on the main thread and awaits completion. This is…, Schedules a callback to run on the main thread after a delay. Uses the… (+77 more)
 
-### Community 19 - "OffsetRow"
-Cohesion: 0.31
-Nodes (6): OffsetRow, Any, SpinRow, Spin row bound to the ``step_over_mm`` attribute., Spin row bound to the ``offset_mm`` attribute., StepOverRow
+### Community 17 - "TransportStatus"
+Cohesion: 0.01
+Nodes (120): Ruida Client Protocol - Client-side command generation and sending. Handles…, Ruida codec for swizzle encoding/decoding with magic key management. The magic…, Ruida protocol static maps and constants. Based on: -…, Layer 4 (Application/Protocol) shared structures for Ruida protocol. Contains…, Machine state for Ruida controller., Look up memory address and return (name, value)., Represents a parsed Ruida command. Attributes: cmd: Primary command byte…, Return the length of the raw command data. (+112 more)
+
+### Community 18 - "RecipeManager"
+Cohesion: 0.05
+Nodes (37): Returns the recipe manager., Path, Finds matching recipes, sorted from most specific to least specific. Args:…, Checks if any recipe in the library references the given material UID., Manages loading, saving, and querying Recipe objects from a directory., Generates a consistent filename for a given recipe UID., Loads all recipes from the base directory., Saves a single recipe to a YAML file. (+29 more)
+
+### Community 19 - "ModifyTextPropertyCommand"
+Cohesion: 0.04
+Nodes (56): ModifyTextPropertyCommand, EntityID, FontConfig, Removes the text entity and its associated points/constraints., Removes the text entity when undoing to an empty content state. Saves state for…, Override undo to handle entity removal properly. When reverting to empty…, Restores the text entity and its associated points/constraints., Returns True if the text was empty before and after editing, indicating this is… (+48 more)
 
 ### Community 20 - "Pipeline"
 Cohesion: 0.03
-Nodes (26): _encode_error(), Pipeline, Any, Doc, Exception, setter, Step, True when the current doc can produce a job aggregate. Mirrors the intent… (+18 more)
+Nodes (61): _encode_error(), Pipeline, Any, Doc, Exception, setter, Step, True when the current doc can produce a job aggregate. Mirrors the intent… (+53 more)
 
-### Community 21 - "Var"
+### Community 21 - "var.py"
 Cohesion: 0.04
-Nodes (51): A FloatVar subclass that hints to the UI that it should be represented by a…, SliderFloatVar, A Var subclass for generic URLs., A Var subclass specifically for WebSocket URLs (ws:// or wss://)., UrlVar, WebsocketUrlVar, get_editable_var_types(), Represents a single typed variable with metadata for UI generation, validation,… (+43 more)
+Nodes (42): escape_title(), natural_sort_key(), ABC, Any, PreferencesRow, Decorator to register a RowAdapter for one or more Var subclasses. Lookup uses…, Base class for row value adapters. Each adapter owns both the row widget…, Return True if the row must be recreated for the new var. (+34 more)
 
-### Community 22 - "test_rectangle_cmd.py"
-Cohesion: 0.03
-Nodes (71): Any, EntityID, GeoPoint, The final end point ID after execute(), or None if not applicable., Calculates the points, entities, and constraints for a rectangle., Creates or updates preview geometry in the registry. Args: registry: The entity…, Creates initial preview state with start and end points. Args: registry: The…, Updates the end point position and refreshes preview geometry. Args: registry:… (+63 more)
+### Community 22 - "post_processors/widgets/__init__.py"
+Cohesion: 0.05
+Nodes (33): MultiPassTransformer, hookimpl, Frontend entry point for post_processors addon. Registers UI widgets for…, Register transformer settings widget classes., register_transformer_widgets(), CropSettingsGroup, UI for configuring the CropTransformer., Settings group classes for transformers, used in post-processing settings. (+25 more)
 
 ### Community 23 - "RuidaSimulator"
 Cohesion: 0.02
-Nodes (60): setter, Process unswizzled commands and return unswizzled response. This is the main…, Delegate to server for backward compatibility with tests., Handle a packet on the jog control channel. Jog packets are NOT swizzled. This…, Ruida controller simulator. This is a thin wrapper around RuidaServer (L3) that…, Access to the server state., RuidaSimulator, encode35() (+52 more)
+Nodes (55): setter, Ruida Simulator - Emulates a Ruida laser controller. This module provides a…, Process unswizzled commands and return unswizzled response. This is the main…, Delegate to server for backward compatibility with tests., Handle a packet on the jog control channel. Jog packets are NOT swizzled. This…, Run the simulator with UDP transport (async). Uses proper layering: - L1:…, Run the Ruida simulator (blocking)., Ruida controller simulator. This is a thin wrapper around RuidaServer (L3) that… (+47 more)
 
 ### Community 24 - "RasterSettingsPage"
 Cohesion: 0.10
@@ -1664,91 +1640,91 @@ Nodes (8): Any, Scale, RasterSettingsPage, Builds the Engraving Pattern preferen
 
 ### Community 25 - "GrblSerialDriver"
 Cohesion: 0.02
-Nodes (91): GrblSerialDriver, Any, Axis, Pos, Send a command and synchronously await its full response. Unlike…, GRBL supports homing for all axes., Homes the specified axes or all axes if none specified. Args: axes: Optional…, Sends a tool change command for the given tool number. (+83 more)
+Nodes (82): GrblSerialDriver, Any, Axis, Pos, Send a command and synchronously await its full response. Unlike…, GRBL supports homing for all axes., Homes the specified axes or all axes if none specified. Args: axes: Optional…, Sends a tool change command for the given tool number. (+74 more)
 
 ### Community 27 - "RuidaTransport"
-Cohesion: 0.09
-Nodes (11): setter, Send a response (swizzled but not framed with checksum). For UDP responses to…, Handle raw data from underlying transport. Note: Server responses are NOT…, Ruida L2 transport that wraps a generic transport. Adds framing (checksum…, Current swizzle magic key., Send raw data without framing/swizzling. Use send_command() for normal Ruida…, Send a Ruida command with swizzle encoding and framing. Args: command:…, RuidaTransport (+3 more)
+Cohesion: 0.11
+Nodes (8): Send a response (swizzled but not framed with checksum). For UDP responses to…, Handle raw data from underlying transport. Note: Server responses are NOT…, Ruida L2 transport that wraps a generic transport. Adds framing (checksum…, Send raw data without framing/swizzling. Use send_command() for normal Ruida…, RuidaTransport, asyncio, Tests for RuidaTransport client mode., TestRuidaTransport
 
 ### Community 28 - "DimensionInputHandler"
-Cohesion: 0.03
-Nodes (60): EntityID, GeoPoint, The final end point ID after execute(), or None if not applicable., Creates or updates preview geometry in the registry. Args: registry: The entity…, Creates initial preview state with start and end points. Args: registry: The…, Returns IDs of temporary preview points that shouldn't be snapped to. Excludes…, Updates the end point position and refreshes preview geometry. Args: registry:…, Removes all preview entities and points from the registry. Args: registry: The… (+52 more)
+Cohesion: 0.05
+Nodes (19): DimensionInputHandler, Handles locale-aware numeric input for sketch tool dimension editing. Supports…, Handle Tab key press. Returns: Tuple of (handled, should_apply,…, Parse and return the value for a specific field. Returns None if the field is…, Returns the current buffer text for display. Args: field_index: If provided,…, Handle numeric input for setting rounded rectangle dimensions., Handles creating rounded rectangles., Handle special keys for dimension input. (+11 more)
 
-### Community 29 - "patch"
+### Community 29 - "test_addon_manager.py"
 Cohesion: 0.04
-Nodes (38): create_addon_files(), create_addon_zip(), manager(), fixture, patch, Path, Test enabling a disabled addon., Test checking if addon is enabled. (+30 more)
+Nodes (45): AddonState, Enum, Represents the installation status of an addon from the registry., Represents the state of an addon., UpdateStatus, create_addon_files(), create_addon_zip(), manager() (+37 more)
 
 ### Community 30 - "SceneRenderer"
 Cohesion: 0.03
-Nodes (57): BackgroundRenderer, RenderContext, Renders a fullscreen gradient quad behind the 3D scene., No per-frame state to prepare., LaserBeamRenderer, RenderContext, Renders a glowing laser beam as a world-space cylinder with caps., Computes and caches the laser beams from the current state. (+49 more)
+Nodes (52): BackgroundRenderer, RenderContext, Renders a fullscreen gradient quad behind the 3D scene., No per-frame state to prepare., _build_cylinder_verts(), _build_disc_verts(), LaserBeamRenderer, RenderContext (+44 more)
 
 ### Community 31 - "ArcCommand"
-Cohesion: 0.02
-Nodes (95): ArcCommand, ArcPreviewState, EntityID, GeoPoint, A command to create an arc with center, start, and end points., The final end point ID after execute(), or None., Creates preview state after first click (center point). Args: registry: The…, Sets the start point and creates the preview arc entity. Args: registry: The… (+87 more)
+Cohesion: 0.03
+Nodes (90): ArcCommand, EntityID, GeoPoint, A command to create an arc with center, start, and end points., The final end point ID after execute(), or None., Creates preview state after first click (center point). Args: registry: The…, Sets the start point and creates the preview arc entity. Args: registry: The…, Creates preview arc entity after start point is set. This method expects… (+82 more)
 
 ### Community 32 - "RadiusConstraint"
 Cohesion: 0.03
-Nodes (66): CreateOrEditConstraintCommand, Returns the constraint involved in this operation. After execute(), this…, Returns True if a new constraint was created, False if existing., Creates a constraint for an entity, or returns existing one for editing. This…, Returns existing constraint for entity, or None. Args: sketch: The sketch…, Creates and returns a new constraint for the entity. Args: sketch: The sketch…, DiameterConstraint, Any (+58 more)
+Nodes (68): CreateOrEditConstraintCommand, Returns the constraint involved in this operation. After execute(), this…, Returns True if a new constraint was created, False if existing., Creates a constraint for an entity, or returns existing one for editing. This…, Returns existing constraint for entity, or None. Args: sketch: The sketch…, Creates and returns a new constraint for the entity. Args: sketch: The sketch…, DiameterConstraint, Any (+60 more)
 
 ### Community 34 - "SnapMixin"
-Cohesion: 0.04
-Nodes (30): BezierCommand, EntityID, GeoPoint, Converts a line preview to a bezier preview. Control points belong to BEZIER…, Update control points during bezier drag. The drag controls the bezier's cp2…, A command to create a cubic bezier curve or line segment. Control points are…, PathTool, Context (+22 more)
+Cohesion: 0.05
+Nodes (23): EntityID, GeoPoint, Converts a line preview to a bezier preview. Control points belong to BEZIER…, Update control points during bezier drag. The drag controls the bezier's cp2…, PathTool, Context, Constrain model position to horizontal or vertical from start., Handles creating lines and bezier curves with a unified workflow. Workflow: -… (+15 more)
 
 ### Community 35 - "MachinePanel"
 Cohesion: 0.03
-Nodes (40): MachinePanel, Axis, ndarray, Point3D, Rect, Whether rotary mapping can compose with this panel setup., Watch for bed-dimension changes that require camera reprojection. A rotated…, Preserve physical camera calibration across orientation changes. (+32 more)
+Nodes (41): MachinePanel, Axis, ndarray, Point3D, Rect, Whether rotary mapping can compose with this panel setup., Watch for bed-dimension changes that require camera reprojection. A rotated…, Preserve physical camera calibration across orientation changes. (+33 more)
 
 ### Community 36 - "TextBoxTool"
-Cohesion: 0.12
-Nodes (8): EntityID, Public method to begin editing an existing text box., Called by the UI timer to toggle the cursor's visual state., Selects the word at the current cursor position., Selects the entire line at the current cursor position., Finds the best cursor position based on a click in model space., Sets the selection range., TextBoxTool
+Cohesion: 0.06
+Nodes (23): Starts the cursor blinking timer when text editing begins., Resets the cursor blink timer to ensure visibility immediately after moving., Context, EntityID, Extends the selection to a new position., Public method to begin editing an existing text box., Called by the UI timer to toggle the cursor's visual state., Selects the word at the current cursor position. (+15 more)
 
 ### Community 37 - "MachineSpace"
 Cohesion: 0.03
-Nodes (73): AxisDirection, MachineSpace, OriginCorner, Enum, Coordinate Space Classes. This module defines explicit coordinate space types…, The machine's native coordinate system. Configured based on machine settings…, Origin corner for a coordinate system., Returns the (width, height) of the workarea in mm. (+65 more)
+Nodes (79): Handles commands related to stock material., StockCmd, AxisDirection, MachineSpace, OriginCorner, Enum, Coordinate Space Classes. This module defines explicit coordinate space types…, The machine's native coordinate system. Configured based on machine settings… (+71 more)
 
 ### Community 38 - "BaseArtifactHandle"
-Cohesion: 0.07
-Nodes (32): BaseArtifact, ABC, BaseArtifactHandle, create_handle_from_dict(), ABC, Any, This special method is called whenever a class inherits from…, Serializes the handle to a dictionary. Subclasses will be handled correctly. (+24 more)
+Cohesion: 0.04
+Nodes (56): BaseArtifact, ABC, BaseArtifactHandle, create_handle_from_dict(), ABC, Any, This special method is called whenever a class inherits from…, Serializes the handle to a dictionary. Subclasses will be handled correctly. (+48 more)
 
 ### Community 39 - "Shader"
-Cohesion: 0.02
-Nodes (83): ModelPreviewWidget, ndarray, Path, Standalone 3D model preview widget for Rayforge settings., Renders pre-loaded mesh data as GL_TRIANGLES., No per-frame scene state to prepare., Not used — the preview widget drives :meth:`draw` directly. This renderer is…, A minimal GLArea widget that displays a single .glb model. (+75 more)
-
-### Community 40 - "DocEditor"
-Cohesion: 0.01
-Nodes (226): Adaptive clearing step settings page., CNC step settings widget base., Inner profiling step settings page., Outer profiling step settings page., Toroidal clearing step settings page., AreaToleranceRow, SpinRow, CNC area-tolerance row widget. (+218 more)
-
-### Community 41 - "SnapLineType"
 Cohesion: 0.04
-Nodes (90): IndexedLine, SnapLineIndex, SnapLine, SnapLineType, Tests query with a registered producer., Tests get_visible_snap_lines method., Tests snapping to both horizontal and vertical lines., Tests finding crossing lines for a snap point. (+82 more)
+Nodes (40): BackgroundShader, Fullscreen background gradient shader., Fullscreen gradient shader used as the canvas backdrop., Sets every uniform this shader reads to its idle value., Any, ndarray, Self, Sets all uniforms to their neutral/idle values. Called once at the start of a… (+32 more)
+
+### Community 40 - "get_context"
+Cohesion: 0.01
+Nodes (266): cnc_machine(), editor(), fixture, UI fixtures for cnc_essentials page tests., A test-isolated TaskManager for sync UI tests., A UI context for CNC addon tests., A machine with a spindle head, set as the active machine., ui_context() (+258 more)
+
+### Community 41 - "SnapLine"
+Cohesion: 0.07
+Nodes (43): IndexedLine, SnapLineIndex, SnapLine, Tests adding multiple snap lines using add_all., Tests clearing the snap line index., Tests IndexedLine with a SnapLine., Tests querying horizontal snap lines., Tests querying vertical snap lines. (+35 more)
 
 ### Community 42 - "DeviceState"
-Cohesion: 0.01
-Nodes (135): DeviceState, Represents the complete state of a device at a moment in time., error_code_to_device_error(), _parse_buffer_state(), _parse_feed_rate(), _parse_pos(), _parse_position_attribute(), parse_state() (+127 more)
+Cohesion: 0.03
+Nodes (67): DeviceState, Represents the complete state of a device at a moment in time., parse_state(), _pos_from_inches(), Pos, Convert a position tuple reported in inches to millimeters. ``None`` entries…, Recalculate positions based on GRBL equations for consistency. Also infers WCO…, Parse GRBL status string into DeviceState. Args: state_str: Status string like… (+59 more)
 
-### Community 43 - "TextBoxEntity"
-Cohesion: 0.01
-Nodes (184): AddFillCommand, ColorRGBA, Command to add a Fill to a sketch., Command to remove a Fill from a sketch., Command to set or toggle the fill color on a TextBoxEntity., RemoveFillCommand, SetTextFillCommand, ModifyTextPropertyCommand (+176 more)
+### Community 43 - "Fill"
+Cohesion: 0.03
+Nodes (60): AddFillCommand, Command to add a Fill to a sketch., Command to remove a Fill from a sketch., RemoveFillCommand, Fill, ColorRGBA, Represents a filled area bounded by sketch entities., FillTool (+52 more)
 
 ### Community 44 - "VarDefinitionRowWidget"
-Cohesion: 0.04
-Nodes (39): adjust_value(), Any, EntryRow, Popover, PreferencesRow, Scale, setter, SpinRow (+31 more)
+Cohesion: 0.06
+Nodes (27): adjust_value(), Any, EntryRow, PreferencesRow, Scale, SpinRow, Switch, Updates the row title and subtitle based on var state. (+19 more)
 
 ### Community 45 - "FileCmd"
-Cohesion: 0.04
-Nodes (50): context_initializer(), file_cmd(), mock_editor(), fixture, Mock context initializer., Provides a DocEditor instance with mocked dependencies., Provides a FileCmd instance for testing., FileCmd (+42 more)
+Cohesion: 0.03
+Nodes (57): context_initializer(), file_cmd(), mock_editor(), fixture, Mock context initializer., Provides a DocEditor instance with mocked dependencies., Provides a FileCmd instance for testing., Provides a simple WorkPiece instance for testing. (+49 more)
 
 ### Community 46 - "Doc"
-Cohesion: 0.04
-Nodes (85): Doc, Returns a list of all child items that are StockItems., Retrieves a SourceAsset from the document's registry by its UID., Adds or updates an asset in the document's unified registry and maintains its…, Retrieves any asset from the document's registry by its UID., Sets the canonical order for all assets., Returns a dictionary of all assets of a specific type. Args: type_name: The…, Returns a dictionary of all SourceAssets for compatibility. NOTE: The order of… (+77 more)
+Cohesion: 0.02
+Nodes (119): Doc, Layer, setter, T, Returns a list of all child items that are StockItems., Retrieves a SourceAsset from the document's registry by its UID., Serializes the document and its children to a dictionary., Adds or updates an asset in the document's unified registry and maintains its… (+111 more)
 
 ### Community 47 - "scene_renderer.py"
-Cohesion: 0.02
-Nodes (111): A collection of utility classes and functions for simplifying common PyOpenGL…, Bag of shaders passed to ``render``. Each renderer picks the program it needs…, set_line_width(), ShaderSet, Composite per-frame rendering state, sectioned by concern. Matrices are row-…, RenderContext, Per-frame render context sections. The RenderContext is a composite of four…, ndarray (+103 more)
+Cohesion: 0.03
+Nodes (93): A collection of utility classes and functions for simplifying common PyOpenGL…, Bag of shaders passed to ``render``. Each renderer picks the program it needs…, set_line_width(), ShaderSet, Composite per-frame rendering state, sectioned by concern. Matrices are row-…, RenderContext, Per-frame render context sections. The RenderContext is a composite of four…, AxisRenderer3D (+85 more)
 
 ### Community 48 - "convert_to_profile"
-Cohesion: 0.07
-Nodes (18): convert_to_profile(), _map_driver(), _map_origin(), parse_lbdev(), Path, Parse a LightBurn .lbdev JSON file and return the first device., Parse a LightBurn ``.lbdev`` file and produce a :class:`DeviceProfile` and…, _make_lbdev() (+10 more)
+Cohesion: 0.14
+Nodes (8): convert_to_profile(), Parse a LightBurn ``.lbdev`` file and produce a :class:`DeviceProfile` and…, _make_lbdev(), Write a minimal .lbdev file and return its path., cameraMatrix without distortionMatrix still gets captured., Tests using the real ACMER P3 2-IN-1 profile asset., TestConvertToProfile, TestRealLBDevAsset
 
 ### Community 49 - "checker.py"
 Cohesion: 0.10
@@ -1756,75 +1732,75 @@ Nodes (26): Ops, SanityContext, BaseCheck, ABC, _extent_msg(), ExtentCheck2D, No
 
 ### Community 50 - "Entity"
 Cohesion: 0.03
-Nodes (35): Calculates the full set of items to be deleted based on the current selection,…, Entity, Any, EntityID, Geometry, Polygon, Rect, Returns True if the entity is fully strictly contained within the rect. Used… (+27 more)
+Nodes (40): EntityID, GeoPoint, Find Line entities connected to this waypoint. Returns list of (line_id,…, Remove Line entities and add Bezier entities in their place., Remove Bezier entities and restore Line entities., Command to change a waypoint's type (sharp/smooth/symmetric). When converting…, Get the incoming and outgoing direction vectors at this waypoint. Returns…, SetWaypointTypeCommand (+32 more)
 
-### Community 51 - "addon_manager.py"
+### Community 51 - "Addon"
 Cohesion: 0.03
-Nodes (83): Addon, AddonAuthor, AddonMaturity, AddonProvides, AddonValidationError, AddonState, Enum, Represents the installation status of an addon from the registry. (+75 more)
+Nodes (75): Addon, AddonAuthor, AddonLicense, AddonMaturity, AddonProvides, AddonValidationError, parse_maturity(), _parse_version_entries() (+67 more)
 
 ### Community 52 - "SketchElement"
-Cohesion: 0.02
-Nodes (77): GestureClick, ModifierType, Handles a right-click on the PieMenu. Just closes it - the user can right-click…, Opens the pie menu at the cursor location with resolved context. This is the…, The SketchEditor provides a controller for an interactive sketch editing…, Stops the cursor blinking timer., Safely removes the GLib timer source., Callback to reset the key sequence after a delay. (+69 more)
+Cohesion: 0.04
+Nodes (39): Context, setter, Connects to signals that indicate the model has changed., Disconnects signals to prevent leaks., Central handler for all model changes. Triggers a solve and redraw., Overrides remove to cleanup signal connections., Executes a command via the history manager if available., Helper method to check if any internal items (points, entities, etc.) are… (+31 more)
 
 ### Community 53 - "._panel"
 Cohesion: 0.06
 Nodes (31): _make_cylinder_zone(), _make_rect_zone(), parametrize, ROTATED_LEFT rotates the visible origin corner one step counter-clockwise…, ROTATED_RIGHT rotates the visible origin corner one step clockwise around the…, A BOTTOM_LEFT bed, rotated, moves its visible origin so the displayed axis…, Rotation swaps which native reversal flag drives each displayed axis; NATIVE…, Tests for the composed world<->machine transforms that include the panel… (+23 more)
 
-### Community 54 - "test_ruida_scale_jobs.py"
-Cohesion: 0.20
-Nodes (15): _cut_scale_ops(), The closed bounding-box loop, starting and ending at (0, 0)., Build a one-layer job that cuts the bounding box., _rect_corners(), _commands(), machine(), fixture, What the Go Scale and Cut Scale actions put on the wire. Go Scale is plain… (+7 more)
+### Community 54 - "Command"
+Cohesion: 0.06
+Nodes (29): Command, ABC, Checks if the 'next_command' can be merged into this one without modifying the…, Attempts to merge the 'next_command' into this one. If successful, this…, Checks if this command should be skipped from being added to the undo stack.…, Abstract base class for an undoable action., CompositeCommand, Executes all child commands in order. (+21 more)
 
 ### Community 55 - "Config"
 Cohesion: 0.02
-Nodes (71): setter, Get the current language code for localized content. Returns: Language code…, Set the current language for localized content. Args: value: Language code…, Initializes the context. This constructor is lightweight and safe to call from…, CanvasViewState, Config, ConfigManager, OpsColorMode (+63 more)
+Nodes (93): Updates the grid unit when the user's unit preference changes., CanvasViewState, Config, ConfigManager, OpsColorMode, Any, Enum, Path (+85 more)
 
-### Community 56 - "TestRecipe"
+### Community 56 - "Recipe"
 Cohesion: 0.02
-Nodes (59): Any, Serializes the Recipe to a dictionary suitable for YAML., Deserializes a Recipe from a dictionary. Migrates the legacy…, Resolve ``target_step_types`` from new and legacy keys., mock_machine_a(), mock_machine_b(), fixture, Step (+51 more)
+Nodes (85): Any, Checks if this recipe is a valid candidate for the given context. Args:…, Checks if this recipe matches a single stock item., Calculates a score based on how specific the recipe's criteria are. A lower…, An icon name representing this recipe's targeted step types. When exactly one…, A comma-joined label of the targeted step types. Returns ``None`` when the…, Serializes the Recipe to a dictionary suitable for YAML., Deserializes a Recipe from a dictionary. Migrates the legacy… (+77 more)
 
 ### Community 57 - "test_intent_builder.py"
 Cohesion: 0.06
-Nodes (89): IntentBuilder, job_encode_key(), job_key(), job_machinexform_key(), Builds a flat :class:`NodeRequest` list from a :class:`Doc`. The builder is…, step_key(), workpiece_key(), raygeo ``on_completed`` callback. Invoked on a rayon worker thread with the GIL… (+81 more)
+Nodes (90): IntentBuilder, job_encode_key(), job_key(), job_machinexform_key(), Builds a flat :class:`NodeRequest` list from a :class:`Doc`. The builder is…, step_key(), workpiece_key(), _make_doc() (+82 more)
 
 ### Community 58 - "MainWindow"
 Cohesion: 0.02
-Nodes (35): MainWindow, Path, Handler for 'zero-here' action., Handler for clicks on the canvas overlay area (the 'dead space'). It unfocuses…, Handles activation of a new layer. Updates the workflow view and resets the…, Removes the toast from the tracking list when dismissed., Clears all active toasts from the toast overlay., Handles the 'close-request' signal to check for unsaved changes. For GTK… (+27 more)
+Nodes (35): MainWindow, Path, Handler for 'zero-here' action., Handler for clicks on the canvas overlay area (the 'dead space'). It unfocuses…, Handles the 'machine_selected' signal from the MachineSelector widget,…, Handles activation of a new layer. Updates the workflow view and resets the…, Removes the toast from the tracking list when dismissed., Clears all active toasts from the toast overlay. (+27 more)
 
 ### Community 59 - "RuidaParser"
-Cohesion: 0.04
-Nodes (58): MockerFixture, Parses the Ruida data into a job object., Rect, Represents a single geometric or state command tagged with a layer index., The complete logical representation of a job for a Ruida controller. This…, Calculates the bounding box (min_x, min_y, max_x, max_y) in mm of all geometric…, Defines the parameters for a single Ruida 'color' or 'layer'. These settings…, RuidaGeoCommand (+50 more)
+Cohesion: 0.05
+Nodes (51): MockerFixture, Rect, Represents a single geometric or state command tagged with a layer index., The complete logical representation of a job for a Ruida controller. This…, Calculates the bounding box (min_x, min_y, max_x, max_y) in mm of all geometric…, Defines the parameters for a single Ruida 'color' or 'layer'. These settings…, RuidaGeoCommand, RuidaJob (+43 more)
 
 ### Community 60 - "SmoothieDriver"
-Cohesion: 0.11
-Nodes (6): Any, Returns a GcodeEncoder configured for the machine's dialect., Executes a raw G-code string by sending it line-by-line to the device and…, Handles Smoothie-based devices via Telnet, SmoothieDriver, Test that get_encoder returns a GcodeEncoder instance.
+Cohesion: 0.03
+Nodes (43): Any, Axis, Pos, Returns a GcodeEncoder configured for the machine's dialect., Executes a raw G-code string by sending it line-by-line to the device and…, Smoothie supports homing for all axes., Homes the specified axes or all axes if none specified. Args: axes: Optional…, Smoothie supports jogging for all axes. (+35 more)
 
 ### Community 61 - "test_bmp.py"
-Cohesion: 0.02
-Nodes (103): RasterRenderer, A base renderer for raster formats that handles the complex logic for high-…, BmpImporter, Path, Scans the BMP header to extract dimensions and calculate physical size., Creates a SourceAsset for BMP import., _get_row_offset(), is_valid_bmp_signature() (+95 more)
+Cohesion: 0.03
+Nodes (83): BmpImporter, Path, Scans the BMP header to extract dimensions and calculate physical size., _get_row_offset(), is_valid_bmp_signature(), parse_bmp(), _parse_core_header(), _parse_core_palette() (+75 more)
 
 ### Community 62 - "Canvas"
 Cohesion: 0.04
-Nodes (44): Canvas, Any, ColorRGBA, Context, ModifierType, Stores the initial state for a rotation operation. The x and y coordinates are…, Handles the end of a drag operation, finalizing transforms., Handles the completion of a click that did not become a drag. This is where the… (+36 more)
+Nodes (47): Canvas, Any, ColorRGBA, Context, ModifierType, Stores the initial state for a rotation operation. The x and y coordinates are…, Handles the end of a drag operation, finalizing transforms., Handles the completion of a click that did not become a drag. This is where the… (+39 more)
 
 ### Community 63 - "test_producer_equidistant.py"
-Cohesion: 0.04
+Cohesion: 0.03
 Nodes (59): EquidistantLinesProducer, GeoPoint, drag_context(), producer(), fixture, Tests that spacing attribute is set correctly., Tests that pattern_coords includes all pattern points., Tests that axis_coord is set correctly. (+51 more)
 
 ### Community 64 - "asyncio"
 Cohesion: 0.05
-Nodes (42): MotionClientSpy, move_target(), moves(), moves_after_stop(), asyncio, Failing reproductions for the findings in MOTION_AUDIT.md. Every test here…, MOT-02: a Stop pressed while the pipeline runs must hold., MOT-03: releasing half a diagonal after STOP must not move. (+34 more)
+Nodes (43): MotionClientSpy, move_target(), moves(), moves_after_stop(), asyncio, Failing reproductions for the findings in MOTION_AUDIT.md. Every test here…, MOT-02: a Stop pressed while the pipeline runs must hold., MOT-03: releasing half a diagonal after STOP must not move. (+35 more)
 
 ### Community 65 - "get_icon"
-Cohesion: 0.03
-Nodes (49): Add/edit dialog for a single tool. Follows the recipe-editor convention: a…, Frontend for the tool_library addon. Registers :class:`ToolManagerPage` in the…, once_per_object(), Reusable image↔world alignment widget. Owns the live camera surface, the point-…, Box, Material library list UI components for Rayforge., Base for settings groups that manage a transformer., The recipe editor's applicability page: when a recipe matches. (+41 more)
+Cohesion: 0.01
+Nodes (167): ConflictingConstraintsWidget, Highlights the constraint on the canvas when hovering., Removes highlight when leaving the row., Selects the constraint when the row is clicked., Deletes the constraint., A widget that displays conflicting constraints in the sketch studio. Shows a…, Sets the sketch element to monitor for conflicts., Updates the list of conflicting constraints. (+159 more)
 
 ### Community 66 - "ElementRegion"
 Cohesion: 0.04
-Nodes (53): Cursor, Determines the appropriate cursor based on the current tool and context (e.g.,…, CrosshairElement, Context, A draggable crosshair marker. The element draws a small crosshair + ring and…, A small, draggable crosshair at a given world position. Call ``move_to(x, y)``…, Places the visual centre at ``(x, y)`` world., get_cursor_for_region() (+45 more)
+Nodes (78): Cursor, Determines the appropriate cursor based on the current tool and context (e.g.,…, A draggable crosshair marker. The element draws a small crosshair + ring and…, Enum, Defines the interaction mode for the current selection., SelectionMode, get_cursor_for_region(), get_rotated_arc_cursor() (+70 more)
 
-### Community 67 - "MaterialAppearance"
+### Community 67 - "test_laser.py"
 Cohesion: 0.04
-Nodes (38): MaterialAppearance, Any, Path, Convert the material to a dictionary representation. Returns: Dictionary…, Save the material to a YAML file. Args: file_path: Path to save the file. If…, Defines the visual properties of a material., Create an instance from a dictionary., Convert the appearance to a dictionary. (+30 more)
+Nodes (42): LaserType, Enum, Test that focus power survives a full serialization roundtrip., Test that old format data (without _percent fields) is converted correctly., Test that new format data (with _percent fields) is deserialized correctly., Test that serialization includes only percentage fields., Tests that from_dict() preserves extra fields from newer versions and to_dict()…, Tests that from_dict() handles missing optional fields gracefully (simulating… (+34 more)
 
 ### Community 68 - "test_dither.py"
 Cohesion: 0.02
@@ -1832,11 +1808,11 @@ Nodes (124): DitherAlgorithm, Enum, ndarray, Dithering algorithms for converting
 
 ### Community 69 - "ActionManager"
 Cohesion: 0.03
-Nodes (34): ActionManager, SimpleAction, Variant, Manages the creation and state of all Gio.SimpleActions for the app., Creates all Gio.SimpleActions and adds them to the window., Updates the enabled state of actions based on document state., Handler for the 'add-stock' action., Handler for the 'activate-stock' action. (+26 more)
+Nodes (33): ActionManager, SimpleAction, Variant, Manages the creation and state of all Gio.SimpleActions for the app., Updates the enabled state of actions based on document state., Handler for the 'add-stock' action., Handler for the 'activate-stock' action., Handler for the 'edit-stock-item' action. (+25 more)
 
 ### Community 70 - "MaterialLibrary"
-Cohesion: 0.03
-Nodes (45): MaterialLibrary, Load all materials from the library directory. Scans the directory for .yaml…, Represents a single material library. Manages loading materials from a…, Get a material by UID. Args: uid: Unique identifier of the material Returns:…, Get all materials in the library. Returns: List of all materials, Remove a material from the library. Args: uid: Unique identifier of the…, Save library metadata to disk. This method persists the current state of the…, Reload all materials from the directory. (+37 more)
+Cohesion: 0.01
+Nodes (206): LibraryManager, Path, Library manager for material libraries in Rayforge., Save library changes to disk by delegating to the library's save method. Args:…, Get a library by ID. Args: library_id: ID of the library Returns:…, Get all libraries. Returns: List of all MaterialLibrary instances, Get a material by UID, searching all libraries. Args: uid: Unique identifier of…, Application-wide manager for material libraries. Manages multiple… (+198 more)
 
 ### Community 71 - "Material Definition Schema"
 Cohesion: 0.07
@@ -1844,31 +1820,31 @@ Nodes (66): Addon Manifest Contract, Post Processors Capability, Sketcher Capabi
 
 ### Community 72 - "RuidaDriver"
 Cohesion: 0.04
-Nodes (16): Any, setter, Nothing to clear: this driver models no alarm state. It used to send D8 01 Stop…, Remember the press-and-hold jog speed. Args: speed: Jog speed in mm/min., Where the head is in machine space, or None if unknown., Set a reference point offset on the controller. Args: wcs_slot: "REF0" or…, Select a reference point mode on the controller. Args: wcs: "REF0", "REF1", or…, Whether background polling is currently suspended. (+8 more)
+Nodes (15): Stream C9 02 at the profile's max travel speed., Nothing to clear: this driver models no alarm state. It used to send D8 01 Stop…, Machine-space micrometres as the controller counts them., Remember the press-and-hold jog speed. Args: speed: Jog speed in mm/min., Set a reference point offset on the controller. Args: wcs_slot: "REF0" or…, Select a reference point mode on the controller. Args: wcs: "REF0", "REF1", or…, Whether background polling is currently suspended., Hold off background polling for the duration of a block. A counter rather than… (+7 more)
 
-### Community 73 - "AxisSet"
-Cohesion: 0.11
-Nodes (11): AxisConfig, AxisDirection, AxisSet, AxisType, Any, Axis, Enum, TestAxisConfig (+3 more)
+### Community 73 - "MachineState"
+Cohesion: 0.05
+Nodes (52): _axis_direction(), build_assembly(), create_kinematics(), _joint_axis_for_rotary(), Kinematics, Axis, HeadSpec, ndarray (+44 more)
 
-### Community 74 - "test_doc.py"
+### Community 74 - "EngraveStep"
+Cohesion: 0.06
+Nodes (24): _build_raster_part(), EngraveStep, Any, ComputePayload, ndarray, Part, The head's raster color, used to represent engraving., The raster assembler bakes ``workpiece.bbox`` into its output via… (+16 more)
+
+### Community 75 - "ContourStep"
 Cohesion: 0.03
-Nodes (59): doc(), fixture, parametrize, Test adding a layer fires descendant_added with the layer as origin., Test removing a layer fires descendant_removed with the layer as origin., A step whose class is not registered is reported by its stored step type name…, Old documents without a step_type field fall back to the stored typelabel…, Provides a real Doc instance. No mocks needed. (+51 more)
-
-### Community 75 - "LaserHead"
-Cohesion: 0.01
-Nodes (153): ContourStep, ComputePayload, Part, Build a :class:`Part` (from the workpiece's vector geometry) and a…, Expose the resolved assembler kwargs for the compute token., Apply importer-provided settings this step owns., _build_raster_part(), EngraveStep (+145 more)
+Nodes (57): ContourStep, ComputePayload, Part, Build a :class:`Part` (from the workpiece's vector geometry) and a…, Expose the resolved assembler kwargs for the compute token., Apply importer-provided settings this step owns., hookimpl, Backend entry point for laser-essentials addon. Registers steps with the main… (+49 more)
 
 ### Community 76 - "decode35"
-Cohesion: 0.02
-Nodes (85): Ruida Client Protocol - Client-side command generation and sending. Handles…, Ruida codec for swizzle encoding/decoding with magic key management. The magic…, Ruida protocol static maps and constants. Based on: -…, Layer 4 (Application/Protocol) shared structures for Ruida protocol. Contains…, Machine state for Ruida controller., Look up memory address and return (name, value)., Represents a parsed Ruida command. Attributes: cmd: Primary command byte…, Return the length of the raw command data. (+77 more)
+Cohesion: 0.05
+Nodes (39): Handle decoded data from the transport layer. Parses DA memory read responses…, Handle immediate/end power commands., Handle C9 speed commands., Handle CA layer/mode commands., Handle 0x80 axis move commands., Handle 0xA0 axis move commands., Handle F2 element commands., Log a command description. (+31 more)
 
-### Community 77 - "ProceduralSpec"
-Cohesion: 0.04
-Nodes (38): Creates a new material test grid, including its Step and WorkPiece, and adds…, Any, Serializes the configuration to a dictionary., Deserializes a dictionary into a SourceAssetSegment instance., color_attr_from_value(), ProceduralSpec, Any, ColorAttr (+30 more)
+### Community 77 - ".render_base_image"
+Cohesion: 0.40
+Nodes (3): Image, Helper to deserialize the recipe and import a function., Renders the procedural recipe at the target preview dimensions.
 
-### Community 78 - "run_on_main_thread"
-Cohesion: 0.08
-Nodes (45): _configure_circular_dialog(), main(), Screenshot: Circular array dialog with canvas showing array preview. Usage:…, Select all content items on the active layer., Set circular dialog to 8 copies, 360 degrees., _select_all_items(), _configure_grid_dialog(), main() (+37 more)
+### Community 78 - "array_circular.py"
+Cohesion: 0.13
+Nodes (22): _configure_circular_dialog(), main(), Screenshot: Circular array dialog with canvas showing array preview. Usage:…, Select all content items on the active layer., Set circular dialog to 8 copies, 360 degrees., _select_all_items(), _configure_grid_dialog(), main() (+14 more)
 
 ### Community 79 - "test_circle_cmd.py"
 Cohesion: 0.06
@@ -1876,15 +1852,15 @@ Nodes (47): CircleCommand, EntityID, GeoPoint, A command to create a circle with
 
 ### Community 81 - "is_newer_version"
 Cohesion: 0.07
-Nodes (15): Finds an installed addon by its canonical ID. Returns: The Addon object if…, Checks a remote addon against local installations. Returns: A tuple of…, is_newer_version(), normalize_tilde_version(), parse_version_constraint(), Parse a version constraint string into operator and version. Args: constraint:…, Normalize partial versions for tilde operator. Args: version_str: Version…, Compares two version strings using semver. (+7 more)
+Nodes (17): Finds an installed addon by its canonical ID. Returns: The Addon object if…, Checks a remote addon against local installations. Returns: A tuple of…, is_newer_version(), normalize_tilde_version(), parse_version_constraint(), Parse a version constraint string into operator and version. Args: constraint:…, Sentinel class representing an unknown or undetermined version. Used for Git…, Normalize partial versions for tilde operator. Args: version_str: Version… (+9 more)
 
 ### Community 83 - "Driver"
 Cohesion: 0.01
-Nodes (96): Driver, ABC, Any, Axis, Pos, Abstract base class for all drivers. All drivers must provide the following…, Returns the machine space coordinate system identifier. This is an immutable…, Returns a human-readable display name for the machine space coordinate system. (+88 more)
+Nodes (95): Driver, ABC, Any, Axis, Pos, Abstract base class for all drivers. All drivers must provide the following…, Returns the machine space coordinate system identifier. This is an immutable…, Returns a human-readable display name for the machine space coordinate system. (+87 more)
 
 ### Community 85 - "Step"
-Cohesion: 0.02
-Nodes (78): ABC, Any, CoolantMode, The step attribute keys eligible for recipe extraction. Derived from…, Transformer dicts common to all the given step types. Analogous to…, Return a ``name -> dict`` map, keeping the first occurrence. Used to…, Factory method to create a fully configured step instance. Subclasses must…, Build the kwargs dict for :meth:`~.AssemblerRegistry.assemble`. (+70 more)
+Cohesion: 0.03
+Nodes (51): Any, CoolantMode, Transformer dicts common to all the given step types. Analogous to…, Return a ``name -> dict`` map, keeping the first occurrence. Used to…, Factory method to create a fully configured step instance. Subclasses must…, Build the kwargs dict for :meth:`~.AssemblerRegistry.assemble`., Build the raygeo :class:`Part` and :class:`ComputePayload` for a workpiece…, Return a JSON-serialisable dict of the assembler spec parameters that this step… (+43 more)
 
 ### Community 86 - "test_item.py"
 Cohesion: 0.05
@@ -1892,19 +1868,19 @@ Nodes (52): ConcreteItem, GroupItem, Tests adding children, including re-parenti
 
 ### Community 87 - "GrblSerialTransport"
 Cohesion: 0.04
-Nodes (36): BufferStallError, GrblResponse, GrblSerialTransport, PendingCommand, Exception, NamedTuple, Queue, Parse raw serial bytes into GRBL responses. Scans for 'ok' and 'error:'… (+28 more)
+Nodes (37): BufferStallError, GrblResponse, GrblSerialTransport, PendingCommand, Exception, NamedTuple, Queue, Parse raw serial bytes into GRBL responses. Scans for 'ok' and 'error:'… (+29 more)
 
 ### Community 88 - "PdfTraceImporter"
-Cohesion: 0.06
-Nodes (25): PdfImporter, Path, A Facade importer for PDF files. Routes the import request to either the Vector…, PdfTraceImporter, Path, Imports vector data from PDF files by rasterizing and tracing. This importer…, create_empty_pdf(), create_large_pdf() (+17 more)
+Cohesion: 0.08
+Nodes (22): PdfTraceImporter, Path, Imports vector data from PDF files by rasterizing and tracing. This importer…, create_empty_pdf(), create_large_pdf(), create_pdf_with_gradient(), create_pdf_with_shapes(), empty_pdf() (+14 more)
 
 ### Community 90 - "machine.py"
 Cohesion: 0.01
-Nodes (305): cnc_machine(), editor(), fixture, UI fixtures for cnc_essentials page tests., A test-isolated TaskManager for sync UI tests., A UI context for CNC addon tests., A machine with a spindle head, set as the active machine., ui_context() (+297 more)
+Nodes (205): Returns the plugin manager., Returns the config manager., Returns the camera manager., Returns the material manager., A central, singleton context for managing the lifecycle of major application…, Returns the debug dump manager., Shuts down all managed services in the correct order., Returns the active machine from the config, or None if the config or machine is… (+197 more)
 
 ### Community 91 - "NoDeviceDriver"
-Cohesion: 0.04
-Nodes (23): NoDeviceDriver, Any, Axis, Pos, Dummy implementation that simulates command execution. This implementation…, Dummy implementation that simulates raw G-code execution., Dummy driver supports homing for all axes., Sets the laser power to the specified percentage of max power. Args: head: The… (+15 more)
+Cohesion: 0.03
+Nodes (48): NoDeviceDriver, Any, Axis, Pos, Dummy implementation that simulates command execution. This implementation…, Dummy implementation that simulates raw G-code execution., Dummy driver supports homing for all axes., Sets the laser power to the specified percentage of max power. Args: head: The… (+40 more)
 
 ### Community 92 - "test_ruida_layer_settings.py"
 Cohesion: 0.06
@@ -1919,308 +1895,308 @@ Cohesion: 0.04
 Nodes (37): Any, Serializes the registry to a dictionary., Deserializes a dictionary into an EntityRegistry instance., fixture, Test behavior when looking up invalid IDs., Tests to_dict and from_dict for the entire EntityRegistry., Test checking if a point is referenced by any entity., Test that add_text_box creates a TextBoxEntity correctly. (+29 more)
 
 ### Community 95 - "RuidaEncoder"
-Cohesion: 0.02
-Nodes (109): setter, Power floor, normalized 0-1. RDWorks-style controllers apply it below their…, build_rd_bytes(), commands_to_rd_bytes(), export_rd(), _no_settings(), Ops, Path (+101 more)
+Cohesion: 0.04
+Nodes (49): setter, Power floor, normalized 0-1. RDWorks-style controllers apply it below their…, _no_settings(), Ops, Handle JobEndCommand - emit the Ruida job tail. Matches the RDWorks ground-…, The pre-scanned settings for one part, by index. The pre-scan nominated this…, Report a part the job prologue never declared., Emit one part's body block, at an index the pre-scan chose. Matches the RDWorks… (+41 more)
 
 ### Community 96 - "test_unified_wizard.py"
-Cohesion: 0.10
-Nodes (56): CameraPage, Device IDs the user has enabled on this page., _make_wizard(), _profile(), ui, UI tests for the Unified Machine Configuration Wizard., A picked profile carries trusted specs, so after Connection the wizard skips…, Regression: the pulse bar wrapper must not orphan the page's scrollable content… (+48 more)
+Cohesion: 0.06
+Nodes (63): AILookupPage, _format_value(), Any, Button, EntryRow, Pin a thin pulse bar under the scrollable content, mirroring the AI workpiece…, Return a notify::active handler bound to this suggestion. ``notify::active``…, CameraPage (+55 more)
 
 ### Community 97 - "test_view_manager.py"
 Cohesion: 0.05
-Nodes (53): WorkPieceViewArtifactHandle, WorkPieceArtifactHandle, Holds state for a single view artifact., ViewEntry, context(), mock_machine(), mock_pipeline(), mock_store() (+45 more)
+Nodes (54): Any, Ops, WorkPieceArtifactHandle, Holds state for a single view artifact., ViewEntry, context(), mock_machine(), mock_pipeline() (+46 more)
 
 ### Community 98 - "Reglas de color"
 Cohesion: 0.17
 Nodes (12): 1. Abrir la página de Reglas de color, 2. Añadir una regla, 3. Guardar, Administrar reglas, Agrupación automática por color, Comportamiento de importación, Crear reglas de color, Cómo funciona (+4 more)
 
 ### Community 99 - "TextRenderer"
-Cohesion: 0.08
-Nodes (19): ndarray, RenderContext, Resets GPU-bound state so a later init_gl can recreate it., Initializes all OpenGL resources., Helper to create and configure the OpenGL texture., Renders billboarded text in a 3D scene., No per-frame state to prepare., Renders a string of text at a given 3D position, facing the camera. The entire… (+11 more)
+Cohesion: 0.06
+Nodes (25): Sets the grid spacing and rebuilds the grid geometry if needed., Deletes the grid/axis/marker/frame buffers before rebuilding., Sets the extent frame position, dimensions and visibility., Initializes OpenGL resources for all components., Creates VAOs/VBOs for the grid and axis lines., Creates or updates the VAO/VBO for the extent frame., ndarray, RenderContext (+17 more)
 
 ### Community 101 - "Відстеження використання"
-Cohesion: 0.03
-Nodes (58): Аддони, Видалення аддонів, Встановлення аддонів, Встановлені аддони, Джерела аддонів, Керування аддонами, Огляд, Оновлення аддонів (+50 more)
+Cohesion: 0.04
+Nodes (49): Додати постачальника, Керування постачальниками, Пов'язані теми, Постачальник ШІ, Сумісний з OpenAI, Типи постачальників, Як це працює, Видалення машини (+41 more)
 
 ### Community 102 - "test_ruida_driver.py"
 Cohesion: 0.02
-Nodes (170): Retrieves the appropriate source data for rendering. This property…, build_datagrams(), Group whole commands into datagrams of at most max_size bytes. A command is…, driver(), _JogClientSpy, make_encoded(), _motion(), _origin_job_ops() (+162 more)
+Nodes (172): Retrieves the appropriate source data for rendering. This property…, build_datagrams(), Group whole commands into datagrams of at most max_size bytes. A command is…, driver(), _JogClientSpy, make_encoded(), _motion(), _origin_job_ops() (+164 more)
 
-### Community 103 - "pt-BR/docusaurus-plugin-content-docs/current/machine/general.md"
-Cohesion: 0.09
-Nodes (12): Adicionar uma Máquina, Alternar a Máquina Ativa, Editar uma Máquina, Excluir uma Máquina, Máquinas, Exemplo Simples, Noções Básicas de G-code, Processo de Alto Nível (+4 more)
+### Community 103 - "pt-BR/docusaurus-plugin-content-docs/current/ui/3d-preview.md"
+Cohesion: 0.08
+Nodes (17): Abrindo a janela do projetor, Modo Projetor, Modo tela cheia, O que o projetor mostra, Opacidade, Tópicos relacionados, Páginas Relacionadas, Verificações de Sanidade do Trabalho (+9 more)
 
 ### Community 104 - "CameraAlignment"
-Cohesion: 0.06
-Nodes (8): CameraAlignment, CameraAlignmentSurface, CameraController, Snapshot, Live alignment surface + point-pair editor for one camera. Emits ``applied``…, Reset / Clear / Apply buttons for the host's footer bar., PointBubbleWidget, Box
+Cohesion: 0.13
+Nodes (5): CameraAlignment, CameraController, Live alignment surface + point-pair editor for one camera. Emits ``applied``…, Reset / Clear / Apply buttons for the host's footer bar., Box
 
 ### Community 105 - "CanvasElement"
 Cohesion: 0.02
-Nodes (82): AxisExtentFrameElement, Sets the background color., A non-interactive CanvasElement that draws a red frame outline representing the…, Updates the size of the extent frame., A non-interactive CanvasElement that draws a gray background for the workarea…, Sets the frame color., WorkareaBackgroundElement, CameraImageElement (+74 more)
+Nodes (82): CameraController, Sets the camera controllers and creates/removes camera elements., Synchronizes camera elements with the current machine's cameras., AxisExtentFrameElement, Context, Sets the background color., Renders the workarea background as a filled rectangle., A non-interactive CanvasElement that draws a red frame outline representing the… (+74 more)
 
 ### Community 106 - "Arc"
-Cohesion: 0.04
-Nodes (44): Arc, Any, EntityID, Geometry, Polygon, Rect, Converts the arc to a Geometry object., Appends this arc to an existing geometry object. (+36 more)
+Cohesion: 0.08
+Nodes (14): Arc, Any, EntityID, Geometry, Polygon, Rect, Converts the arc to a Geometry object., Appends this arc to an existing geometry object. (+6 more)
 
 ### Community 107 - "tracing.py"
 Cohesion: 0.06
-Nodes (62): _apply_upscaling(), ColorMode, _convert_buffer_to_svg_with_vtracer(), _encode_color_to_buffer(), _encode_image_to_buffer(), _extract_svg_from_raw_output(), _fallback_to_enclosing_hull(), _fallback_to_hulls_from_image() (+54 more)
+Nodes (64): _apply_upscaling(), ColorMode, _convert_buffer_to_svg_with_vtracer(), _encode_color_to_buffer(), _encode_image_to_buffer(), _extract_svg_from_raw_output(), _fallback_to_enclosing_hull(), _fallback_to_hulls_from_image() (+56 more)
 
 ### Community 109 - "JogWidget"
 Cohesion: 0.04
-Nodes (34): JogDirection, Visual direction for jog operations., Calculate the signed coordinate delta for a jog operation based on a visual…, JogWidget, Label, The caption label of a button built with a label., Drive a jog button by press and release instead of by click. The button's own…, Set the machine this widget controls. (+26 more)
+Nodes (30): JogWidget, Label, The caption label of a button built with a label., Drive a jog button by press and release instead of by click. The button's own…, Set the machine this widget controls., Update button sensitivity based on machine capabilities. Each button's value is…, Update button styling based on whether jog would exceed limits., Widget for manually jogging the machine. (+22 more)
 
 ### Community 110 - "MovePointCommand"
 Cohesion: 0.05
-Nodes (51): MoveControlPointCommand, MovePointCommand, Any, EntityID, GeoPoint, An undoable command for moving a control point offset., Command to separate entities at a shared point., An undoable command for moving a sketch point, with coalescing. (+43 more)
+Nodes (44): MovePointCommand, An undoable command for moving a sketch point, with coalescing., Gets a live reference to the point object., fixture, Test that coalesce_with returns False for incompatible commands., Create a basic sketch for testing., Test that _get_point returns the correct point., Test that _get_point caches the point reference. (+36 more)
 
 ### Community 111 - "WorldSurface"
-Cohesion: 0.09
-Nodes (17): EventControllerScroll, Gesture, GestureDrag, Sets the visibility of the inner grid lines., Sets the visibility of the outer axis lines and labels., The WorldSurface provides a generic canvas with a real-world coordinate system…, Sets the pan position in mm and updates the axis importer., Sets the zoom level and updates the axis importer. The caller is responsible… (+9 more)
+Cohesion: 0.06
+Nodes (27): EventControllerKey, EventControllerScroll, Gesture, GestureClick, GestureDrag, ModifierType, Snapshot, Sets the visibility of the inner grid lines. (+19 more)
 
 ### Community 112 - "StockItem"
-Cohesion: 0.01
-Nodes (162): IAsset, Any, Protocol, setter, Signal, A protocol defining the common interface for all document assets. This allows…, The unique identifier of the asset instance., The user-facing name of the asset instance. (+154 more)
+Cohesion: 0.02
+Nodes (106): Deserializes the document from a dictionary., Any, Setter method for use with undo commands., Setter method for use with undo commands. Args: material_uid: The UID of the…, Returns the natural size of the stock's geometry bounding box., Setter method for use with undo commands., Returns a PNG thumbnail of the stock geometry., Represents a stock material definition in the asset library. This is not a… (+98 more)
 
 ### Community 114 - "PieMenu"
 Cohesion: 0.06
 Nodes (19): Window, Build prefix set for multi-key sequences., Widget, Handle tool selection signals., Subclass of PieMenu specifically for the SketcherCanvas. Builds menu…, Rebuild menu items based on context and tool availability., Returns True if the menu has any items., Get label with shortcut hint if available. (+11 more)
 
-### Community 115 - "ChangePropertyCommand"
-Cohesion: 0.02
-Nodes (106): Command, ABC, Checks if the 'next_command' can be merged into this one without modifying the…, Attempts to merge the 'next_command' into this one. If successful, this…, Checks if this command should be skipped from being added to the undo stack.…, Abstract base class for an undoable action., CompositeCommand, Executes all child commands in order. (+98 more)
+### Community 115 - "HistoryManager"
+Cohesion: 0.04
+Nodes (52): HistoryManager, Provides a context manager for grouping commands into a single transaction. If…, Starts an explicit transaction. All subsequent commands executed will be…, Ends the current transaction, creates a CompositeCommand, and adds it to the…, Aborts the current transaction, discarding any commands that were added since…, Undoes the last action., Redoes the last undone action., Undoes all actions up to and including the target command. (+44 more)
 
 ### Community 116 - "KinematicMapping"
-Cohesion: 0.19
-Nodes (7): KinematicMapping, Axis, ndarray, Ops, Applies rotary kinematic mapping to world-space ops. Converts Y-axis mu values…, Ops, TestKinematicMappingApply
+Cohesion: 0.08
+Nodes (21): build_layer_assembly(), KinematicMapping, Axis, Doc, Layer, ndarray, Ops, Applies rotary kinematic mapping to world-space ops. Converts Y-axis mu values… (+13 more)
 
-### Community 117 - "overlays.py"
-Cohesion: 0.12
-Nodes (32): Enum, Defines the interaction mode for the current selection., SelectionMode, _draw_arc_handle(), _draw_arrow_handle(), _draw_move_gizmo(), _draw_quad_handle(), _draw_rectangle_handle() (+24 more)
+### Community 117 - "RotaryModulePage"
+Cohesion: 0.07
+Nodes (9): Axis, Button, ToggleButton, Widget, An Adwaita widget for managing a list of rotary modules., A widget representing a single RotaryModule in a ListBox., RotaryModuleListEditor, RotaryModulePage (+1 more)
 
 ### Community 118 - "test_render_context_update.py"
-Cohesion: 0.08
-Nodes (30): Camera, ndarray, Calculates the projection matrix (perspective or orthographic). Returns: A 4x4…, Builds a perspective projection matrix., Builds an orthographic projection matrix., Moves the camera and its target sideways and up/down. Args: delta_x: The…, Moves the camera forward or backward along its line of sight. In orthographic…, Orbits the camera around a pivot point. Args: pivot: The 3D point to orbit… (+22 more)
+Cohesion: 0.10
+Nodes (27): Camera, ndarray, Calculates the projection matrix (perspective or orthographic). Returns: A 4x4…, Builds a perspective projection matrix., Builds an orthographic projection matrix., Moves the camera and its target sideways and up/down. Args: delta_x: The…, Moves the camera forward or backward along its line of sight. In orthographic…, Orbits the camera around a pivot point. Args: pivot: The 3D point to orbit… (+19 more)
 
 ### Community 119 - "LayerColumn"
 Cohesion: 0.07
 Nodes (3): LayerColumn, Doc, Layer
 
-### Community 120 - "GeometrySvgExporter"
-Cohesion: 0.07
-Nodes (25): GeometrySvgExporter, MultiGeometrySvgExporter, Geometry, Exports a Geometry object to SVG format., Exports multiple Geometry objects to a single SVG file., arc_geometry(), bezier_geometry(), line_geometry() (+17 more)
+### Community 120 - "LayoutStrategy"
+Cohesion: 0.09
+Nodes (29): BboxAlignBottomStrategy, BboxAlignCenterStrategy, BboxAlignLeftStrategy, BboxAlignMiddleStrategy, BboxAlignRightStrategy, BboxAlignTopStrategy, PositionAtStrategy, Aligns the top edges of the selection's bounding boxes. (+21 more)
 
 ### Community 121 - "NogoZonesPage"
 Cohesion: 0.12
 Nodes (5): NogoZonesPage, Button, Widget, ZoneListEditor, ZoneRow
 
 ### Community 122 - "TangentConstraint"
-Cohesion: 0.06
-Nodes (36): EntityID, TangentConstraintParams, Any, EntityID, Enforces tangency between a Line and an Arc/Circle. Logic: Distance from shape…, Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns subtitle describing constrained entities. (+28 more)
-
-### Community 123 - "sketcher/core/__init__.py"
 Cohesion: 0.05
-Nodes (38): EqualConstraintMergeResult, EqualLengthConstraint, Any, EntityID, Returns point-index pairs defining the entity's length(s)., Enforces that all entities in a set have the same characteristic length. -…, Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint. (+30 more)
+Nodes (40): EntityID, TangentConstraintCommand, TangentConstraintParams, Any, Context, EntityID, Enforces tangency between a Line and an Arc/Circle. Logic: Distance from shape…, Returns to human-readable name of this constraint type. (+32 more)
 
-### Community 125 - "test_status_messages.py"
-Cohesion: 0.07
-Nodes (34): _activity_label(), Translate a ``\\t`` detail suffix to a user-facing activity label. :param…, Translate a pipeline batch progress payload into a status string. :param key: A…, status_message_for_key(), _displace_colliding_steps(), _MultiPassTransformer, _OverscanTransformer, fixture (+26 more)
+### Community 123 - "EqualLengthConstraint"
+Cohesion: 0.05
+Nodes (41): EqualConstraintCommand, EqualConstraintMergeResult, EqualLengthConstraint, Any, Context, EntityID, Returns point-index pairs defining the entity's length(s)., Calculates screen pos for an equality symbol on an entity. (+33 more)
+
+### Community 125 - "core/step.py"
+Cohesion: 0.05
+Nodes (43): mock_context(), fixture, ABC, parse_workpiece_key(), Parse a ``workpiece:{wp_uid}:{step_uid}`` key. Returns ``(wp_uid, step_uid)``…, Intent controller for the raygeo-backed pipeline. The :class:`IntentController`…, _activity_label(), _node_status_message() (+35 more)
 
 ### Community 126 - "ImportDialog"
 Cohesion: 0.10
 Nodes (13): DrawingArea, ImportDialog, Context, Path, Window, Returns True if the user has defined any color rules., A dialog for importing images with live preview of vectorization., Constructs a VectorizationSpec from the current UI control values. (+5 more)
 
-### Community 127 - "MaterialListWidget"
-Cohesion: 0.09
-Nodes (17): MaterialListWidget, MaterialRow, Button, Widget, Handle the edit button being clicked., An Adwaita widget for displaying materials from a selected library., Configures the widget's list box., Set the current library and update the materials list. (+9 more)
+### Community 127 - "ArtifactStore"
+Cohesion: 0.12
+Nodes (24): ArtifactStore, In-process artifact store with reference-counted handles., CompiledSceneArtifact, CompiledSceneArtifactHandle, Any, ScanlineOverlayLayer, TextureLayer, VertexLayer (+16 more)
 
 ### Community 128 - "Camera"
-Cohesion: 0.04
-Nodes (30): PointList, Camera, Any, ndarray, setter, A pure data model representing the configuration of a camera., Temporal noise reduction factor (0.0 - 1.0)., Whether to prefer YUYV format over MJPEG (fixes green artifacts). (+22 more)
+Cohesion: 0.05
+Nodes (28): PointList, Camera, Any, ndarray, setter, A pure data model representing the configuration of a camera., Temporal noise reduction factor (0.0 - 1.0)., Whether to prefer YUYV format over MJPEG (fixes green artifacts). (+20 more)
 
-### Community 129 - "uk/docusaurus-plugin-content-docs/current/ui/3d-preview.md"
-Cohesion: 0.06
-Nodes (27): Відкриття вікна проектора, Непрозорість, Пов'язані теми, Повноекранний режим, Режим проектора, Що показує проектор, Виконувані перевірки, Перевірки завдання (+19 more)
+### Community 129 - "uk/docusaurus-plugin-content-docs/current/machine/general.md"
+Cohesion: 0.08
+Nodes (20): Print & Cut, Відкриття майстра, Крок 1: Вибір точок дизайну, Крок 2: Запис фізичних позицій, Крок 3: Перевірка та застосування перетворення, Передумови, Пов'язані теми, Високорівневий процес (+12 more)
 
-### Community 130 - "get_usage_tracker"
-Cohesion: 0.03
-Nodes (59): get_sketch_studio(), Get the global SketchStudio instance., _get_sketch_studio(), Handles activation of a sketch definition from the sketch list., Handles the 'finished' signal from the SketchStudio., Handles the 'cancelled' signal from the SketchStudio., Action handler for creating a new sketch definition., Action handler for editing the selected sketch. (+51 more)
+### Community 130 - "SketchModeCmd"
+Cohesion: 0.08
+Nodes (19): get_sketch_studio(), Get the global SketchStudio instance., _get_sketch_studio(), Handles activation of a sketch definition from the sketch list., Handles the 'finished' signal from the SketchStudio., Handles the 'cancelled' signal from the SketchStudio., Action handler for creating a new sketch definition., Action handler for editing the selected sketch. (+11 more)
 
-### Community 131 - "display_name"
-Cohesion: 0.06
-Nodes (26): display_name(), friendly_name_from_by_id(), get_sorted_by_id_paths(), _is_video_capture_symlink(), migrate_camera_data(), Any, Linux V4L persistent device identification. On Linux, /dev/videoN device…, Return a human-readable display name for a camera device. For by-id paths,… (+18 more)
+### Community 131 - "test_v4l.py"
+Cohesion: 0.24
+Nodes (7): _is_video_capture_symlink(), Check if a by-id symlink refers to a video capture device. Video capture…, Scan /dev/v4l/by-id/ for video capture devices. Returns: Dict mapping resolved…, scan_v4l_by_id(), skipif, TestIsVideoCaptureSymlink, TestScanV4lById
 
 ### Community 132 - "GrblNetworkDriver"
-Cohesion: 0.04
-Nodes (29): GrblNetworkDriver, Any, Axis, Pos, Returns a GcodeEncoder configured for the machine's dialect., Overrides the base GrblDriver's upload method with a standard multipart/form-…, Executes a raw G-code string by uploading it as a file to the device and then…, Sends a command via HTTP and waits for the full response from the WebSocket,… (+21 more)
+Cohesion: 0.05
+Nodes (18): GrblNetworkDriver, Any, Axis, Pos, Returns a GcodeEncoder configured for the machine's dialect., Overrides the base GrblDriver's upload method with a standard multipart/form-…, Executes a raw G-code string by uploading it as a file to the device and then…, Sends a command via HTTP and waits for the full response from the WebSocket,… (+10 more)
 
 ### Community 133 - "AddonListWidget"
-Cohesion: 0.07
-Nodes (23): AddonListWidget, AddonRow, Switch, Widget, Displays a list of addons and allows adding/deleting them., Refreshes the list of addons., A widget representing a single Addon in a ListBox., Installs and hot-loads the addon via backend. `install_info` can be… (+15 more)
+Cohesion: 0.05
+Nodes (26): AddonListWidget, AddonRow, Switch, Widget, Displays a list of addons and allows adding/deleting them., Refreshes the list of addons., A widget representing a single Addon in a ListBox., Opens the registry dialog. (+18 more)
 
 ### Community 134 - "IntentController"
 Cohesion: 0.04
-Nodes (33): ErrorKind, Intent, _audit_job_ops(), _DelayedScheduler, IntentController, Any, Doc, NodeRequest (+25 more)
+Nodes (34): ErrorKind, Intent, _audit_job_ops(), _DelayedScheduler, IntentController, Any, Doc, NodeRequest (+26 more)
 
 ### Community 135 - "Smart Stock"
 Cohesion: 0.07
 Nodes (27): After Nesting, Deepnest, Nesting Settings, Prerequisites, Related Topics, Running the Nesting Layout, Capturing a Reference Image, Creating Stock Items (+19 more)
 
-### Community 136 - "CompiledSceneArtifact"
-Cohesion: 0.05
-Nodes (49): CompiledSceneArtifact, CompiledSceneArtifactHandle, Any, ScanlineOverlayLayer, TextureLayer, VertexLayer, generate_cylinder_vertices(), ndarray (+41 more)
+### Community 136 - "compile_scene"
+Cohesion: 0.12
+Nodes (21): _build_scene_spec(), compile_scene(), make_assembled_ops(), make_flat_layer_config(), make_rotary_layer_config(), make_test_config(), Shared test helper for scene compiler tests., Assemble per-step ops into full job ops with markers. step_ops_list: list of… (+13 more)
 
 ### Community 137 - "WorkPieceElement"
 Cohesion: 0.03
 Nodes (42): _draw_segment(), Context, Geometry, ImageSurface, ndarray, Step, Disconnects signals and removes the element from the canvas., Controls the visibility of the base rendered image, while leaving ops overlays… (+34 more)
 
-### Community 138 - "es/docusaurus-plugin-content-docs/current/machine/general.md"
-Cohesion: 0.08
-Nodes (18): Añadir una Máquina, Cambiar la Máquina Activa, Editar una Máquina, Eliminar una Máquina, Máquinas, Ejemplo Simple, Fundamentos de Código G, Proceso de Alto Nivel (+10 more)
+### Community 138 - "es/docusaurus-plugin-content-docs/current/ui/3d-preview.md"
+Cohesion: 0.07
+Nodes (20): Abrir la ventana del proyector, Modo de pantalla completa, Modo Proyector, Opacidad, Qué muestra el proyector, Temas relacionados, Comprobaciones de Sanity del Trabajo, Comprobaciones Realizadas (+12 more)
 
 ### Community 139 - "Regras de Cor"
 Cohesion: 0.17
 Nodes (12): 1. Abra a Página de Regras de Cor, 2. Adicione uma Regra, 3. Salve, Agrupamento Automático de Cores, Como Funciona, Comportamento de Importação, Criando Regras de Cor, Fluxo de Trabalho de Exemplo (+4 more)
 
-### Community 140 - "test_line_cmd.py"
-Cohesion: 0.06
-Nodes (48): LineCommand, LinePreviewState, EntityID, GeoPoint, A command to create a line between two points., The final end point ID after execute(), or None if not applicable., Creates initial preview state with start point, end point, and line. Args:…, Updates the preview end point position. Args: registry: The entity registry.… (+40 more)
+### Community 140 - "test_gl_state.py"
+Cohesion: 0.07
+Nodes (27): ModelPreviewWidget, ndarray, Path, Standalone 3D model preview widget for Rayforge settings., Renders pre-loaded mesh data as GL_TRIANGLES., No per-frame scene state to prepare., Not used — the preview widget drives :meth:`draw` directly. This renderer is…, A minimal GLArea widget that displays a single .glb model. (+19 more)
 
-### Community 141 - "test_text_box_tool.py"
-Cohesion: 0.04
-Nodes (86): Enum, Defines the state of the TextBoxTool., TextBoxState, element_with_empty_text_box(), element_with_text_box(), mock_cairo_context(), mock_element(), fixture (+78 more)
+### Community 141 - "constraints/__init__.py"
+Cohesion: 0.01
+Nodes (208): Constraint, Any, Context, EntityID, Returns True if this constraint explicitly defines or links the radius/length…, Serializes the constraint to a dictionary., Checks if the constraint's visual representation is hit., Sets the standard drawing color for constraints based on hover and status. (+200 more)
 
 ### Community 142 - "SymmetryConstraint"
-Cohesion: 0.06
-Nodes (35): EntityID, SymmetryConstraintCommand, SymmetryConstraintParams, Any, EntityID, Returns a human-readable title for this constraint., Returns a human-readable subtitle describing constrained points., Enforces symmetry between two points (p1, p2) with respect to: 1. A Center… (+27 more)
+Cohesion: 0.05
+Nodes (37): EntityID, SymmetryConstraintCommand, SymmetryConstraintParams, Any, EntityID, Returns a human-readable title for this constraint., Returns a human-readable subtitle describing constrained points., Enforces symmetry between two points (p1, p2) with respect to: 1. A Center… (+29 more)
 
 ### Community 143 - "SketchRenderer"
-Cohesion: 0.17
-Nodes (10): Draws an entity with a highlight color in model coordinates. The caller should…, Draws a fixed symbol at (0,0)., Handles rendering of the sketch to a Cairo context., Defines the path for a line without stroking., Defines the path for an arc without stroking., Main draw entry point for sketch entities., Defines the path for a circle without stroking., Defines the path for an ellipse without stroking. (+2 more)
+Cohesion: 0.08
+Nodes (26): Context, EntityID, GeoPoint, Matrix, Draws an entity with a highlight color in model coordinates. The caller should…, Draw control handles for all beziers connected to a waypoint., Draws a fixed symbol at (0,0)., Draws the filled regions of the sketch. (+18 more)
 
 ### Community 144 - "DragDropCmd"
-Cohesion: 0.07
-Nodes (21): File, DragDropCmd, Path, Creates a new WorkPiece instance from a SourceAsset by re-running the import…, Display 'Drop files to import' overlay on canvas., Hide overlay after a delay. Returns False to not repeat the timeout., Remove the drop overlay from canvas. Safe to call multiple times., Find the Gtk.Overlay parent that contains this canvas. (+13 more)
+Cohesion: 0.06
+Nodes (22): File, DragDropCmd, Path, Creates a new StockItem instance from a StockAsset. Args: asset_uid: The UID of…, Creates a new WorkPiece instance from a SourceAsset by re-running the import…, Display 'Drop files to import' overlay on canvas., Hide overlay after a delay. Returns False to not repeat the timeout., Remove the drop overlay from canvas. Safe to call multiple times. (+14 more)
 
-### Community 145 - "_ScaleClientSpy"
-Cohesion: 0.16
-Nodes (8): _corners(), asyncio, The panel's jog speed drives the trace, not a fixed one., 200 mm/s on the panel is 200 mm/s on the wire. The profile's max travel speed…, Records everything a Go Scale run sends., Go Scale traverses the outline with interactive rapids., _ScaleClientSpy, TestGoScale
+### Community 145 - "encode35"
+Cohesion: 0.04
+Nodes (30): encode35(), Encode a signed 35-bit coordinate as 5 bytes., Each layer gets its own part settings in the prologue., Tests for SetCutSpeedCommand encoding., Cut speed is stored in mm/min and encoded as um/s., A speed that does not divide evenly still converts once., Zero speed should encode correctly., Tests for coordinate conversion (mm to µm). (+22 more)
 
-### Community 146 - "KinematicMath"
-Cohesion: 0.07
-Nodes (11): KinematicMath, Convert a surface distance (mm) on the cylinder to degrees., Convert degrees to linear mm via the firmware travel per rotation (mm)., Convert cylinder-surface mm to rotation-axis mm via the firmware travel per…, Convert rotation-axis mm back to cylinder-surface mm., TestDegreesToScaledMu, TestEffectiveDiameter, TestGearRatio (+3 more)
+### Community 146 - "intent_builder.py"
+Cohesion: 0.08
+Nodes (13): KinematicMath, Convert cylinder-surface mm to rotation-axis mm via the firmware travel per…, Convert rotation-axis mm back to cylinder-surface mm., _approximate_job_ops(), _is_grbl(), Ops, Intent construction for the raygeo-backed pipeline. The :class:`IntentBuilder`…, Return True if *dialect* is the Grbl G-code dialect. (+5 more)
 
 ### Community 147 - "Nutzungsanalyse"
-Cohesion: 0.04
-Nodes (47): Addonquellen, Addons, Addons aktualisieren, Addons entfernen, Addons installieren, Addons verwalten, Installierte Addons, Verwandte Themen (+39 more)
+Cohesion: 0.03
+Nodes (58): Addonquellen, Addons, Addons aktualisieren, Addons entfernen, Addons installieren, Addons verwalten, Installierte Addons, Verwandte Themen (+50 more)
 
 ### Community 148 - "使用情况跟踪"
 Cohesion: 0.04
 Nodes (47): 安装扩展, 已安装的扩展, 扩展, 扩展来源, 更新扩展, 概述, 相关主题, 移除扩展 (+39 more)
 
 ### Community 149 - "AddonMetadata"
-Cohesion: 0.04
-Nodes (36): AddonMetadata, Any, Set the main window for registering actions. Args: window: The MainWindow…, Helper to parse the standard dictionary-based registry format., Update metadata to use the latest version whose api_version is compatible with…, Fetches and parses the addon registry from the remote repository. Returns a…, Compares all installed addons against the remote registry to find available…, Serializable metadata for a Rayforge addon. (+28 more)
+Cohesion: 0.06
+Nodes (26): AddonMetadata, Any, Set the main window for registering actions. Args: window: The MainWindow…, Helper to parse the standard dictionary-based registry format., Update metadata to use the latest version whose api_version is compatible with…, Fetches and parses the addon registry from the remote repository. Returns a…, Compares all installed addons against the remote registry to find available…, Serializable metadata for a Rayforge addon. (+18 more)
 
 ### Community 150 - "BottomPanel"
-Cohesion: 0.05
-Nodes (6): BottomPanel, Four toggles saying which corner of the job the head is on. The job is placed…, Adopt a corner, and keep exactly one of the four active. Untoggling the active…, Show the profile's corner, without re-entering the handler., DockItem, ResponsiveBox
+Cohesion: 0.08
+Nodes (3): BottomPanel, Adopt a corner, and keep exactly one of the four active. Untoggling the active…, Show the profile's corner, without re-entering the handler.
 
-### Community 151 - "de/docusaurus-plugin-content-docs/current/machine/general.md"
-Cohesion: 0.06
-Nodes (28): Deckkraft, Projektorfenster öffnen, Projektormodus, Verwandte Themen, Vollbildmodus, Was der Projektor anzeigt, Allgemeiner Prozess, Einfaches Beispiel (+20 more)
+### Community 151 - "de/docusaurus-plugin-content-docs/current/ui/3d-preview.md"
+Cohesion: 0.05
+Nodes (26): Deepnest, Nach dem Nesting, Nesting-Einstellungen, Nesting-Layout starten, Verwandte Themen, Voraussetzungen, Deckkraft, Projektorfenster öffnen (+18 more)
 
 ### Community 152 - "ProviderListWidget"
 Cohesion: 0.09
 Nodes (10): AISettingsPage, ProviderListWidget, ProviderRow, Button, ListBox, ListBoxRow, Switch, Widget for displaying and managing a list of AI providers. (+2 more)
 
-### Community 153 - "zh-CN/docusaurus-plugin-content-docs/current/machine/general.md"
-Cohesion: 0.05
-Nodes (28): Deepnest, 前提条件, 嵌套完成后, 嵌套设置, 相关主题, 运行嵌套布局, 不透明度, 全屏模式 (+20 more)
+### Community 153 - "zh-CN/docusaurus-plugin-content-docs/current/ui/3d-preview.md"
+Cohesion: 0.07
+Nodes (20): 不透明度, 全屏模式, 打开投影窗口, 投影显示的内容, 投影模式, 相关主题, 作业完整性检查, 执行的检查 (+12 more)
 
 ### Community 154 - "FakePlayer"
 Cohesion: 0.11
 Nodes (39): FakeCanvas, FakePlayer, ui, Minimal OpPlayer stand-in exposing the playback surface. Each command takes…, Minimal Canvas3D stand-in recording queue_render calls., test_clicks_during_glide_merge_into_it(), test_command_count_no_player(), test_command_count_with_player() (+31 more)
 
 ### Community 155 - "ColorSet"
-Cohesion: 0.04
-Nodes (45): ColorSet, hex_to_rgba(), normalize_color(), Any, ColorRGBA, ndarray, Normalize a color string to a canonical lowercase 6-digit hex value. Accepts…, A generic, UI-agnostic container for resolved, render-ready color data. It… (+37 more)
+Cohesion: 0.05
+Nodes (40): ColorSet, Any, ColorRGBA, ndarray, A generic, UI-agnostic container for resolved, render-ready color data. It…, Gets a pre-calculated 256x4 color lookup table (LUT) by name. Returns a default…, Gets the named LUT as a 256×4 ``np.uint8`` array in **pre-multiplied ARGB32**…, Gets a resolved RGBA color tuple by name. Returns a default magenta color if… (+32 more)
 
 ### Community 156 - "Doc"
-Cohesion: 0.08
-Nodes (31): EncodeSpec, Any, Ops, _canonical(), _hash_int(), _machine_token_payload(), _machine_transform_config_payload(), Any (+23 more)
+Cohesion: 0.05
+Nodes (41): Aggregate, Compute, Any, Ops, _canonical(), _hash_int(), _machine_token_payload(), _machine_transform_config_payload() (+33 more)
 
 ### Community 157 - "_BaseArrayDialog"
 Cohesion: 0.07
-Nodes (16): HeaderBar, _BaseArrayDialog, CircularArrayDialog, PointRotationArrayDialog, SpinRow, Widget, Window, Called before _mode_content — override to set up mode-specific state such as… (+8 more)
+Nodes (18): HeaderBar, _BaseArrayDialog, CircularArrayDialog, PointRotationArrayDialog, SpinRow, Widget, Window, Called before _mode_content — override to set up mode-specific state such as… (+10 more)
 
 ### Community 158 - "Smooth"
-Cohesion: 0.07
-Nodes (32): Any, Creates a Smooth instance from a dictionary., Smooths path segments using a Gaussian filter. This transformer uses a multi-…, Initializes the smoothing filter. Args: enabled: Whether the transformer is…, Serializes the transformer's configuration to a dictionary., Smooth, _apply(), assert_points_almost_equal() (+24 more)
+Cohesion: 0.06
+Nodes (37): Any, setter, Creates a Smooth instance from a dictionary., Smooths path segments using a Gaussian filter. This transformer uses a multi-…, Initializes the smoothing filter. Args: enabled: Whether the transformer is…, The smoothing strength, from 0 (none) to 100 (heavy)., Updates the smoothing amount., The corner angle threshold in degrees. (+29 more)
 
 ### Community 159 - "MachineHours"
-Cohesion: 0.06
-Nodes (22): MachineHours, Any, Add a new resettable counter., Notify that a counter has been modified. This signals listeners (like the UI)…, A resettable counter for tracking maintenance intervals. Attributes: uid:…, Identifies counters that have reached their limit but haven't been notified…, Remove a counter by its UID., Get a counter by its UID. (+14 more)
+Cohesion: 0.07
+Nodes (17): MachineHours, Any, Add a new resettable counter., Notify that a counter has been modified. This signals listeners (like the UI)…, Identifies counters that have reached their limit but haven't been notified…, Remove a counter by its UID., Get a counter by its UID., Reset a specific counter. (+9 more)
 
 ### Community 160 - "TelnetTransport"
 Cohesion: 0.08
 Nodes (19): Clear any buffered data in the telnet transport. Discards any pending data in…, Check if the transport is actively connected., Manages an active connection: receives data and handles disconnects., TelnetTransport, asyncio, Polls `predicate` until it's truthy., Tests the TelnetTransport against a live, local mock serveis provides a higher…, Test the connection and disconnection lifecycle and signals. (+11 more)
 
 ### Community 161 - "RecipeApplicabilityPage"
-Cohesion: 0.05
-Nodes (16): CheckButton, Any, Restore the step type selection from a saved recipe., The applicability criteria: when a recipe should be suggested. Emits…, RecipeApplicabilityPage, Window, A searchable, multi-select list of registered step types. Mirrors the look of…, _StepTypeRow (+8 more)
+Cohesion: 0.07
+Nodes (11): Any, Restore the step type selection from a saved recipe., The applicability criteria: when a recipe should be suggested. Emits…, RecipeApplicabilityPage, OptionalSpinRowController, PreferencesGroup, Manages an ActionRow with a SpinButton and a Switch., Sets the value from base units, or disables if None. (+3 more)
 
 ### Community 162 - "test_intent_controller.py"
 Cohesion: 0.08
 Nodes (36): FakeCancelHandle, FakeTaskManager, _make_controller_for_completed_test(), _make_doc(), Any, Doc, Step, Tests for :mod:`rayforge.pipeline.intent_controller`. These tests use the… (+28 more)
 
 ### Community 163 - "CameraController"
-Cohesion: 0.02
-Nodes (70): CameraController, get_backends_for_platform(), _get_linux_scan_targets(), _probe_camera_device(), Camera, ndarray, Pos, Fallback camera scan if subprocess fails. (+62 more)
+Cohesion: 0.01
+Nodes (125): CameraController, get_backends_for_platform(), _get_linux_scan_targets(), _probe_camera_device(), Camera, ndarray, Pos, Fallback camera scan if subprocess fails. (+117 more)
 
 ### Community 164 - "Changelog"
 Cohesion: 0.04
 Nodes (49): [0.13] - 2025-07-10, [0.14] - 2025-07-12, [0.16.1] - 2025-07-25, [0.16.2] - 2025-07-25, [0.17] - 2025-07-28, [0.18.1] - 2025-08-03, [0.18.4] - 2025-08-04, [0.19.1] - 2025-08-08 (+41 more)
 
-### Community 166 - "PerpendicularConstraint"
-Cohesion: 0.07
-Nodes (22): PerpendicularConstraint, Any, EntityID, Calculates screen position and angles for visualization., Enforces perpendicularity between two entities. - Line/Line: Vectors are at 90…, Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns subtitle describing constrained entities. (+14 more)
+### Community 166 - "Point"
+Cohesion: 0.02
+Nodes (65): Any, Calculates geometry for a rounded rectangle., Context, EqualDistanceConstraint, Any, Context, EntityID, Calculates screen position for the equality symbol. (+57 more)
 
 ### Community 167 - "CameraListEditor"
-Cohesion: 0.08
-Nodes (19): CameraDistortionGroup, CameraListEditor, CameraRow, Button, Camera, SpinButton, Widget, Rebuilds the list to match the provided list of cameras. (+11 more)
+Cohesion: 0.13
+Nodes (13): CameraListEditor, CameraRow, Camera, Widget, Rebuilds the list to match the provided list of cameras., Creates a CameraRow for the given camera item., Bubbles up the remove_requested signal from a CameraRow., A widget representing a single Camera in a ListBox. (+5 more)
 
 ### Community 168 - "ScenePresenter"
 Cohesion: 0.05
 Nodes (22): Ops, setter, Signal, Subscribe to the pipeline and upload events that drive the scene. Called once…, Unsubscribe from pipeline and upload events., Returns the current document from the editor., The current playback player, or None., The throwaway assembly for the current playback layer, or None. (+14 more)
 
-### Community 169 - "UdpTransport"
-Cohesion: 0.07
-Nodes (18): Clear any buffered data in the UDP transport. Discards any pending data in the…, Check if the transport is actively connected., Manages an active connection: receives data and handles disconnects., UdpTransport, asyncio, Tests the UdpTransport against a live, local UDP socket., Test the connection and disconnection lifecycle and signals., A helper to track calls to a blinker Signal. (+10 more)
+### Community 169 - "MergeLinesTransformer"
+Cohesion: 0.08
+Nodes (36): MergeLinesSpec, MergeLinesTransformer, Any, Geometry, setter, Merges overlapping/collinear line segments across all paths. This transformer…, _apply(), Test merging shared edge between two adjacent rectangles. (+28 more)
 
 ### Community 170 - "AspectRatioConstraint"
-Cohesion: 0.08
-Nodes (25): AspectRatioConstraint, Any, EntityID, Enforces that distance(p1, p2) / distance(p3, p4) equals ratio., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns subtitle describing constrained segments., AspectRatioConstraintTool (+17 more)
+Cohesion: 0.07
+Nodes (27): AspectRatioConstraint, Any, Context, EntityID, Calculates the screen position of the constraint icon., Enforces that distance(p1, p2) / distance(p3, p4) equals ratio., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint. (+19 more)
 
-### Community 171 - "MachineState"
-Cohesion: 0.15
-Nodes (19): MachineState, Axis, Ops, TestAssemblyHeadLinks, _apply_all(), test_axis_letters_initializes_all_axes(), test_copy_is_independent(), test_copy_preserves_extra_axes() (+11 more)
+### Community 171 - "LaserHead"
+Cohesion: 0.05
+Nodes (18): With no laser head the spot falls back to a sane minimum., A zero spot size (unconfigured head) is clamped so the raster pipeline never…, test_laser_get_spot_size_clamps_negative(), test_laser_get_spot_size_clamps_zero(), test_laser_get_spot_size_falls_back_without_head(), LaserHead, Any, Convert gcode power value (0-max_power) to percentage (0-100). (+10 more)
 
 ### Community 172 - "MockUdpServer"
 Cohesion: 0.18
 Nodes (7): MockUdpServer, fixture, A pytest fixture that manages the lifecycle of the MockUdpServer., A simple, asynchronous UDP server for integration testing. It binds to a local…, Starts the server and returns the host and port it's listening on., Sends data back to the address that last sent us data., udp_server()
 
 ### Community 173 - "docs/ui/3d-preview.md"
-Cohesion: 0.07
-Nodes (20): Fullscreen Mode, Opacity, Opening the Projector Window, Projector Mode, Related Topics, What the Projector Shows, Job Sanity Checks, Performed Checks (+12 more)
+Cohesion: 0.05
+Nodes (36): Opening the Wizard, Prerequisites, Print & Cut, Related Topics, Step 1: Pick Design Points, Step 2: Record Physical Positions, Step 3: Review and Apply the Transform, Fullscreen Mode (+28 more)
 
 ### Community 174 - "RayforgeSpecs"
-Cohesion: 0.05
-Nodes (35): hookspec, machine(), fixture, A machine whose resolved laser defaults mirror the historical…, Register all steps from laser_essentials addon., Automatically register laser_essentials producers and steps for all tests in…, register_laser_essentials(), _register_steps() (+27 more)
+Cohesion: 0.07
+Nodes (22): hookspec, Core hook specifications. Addons implement these methods to extend…, Called when the application context is fully initialized. Use this for general…, Called when an addon is being disabled or unloaded. Use this to clean up…, Called to allow addons to register new machine drivers. .. versionadded:: 1…, Called to allow addons to register custom step types. .. versionadded:: 1 Args:…, Called to allow addons to register custom ops transformers. .. versionadded:: 6…, Called to allow addons to register settings widget classes for post-processor… (+14 more)
 
 ### Community 175 - "test_path_tool.py"
 Cohesion: 0.07
-Nodes (48): BezierPreviewState, Preview state for unified line/bezier tool workflow. Workflow: - Click once:…, SnapResult, Tests SnapResult.no_snap classmethod., Tests SnapResult default values., test_snap_result_defaults(), test_snap_result_no_snap(), mock_element() (+40 more)
+Nodes (44): BezierPreviewState, Preview state for unified line/bezier tool workflow. Workflow: - Click once:…, Retrieves a point by its ID., mock_element(), path_tool(), fixture, ui, Test first press starts line preview. (+36 more)
 
 ### Community 176 - "Core Concepts"
 Cohesion: 0.04
@@ -2234,17 +2210,17 @@ Nodes (45): Code-Architektur, Dokumentenmodell-Architektur, Geschichtete Anwendu
 Cohesion: 0.04
 Nodes (45): Arquitectura de Aplicación en Capas, Arquitectura de Código, Arquitectura de Rayforge, Arquitectura del Modelo de Documento, Arquitectura del Pipeline, Tabla de Contenidos, Arquitectura del Modelo de Documento, Composición de Objetos (+37 more)
 
-### Community 179 - "TransformCmd"
-Cohesion: 0.02
-Nodes (83): Matrix, Moves a list of DocItems by a given delta in world coordinates, creating a…, Flips a list of DocItems horizontally (mirrors along the Y-axis), creating a…, Flips a list of DocItems vertically (mirrors along the X-axis), creating a…, Handles undoable transformations of document items., Sets the position of **every** item individually using machine coordinates.…, Sets **every** item's local rotation angle to *angle* degrees, preserving each…, Creates a single, undoable transaction for a list of matrix changes that have… (+75 more)
+### Community 179 - "Layer"
+Cohesion: 0.01
+Nodes (226): Group, GroupingResult, ImageSurface, Layer, Rect, Serializes the Group and its children to a dictionary., Deserializes a dictionary into a Group instance., Calculates the union of the world-space bounding boxes for a list of DocItems. (+218 more)
 
 ### Community 181 - "snapshot_memory.py"
 Cohesion: 0.06
 Nodes (56): _add_bytes(), AppProtocol, _claim(), _claim_array(), _claim_compressed(), _claim_ops(), _find_scene_presenter(), _format_bytes() (+48 more)
 
 ### Community 182 - "test_step.py"
-Cohesion: 0.06
-Nodes (36): Tests that to_dict() correctly serializes all relevant properties with non-…, Tests that a new Step instance has the correct default values., Tests that property setters update the value and fire the 'updated' signal., The generic step reports no operation color., A new step uses no coolant by default., set_coolant_method updates the value and fires the updated signal., A machine with a single spindle head supporting the given methods., OFF is always supported and therefore never reported. (+28 more)
+Cohesion: 0.03
+Nodes (67): fixture, Tests that to_dict() correctly serializes all relevant properties with non-…, Provides a basic, standalone Step instance., Tests that from_dict() correctly restores all properties., Tests that from_dict() uses sensible defaults for missing optional keys., Provides a Step instance properly parented within a Doc hierarchy., Tests that serializing a Step and then deserializing it results in an…, Tests that from_dict() preserves extra fields from newer versions and to_dict()… (+59 more)
 
 ### Community 183 - "Concepts Clés"
 Cohesion: 0.04
@@ -2280,11 +2256,11 @@ Nodes (45): Consejos para Mejores Resultados, Descripción General, Ejemplos de 
 
 ### Community 191 - "DxfImporter"
 Cohesion: 0.03
-Nodes (59): GeometryDxfExporter, MultiGeometryDxfExporter, Geometry, Exports multiple Geometry objects to a single DXF file., Exports a Geometry object to DXF format., Add geometry entities to a DXF modelspace., DxfImporter, Geometry (+51 more)
+Nodes (57): GeometryDxfExporter, MultiGeometryDxfExporter, Geometry, Exports multiple Geometry objects to a single DXF file., Exports a Geometry object to DXF format., Add geometry entities to a DXF modelspace., DxfImporter, Geometry (+49 more)
 
-### Community 192 - "ValidationError"
-Cohesion: 0.04
-Nodes (41): BaudrateVar, Any, Raises ValidationError if the baud rate is not in the choices list., A Var subclass for serial port baud rates, for use with a dropdown., validate_baud_rate(), IntVar, Any, A Var subclass for integer values with optional bounds. (+33 more)
+### Community 192 - "._create_var_from_dict"
+Cohesion: 0.06
+Nodes (24): BaudrateVar, Any, Raises ValidationError if the baud rate is not in the choices list., A Var subclass for serial port baud rates, for use with a dropdown., validate_baud_rate(), A Var subclass for serial port names., Raises ValidationError if the serial port is not specified., serial_port_validator() (+16 more)
 
 ### Community 193 - ".get_world_transform"
 Cohesion: 0.05
@@ -2303,8 +2279,8 @@ Cohesion: 0.04
 Nodes (45): Aperçu, Conseils pour de Meilleurs Résultats, Exemples de Prompts, Générateur de Pièces IA, Prérequis, Sujets Connexes, Utiliser le Générateur, Accrochage magnétique (+37 more)
 
 ### Community 197 - "CameraController"
-Cohesion: 0.06
-Nodes (28): CameraController, Camera, ndarray, Widget, Connects GTK4 gesture and event controllers for interaction., Grab keyboard focus so the canvas receives key events., Resets all state variables related to any drag operation., Resets the camera to the specified preset view. (+20 more)
+Cohesion: 0.09
+Nodes (18): CameraController, Camera, ndarray, Grab keyboard focus so the canvas receives key events., Handles updates during a drag operation (panning or orbiting)., Pans so the floor-plane point under the cursor tracks the mouse. The world…, Returns the (dx, dy) since the last orbit step, or None., Manages the 3D camera and all mouse/key interactions for the canvas. The… (+10 more)
 
 ### Community 198 - ".mark_dirty"
 Cohesion: 0.06
@@ -2319,8 +2295,8 @@ Cohesion: 0.04
 Nodes (45): Використання генератора, Вимоги, Генератор деталей ШІ, Огляд, Пов'язані теми, Поради для найкращих результатів, Приклади підказок, Автоматичне обмеження під час створення (+37 more)
 
 ### Community 201 - "EntityRegistry"
-Cohesion: 0.01
-Nodes (244): Sets the circle diameter from numeric input. Args: registry: The entity…, Any, Calculates geometry for a rounded rectangle., AngleConstraint, _get_far_point(), Any, Context, EntityID (+236 more)
+Cohesion: 0.02
+Nodes (161): ConstraintStatus, Enum, Represents the validation status of a constraint., Calculates the error of the constraint., Calculates the partial derivatives (Jacobian entries) of the error. Returns a…, DistanceConstraint, Any, Context (+153 more)
 
 ### Community 202 - "参数化 2D 草图绘制器"
 Cohesion: 0.04
@@ -2331,48 +2307,48 @@ Cohesion: 0.09
 Nodes (30): mock_element(), fixture, ui, Test on_drag when no drag state is set., Create a mock SketchElement for testing., Test on_drag during box selection., Test on_release after box selection., Test on_hover_motion when hit type doesn't change. (+22 more)
 
 ### Community 204 - "GcodeEditorDialog"
-Cohesion: 0.07
-Nodes (23): MacroTrigger, Enum, Defines events in the job lifecycle where G-code can be injected., Return a translatable label for this trigger., Return a translatable description for this trigger., GcodeEditorDialog, Popover, Ensure the text view regains focus when a popover is closed. (+15 more)
+Cohesion: 0.08
+Nodes (21): GcodeEditorDialog, Button, Popover, Ensure the text view regains focus when a popover is closed., A generic modal dialog for editing a G-code macro., Handler for key press events on the window., Stores the UI content into the macro object and closes., HookList (+13 more)
 
 ### Community 205 - "Ops"
 Cohesion: 0.02
-Nodes (102): Ops, Each encode() call should reset internal state., Each layer gets its own part settings in the prologue., Tests for SetPowerCommand encoding., Zero power should encode to 0., Tests for frequency/pulse_width within a full job., 50% power should encode to 8191 (half of 16383)., 100% power should encode to 16383 (max 14-bit value). (+94 more)
+Nodes (95): Ops, Each encode() call should reset internal state., Tests for SetPowerCommand encoding., Zero power should encode to 0., Tests for frequency/pulse_width within a full job., 50% power should encode to 8191 (half of 16383)., 100% power should encode to 16383 (max 14-bit value)., Power should maintain precision in text output. (+87 more)
 
 ### Community 208 - "fr/docusaurus-plugin-content-docs/current/features/operations/contour.md"
 Cohesion: 0.10
-Nodes (16): Ce que le projecteur affiche, Mode plein écran, Mode Projecteur, Opacité, Ouvrir la fenêtre du projecteur, Sujets associés, Comment Fonctionne la Compensation de Kerf, Compensation de Kerf (+8 more)
+Nodes (17): Comment Fonctionne la Compensation de Kerf, Compensation de Kerf, Compensation de Kerf Manuelle, Mesurer le Kerf, Pages Connexes, Qu'est-ce que le Kerf ?, Fusionner les lignes, Pages associées (+9 more)
 
 ### Community 209 - "MarlinSerialDriver"
-Cohesion: 0.08
-Nodes (5): MarlinSerialDriver, Axis, Pos, Send a command and return its response lines. Used during probing to query…, Queries the device's active linear unit via ``M149`` and maps the response to a…
+Cohesion: 0.04
+Nodes (22): MarlinSerialDriver, Any, Axis, Pos, Send a command and return its response lines. Used during probing to query…, Queries the device's active linear unit via ``M149`` and maps the response to a…, gcode_to_p_number(), Converts a G-code WCS name (e.g., "G54") to its P-number. (+14 more)
 
 ### Community 210 - "ExecutionContext"
-Cohesion: 0.02
-Nodes (86): BboxAlignBottomStrategy, BboxAlignCenterStrategy, BboxAlignLeftStrategy, BboxAlignMiddleStrategy, BboxAlignRightStrategy, BboxAlignTopStrategy, PositionAtStrategy, Matrix (+78 more)
+Cohesion: 0.05
+Nodes (21): Matrix, Matrix, Calculates the required delta transformation matrix for each item. Returns: A…, Asynchronous version of calculate_deltas. Default implementation raises…, Matrix, ExecutionContext, Any, (Re)schedules the update timer for the root context. (+13 more)
 
-### Community 212 - "test_dialect.py"
-Cohesion: 0.06
-Nodes (35): Creates a dialect instance from a dictionary, correctly handling missing fields…, Test that if no parent is specified, it defaults to inheriting from GRBL., Test basic instantiation of a dialect., Test creating a custom copy of an existing dialect., Test that the editor UI definition is generated correctly., Test that inject_wcs_after_preamble defaults to True., Test that inject_wcs_after_preamble can be set to False., Test that inject_wcs_after_preamble is serialized correctly. (+27 more)
+### Community 212 - "test_text_box_entity.py"
+Cohesion: 0.05
+Nodes (41): _make_text_box(), fixture, Tests that a text box correctly reports all frame point IDs., Test TextBoxEntity.update_constrained_status logic., Tests to_dict and from_dict methods for a single TextBox., Fixture for setting up text box entities for selection tests., Test is_contained_by method for TextBox entities., Test of intersects_rect method for TextBox entities. (+33 more)
 
 ### Community 213 - "generate_affiliate_link.py"
 Cohesion: 0.57
 Nodes (6): api_call(), generate_link(), load_config(), main(), product_query(), sign()
 
 ### Community 214 - "Tool"
-Cohesion: 0.03
-Nodes (76): mgr(), fixture, Tests for the ToolManager: CRUD, YAML persistence, changed signal., test_changed_signal_emitted_on_mutations(), test_delete_removes_from_memory_and_disk(), test_get_all_sorted_by_name(), test_load_reads_existing_files(), test_save_persists_and_indexes() (+68 more)
+Cohesion: 0.14
+Nodes (24): Tests for the ToolManager: CRUD, YAML persistence, changed signal., test_changed_signal_emitted_on_mutations(), test_delete_removes_from_memory_and_disk(), test_get_all_sorted_by_name(), test_load_reads_existing_files(), test_save_persists_and_indexes(), test_update_existing_tool(), parametrize (+16 more)
 
 ### Community 215 - "ViewManager"
 Cohesion: 0.05
 Nodes (29): ndarray, RenderContext, Step, Connect to pipeline signals., Disconnect from pipeline signals., Handle removal of workpieces and steps from the document., Remove all view entries for a workpiece., Remove all view entries for a step. (+21 more)
 
-### Community 216 - "ImporterRegistry"
-Cohesion: 0.05
-Nodes (22): ExporterRegistry, FileFilter, ImporterRegistry, Path, Get all supported import filters. Returns: A list of FileFilter objects., Get all registered importer classes. Returns: A list of unique importer classes., Get all importer classes that support a specific feature. Args: feature: The…, Get all MIME types supported by importers with a specific feature. Args:… (+14 more)
+### Community 216 - "BaseExporter"
+Cohesion: 0.03
+Nodes (48): Exports the parametric source data of a sketch-based WorkPiece., Initializes the exporter for a specific sketch-based WorkPiece. Args: doc_item:…, SketchExporter, hookimpl, Backend entry point for sketcher addon. Registers asset types and renderers…, Register Sketch asset type with the asset type registry., Register sketch renderer with the renderer registry., Register sketch exporter with the exporter registry. (+40 more)
 
 ### Community 217 - "ExecutionContextProxy"
-Cohesion: 0.05
-Nodes (25): Logger, ExecutionContextProxy, Creates a sub-context that reports progress within a specified range., Creates a sub-context that reports progress within a specified range., Checks if the task has been cancelled by looking for a cancellation flag in the…, Immediately sends any pending updates. This ensures the final progress value is…, Sends a named event and waits for adoption acknowledgment. This is used for…, Pickleable proxy for reporting progress from a subprocess via a queue. Extends… (+17 more)
+Cohesion: 0.07
+Nodes (17): ExecutionContextProxy, Creates a sub-context that reports progress within a specified range., Creates a sub-context that reports progress within a specified range., Checks if the task has been cancelled by looking for a cancellation flag in the…, Immediately sends any pending updates. This ensures the final progress value is…, Pickleable proxy for reporting progress from a subprocess via a queue. Extends…, Reports a 0.0-1.0 progress value, scaled to the proxy's range. This is…, The proxy returns False when no adoption_signals are provided. (+9 more)
 
 ### Community 218 - "GrblSerialDriver"
 Cohesion: 0.13
@@ -2382,49 +2358,49 @@ Nodes (35): Bottom-Left Origin Convention, Device Profile Schema v1, GrblSerialD
 Cohesion: 0.48
 Nodes (6): main(), Screenshot: Print & Cut addon wizard dialog., setup_wizard(), show_apply_page(), show_jog_page(), show_pick_page()
 
-### Community 220 - "CounterListEditor"
-Cohesion: 0.05
-Nodes (31): CounterEditDialog, CounterListEditor, CounterRow, Button, MessageDialog, Widget, Window, Handle reset confirmation response. (+23 more)
+### Community 220 - "format_hours_to_hm"
+Cohesion: 0.04
+Nodes (36): format_clock(), format_hours_to_hm(), Utility functions for formatting time values., Format a number of seconds as a clock reading. Args: seconds: Positive number…, Format a fractional hours value to hours and minutes string. Args: hours:…, CounterEditDialog, CounterRow, Button (+28 more)
 
-### Community 221 - "Material"
-Cohesion: 0.08
-Nodes (19): Library manager for material libraries in Rayforge., Material library management for Rayforge., Add a material to the library. Args: material: Material to add Returns: True if…, Material, Core material data structures for Rayforge., Get the display color for the material. Returns: Hex color string or default if…, Get the display color as RGBA tuple. Args: alpha: Alpha value (0.0 to 1.0)…, Get the visual pattern for the material. Returns: Pattern name or 'solid' if… (+11 more)
+### Community 221 - "SpindleHead"
+Cohesion: 0.07
+Nodes (15): Any, Self, Deserialize a head dict, dispatching on the ``type`` key. Old machine files…, _normalize_cooling_methods(), Any, CoolantMode, Keep only real coolant methods, in a stable order. ``CoolantMode.OFF`` is…, A motorized spindle head, implying the MILL machine capability. (+7 more)
 
-### Community 222 - "UnifiedWizard"
-Cohesion: 0.10
-Nodes (12): Box, Button, Convenience: surface a transient error to the user., Where the wizard enters the AI flow after probing/connection. A known profile…, Decides the next step using the adaptive routing rules., Step 2: the user picked a controller tile — advance at once., Step 4: the probe merged values into a working profile., Step 10: when cameras were enabled, route into the camera workflow (lens… (+4 more)
+### Community 222 - "cnc_essentials/widgets/rows/__init__.py"
+Cohesion: 0.06
+Nodes (26): AreaToleranceRow, SpinRow, CNC area-tolerance row widget., A spin row bound to the step's ``area_tolerance`` attribute., DepthPerPassRow, SpinRow, CNC depth-per-pass row widget., A spin row bound to ``CncAssemblerStep.depth_per_pass``. (+18 more)
 
 ### Community 223 - "Localized Material Metadata"
 Cohesion: 0.18
 Nodes (34): Stone Material Category, Localized Material Metadata, Marble, Material Definition Schema, Solid Appearance Pattern, Wood Material Category, MDF (Medium-Density Fiberboard), Metal Material Category (+26 more)
 
 ### Community 225 - "de/docusaurus-plugin-content-docs/current/features/operations/contour.md"
-Cohesion: 0.10
-Nodes (17): Manuelle Schnittbreiten-Kompensation, Schnittbreite messen, Schnittbreiten-Kompensation, Verwandte Seiten, Was ist Schnittbreite?, Wie Schnittbreiten-Kompensation funktioniert, Linien zusammenführen, Verwandte Seiten (+9 more)
+Cohesion: 0.09
+Nodes (25): Manuelle Schnittbreiten-Kompensation, Schnittbreite messen, Schnittbreiten-Kompensation, Verwandte Seiten, Was ist Schnittbreite?, Wie Schnittbreiten-Kompensation funktioniert, Linien zusammenführen, Verwandte Seiten (+17 more)
 
 ### Community 226 - "CircularArrayParams"
-Cohesion: 0.23
-Nodes (9): CircularArrayStrategy, Matrix, Places copies along a circular arc around a center. Copies orbit ``center_mm``…, CircularArrayParams, Parameters for a circular array. Copies are placed along a circular arc around…, Unit tests for the pure-geometry array strategies., Returns the (tx, ty) component of a delta matrix., TestCircularStrategy (+1 more)
+Cohesion: 0.24
+Nodes (7): CircularArrayStrategy, Matrix, Circular array strategy., Places copies along a circular arc around a center. Copies orbit ``center_mm``…, CircularArrayParams, Parameters for a circular array. Copies are placed along a circular arc around…, TestCircularStrategy
 
 ### Community 228 - "asyncio"
 Cohesion: 0.06
 Nodes (13): asyncio, TestApiRequest, TestCleanup, TestConnectionNoHost, TestHoldCancel, TestHoming, TestJogMove, TestPowerControl (+5 more)
 
 ### Community 229 - "fr/docusaurus-plugin-content-docs/current/machine/general.md"
-Cohesion: 0.08
-Nodes (18): Ajouter une Machine, Changer la Machine Active, Machines, Modifier une Machine, Supprimer une Machine, Exemple simple, Les bases du G-code, Pages connexes (+10 more)
+Cohesion: 0.06
+Nodes (28): Ce que le projecteur affiche, Mode plein écran, Mode Projecteur, Opacité, Ouvrir la fenêtre du projecteur, Sujets associés, Exemple simple, Les bases du G-code (+20 more)
 
 ### Community 230 - "RingBufferRenderer"
-Cohesion: 0.14
-Nodes (9): ndarray, RenderContext, Uploads a compiled scanline overlay layer into the ring buffer., Uploads pre-decompressed overlay arrays into the ring buffer., Updates the colour LUT from a shared ColorLutProvider., Computes the executed-vertex count for this frame. Reads the playhead from…, Map ``(in_progress_command, fraction)`` to executed vertices. Returns…, Renders scanline line-segments from a fixed-size ring buffer. The caller… (+1 more)
+Cohesion: 0.09
+Nodes (20): PlaybackContext, Playback state and per-frame execution counters. ``executed_vertex_count`` /…, Refreshes the playback section from the current frame inputs., ndarray, RenderContext, Uploads a compiled scanline overlay layer into the ring buffer., Uploads pre-decompressed overlay arrays into the ring buffer., Updates the colour LUT from a shared ColorLutProvider. (+12 more)
 
 ### Community 232 - "PdfVectorImporter"
 Cohesion: 0.05
 Nodes (36): PdfVectorImporter, Any, Geometry, Path, Imports vector data directly from PDF files using pymupdf. Extracts vector…, create_empty_pdf(), create_pdf_with_bezier(), create_pdf_with_circle() (+28 more)
 
-### Community 234 - "TestVar"
+### Community 234 - "simple_coro"
 Cohesion: 0.06
-Nodes (17): parametrize, Test basic Var creation with a default value., Test that the value_changed signal is emitted correctly., Test the new definition_changed signal for key, label, and desc., Test the to_dict method for serializing the definition., Test that an explicit value overrides the default on creation., Test the __repr__ for completeness., Tests that the `value` property correctly returns the default when no explicit… (+9 more)
+Nodes (27): cancellable_coro(), controllable_coro(), failing_coro(), Event, Tests for tasks running as asyncio coroutines., Verify the happy path for a coroutine task., Verify that a failing coroutine is handled correctly., Verify that a running coroutine can be cancelled. (+19 more)
 
 ### Community 235 - "docs/features/operations/contour.md"
 Cohesion: 0.09
@@ -2451,20 +2427,20 @@ Cohesion: 0.05
 Nodes (41): Ajustes Clave, Ajustes del Láser, Algoritmo, Casos de Uso, Combinando con Otras Operaciones, Conservación de Material, Consideraciones de Material, Crear una Operación de Envoltura Contraída (+33 more)
 
 ### Community 241 - "Bezier"
-Cohesion: 0.04
-Nodes (24): EntityID, Command to convert a Bezier curve to a straight Line. Removes control points…, StraightenBezierCommand, Bezier, Any, EntityID, Geometry, GeoPoint (+16 more)
+Cohesion: 0.14
+Nodes (10): Bezier, Any, EntityID, Geometry, GeoPoint, Polygon, Rect, test_bezier_control_points_serialization() (+2 more)
 
 ### Community 242 - "Shrink Wrap"
 Cohesion: 0.05
 Nodes (41): Algorithme, Aperçu, Cas d'Utilisation, Combiner avec d'Autres Opérations, Comment Fonctionne Shrink Wrap, Conservation du Matériau, Considérations de Matériau, Créer une Opération Shrink Wrap (+33 more)
 
-### Community 243 - "Overscan"
-Cohesion: 0.25
-Nodes (8): Como Overscan Funciona, Configurando Overscan, Escolhendo Distância de Overscan, O Problema: Marcas de Aceleração, Overscan, Quando Usar Overscan, Testando Configurações de Overscan, Tópicos Relacionados
+### Community 243 - "_parse_pos"
+Cohesion: 0.07
+Nodes (22): _parse_pos(), _parse_position_attribute(), Parse a position attribute (MPos, WPos, or WCO). Args: attrib: Attribute string…, Tests for _parse_position_attribute function., Test parsing MPos attribute., Test parsing WPos attribute., Test parsing WCO attribute., Test that parsing wrong type returns None. (+14 more)
 
-### Community 244 - "._perform_visual_jog"
-Cohesion: 0.09
-Nodes (14): Axis, Helper to jog multiple axes simultaneously by sending a single command…, Jog according to one or more visual directions., Handle Right (East) button click., Handle Left (West) button click., Handle Away (North) button click., Handle Toward (South) button click., Handle Up button click. (+6 more)
+### Community 244 - "JogDirection"
+Cohesion: 0.06
+Nodes (24): JogDirection, Visual direction for jog operations., Calculate the signed coordinate delta for a jog operation based on a visual…, Axis, Aggregate native-axis deltas for one or more visual directions., Whether the machine can jog every axis a direction drives., Native axis/sign pairs for one or more visual directions., Drop an armed hold. True when one was still pending. Without an argument every… (+16 more)
 
 ### Community 245 - "AddonConfig"
 Cohesion: 0.05
@@ -2475,8 +2451,8 @@ Cohesion: 0.05
 Nodes (41): Algoritmo, Casos de Uso, Combinando com Outras Operações, Como Shrink Wrap Funciona, Configurações do Laser, Configurações Principais, Conservação de Material, Considerações de Material (+33 more)
 
 ### Community 247 - "uk/docusaurus-plugin-content-docs/current/features/operations/contour.md"
-Cohesion: 0.09
-Nodes (25): Вимірювання керфа, Компенсація керфа, Пов'язані сторінки, Ручна компенсація керфа, Що таке керф?, Як працює компенсація керфа, Коли варто використовувати, Коли не варто використовувати (+17 more)
+Cohesion: 0.10
+Nodes (17): Вимірювання керфа, Компенсація керфа, Пов'язані сторінки, Ручна компенсація керфа, Що таке керф?, Як працює компенсація керфа, Коли варто використовувати, Коли не варто використовувати (+9 more)
 
 ### Community 248 - "Обтікання"
 Cohesion: 0.05
@@ -2484,15 +2460,15 @@ Nodes (41): Алгоритм, Безпека, Бік різу, Випадки в
 
 ### Community 249 - "VarSet"
 Cohesion: 0.02
-Nodes (59): KeysView, Adjusts the UI controls to show common values or indicate a mixed state when…, Populates and updates the VarSetRowList based on the selection., The VarSet used to render this step type's recipe editor. The base returns the…, Split :meth:`recipe_varset` into named groups for the editor. Returns a list of…, Settings groups common to all the given step types. Used by the recipe editor…, merge_varsets(), Any (+51 more)
+Nodes (77): Adjusts the UI controls to show common values or indicate a mixed state when…, Populates and updates the VarSetRowList based on the selection., IntVar, Any, A Var subclass for integer values with optional bounds., Represents a single typed variable with metadata for UI generation, validation,…, Var, merge_varsets() (+69 more)
 
 ### Community 250 - "PrintAndCutWizard"
-Cohesion: 0.05
-Nodes (7): PickSurface, ImageSurface, Snapshot, A canvas for picking alignment points on a workpiece or group image. Displays…, calculate_alignment_transform(), PrintAndCutWizard, Matrix
+Cohesion: 0.10
+Nodes (3): calculate_alignment_transform(), PrintAndCutWizard, Matrix
 
 ### Community 251 - "zh-CN/docusaurus-plugin-content-docs/current/features/operations/contour.md"
-Cohesion: 0.10
-Nodes (17): 什么是缝隙？, 手动缝隙补偿, 测量缝隙, 相关页面, 缝隙补偿, 缝隙补偿如何工作, 不适用场景, 合并线条 (+9 more)
+Cohesion: 0.09
+Nodes (25): 什么是缝隙？, 手动缝隙补偿, 测量缝隙, 相关页面, 缝隙补偿, 缝隙补偿如何工作, 不适用场景, 合并线条 (+17 more)
 
 ### Community 252 - "收缩包裹"
 Cohesion: 0.05
@@ -2502,25 +2478,25 @@ Nodes (41): 与其他操作结合, 何时使用收缩包裹, 偏移距离, 关�
 Cohesion: 0.06
 Nodes (7): OctoPrintDriver, Any, Axis, Pos, Submits G-code jobs to an OctoPrint server via its REST API and monitors live…, TestExtractApiKey, TestPrecheck
 
-### Community 254 - "test_producer_entity_points.py"
-Cohesion: 0.06
-Nodes (33): drag_context(), producer(), fixture, Tests producing snap points from entity points., Tests that dragged points are excluded from snap generation., Create an empty drag context., Tests that source attribute is set to the point entity., Tests producer with empty registry. (+25 more)
+### Community 254 - "drag_context"
+Cohesion: 0.40
+Nodes (5): drag_context(), fixture, Create an empty drag context., Create a basic entity registry for testing., registry()
 
 ### Community 255 - "test_camera_controller.py"
-Cohesion: 0.13
-Nodes (29): _FakeEvent, _FakeGesture, _make_ctrl(), Camera, ndarray, ui, Minimal GestureDrag stand-in for the drag handlers., Minimal Gdk.Event stand-in providing a cursor position. (+21 more)
+Cohesion: 0.27
+Nodes (19): _make_ctrl(), ui, test_create_camera_sets_dimensions(), test_drag_begin_orbits_around_plane_point(), test_drag_begin_orbits_around_plane_point_perspective(), test_drag_begin_sets_orbit_state(), test_drag_update_pans_with_shift(), test_get_world_coords_on_plane_ortho_uses_parallel_ray() (+11 more)
 
 ### Community 256 - "._move_to_start_corner"
-Cohesion: 0.09
-Nodes (15): Whether every corner is reachable, warning about the ones that are not. A…, Poll the head position until it reaches a corner. Args: target_x: Corner X in…, Stream C9 02 at a speed given in mm/min. This is the only place the…, The travel an axis has, in micrometres, in machine space. A reversed axis runs…, Move one step of the step-size control and wait for it to land. Ignored while…, The position a jog is measured from, read back if unknown. None when it cannot…, Move the head to an absolute target with the interactive D9 10 command, clamped…, Hold off background polling for the duration of a block. A counter rather than… (+7 more)
+Cohesion: 0.08
+Nodes (17): Whether every corner is reachable, warning about the ones that are not. A…, Poll the head position until it reaches a corner. Args: target_x: Corner X in…, Stream C9 02 at a speed given in mm/min. This is the only place the…, The travel an axis has, in micrometres, in machine space. A reversed axis runs…, A controller position pair in the profile's machine space., Record where the head is, in controller coordinates. None means "no longer…, Move one step of the step-size control and wait for it to land. Ignored while…, The position a jog is measured from, read back if unknown. None when it cannot… (+9 more)
 
 ### Community 257 - "StepRegistry"
 Cohesion: 0.06
 Nodes (15): Registry for Step classes. Allows explicit registration of step types for…, Look up a step class by its TYPELABEL attribute. This is useful for backward…, Return all registered step factory methods. Args: machine_caps: Optional set of…, Return a copy of all registered steps. Returns: Dictionary mapping step names…, Register a step class. Args: step_class: The Step subclass to register. The…, Unregister a step class by name. Args: name: The class name of the step to…, Unregister all steps registered by a specific addon. Args: addon_name: The name…, Look up a step class by name. Args: name: The class name of the step. Returns:… (+7 more)
 
 ### Community 259 - "OAuthFlowVar"
-Cohesion: 0.07
-Nodes (12): OAuthFlowVar, Any, Return parsed token dict, or None if not authenticated., A Var that represents an OAuth 2.0 Authorization Code flow. The value is a JSON…, Build a resolved config dict with all ``{key}`` placeholders substituted from…, ActionRow, Button, EntryRow (+4 more)
+Cohesion: 0.09
+Nodes (8): OAuthFlowVar, Any, Return parsed token dict, or None if not authenticated., A Var that represents an OAuth 2.0 Authorization Code flow. The value is a JSON…, Build a resolved config dict with all ``{key}`` placeholders substituted from…, TestOAuthFlowVar, TestOAuthFlowVarTemplates, TestOAuthFlowVarVarsetBackReference
 
 ### Community 260 - "Engrave"
 Cohesion: 0.05
@@ -2534,9 +2510,9 @@ Nodes (39): Bidirektionaler Scan-Offset, Bild sieht pixelig aus, Dither-Modus, D
 Cohesion: 0.05
 Nodes (39): Ajustes de Calidad, Ajustes de Grabado, Ajustes del Láser, Ajustes del Modo Múltiples Profundidades, Ajustes del Modo Potencia Constante, Ajustes del Modo Potencia Variable, Ajustes del Modo Trama, Ajustes Específicos del Modo (+31 more)
 
-### Community 263 - "EditableElement"
-Cohesion: 0.05
-Nodes (26): CanvasApp, EditableElement, ExampleElement, LShapeElement, populate_canvas(), Context, ImageSurface, A custom element that draws a non-symmetric "L" shape to test pixel perfect hit… (+18 more)
+### Community 263 - "ShrinkWrapGroup"
+Cohesion: 0.04
+Nodes (36): Context, Draws a live preview of the bounding box during a child transform., A generic group element that automatically calculates its bounding box to…, Draws a crisp, dashed bounding box for the group, but only when it is NOT…, Schedules a deferred bounds update, debouncing multiple requests., The idle callback that performs the actual update., Override to handle updates synchronously or via preview., When children are added/removed, schedule a deferred update for safety. (+28 more)
 
 ### Community 264 - "OverscanTransformer"
 Cohesion: 0.07
@@ -2558,21 +2534,21 @@ Nodes (39): Вибір матеріалу, Виправлення проблем
 Cohesion: 0.05
 Nodes (39): 何时使用雕刻, 创建雕刻操作, 功率和速度, 双向扫描偏移, 可变功率模式, 可变功率模式设置, 可见的扫描线, 后处理 (+31 more)
 
-### Community 270 - "CameraImageSettings"
-Cohesion: 0.09
-Nodes (11): CameraController, CameraImageSettings, CameraController, Live preview + image-quality controls for one camera., Box, ActionRow, create_slider(), create_slider_row() (+3 more)
-
-### Community 271 - "build_grbl_profile"
+### Community 270 - "CollinearConstraint"
 Cohesion: 0.07
-Nodes (15): build_grbl_profile(), Build a ``DeviceProfile`` from raw Grbl ``$I`` and ``$`` response lines. This…, extract_device_name(), parse_grbl_settings(), parse_msg(), parse_ver(), Parse a ``[VER:...]`` line into ``(version, build_name)``. Handles both…, Parse ``$$`` response lines into a ``{key: value}`` dict. (+7 more)
+Nodes (26): CollinearConstraint, Any, EntityID, Enforces that three points (p1, p2, p3) lie on the same line., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns a human-readable subtitle describing constrained points., fixture (+18 more)
+
+### Community 271 - "extract_device_name"
+Cohesion: 0.11
+Nodes (9): extract_device_name(), parse_msg(), parse_ver(), Parse a ``[VER:...]`` line into ``(version, build_name)``. Handles both…, Parse a ``[MSG:key:value]`` line into ``(key, value)``. Returns None if the…, Extract a human-readable device name from build info lines. Checks…, TestExtractDeviceName, TestParseMsg (+1 more)
 
 ### Community 272 - "utils.py"
-Cohesion: 0.17
-Nodes (29): get_tab_name(), main(), Screenshot: Bottom panel dock tabs (cropped to just the panel). Usage: pixi run…, main(), Screenshot: Main window in 3D mode. Usage: pixi run screenshot main:3d, main(), Screenshot: Main window in 3D mode with rotary project. Usage: pixi run…, main() (+21 more)
+Cohesion: 0.14
+Nodes (37): get_tab_name(), main(), Screenshot: Bottom panel dock tabs (cropped to just the panel). Usage: pixi run…, main(), Screenshot: Main window in 3D mode. Usage: pixi run screenshot main:3d, main(), Screenshot: Main window in 3D mode with rotary project. Usage: pixi run…, main() (+29 more)
 
-### Community 273 - "ArtifactStore"
-Cohesion: 0.19
-Nodes (17): ArtifactStore, In-process artifact store with reference-counted handles., Returns the artifact store., compile_scene_from_job(), Any, Compile a 3D scene from a job artifact. Runs synchronously on the calling…, Tests that the artifact type is correctly identified., test_artifact_type_property() (+9 more)
+### Community 273 - "RenderConfig3D"
+Cohesion: 0.14
+Nodes (18): LayerRenderConfig, Any, RenderConfig3D, compile_scene_from_job(), Any, Compile a 3D scene from a job artifact. Runs synchronously on the calling…, fixture, TestLayerRenderConfig (+10 more)
 
 ### Community 274 - "test_jog_widget_hold.py"
 Cohesion: 0.17
@@ -2586,13 +2562,17 @@ Nodes (37): Accessing the Bottom Panel, Active System Selection, Assets Tab, Aut
 Cohesion: 0.07
 Nodes (9): AssetBrowser, AssetCard, Button, Doc, Gesture, Menu, A bottom-panel widget that displays document assets as a grid of thumbnails., Updates the widget to track a new document instance. (+1 more)
 
+### Community 277 - "AppUpdateChecker"
+Cohesion: 0.10
+Nodes (7): AppUpdateChecker, Checks for new Rayforge versions via the GitHub Releases API. Runs checks in…, checker(), asyncio, fixture, TestCheckOnStartup, TestCheckWorker
+
 ### Community 278 - "Unteres Panel"
 Cohesion: 0.05
 Nodes (37): Achsen-Unterstützung, Aktives System auswählen, Aktuelle Position, Assets-Tab, Ausführlicher Modus, Auto-Scroll-Verhalten, Befehlseingabe, Dauer (Auto-Aus-Timer) (+29 more)
 
 ### Community 280 - "PatreonProvider"
-Cohesion: 0.12
-Nodes (6): OAuthCallbackHandler, PatreonProvider, BaseHTTPRequestHandler, Path, Thread, Start the OAuth flow by launching a local HTTP server. Returns: Tuple of (port,…
+Cohesion: 0.07
+Nodes (9): OAuthCallbackHandler, PatreonProvider, BaseHTTPRequestHandler, Path, Thread, Start the OAuth flow by launching a local HTTP server. Returns: Tuple of (port,…, Path, fixture (+1 more)
 
 ### Community 281 - "_worker_main_loop"
 Cohesion: 0.15
@@ -2622,21 +2602,21 @@ Nodes (37): G 代码查看器标签, 使用控制台进行故障排除, 切换�
 Cohesion: 0.07
 Nodes (26): Command to toggle the construction state of multiple entities., ToggleConstructionCommand, ConstructionTool, entities(), fixture, Test that invalid entity IDs are handled gracefully., Test with a mix of valid and invalid entity IDs., Test that execute and undo can be called multiple times. (+18 more)
 
-### Community 288 - "GcodeDialect"
-Cohesion: 0.06
-Nodes (32): GcodeDialect, Any, Creates a new, custom dialect instance from this one, generating a new UID., Serializes the dialect to a dictionary., A container for G-code command templates and formatting logic for a specific…, Meta fields excluded from template serialization., Serialize template fields for device profile export. Excludes meta fields…, Validate that *data* contains all required template fields. Raises… (+24 more)
+### Community 288 - "rust_helpers.py"
+Cohesion: 0.09
+Nodes (29): EncodeSpec, GcodeSpec, MachineTransformSpec, build_encode_context(), _build_heads(), _build_job_path_vars(), _build_layer_path_vars_for_doc(), _build_layer_wcs() (+21 more)
 
-### Community 289 - "ListItemCommand"
-Cohesion: 0.02
-Nodes (81): ListItemCommand, Any, Executes the redo action., Executes the undo action., A command to handle the reordering of a list., Applies the new order to the list., Restores the original order of the list., A command for adding or removing an item from a list-like container. (+73 more)
+### Community 289 - "Workflow"
+Cohesion: 0.05
+Nodes (40): Any, Step, T, Defines the Workflow class, which holds an ordered sequence of Steps., Adds a step to the end of the work plan., Removes a step from the work plan., Replaces the entire list of steps with a new one., Checks if the work plan contains any steps. (+32 more)
 
 ### Community 290 - "PlaybackOverlay"
 Cohesion: 0.08
 Nodes (14): PlaybackOverlay, Connect this overlay to a Canvas3D instance., Number of commands in the current playback, or 0., Current OpPlayer index, or -1., Seek the OpPlayer to the given command index. While paused, the simulated clock…, Toggle playback when the space key is pressed., Set the slider position from an external source (e.g. a G-code viewer click)…, Returns True if the play button is currently sensitive. (+6 more)
 
-### Community 291 - "EqualDistanceConstraint"
-Cohesion: 0.13
-Nodes (13): EqualDistanceConstraint, Any, EntityID, Enforces that distance(p1, p2) equals distance(p3, p4)., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns subtitle describing constrained segments., test_equal_distance_constraint() (+5 more)
+### Community 291 - "Layer"
+Cohesion: 0.07
+Nodes (17): MoveItemsLayerCommand, MoveWorkpiecesLayerCommand, Layer, Creates an undoable command to move workpieces to a specific layer. Args:…, Renames a layer with an undoable command., An undoable command to move one or more workpieces to a different layer., Sets the visibility of a layer with an undoable command., Sets the active layer. (+9 more)
 
 ### Community 292 - "Frame Outline"
 Cohesion: 0.06
@@ -2667,8 +2647,8 @@ Cohesion: 0.06
 Nodes (36): Aperçu, Bordure Décorative, Cadre + Gravure + Contour, Cadre vs Shrink Wrap, Calcul de la Boîte Englobante, Cas d'Utilisation, Combiner avec d'Autres Opérations, Compensation de Kerf (+28 more)
 
 ### Community 300 - "profile_raster.py"
-Cohesion: 0.11
-Nodes (25): _aggregate_node(), compute_geom(), layer_a_preprocess(), layer_b_marshal(), layer_c_assemble(), load_source_image(), main(), _make_mallinfo_struct() (+17 more)
+Cohesion: 0.15
+Nodes (21): MachineParams, _aggregate_node(), compute_geom(), layer_a_preprocess(), layer_b_marshal(), layer_c_assemble(), load_source_image(), main() (+13 more)
 
 ### Community 301 - "Raccourcis clavier"
 Cohesion: 0.06
@@ -2687,7 +2667,7 @@ Cohesion: 0.21
 Nodes (7): ColorPresetManager, Path, Manages loading and saving ColorPreset objects from a directory. Presets are…, Loads all presets from the presets file., fixture, Path, TestColorPresetManager
 
 ### Community 305 - "LaserControlWidget"
-Cohesion: 0.21
+Cohesion: 0.22
 Nodes (3): LaserControlWidget, Laser, Widget for manual laser on/off control with power and duration.
 
 ### Community 306 - "Рамковий контур"
@@ -2698,37 +2678,37 @@ Nodes (36): Бік різу, Вибір зміщення, Випадки вик�
 Cohesion: 0.06
 Nodes (36): Linux, macOS, Windows, Вигляд та відображення, Вигляд та візуалізація, Виправлення проблем зі скороченнями, Вирівнювання, Вирівнювання (+28 more)
 
-### Community 308 - "ColorLutProvider"
-Cohesion: 0.09
-Nodes (26): ColorLutProvider, ndarray, LUT for the scanline overlay ring buffer. The overlay dims by power too, so…, Provides colour LUTs for the power-based renderers. Encapsulates the per-laser…, Build a provider from a machine's laser heads and a theme ColorSet., The resolved base theme ColorSet., Per-laser colour sets keyed by laser UID., True if per-laser colour sets have been resolved. (+18 more)
+### Community 308 - "PixelPerfectLayoutStrategy"
+Cohesion: 0.10
+Nodes (22): PixelPerfectLayoutStrategy, PlacedItem, Matrix, ndarray, Rect, Renders the stock's transformed geometry to a boolean mask that defines the…, Generates rotated and dilated masks for all DocItems. Returns: A tuple…, Creates a boolean numpy array to serve as the packing surface. Args:… (+14 more)
 
 ### Community 309 - "框架轮廓"
 Cohesion: 0.06
 Nodes (36): G 代码示例, 与其他操作结合, 从板材上切割出来, 何时使用框架轮廓, 偏移距离, 偏移选择, 关键设置, 几何形状 (+28 more)
 
 ### Community 310 - "_VarSetRowManager"
-Cohesion: 0.07
-Nodes (13): Widget, Handles the raw signal from the VarSetRowList. Instead of applying changes…, Creates the VarSetRowList for sketch parameters., Any, PreferencesRow, Mixin providing all VarSet row management logic (populate, get/set values,…, A self-contained Adwaita Preferences Group that populates itself with rows…, A Gtk.ListBox that populates itself with rows based on a VarSet. Intended for… (+5 more)
+Cohesion: 0.10
+Nodes (6): Any, PreferencesRow, Mixin providing all VarSet row management logic (populate, get/set values,…, Removes only the rows dynamically created by populate()., Clears previous dynamic rows and builds new ones from a VarSet. Any static rows…, _VarSetRowManager
 
 ### Community 311 - "键盘快捷键"
 Cohesion: 0.06
 Nodes (36): 3D 视图控制, Linux, macOS, Windows, 修饰键, 分布, 变换, 图层和组织 (+28 more)
 
-### Community 312 - "UpdateCommand"
-Cohesion: 0.07
-Nodes (22): The async worker that installs multiple addons concurrently., Handles checking for and installing addon updates. This class orchestrates the…, Initiates a background task to check for addon updates. This method is non-…, The async worker that performs the update check in a thread., Initiates a background task to install a list of addon updates. This method is…, UpdateCommand, create_mock_addon(), create_mock_remote_meta() (+14 more)
+### Community 312 - "create_mock_addon"
+Cohesion: 0.14
+Nodes (11): create_mock_addon(), create_mock_remote_meta(), Verify that an exception during the check is handled gracefully., Test the installation worker when all addon updates succeed., Test the installation worker when one update fails and one succeeds., Test the installation worker when all updates fail., Test that calling the worker with an empty list does nothing., Verify that no signal is sent when the addon manager finds no updates. (+3 more)
 
 ### Community 313 - "TextureArtifactRenderer"
 Cohesion: 0.05
-Nodes (54): A container for texture-based raster data., TextureData, _build_mipmap_levels(), _downsample_texture(), prepare_texture_layer(), PreparedTextureLayer, ndarray, RenderContext (+46 more)
+Nodes (44): A container for texture-based raster data., TextureData, Creates and initializes all scene shaders and renderers., _build_mipmap_levels(), _downsample_texture(), PreparedTextureLayer, ndarray, RenderContext (+36 more)
 
 ### Community 314 - "HostnameVar"
-Cohesion: 0.11
-Nodes (13): HostnameVar, A Var subclass for hostnames or IP addresses., PortVar, A Var subclass for network port numbers., Test that a custom validator can be injected., Test that None validator skips validation., Test serializing (with and without value) and deserializing., Test HostnameVar validation logic. (+5 more)
+Cohesion: 0.09
+Nodes (15): HostnameVar, A Var subclass for hostnames or IP addresses., port_validator(), PortVar, A Var subclass for network port numbers., Raises ValidationError if port is not a valid network port., Test that a custom validator can be injected., Test that None validator skips validation. (+7 more)
 
 ### Community 315 - "RuidaServerTransport"
-Cohesion: 0.09
-Nodes (12): Ruida L2 server transport for UDP server mode. Unlike RuidaTransport (which…, Send raw data to a specific client. Use send_response() for normal Ruida…, Send a Ruida response (swizzled, no checksum prefix). Args: response:…, Send a framed command to a specific client. Args: command: Unswizzled command…, RuidaServerTransport, frame_packet(), Create a framed packet with checksum prefix. Args: payload: The payload bytes…, Tests for Ruida L2 Transport layer. Tests framing, swizzle encoding/decoding,… (+4 more)
+Cohesion: 0.11
+Nodes (7): Ruida L2 server transport for UDP server mode. Unlike RuidaTransport (which…, Send raw data to a specific client. Use send_response() for normal Ruida…, Send a Ruida response (swizzled, no checksum prefix). Args: response:…, RuidaServerTransport, Tests for Ruida L2 Transport layer. Tests framing, swizzle encoding/decoding,…, Tests for RuidaServerTransport UDP server mode., TestRuidaServerTransport
 
 ### Community 316 - "Circle"
 Cohesion: 0.04
@@ -2738,17 +2718,17 @@ Nodes (45): Circle, Any, EntityID, Geometry, Rect, Converts the circle to a Geom
 Cohesion: 0.06
 Nodes (35): Backup vor Upgrade, Controller-Hardware, Empfohlene Controller, Falsche Firmware, Fehlerbehebung bei Firmware-Problemen, Firmware-Abstürze, Firmware antwortet nicht, Firmware-Kompatibilität (+27 more)
 
-### Community 318 - "MaterialSelectorDialog"
-Cohesion: 0.11
-Nodes (14): MaterialSelectorDialog, MaterialSelectorRow, ListBox, SearchEntry, Window, Populates the library dropdown., Handles library selection change., Handles search text changes. (+6 more)
+### Community 318 - "StressTestController"
+Cohesion: 0.08
+Nodes (24): stress, InvalidationType, MetricsSnapshot, asyncio, Enum, Capture current pipeline state., Wait for pipeline to reach idle state. Polls ``pipeline.is_busy`` until it…, Create a new workpiece with source asset. (+16 more)
 
 ### Community 319 - "Compatibilidad de Firmware"
 Cohesion: 0.06
 Nodes (35): Acerca del Controlador GRBL Telnet, Actualizando a GRBL 1.1, Ajustes de GRBL para Láser, Compatibilidad de Firmware, Configuración de Firmware, Contribuyendo, Controlador GRBL Serial Simple, Controlador GRBL Telnet (+27 more)
 
 ### Community 320 - "._update_actions_and_ui"
-Cohesion: 0.06
-Nodes (12): Future, Called when the active machine's connection status changes., Updates the 'selectable' property of StockElements on the canvas based on which…, Handles the 'selection-changed' signal from the WorkSurface., Reads the theme from config and applies it to the UI., Handles the 'cut-requested' signal from the WorkSurface., Handles the 'copy-requested' signal from the WorkSurface., Handles the 'paste-requested' signal from the WorkSurface. Checks for image… (+4 more)
+Cohesion: 0.07
+Nodes (12): Future, Called when the active machine's state changes., Called when the active machine's connection status changes., Updates the 'selectable' property of StockElements on the canvas based on which…, Handles the 'selection-changed' signal from the WorkSurface., Handles the 'cut-requested' signal from the WorkSurface., Handles the 'copy-requested' signal from the WorkSurface., Handles the 'paste-requested' signal from the WorkSurface. Checks for image… (+4 more)
 
 ### Community 321 - "Compatibilité des firmwares"
 Cohesion: 0.06
@@ -2770,9 +2750,9 @@ Nodes (35): GRBL 0.9（较旧）, GRBL 1.1（推荐）, GRBL Serial Simple 驱�
 Cohesion: 0.08
 Nodes (18): Creates a Sketch from a Geometry object. The geometry can contain lines, arcs,…, Converting mixed geometry with bezier., Converting an empty geometry should return an empty sketch., Test bezier roundtrip conversion., Points at the same coordinates should be deduplicated., Converting geometry with multiple disconnected paths., Converting geometry with both lines and arcs., Test that converting to sketch and back to geometry preserves the shape. (+10 more)
 
-### Community 326 - "LibraryListWidget"
-Cohesion: 0.08
-Nodes (19): LibraryListWidget, LibraryRow, Button, ListBox, ListBoxRow, Widget, Handle edit button click., An Adwaita widget for displaying and managing a list of material libraries. (+11 more)
+### Community 326 - "LibraryRow"
+Cohesion: 0.12
+Nodes (11): LibraryRow, Button, Widget, Handle delete button click., Handle edit button click., Configures the widget's list box., Creates a LibraryRow for the given library., A widget representing a single Material Library in a ListBox. (+3 more)
 
 ### Community 327 - "Material Test Grid"
 Cohesion: 0.06
@@ -2834,21 +2814,21 @@ Nodes (34): 1. 使用原始矢量（推荐）, 2. 描摹位图, DXF 导入, DXF 
 Cohesion: 0.06
 Nodes (33): MOT-21 - Hold-jog speed defaults to 12000 mm/min (200 mm/s) and is never synced from the UI, so a press-and-hold runs 12x faster than the Jog Speed row shows, MOT-22 - The connection loop never sends a keepalive after the first, and its 1.0 s sleep makes POSITION_POLL_INTERVAL=0.5 unreachable, MOT-23 - home() zeroes the machine but never invalidates _last_known_pos; only X is corrected, by accident, MOT-24 - Go Scale outlines the box at the current head position, but the job (and Cut Scale) cut it at the REF0 anchor, MOT-25 - _suppress_polling is one boolean with two owners: trace_frame's exit re-enables position polling in the middle of a job upload, MOT-26 - Go Scale hard-codes 100 mm/s and is the only travel path that ignores the profile's max travel speed, MOT-27 - jog_key_up sets _jog_busy = True outside any try/finally; an error from _jog_to_limit leaks the flag and blocks every step jog, MOT-28 - _stop_jog_motion leaves the commanded bed-limit target cached when the resync read fails, so the next step jog runs to the far end of the bed (+25 more)
 
-### Community 342 - "AILookupPage"
-Cohesion: 0.11
-Nodes (10): is_ai_configured(), Return True when a default AI provider is enabled., AILookupPage, _format_value(), Any, Button, EntryRow, Pin a thin pulse bar under the scrollable content, mirroring the AI workpiece… (+2 more)
+### Community 342 - "Any"
+Cohesion: 0.08
+Nodes (18): Any, Connects to signals emitted by the WorkerPoolManager., Atomically adds a task, replacing any existing task with the same key. MUST be…, Add an asyncio-based task to the manager., Add a raw coroutine to the manager. The coroutine will be wrapped in a Task…, Creates, configures, and schedules a task to run a synchronous function in a…, Creates, configures, and schedules a task to run in the worker pool. Args:…, Cancels a running task by its key. This is the authoritative method for… (+10 more)
 
 ### Community 343 - "test_chunked_upload.py"
 Cohesion: 0.12
 Nodes (25): ChunkedUploadController, Chunked artifact upload controller for the 3D canvas. Owns the chunked-upload…, Uploads an item after its worker-thread preparation finished., Progress of a chunked upload in flight., Steps through per-layer vertex/texture uploads on idle callbacks.…, Mark the compiled artifact as needing a (re)upload., True while a compiled artifact upload is still pending., Start a chunked upload when the artifact is GL-dirty. (+17 more)
 
-### Community 344 - "import_file"
-Cohesion: 0.08
-Nodes (22): import_file(), Path, A high-level convenience function to import a file from a path or raw data. It…, Tests the importer returns None for malformed/invalid data., fixture, Path, Returns the path to the 'tests' directory., Tests importing an SVG file using its path. (+14 more)
-
-### Community 345 - "ai_settings_page.py"
+### Community 344 - "test_machine_cmd.py"
 Cohesion: 0.09
-Nodes (27): ClientSession, extract_svg_from_response(), generate_svg(), Extract SVG code from AI response, handling various formats., Generate SVG from a text prompt using the configured AI provider. Returns:…, OpenAICompatibleProvider, Provider for OpenAI and compatible APIs. Supports OpenAI, Ollama, LocalAI, and…, AIProvider (+19 more)
+Nodes (26): job_artifact(), machine(), machine_cmd(), asyncio, fixture, Test suite for the job monitoring orchestration in MachineCmd., Tests the full monitoring flow for a driver that reports granular progress., Tests the monitoring flow for a driver that does not report granular progress. (+18 more)
+
+### Community 345 - "AIProviderConfig"
+Cohesion: 0.14
+Nodes (17): ClientSession, OpenAICompatibleProvider, Provider for OpenAI and compatible APIs. Supports OpenAI, Ollama, LocalAI, and…, AIProviderConfig, AIProviderType, AIServiceError, ChatMessage, ChatResponse (+9 more)
 
 ### Community 346 - "Contour Cutting"
 Cohesion: 0.06
@@ -2874,9 +2854,9 @@ Nodes (33): Aperçu, Brunissage ou brûlure excessifs, Coins ou courbes manqués
 Cohesion: 0.06
 Nodes (33): Cantos ou curvas perdidos, Carbonização ou queima excessiva, Comandos G-code, Compensação de Kerf, Configurações de Contorno, Configurações do Laser, Configurações Principais, Corte de Contorno (+25 more)
 
-### Community 353 - "Transport"
-Cohesion: 0.08
-Nodes (12): Layer 2 (Data Link/Transport) for Ruida protocol. Handles framing (checksums)…, ABC, Enum, Abstract base class for asynchronous data transports., Initialize transport with callbacks and notification handler. Signals:…, Whether the transport is actively connected., Establish connection and start data flow., Gracefully terminate connection and cleanup resources. (+4 more)
+### Community 353 - "test_arc_entity.py"
+Cohesion: 0.07
+Nodes (30): fixture, Test Arc.update_constrained_status logic., Test calculation of the arc's midpoint., Test checking if an angle is within the arc's sweep., Fixture for setting up arc entities for selection tests., Test the is_contained_by method for Arc entities., Test of intersects_rect method for Arc entities., Test Arc.to_geometry method. (+22 more)
 
 ### Community 354 - "Контурне різання"
 Cohesion: 0.06
@@ -2887,28 +2867,28 @@ Cohesion: 0.06
 Nodes (33): G 代码命令, 何时使用轮廓, 关键设置, 切割侧与路径偏移, 切割期间零件掉落, 切割未穿透材料, 切割深度不一致, 切割顺序 (+25 more)
 
 ### Community 356 - "encode14"
-Cohesion: 0.09
-Nodes (15): encode14(), Encode a 14-bit value., Golden tests for relative/absolute motion command selection., Fixture ground truth: a9 7b 4f 00 15 has dx=-561um., A <8mm square yields AA/AB axis cuts and A9 diagonals., A segment over 8.192mm falls back to absolute A8., Short travels use 89/8A/8B; zero-delta is 89 with zeros., The first motion of every layer is absolute. (+7 more)
+Cohesion: 0.05
+Nodes (29): decode14(), decode_rel_coords(), decodeu14(), encode14(), parse_mem(), Parse memory address from 2 bytes (big-endian)., Decode relative X,Y coordinates from 4 bytes. Returns coordinates in…, Swizzle a single byte for transmission. (+21 more)
 
-### Community 357 - "MacroListEditor"
-Cohesion: 0.08
-Nodes (17): MacroListEditor, MacroRow, Button, Switch, Widget, Configures the widget and its placeholder., Callback to rebuild the list when the machine model changes., Creates a MacroRow for the given macro item. (+9 more)
+### Community 357 - "MacroRow"
+Cohesion: 0.12
+Nodes (11): MacroRow, Button, Switch, Widget, Creates a MacroRow for the given macro item., A widget representing a single Macro in a ListBox., Builds the user interface for the row., Handles the state change of the enable/disable switch. (+3 more)
 
 ### Community 358 - "Firmware Compatibility"
 Cohesion: 0.06
 Nodes (32): About SmoothieDriver, About the GRBL Telnet Driver, Backup Before Upgrade, Checking GRBL Version, Common Controllers, Compatibility Matrix, Contributing, Controller Hardware (+24 more)
 
-### Community 359 - "FloatVar"
-Cohesion: 0.05
-Nodes (24): recipe_varset() keys are consistent with recipe_keys(). The CNC domain varset…, TestRecipeVarsetKeys, Split into a "Laser" group (inherited process settings) and a "Step Settings"…, recipe_varset() keys are consistent with recipe_keys(). The base Step varset is…, TestRecipeVarsetKeys, BoolVar, Initializes a new BoolVar instance. Args: key: The unique machine-readable…, A variable that represents a boolean value. (+16 more)
+### Community 359 - "ValidationError"
+Cohesion: 0.04
+Nodes (34): recipe_varset() keys are consistent with recipe_keys(). The CNC domain varset…, TestRecipeVarsetKeys, Split into a "Laser" group (inherited process settings) and a "Step Settings"…, recipe_varset() keys are consistent with recipe_keys(). The base Step varset is…, TestRecipeVarsetKeys, BoolVar, Initializes a new BoolVar instance. Args: key: The unique machine-readable…, A variable that represents a boolean value. (+26 more)
 
-### Community 360 - "create_lut_from_color"
+### Community 360 - "color.py"
 Cohesion: 0.06
-Nodes (10): create_lut_from_color(), ndarray, Create a 256x4 LUT from a single color (grayscale to color gradient).…, Resize a uint8 image in linear light, channel by channel. Converts each channel…, resize_linear_nd(), TestCreateLutFromColor, TestLinearToSrgb, TestResizeLinearNd (+2 more)
+Nodes (30): hex_to_rgba(), Convert a hex color string to an RGBA tuple., create_lut_from_color(), ndarray, sRGB <-> linear light conversion utilities. Pure-array conversions delegate to…, Create a 256x4 LUT from a single color (grayscale to color gradient).…, Resize a uint8 image in linear light, channel by channel. Converts each channel…, resize_linear_nd() (+22 more)
 
 ### Community 361 - "check_rayforge_compatibility"
-Cohesion: 0.12
-Nodes (4): check_rayforge_compatibility(), Check if rayforge version satisfies all rayforge dependencies. Args: depends:…, Tests for check_rayforge_compatibility function., TestCheckRayforgeCompatibility
+Cohesion: 0.09
+Nodes (8): check_rayforge_compatibility(), parse_requirement(), Check if rayforge version satisfies all rayforge dependencies. Args: depends:…, Parse a requirement string into name and version constraint. Args: req:…, Test parsing requirement without version constraint., Test parsing requirement with version constraint., Tests for check_rayforge_compatibility function., TestCheckRayforgeCompatibility
 
 ### Community 362 - ".from_machine"
 Cohesion: 0.15
@@ -2943,40 +2923,40 @@ Cohesion: 0.06
 Nodes (31): Snap 权限（Linux）, Snap 权限故障排除, Snap 权限最佳实践, Snap 默认可以访问什么？, 串口仍然无法工作, 为什么这对 Rayforge 很重要, 什么是 Snap 权限？, 列出所有可用接口 (+23 more)
 
 ### Community 370 - "SketchStudio"
-Cohesion: 0.07
-Nodes (11): Draw the color swatch., Show color chooser dialog., Handle fill color change from the color button., The top-level container for the sketching environment. Manages the layout of…, Updates to UI to match the underlying sketch object (for Undo)., Handles sketch solve completion to update conflicts widget., Shows font properties when text editing begins., Hides font properties when text editing ends. (+3 more)
+Cohesion: 0.04
+Nodes (23): The menu model for the Sketch Studio mode., SketchMenu, Window, Draw the color swatch., Show color chooser dialog., Handle fill color change from the color button., Initializes the menu model., Initializes the action group and shortcut controller. (+15 more)
 
 ### Community 371 - "test_laser_pages.py"
-Cohesion: 0.03
-Nodes (88): ContourStepSettingsPage, CutOrderRow, OvercutRow, Any, SpinRow, Contour step settings widget., Settings page for the ContourStep., Combo row bound to the ``cut_order`` attribute. (+80 more)
+Cohesion: 0.02
+Nodes (108): ContourStepSettingsPage, Contour step settings widget., Settings page for the ContourStep., Slider row bound to the ``threshold`` attribute. Only visible while rescanning…, ThresholdRow, FrameStepSettingsPage, Any, Frame step settings page. (+100 more)
 
-### Community 372 - "_apply"
-Cohesion: 0.09
-Nodes (26): _apply(), _make_seg(), _ProgressCallback, Ops, Run the optimizer through the Rust spec dispatch., Verify that segments with different air assist states are not reordered., Create a 2-point segment: move_to then line_to., Verify that marker commands act as optimization boundaries. (+18 more)
+### Community 372 - "Optimize"
+Cohesion: 0.05
+Nodes (73): OptimizeSpec, Optimize, Any, Optimizes toolpaths to minimize travel distance. Delegates to the Rust-based…, _apply(), _build_ops(), _calculate_travel_distance(), _count_cuts() (+65 more)
 
 ### Community 373 - "SanityChecker"
 Cohesion: 0.16
 Nodes (26): SanityChecker, make_line_ops(), make_rect_zone(), fixture, test_clean_job(), test_disabled_zone_not_included(), test_extent_violation_reported(), test_multiple_issue_categories() (+18 more)
 
-### Community 374 - "render_geometry_to_png"
-Cohesion: 0.10
-Nodes (24): geometry_to_cairo(), Context, Geometry, Geometry rendering utilities using Cairo., Render a Geometry object to a Cairo context. Args: geometry: The geometry to…, Render a geometry to PNG bytes fitting within a square of ``size`` pixels.…, render_geometry_to_png(), OpsRenderer (+16 more)
+### Community 374 - "IAsset"
+Cohesion: 0.03
+Nodes (58): IAsset, Any, Protocol, setter, Signal, A protocol defining the common interface for all document assets. This allows…, The unique identifier of the asset instance., The user-facing name of the asset instance. (+50 more)
 
 ### Community 375 - "_HistoryButton"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (13): _HistoryButton, Performs undo/redo up to a specific command from the popover., Subclasses must implement this to return the correct stack., Subclasses must implement this to check if an action can be performed., Subclasses must implement this for the history dropdown action., A Gtk.Box composite widget for undoing actions., A Gtk.Box composite widget for redoing actions., A composite widget that combines a main action button with a dropdown button… (+5 more)
 
 ### Community 376 - "test_expression_map.py"
 Cohesion: 0.10
 Nodes (29): _fmt(), Plain text without placeholders is returned unchanged., Empty template produces empty string., Numeric values are substituted and stringified., Python format specs are applied to evaluated values., Expressions using math functions are evaluated., Arithmetic expressions work inside placeholders., Template mixing literal text with expressions. (+21 more)
 
-### Community 377 - "Smart Stock"
-Cohesion: 0.07
-Nodes (27): Deepnest, Nach dem Nesting, Nesting-Einstellungen, Nesting-Layout starten, Verwandte Themen, Voraussetzungen, Bestand erkennen, Bestandselemente erstellen (+19 more)
-
-### Community 378 - "Manejo de Material Base"
+### Community 377 - "Rohmaterial-Verwaltung"
 Cohesion: 0.15
-Nodes (13): Alternativas de Layout Manual, Asignar Material, Auto-Layout, Añadir Material Base, Comportamiento del Auto-Layout, Consejos para un Manejo Efectivo del Material Base, Convertir Piezas en Material Base, El auto-layout no funciona como se espera (+5 more)
+Nodes (13): Auto-Layout, Auto-Layout funktioniert nicht wie erwartet, Auto-Layout-Verhalten, Fehlerbehebung, Manuelle Layout-Alternativen, Material-Eigenschaften, Material zuweisen, Rohmaterial-Eigenschaften (+5 more)
+
+### Community 378 - "Smart Stock"
+Cohesion: 0.07
+Nodes (27): Configuración de nesting, Deepnest, Después del nesting, Ejecutar el diseño de nesting, Requisitos previos, Temas relacionados, Abrir el diálogo de detección, Capturar una imagen de referencia (+19 more)
 
 ### Community 379 - "Panel Inferior"
 Cohesion: 0.07
@@ -2986,17 +2966,17 @@ Nodes (30): Accediendo al Panel Inferior, Ajustes de Desplazamiento, Caracterís
 Cohesion: 0.07
 Nodes (27): Après le nesting, Deepnest, Exécuter la mise en page par nesting, Paramètres de nesting, Prérequis, Sujets associés, Capturer une image de référence, Créer des éléments de matériel (+19 more)
 
-### Community 381 - "Manuseio de Material"
-Cohesion: 0.15
-Nodes (13): Adicionando Material, Alternativas de Layout Manual, Atribuindo Material, Comportamento do Layout Automático, Convertendo Peças em Material, Dicas para Manuseio Eficaz de Material, Gerenciando Itens de Material, Layout Automático (+5 more)
+### Community 381 - "Smart Stock"
+Cohesion: 0.07
+Nodes (27): Após o nesting, Configurações de nesting, Deepnest, Executando o layout de nesting, Pré-requisitos, Tópicos relacionados, Abrindo o diálogo de detecção, Capturando uma imagem de referência (+19 more)
 
 ### Community 382 - "Smart Stock"
 Cohesion: 0.07
 Nodes (27): Deepnest, Запуск макета вкладання, Налаштування вкладання, Передумови, Пов'язані теми, Після вкладання, Smart Stock, Виявлення матеріалу (+19 more)
 
-### Community 383 - "材料处理"
-Cohesion: 0.15
-Nodes (13): 分配材质, 将工件转换为材料, 手动布局替代方案, 故障排除, 有效材料处理的提示, 材料处理, 材料属性, 材质属性 (+5 more)
+### Community 383 - "Smart Stock"
+Cohesion: 0.07
+Nodes (27): Deepnest, 前提条件, 嵌套完成后, 嵌套设置, 相关主题, 运行嵌套布局, Smart Stock, 创建材料项目 (+19 more)
 
 ### Community 384 - "FontPropertiesWidget"
 Cohesion: 0.09
@@ -3007,12 +2987,12 @@ Cohesion: 0.13
 Nodes (21): BidirScanOffsetSpec, BidirScanOffsetTransformer, Any, Geometry, Corrects the X misalignment between left-to-right and right-to-left raster…, _apply(), _build_zigzag(), fixture (+13 more)
 
 ### Community 386 - "TestAddonManagerHelpers"
-Cohesion: 0.09
-Nodes (11): Read the version field from rayforge-addon.yaml., parametrize, Test that _download_addon_zip strips the top-level directory., Test that _download_addon_zip returns False on HTTP error., Test that _download_addon_zip returns False on network error., Test that _download_addon_zip returns False on bad zip data., Test that _download_addon_zip returns False for bad URLs., Test get_all_addons returns empty dict when no addons. (+3 more)
+Cohesion: 0.08
+Nodes (12): Convert a git repository URL to a downloadable zip URL., Read the version field from rayforge-addon.yaml., parametrize, Test that _download_addon_zip strips the top-level directory., Test that _download_addon_zip returns False on HTTP error., Test that _download_addon_zip returns False on network error., Test that _download_addon_zip returns False on bad zip data., Test that _download_addon_zip returns False for bad URLs. (+4 more)
 
 ### Community 387 - "LengthSpinRow"
-Cohesion: 0.03
-Nodes (76): Non-modal, movable dialogs for the Array / Pattern tool. There are three…, AddTabsPopover, Window, Builds the laser-specific rows., WcsDialog, ensure_spinrow_min_width(), Widget, Ensure a consistent minimum width on spin buttons inside rows.… (+68 more)
+Cohesion: 0.02
+Nodes (96): AddTabsPopover, Four toggles saying which corner of the job the head is on. The job is placed…, Widget, Provides UI for common transformation properties (pos, size, angle)., Creates the widgets for transform properties once., TransformPropertyProvider, Box, Widget (+88 more)
 
 ### Community 388 - "DictItemCommand"
 Cohesion: 0.10
@@ -3023,8 +3003,8 @@ Cohesion: 0.09
 Nodes (9): ClientApp, ClientWindow, Synchronous wrapper for RuidaClient using the layered architecture. Uses: -…, Query the controller's ref point mode and update UI., Start the asyncio event loop in a background thread., Stop the asyncio event loop., Run a coroutine in the background asyncio loop. Args: coro: Coroutine to run…, RuidaUdpClient (+1 more)
 
 ### Community 390 - "RecipeControlWidget"
-Cohesion: 0.12
-Nodes (13): Any, Button, MessageDialog, Step, Opens the recipe selector dialog., Applies a selected recipe to the step via an undoable command., Apply recipe transformer settings to the step's transformers. For each recipe…, A widget for managing recipe application within the StepSettingsDialog. (+5 more)
+Cohesion: 0.11
+Nodes (14): Any, Button, MessageDialog, Step, Opens the recipe selector dialog., Applies a selected recipe to the step via an undoable command., Apply recipe transformer settings to the step's transformers. For each recipe…, Saves the current step settings as a new recipe. (+6 more)
 
 ### Community 393 - "CoordinateSpace"
 Cohesion: 0.08
@@ -3039,12 +3019,12 @@ Cohesion: 0.10
 Nodes (16): detectOs(), findReleaseAsset(), getGithubLatestReleaseApiUrl(), getInitialStateFromHash(), getOsLabel(), InstallGuide(), linuxMethods, MacosInstall() (+8 more)
 
 ### Community 396 - "SelectTool"
-Cohesion: 0.10
-Nodes (13): Context, GeoPoint, Returns the world-space start position of the current drag., Returns shortcuts available based on current tool state., Handle key events for toggling magnetic snap., Draws the selection box and snap lines., Handles selection and point dragging., Calculates and updates the selection based on the current drag box. (+5 more)
+Cohesion: 0.08
+Nodes (20): Context, EntityID, GeoPoint, Returns the world-space start position of the current drag., Returns shortcuts available based on current tool state., Handle key events for toggling magnetic snap., Draws the selection box and snap lines., Handles selection and point dragging. (+12 more)
 
 ### Community 397 - "NoOpProgressContext"
 Cohesion: 0.09
-Nodes (12): NoOpProgressContext, No-op implementation of ProgressContext. This class provides a silent…, Check if the operation has been cancelled. Returns: Always False for no-op…, Set progress as an absolute value (no-op). Args: progress: The absolute…, Set a descriptive status message (no-op). Args: message: The status message…, Set the total value for progress normalization (no-op). Args: total: The total…, Create a sub-context (returns new NoOpProgressContext). Args: base_progress:…, Immediately send any pending updates (no-op). (+4 more)
+Nodes (13): NoOpProgressContext, No-op implementation of ProgressContext. This class provides a silent…, Check if the operation has been cancelled. Returns: Always False for no-op…, Set progress as an absolute value (no-op). Args: progress: The absolute…, Set a descriptive status message (no-op). Args: message: The status message…, Set the total value for progress normalization (no-op). Args: total: The total…, Create a sub-context (returns new NoOpProgressContext). Args: base_progress:…, Immediately send any pending updates (no-op). (+5 more)
 
 ### Community 398 - "test_producer_intersections.py"
 Cohesion: 0.04
@@ -3055,16 +3035,16 @@ Cohesion: 0.14
 Nodes (18): Any, Executes the setter with the new arguments., Executes the setter with the old arguments to revert., Merges another SetterCommand if it affects the same object and method., A generic command to call a setter method with arbitrary arguments., SetterCommand, MockTarget, test_setter_can_coalesce_same_target_method() (+10 more)
 
 ### Community 400 - "DeviceProfile"
-Cohesion: 0.04
-Nodes (60): _convert(), _parse_camera_data(), Any, LightBurn .lbdev device profile importer. Provides parsing and conversion of…, Extract camera calibration data from LightBurn settings., Convert a parsed LightBurn device dict to Rayforge models., _copy_model_ref(), DeviceMeta (+52 more)
+Cohesion: 0.01
+Nodes (147): FlowBox, FlowBoxChild, get_sorted_by_id_paths(), Linux V4L persistent device identification. On Linux, /dev/videoN device…, Return by-id paths sorted by underlying /dev/videoN number., is_ai_configured(), Return True when a default AI provider is enabled., _convert() (+139 more)
 
 ### Community 401 - "RuntimeError"
-Cohesion: 0.08
-Nodes (32): Any, Geometry, _PlaceholderCanvas3D, A placeholder class for when the 3D canvas is disabled/unavailable., RuntimeError, build_atempo_filter(), build_audio_filter_chain(), build_video_filter() (+24 more)
+Cohesion: 0.09
+Nodes (30): Any, Geometry, RuntimeError, build_atempo_filter(), build_audio_filter_chain(), build_video_filter(), concat_segments(), create_concat_file() (+22 more)
 
 ### Community 402 - "WorkSurface"
 Cohesion: 0.02
-Nodes (68): CameraController, ColorRGBA, EventControllerKey, EventControllerMotion, EventControllerScroll, Gesture, GestureClick, GestureDrag (+60 more)
+Nodes (67): Creates an undoable command to move selected workpieces to the next or previous…, CameraController, ColorRGBA, EventControllerKey, EventControllerMotion, EventControllerScroll, Gesture, GestureClick (+59 more)
 
 ### Community 403 - "Workpiece Positioning Guide"
 Cohesion: 0.07
@@ -3078,9 +3058,9 @@ Nodes (28): Einrahmen, Empfohlene Arbeitsabläufe, Fehlerbehebung, Fokus-Leistun
 Cohesion: 0.07
 Nodes (28): Activar el Modo Enfoque, Alineación de Cámara, Configuración de Enmarcado, Configuración Rápida de SCF, Configurar la Cámara, Configurar la Potencia de Enfoque, Cuándo Enmarcar, Cuándo Establecer Cero SCF (+20 more)
 
-### Community 406 - "Path"
-Cohesion: 0.04
-Nodes (56): Path, Merge an addon's gettext domain into the global gettext lookup. Patches…, register_addon_domain(), compile_po_to_mo(), _join_po_lines(), needs_compilation(), parse_po_file(), Path (+48 more)
+### Community 406 - "register_addon_domain"
+Cohesion: 0.16
+Nodes (15): Path, Merge an addon's gettext domain into the global gettext lookup. Patches…, register_addon_domain(), _build_addon_locale(), isolated_gettext(), fixture, Path, Tests for the localized utilities, including the addon domain patch. (+7 more)
 
 ### Community 407 - "Guide de Positionnement de la Pièce"
 Cohesion: 0.07
@@ -3088,7 +3068,7 @@ Nodes (28): Activer le Mode Focus, Alignement de la Caméra, Aperçu, Cadrage, C
 
 ### Community 408 - "Line"
 Cohesion: 0.02
-Nodes (63): Any, EntityID, Calculates the points, entities, and constraints for a chamfer. This is a pure…, Any, EntityID, Calculates the points, entities, and constraints for a fillet. This is a pure…, EntityID, GeoPoint (+55 more)
+Nodes (68): Any, EntityID, Calculates the points, entities, and constraints for a chamfer. This is a pure…, Any, EntityID, Calculates the points, entities, and constraints for a fillet. This is a pure…, EntityID, Command to convert a Bezier curve to a straight Line. Removes control points… (+60 more)
 
 ### Community 409 - "Guia de Posicionamento de Peça de Trabalho"
 Cohesion: 0.07
@@ -3110,21 +3090,21 @@ Nodes (26): For /graphify add and --watch, For /graphify query, For the commit h
 Cohesion: 0.09
 Nodes (23): command(), ConcreteSketchChangeCommand, fixture, Test that execute uses existing snapshot., Test that undo restores the snapshot., Test that abstract methods raise NotImplementedError., Create a basic sketch for testing., Create a concrete command for testing. (+15 more)
 
-### Community 414 - "GeneralPreferencesPage"
-Cohesion: 0.10
-Nodes (11): GeneralPreferencesPage, Handler for the machine's changed signal. This is triggered when the driver or…, Synchronizes the unit system selector with the machine model without triggering…, Disconnects signals to prevent memory leaks., Shows or hides the error banner based on all possible errors., Update the machine name when the text changes., Update the max travel speed when the value changes., Update the max cut speed when the value changes. (+3 more)
+### Community 414 - ".from_path"
+Cohesion: 0.15
+Nodes (8): Load a device profile from a directory containing a ``device.yaml`` manifest. A…, asyncio, Path, TestCreateMachine, TestDeviceProfileLoad, _wait_for_tasks(), _write_grbl_dialect(), _write_yaml()
 
 ### Community 415 - "ProgressContext"
 Cohesion: 0.09
 Nodes (17): ProgressContext, ABC, Progress context abstraction for task execution. This module provides a unified…, Immediately send any pending updates., Report a normalized (0.0-1.0) progress value. Subclasses must implement this to…, Factory method for creating sub-contexts. Subclasses must implement this to…, Abstract marker class for contexts requiring throttling. This class extends…, Abstract base class for progress reporting and cancellation. This class… (+9 more)
 
 ### Community 416 - "AppKeyVar"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (7): AppKeyVar, Any, A Var for obtaining an API key from a device that supports a decision-based key…, TestAppKeyVarCreation, TestGetApiKey, TestResolveConfig, TestSerialization
 
-### Community 417 - "TestPipelineGeneration"
-Cohesion: 0.14
-Nodes (15): asyncio, usefixtures, Verifies that changing a step power triggers a new rebuild., Verifies that changing a workpiece position triggers a regeneration for…, Verifies that generate_job_artifact invokes when_done with a valid handle on…, Verifies that generate_job_artifact_async returns the handle., Verifies that a second call returns the cached handle without starting a…, Simulates two rapid property changes on a step, verifying that the pipeline… (+7 more)
+### Community 417 - "ComboRow"
+Cohesion: 0.10
+Nodes (21): CutOrderRow, Combo row bound to the ``cut_order`` attribute., ComboRow, A combo row bound to an enum-like step attribute. ``choices`` is a sequence of…, CoolantRow, Any, A combo row bound to the ``coolant_method`` step attribute. Shows an…, _combo_row() (+13 more)
 
 ### Community 418 - "TestProjectRoundTrip"
 Cohesion: 0.07
@@ -3162,17 +3142,17 @@ Nodes (16): Tests for the get_tool_manager singleton accessor., test_singleton_i
 Cohesion: 0.06
 Nodes (23): Returns the machine manager., Initializes a minimal context for testing. Sets up MachineManager and Config…, MachineManager, Path, Attempts to connect a machine, suppressing ResourceBusyErrors., Sets the active machine, handling the connection lifecycle for shared resources., Returns a list of all managed machines, sorted by name., Triggers initial connection for all machines with auto_connect enabled. This is… (+15 more)
 
-### Community 431 - "format_hours_to_hm"
-Cohesion: 0.07
-Nodes (18): format_clock(), format_hours_to_hm(), Utility functions for formatting time values., Format a number of seconds as a clock reading. Args: seconds: Positive number…, Format a fractional hours value to hours and minutes string. Args: hours:…, TimeEstimateOverlay, MainToolbar, ToggleButton (+10 more)
+### Community 431 - "MainToolbar"
+Cohesion: 0.14
+Nodes (8): MainToolbar, ToggleButton, The main application toolbar. Connects its buttons to Gio.Actions for…, Show how far along the running job is, or hide the area. The Ruida controller…, Build the list of arrange actions including registered layouts., Handle action registry changes by refreshing arrange menu., Callback to update the focus icon when the button's state changes for any…, Update the machine warning label with title, code and description.
 
 ### Community 432 - "Macro"
 Cohesion: 0.13
 Nodes (20): Adds a macro and notifies listeners., Macro, Any, A generic, named block of G-code with an enabled state., Serializes the macro to a dictionary., Creates a macro instance from a dictionary., Test object creation with all values specified., Verify that the to_dict method produces the correct structure. (+12 more)
 
-### Community 433 - "StockPropertiesDialog"
-Cohesion: 0.10
-Nodes (13): Clean up signal connections when dialog is destroyed., Debounce a callback function to avoid excessive updates., Called when the debounce timer expires., Handle name entry changes with instant apply., Handle thickness changes with instant apply., Callback for when a material is selected from the dialog., Apply the name change., Update the UI when the stock item changes. (+5 more)
+### Community 433 - "Axis"
+Cohesion: 0.07
+Nodes (16): _clamp_margins(), Axis, Rect, Check if the machine's driver supports homing for the given axis., Jogs the machine along specified axes. Args: deltas: Dictionary mapping Axis…, Check if machine's supports jogging for the given axis., Returns the extent frame rectangle (x, y, width, height) in visual coordinates…, Sets the work origin for the specified axes to the current machine position.… (+8 more)
 
 ### Community 434 - ".__init__"
 Cohesion: 0.13
@@ -3206,21 +3186,21 @@ Nodes (26): 2D полотно, 3D перегляд, WCS за шарами, WCS �
 Cohesion: 0.08
 Nodes (26): 2D 画布, 3D 预览, MACHINE 空间, WCS 类型, WCS 限制, WORKAREA 空间, 为什么使用 WCS？, 作业中的 WCS (+18 more)
 
-### Community 442 - "set_window_size"
-Cohesion: 0.13
-Nodes (18): main(), Screenshot: Add Machine dialog (Unified Wizard, Step 1). Usage: pixi run…, main(), Screenshot: Unified machine configuration wizard pages. The wizard's adaptive…, wizard_step_for(), _ensure_addon_loaded(), main(), open_dialog() (+10 more)
+### Community 442 - "run_on_main_thread"
+Cohesion: 0.08
+Nodes (37): main(), Screenshot: Add Machine dialog (Unified Wizard, Step 1). Usage: pixi run…, main(), Screenshot: Unified machine configuration wizard pages. The wizard's adaptive…, wizard_step_for(), _ensure_addon_loaded(), main(), open_dialog() (+29 more)
 
 ### Community 443 - "CallbackProgressContext"
 Cohesion: 0.09
-Nodes (13): CallbackProgressContext, Initialize the no-op progress context., ProgressContext implementation that uses callbacks for reporting. This class…, Initialize the callback progress context. Args: is_cancelled_func: Function…, Check if the operation has been cancelled. The check is throttled to avoid…, Set a descriptive status message. Args: message: The status message to send via…, Immediately send any pending updates (no-op for callbacks)., Report a normalized progress value via callback. Args: progress: The normalized… (+5 more)
+Nodes (12): CallbackProgressContext, Initialize the no-op progress context., ProgressContext implementation that uses callbacks for reporting. This class…, Initialize the callback progress context. Args: is_cancelled_func: Function…, Check if the operation has been cancelled. The check is throttled to avoid…, Set a descriptive status message. Args: message: The status message to send via…, Immediately send any pending updates (no-op for callbacks)., Report a normalized progress value via callback. Args: progress: The normalized… (+4 more)
 
 ### Community 445 - "TestAxisRendererLayout"
-Cohesion: 0.09
-Nodes (15): parametrize, ui, Tests for layout calculations and adaptive sizing., Test that the renderer initializes with correct properties., Test that the renderer initializes with custom font size., Test setting the label font size., Test that the content area is calculated correctly., Test that changing font size affects the layout calculations. (+7 more)
+Cohesion: 0.05
+Nodes (24): parametrize, ui, Tests for layout calculations and adaptive sizing., Test that the renderer initializes with correct properties., Test that the renderer initializes with custom font size., Test setting the label font size., Test that the content area is calculated correctly., Test that changing font size affects the layout calculations. (+16 more)
 
-### Community 446 - "CircleTool"
-Cohesion: 0.09
-Nodes (11): CircleTool, Context, Updates the live preview of the ellipse., Handles creating ellipses/circles via drag-to-create. - Default: drag creates…, Draw snap feedback during creation., Handle modifier keys for ellipse creation., Called when modifier keys change during drag., Returns shortcuts for the status bar. (+3 more)
+### Community 446 - "ParallelogramConstraint"
+Cohesion: 0.10
+Nodes (20): ParallelogramConstraint, Any, EntityID, Enforces four points form a parallelogram., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns a human-readable subtitle describing constrained points., Returns the gradient of the error with respect to each point. (+12 more)
 
 ### Community 447 - "test_revision_counters.py"
 Cohesion: 0.12
@@ -3259,36 +3239,36 @@ Cohesion: 0.10
 Nodes (14): ApplicationWindow, ActionInfo, ActionRegistry, SimpleAction, Unregister an action from the window. Args: action_name: The name of the action…, Unregister all actions registered by a specific addon. Args: addon_name: The…, Get action info by name. Args: action_name: The name of the action. Returns:…, Get actions with menu placement for a specific menu, sorted by priority. Args:… (+6 more)
 
 ### Community 458 - "Model"
-Cohesion: 0.06
-Nodes (21): Model manager for 3D model assets in Rayforge., Model, ModelLibrary, Any, Core 3D model data structures for Rayforge., Represents a source of 3D models. Each library has a root ``path`` on the…, A data class representing a 3D model asset in Rayforge. Models are referenced…, Create a Model instance from a dictionary. Args: data: Dictionary with model… (+13 more)
+Cohesion: 0.08
+Nodes (15): Model manager for 3D model assets in Rayforge., Model, Any, Core 3D model data structures for Rayforge., A data class representing a 3D model asset in Rayforge. Models are referenced…, Create a Model instance from a dictionary. Args: data: Dictionary with model…, Convert the model to a dictionary representation. Returns: Dictionary…, _FakeContext (+7 more)
 
-### Community 459 - "DeviceSettingsPage"
-Cohesion: 0.16
-Nodes (6): DeviceSettingsPage, A preferences page for reading and writing device settings., Handles the successful application of a single setting., Hides the error row and cancels the auto-hide timer., Copies the current error message to the clipboard., Handler for the 'Activate Machine' button.
+### Community 459 - "SignalTracker"
+Cohesion: 0.07
+Nodes (13): Exception, Protocol handler for UDP server., UdpServerProtocol, Test that datagram_received triggers the transport callback., Test that error_received sends error status signal., A helper to track calls to a blinker Signal., Test receiving data from a UDP client., Test full bidirectional communication. (+5 more)
 
 ### Community 461 - "check_constraint"
 Cohesion: 0.15
 Nodes (4): check_constraint(), Check if current version satisfies a constraint. Args: current_v: Current…, Tests for check_constraint function., TestCheckConstraint
 
-### Community 462 - "test_slider_row.py"
-Cohesion: 0.67
-Nodes (5): ui, _slider_row(), test_change_schedules_debounced_commit(), test_commit_writes_to_step(), test_syncs_value_from_step()
+### Community 462 - "test_doceditor.py"
+Cohesion: 0.08
+Nodes (28): assets_path(), contour_step_class(), _init_context(), parse_gcode_line(), asyncio, fixture, parametrize, Path (+20 more)
 
 ### Community 464 - "generate_blender_setup.py"
 Cohesion: 0.12
 Nodes (23): add_text_overlays(), add_thumbnail(), add_video_clips(), clear_sequencer(), find_media_files(), find_previous_blend_file(), find_thumbnail(), generate_blender_file() (+15 more)
 
 ### Community 465 - "test_job_time_estimate.py"
-Cohesion: 0.12
-Nodes (15): _path(), Ops, parametrize, The job time estimate, measured against times you can work out. The estimate is…, The estimate is fed from the machine profile., The profile value is what reaches the estimator., Acceleration can only ever add time, never remove it., With acceleration out of the way, time is distance over speed. (+7 more)
+Cohesion: 0.16
+Nodes (12): _path(), Ops, parametrize, The job time estimate, measured against times you can work out. The estimate is…, Acceleration can only ever add time, never remove it., With acceleration out of the way, time is distance over speed., A speed change mid-path is honoured, not averaged., Corners cost time even when the distance is identical. (+4 more)
 
 ### Community 466 - "test_ops_renderer.py"
-Cohesion: 0.22
-Nodes (20): colors(), _FakePlayer, _init_renderer(), _make_attrib(), _make_ctx(), _make_shaders(), fixture, ndarray (+12 more)
+Cohesion: 0.07
+Nodes (37): OpsRenderer, ndarray, RenderContext, Clears the renderer's buffers and resets vertex counts., Uploads a compiled vertex layer into the renderer's buffers. Prepares and…, Updates the colour LUT from a shared ColorLutProvider., Computes the executed-vertex counts for this frame. Reads the playhead from…, Map ``(in_progress_command, fraction)`` to executed vertices. Returns… (+29 more)
 
 ### Community 467 - "AboutDialog"
-Cohesion: 0.20
-Nodes (6): AboutDialog, get_supporters(), Button, Returns a list of supporters who donated to the app. Each entry is a tuple of…, A custom 'About' dialog that uses a ViewStack to navigate between the main page…, Copy the version information to clipboard.
+Cohesion: 0.14
+Nodes (12): AboutDialog, get_dependency_info(), get_supporters(), _get_version(), _is_dev_build(), Button, Returns a list of supporters who donated to the app. Each entry is a tuple of…, A custom 'About' dialog that uses a ViewStack to navigate between the main page… (+4 more)
 
 ### Community 468 - "test_jog_widget_motion_audit.py"
 Cohesion: 0.16
@@ -3299,8 +3279,8 @@ Cohesion: 0.08
 Nodes (24): Adding a Camera, Alignment Not Accurate, Alignment Procedure, Alignment Status, Automatic Calibration, Camera Integration, Camera Lag or Stuttering, Camera Not Detected (+16 more)
 
 ### Community 470 - "OAuthFlowAdapter"
-Cohesion: 0.09
-Nodes (16): _OAuthCallbackHandler, OAuthFlow, OAuthFlowConfig, OAuthResult, BaseHTTPRequestHandler, Exception, Start the OAuth flow. Opens the browser and listens for the callback on…, A reusable OAuth 2.0 Authorization Code flow. Spawns a localhost HTTP server to… (+8 more)
+Cohesion: 0.07
+Nodes (21): _OAuthCallbackHandler, OAuthFlow, OAuthFlowConfig, OAuthResult, BaseHTTPRequestHandler, Exception, Start the OAuth flow. Opens the browser and listens for the callback on…, A reusable OAuth 2.0 Authorization Code flow. Spawns a localhost HTTP server to… (+13 more)
 
 ### Community 471 - "Kamera-Integration"
 Cohesion: 0.08
@@ -3343,7 +3323,7 @@ Cohesion: 0.09
 Nodes (21): Better Framing Controls, Bug Fixes, Camera Calibration Wizard, Download Rayforge 1.4, Join the Community, Merge Lines Post-Processor, Other Improvements, PDF Import with Layers (+13 more)
 
 ### Community 482 - "RecipeGeneralPage"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (9): Any, The recipe editor's general page: name and description., The recipe's name and description., RecipeGeneralPage, Dedicated page widgets for the recipe editor dialog., Any, One group of recipe process settings. Wraps a :class:`VarSetWidget` titled…, The setting keys rendered on this page. (+1 more)
 
 ### Community 483 - "Device Settings"
@@ -3383,28 +3363,28 @@ Cohesion: 0.07
 Nodes (24): ProjectCmd, Path, Action handler for opening a project file., Callback for unsaved changes dialog in on_open_project., Callback for the open project dialog., Action handler for saving the current project., Action handler for saving the project with a new name., Callback for the save project dialog. (+16 more)
 
 ### Community 492 - "AIWorkpieceGeneratorDialog"
-Cohesion: 0.12
-Nodes (7): hookimpl, Register action for AI workpiece generation with menu placement., register_actions(), AIWorkpieceGeneratorDialog, Add a sketch-based workpiece to the document., Dialog for generating workpieces using AI., Fall back to importing SVG as non-editable geometry.
+Cohesion: 0.18
+Nodes (3): AIWorkpieceGeneratorDialog, Dialog for generating workpieces using AI., Fall back to importing SVG as non-editable geometry.
 
 ### Community 494 - "test_grid_tool.py"
 Cohesion: 0.14
 Nodes (15): GridTool, grid_tool(), mock_element(), fixture, ui, test_grid_tool_creates_construction_geometry_by_default(), test_grid_tool_initialization(), test_grid_tool_is_available_no_target() (+7 more)
 
 ### Community 495 - "DocItem"
-Cohesion: 0.01
-Nodes (101): Applies the collected changes to the model. This is called by the GLib timer…, Provides a VarSetWidget to configure a Sketch's input parameters., Handles the selection if all items are WorkPieces derived from the *same*…, SketchPropertyProvider, Any, Handles commands related to sketch-based workpieces., Updates the sketch parameters for one or more workpiece instances in a single…, SketchCmd (+93 more)
+Cohesion: 0.02
+Nodes (65): Handles the selection if all items are WorkPieces derived from the *same*…, DocItem, ABC, Doc, Matrix, Rect, setter, T (+57 more)
 
 ### Community 497 - "_InnerMockProgressContext"
 Cohesion: 0.10
 Nodes (12): _InnerMockProgressContext, Inner class that extends ProgressContext. This class implements the…, Set the wrapper for tracking calls., Check if the operation has been cancelled., Helper to change cancellation state during tests., Set progress as an absolute value., Set a descriptive status message., Immediately send any pending updates. (+4 more)
 
-### Community 498 - "TestApplyToJobOps"
-Cohesion: 0.17
-Nodes (8): build_layer_assembly(), Doc, Layer, Apply per-layer rotary axis mapping to a full job's ops. Walks the command…, Build a throwaway assembly for *layer*'s rotary config. Reads only: it resolves…, parametrize, TestApplyToJobOps, TestBuildLayerAssembly
+### Community 498 - "Head"
+Cohesion: 0.08
+Nodes (11): Head, ABC, Prepare the object for pickling. Removes unpickleable Signal., Restore the object after unpickling. Recreates the Signal., Base class for machine heads. Concrete head types (:class:`LaserHead`,…, The machine capability this head type implies, or ``None`` for passive heads…, Returns the first head, or raises an error if none exist., Whether the machine's driver supports PWM for the given head. (+3 more)
 
 ### Community 499 - "AppKeyAdapter"
-Cohesion: 0.17
-Nodes (6): AppKeyAdapter, Any, Button, EntryRow, ExpanderRow, Adapter that renders an AppKeyVar. Shows an ExpanderRow with a text entry for…
+Cohesion: 0.15
+Nodes (7): AppKeyAdapter, Any, Button, EntryRow, ExpanderRow, PreferencesRow, Adapter that renders an AppKeyVar. Shows an ExpanderRow with a text entry for…
 
 ### Community 500 - "test_ruida_production_path.py"
 Cohesion: 0.08
@@ -3424,15 +3404,15 @@ Nodes (22): Менеджер бібліотек, Отримання команд
 
 ### Community 505 - "test_spec_lookup.py"
 Cohesion: 0.13
-Nodes (29): _coerce_specs(), _extract_json_object(), lookup_machine_specs(), Any, AI-powered machine specification lookup. This module queries the configured AI…, Normalize the parsed JSON into wizard-consumable fields. Drops keys with…, Query the AI for machine specifications. Args: vendor: Manufacturer name (e.g.…, Pull the first balanced JSON object out of an LLM response. LLMs occasionally… (+21 more)
+Nodes (29): _coerce_specs(), _extract_json_object(), lookup_machine_specs(), Any, Normalize the parsed JSON into wizard-consumable fields. Drops keys with…, Query the AI for machine specifications. Args: vendor: Manufacturer name (e.g.…, Pull the first balanced JSON object out of an LLM response. LLMs occasionally…, FakeAIService (+21 more)
 
 ### Community 506 - "Findings"
 Cohesion: 0.10
 Nodes (21): Findings, MOT-01 - The STOP button does not stop a Go Scale — the trace pauses, then resumes and completes, MOT-02 - Go Scale's Stop is erased by the trace it was meant to cancel, MOT-03 - Same STOP bypass restarts a held jog: releasing one half of a diagonal after STOP re-issues motion, MOT-04 - release_all_jog_keys clears trace_frame's borrowed _jog_busy: Go Scale stops, then resumes moving on its own, MOT-05 - D8 01 is assumed to halt an interactive D9 10 rapid; the only in-repo decoder says it is a process stop that does not touch motion, MOT-06 - A key-up can be overtaken by the key-down it is releasing: D9 run-to-limit lands after D8 01, MOT-07 - Held jog and step jog drive the head to the wrong end of the axis when reverse_x_axis / reverse_y_axis is set (+13 more)
 
-### Community 507 - "WorkPiece"
+### Community 507 - "core/workpiece.py"
 Cohesion: 0.01
-Nodes (327): Tests for the adaptive-clearing CNC step., CNC payloads express power as the spindle's RPM / max RPM ratio, so a running…, TestAdaptiveClearSpec, TestFrameComputePayload, TestMaterialTestComputePayload, Verifies EngraveStep's build_compute_payload (B3)., TestEngraveComputePayload, TestShrinkWrapComputePayload (+319 more)
+Nodes (271): Phase 2: Parse JSON into Sketch model and solve it for bounds., Phase 3: Extract geometry from the solved sketch., Tests for committing items with sketches., Test committing items with sketches., TestCommitWithSketches, doc(), doc_with_workpiece(), fixture (+263 more)
 
 ### Community 508 - "test_sketcher_params.py"
 Cohesion: 0.10
@@ -3442,13 +3422,13 @@ Nodes (12): params(), fixture, Test getting a dictionary of all evaluated parame
 Cohesion: 0.09
 Nodes (12): _MockProgressContextImpl, Initialize the mock progress context. Args: cancelled: Initial cancellation…, Internal implementation of MockProgressContext. This class extends…, Initialize the mock progress context implementation. Args: cancelled: Initial…, Check if the operation has been cancelled., Set progress as an absolute value., Set a descriptive status message., Set the total value for progress normalization. (+4 more)
 
-### Community 511 - "DocItemPropertiesWidget"
-Cohesion: 0.08
-Nodes (17): DocItemPropertiesWidget, Creates all widgets for all providers one time and adds them to the appropriate…, Sets the currently selected items and updates the UI., Handles data changes from the DocItem model by updating the UI to reflect the…, Updates the UI by querying all registered property providers and managing the…, Sets the main title of the expander based on selection., An orchestrator widget that displays properties for selected document items. It…, Connect to config and machine signals. (+9 more)
+### Community 510 - "LicenseResult"
+Cohesion: 0.10
+Nodes (5): GumroadProvider, Path, LicenseResult, Any, TestLicenseResult
 
-### Community 512 - "ImportSummary"
-Cohesion: 0.11
-Nodes (18): ImportSummary, Return ``(field_label, value)`` pairs for table display., Human-readable summary of values imported from a LightBurn profile. Displayed…, Return a bulleted list of human-readable summary lines., LBDevImportDialog, Window, Modal dialog warning about incomplete LightBurn imports. Displays a warning…, _handle_lbdev() (+10 more)
+### Community 511 - "DocItemPropertiesWidget"
+Cohesion: 0.14
+Nodes (11): DocItemPropertiesWidget, Handle machine changes (including WCS selection/offset changes)., Creates all widgets for all providers one time and adds them to the appropriate…, Sets the currently selected items and updates the UI., Handles data changes from the DocItem model by updating the UI to reflect the…, Updates the UI by querying all registered property providers and managing the…, Sets the main title of the expander based on selection., An orchestrator widget that displays properties for selected document items. It… (+3 more)
 
 ### Community 513 - "2026-03-10-rayforge-1.2-addons-camera-ai.md"
 Cohesion: 0.10
@@ -3459,28 +3439,28 @@ Cohesion: 0.10
 Nodes (19): Add Upstream Repository, Clone Your Fork, Fork the Repository, Getting the Code, Next Steps, Verify the Repository, Linux, macOS (+11 more)
 
 ### Community 516 - "ColorPreset"
-Cohesion: 0.14
-Nodes (12): ColorPreset, Any, Color rules: map SVG colors to step types at import time. A…, Returns the preset for a color, or None if none matches. Args: color: The color…, Returns a list of all stored presets., Resets the process-wide ColorPresetManager singleton. Intended for tests that…, A single color rule: a color maps to a step class name. The step class name…, Serializes the preset to a dictionary suitable for YAML. (+4 more)
+Cohesion: 0.11
+Nodes (18): Returns the color preset manager., ColorPreset, get_color_preset_mgr(), Any, Color rules: map SVG colors to step types at import time. A…, Returns a list of all stored presets., Returns the process-wide ColorPresetManager, creating it on first use. The…, Resets the process-wide ColorPresetManager singleton. Intended for tests that… (+10 more)
 
-### Community 517 - "TestPipelineInvalidation"
-Cohesion: 0.19
-Nodes (12): asyncio, usefixtures, Changing workpiece position should trigger a rebuild., Changing workpiece rotation should trigger a rebuild., Changing step power should trigger a rebuild., Adding a workpiece to the doc should trigger a rebuild., Transforming a group containing workpieces should trigger a rebuild., Transforming a layer should trigger a rebuild. (+4 more)
+### Community 517 - "PickSurface"
+Cohesion: 0.11
+Nodes (4): PickSurface, ImageSurface, Snapshot, A canvas for picking alignment points on a workpiece or group image. Displays…
 
 ### Community 518 - "translate_assembly_warning"
 Cohesion: 0.17
 Nodes (16): Translate non-fatal assembler warnings and show them as toasts., Translation helpers for assembler warnings emitted by raygeo. raygeo produces…, Translate an ``AssemblyWarning`` into a user-facing string. :param w: A raygeo…, translate_assembly_warning(), _FakeWarning, _identity_gettext(), fixture, Tests for assembly_warnings.translate_assembly_warning. (+8 more)
 
-### Community 519 - "parse_m503_settings"
-Cohesion: 0.43
-Nodes (3): parse_m503_settings(), Parse M503 output to extract key motion settings. Returns a dict with optional…, TestParseM503Settings
-
-### Community 520 - "gcode_to_p_number"
+### Community 519 - "AddEditToolDialog"
 Cohesion: 0.14
-Nodes (12): gcode_to_p_number(), Converts a G-code WCS name (e.g., "G54") to its P-number., Tests for gcode_to_p_number function., Test 'G54' returns 1., Test 'G55' returns 2., Test 'G59' returns 6., Test 'G60' returns None (out of range)., Test 'M999' returns None (not a G-code). (+4 more)
+Nodes (10): AddEditToolDialog, PreferencesGroup, SpinRow, ToggleButton, Widget, Window, Return the geometry param keys shown for the current category., True if ``key`` is a unit-aware (length) geometry field. (+2 more)
 
-### Community 521 - "is_boot_message"
-Cohesion: 0.14
-Nodes (12): is_boot_message(), Check whether a line is a Marlin boot/startup message. Recognised prefixes:…, Tests for is_boot_message function., Test 'start' returns True., Test 'Marlin 2.1.2.7' returns True., Test 'echo:V88 stored settings retrieved'., Test 'External Reset' returns True., Test ' External Reset' returns True after strip(). (+4 more)
+### Community 520 - "ReorderListCommand"
+Cohesion: 0.11
+Nodes (17): Any, A command to handle the reordering of a list., Applies the new order to the list., Restores the original order of the list., ReorderListCommand, Removes all workpieces and groups from all layers in the document in a single…, MockOwner, test_list_item_execute() (+9 more)
+
+### Community 521 - "LayoutCmd"
+Cohesion: 0.11
+Nodes (14): LayoutCmd, Action handler for centering selected items horizontally., Action handler for centering selected items vertically., Action handler for aligning selected items to the left., Action handler for aligning selected items to the right., Action handler for aligning selected items to the top., Action handler for aligning selected items to the bottom., Action handler for spreading selected items horizontally. (+6 more)
 
 ### Community 522 - "HistogramPreview"
 Cohesion: 0.14
@@ -3502,17 +3482,17 @@ Nodes (19): Coordinate Systems, Creating a New Importer, Data Structures, Import
 Cohesion: 0.10
 Nodes (20): Advanced Troubleshooting, Checking Port Availability Manually, Common Problems and Solutions, Connection Issues, Connection Keeps Dropping, Connection Status Messages, Device Not Responding After Connection, Firmware Compatibility (+12 more)
 
-### Community 527 - "test_angle_constraint_cmd.py"
-Cohesion: 0.14
-Nodes (13): AngleConstraintParams, EntityID, AngleConstraintTool, intersecting_lines(), fixture, sketch(), test_calculate_constraint_params_45_degree_angle(), test_calculate_constraint_params_intersecting_lines() (+5 more)
+### Community 527 - "AngleConstraint"
+Cohesion: 0.06
+Nodes (35): AngleConstraintCommand, AngleConstraintParams, EntityID, AngleConstraint, _get_far_point(), Any, Context, EntityID (+27 more)
 
 ### Community 528 - "3D View"
 Cohesion: 0.10
 Nodes (20): 3D View, Changing WCS, Display Options, Grid and Axes, Laser Head Model, Layer Visibility, Mouse Controls, Navigation (+12 more)
 
 ### Community 529 - "StepSettingsPage"
-Cohesion: 0.05
-Nodes (37): Shuts down owned long-running services, like the Pipeline, to ensure cleanup of…, Step, Widget, Set the step's main settings page., Add an additional settings page tab., Set the initial visible page after dialog construction., Callback to switch the Gtk.Stack page., Creates a box with an icon and a label for a tab button. (+29 more)
+Cohesion: 0.03
+Nodes (42): Shuts down owned long-running services, like the Pipeline, to ensure cleanup of…, Step, Widget, Set the step's main settings page., Add an additional settings page tab., Set the initial visible page after dialog construction., Callback to switch the Gtk.Stack page., Creates a box with an icon and a label for a tab button. (+34 more)
 
 ### Community 530 - "Importer-Architektur"
 Cohesion: 0.10
@@ -3598,21 +3578,21 @@ Nodes (11): ActionSetupHandler, ActionStateUpdateHandler, ActionExtensionRegistr
 Cohesion: 0.12
 Nodes (17): DistanceConstraintCommand, DistanceConstraintParams, EntityID, DistanceConstraintTool, fixture, sketch(), test_calculate_distance_from_points(), test_calculate_distance_from_points_negative_coords() (+9 more)
 
-### Community 553 - "is_ok_response"
-Cohesion: 0.15
-Nodes (11): is_ok_response(), Check whether a line is a Marlin ``ok`` acknowledgment. Handles plain ``ok`` as…, Test 'ok\\n' is True., Test 'okeh' returns False., Test 'not ok' returns False., Test empty string returns False., Test ' ok' returns True., Tests for is_ok_response function. (+3 more)
+### Community 553 - "vips.py"
+Cohesion: 0.11
+Nodes (25): ImageSurface, ndarray, Convert an RGBA uint8 array to a premultiplied Cairo ARGB32 ImageSurface.…, rgba_to_cairo_surface(), apply_mask_to_vips_image(), get_mm_per_pixel(), normalize_to_rgba(), Geometry (+17 more)
 
 ### Community 554 - "UdpServerTransport"
-Cohesion: 0.03
-Nodes (40): Exception, Protocol handler for UDP server., UDP server transport that listens for incoming packets. Unlike UdpTransport…, UdpServerProtocol, UdpServerTransport, MockUdpClient, asyncio, fixture (+32 more)
+Cohesion: 0.06
+Nodes (24): UDP server transport that listens for incoming packets. Unlike UdpTransport…, UdpServerTransport, asyncio, fixture, Tests for UdpServerTransport., Test that connect() creates a UDP socket., Test that disconnect() closes the socket., Test status signals during connect/disconnect cycle. (+16 more)
 
 ### Community 555 - "test_array_dialog.py"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (14): GridArrayDialog, Creates a rows x columns grid of the selection., array_dialog_env(), _has_preview(), _process_events(), fixture, ui, Switching Displacement<->Gap converts the current distance, and the preview… (+6 more)
 
 ### Community 556 - "RuidaCodec"
 Cohesion: 0.05
-Nodes (23): Handles swizzle encoding/decoding with magic key management. The magic key…, Build lookup table for magic key detection from 4-byte packets., Set the magic key for swizzle encoding. Returns True if magic changed., Encode data for transmission., Decode received data., Try to detect magic key from a swizzled payload. Returns detected magic or None., Detect magic key from DA memory read requests. This is a secondary detection…, RuidaCodec (+15 more)
+Nodes (19): Handles swizzle encoding/decoding with magic key management. The magic key…, Build lookup table for magic key detection from 4-byte packets., Set the magic key for swizzle encoding. Returns True if magic changed., Encode data for transmission., Decode received data., Try to detect magic key from a swizzled payload. Returns detected magic or None., Detect magic key from DA memory read requests. This is a secondary detection…, RuidaCodec (+11 more)
 
 ### Community 557 - "Addon Registries"
 Cohesion: 0.11
@@ -3742,13 +3722,13 @@ Nodes (19): AI 提供方, AI 规格查询, 发现设备, 审核与命名, 找不
 Cohesion: 0.11
 Nodes (19): G 代码方言支持, Mach4（M67 模拟）, 主要特性, 何时使用, 创建自定义方言, 功率和速度, 占位符参考, 命令格式 (+11 more)
 
-### Community 591 - "test_cnc_pages.py"
-Cohesion: 0.07
-Nodes (34): hookimpl, Frontend entry point for cnc-essentials addon. Registers UI widgets with the…, Register step settings page classes based on assembler name., register_step_settings_pages(), CNC Essentials UI Widgets., AdaptiveClearPage, Settings page for the adaptive clearing step., CncStepSettingsPage (+26 more)
+### Community 591 - "cnc_step_page.py"
+Cohesion: 0.09
+Nodes (32): CNC Essentials UI Widgets., AdaptiveClearPage, Adaptive clearing step settings page., Settings page for the adaptive clearing step., CncStepSettingsPage, CNC step settings widget base., Base page for CNC step settings. Adds the common CNC sections (spindle, depth,…, HelixPlungePage (+24 more)
 
-### Community 592 - ".get_geometry"
-Cohesion: 0.40
-Nodes (3): Any, Generate geometry with optional parameter overrides. Args: params: Optional…, Serialize the provider to a dictionary.
+### Community 592 - "CncAssemblerStep"
+Cohesion: 0.09
+Nodes (9): CncAssemblerStep, Any, ComputePayload, Part, Step, Return the raygeo assembler spec for this step. Subclasses must override., CNC power level in ``[0, 1]`` from the spindle's RPM ratio., Base class for CNC assembler-driven steps. Subclasses set ``ASSEMBLER_NAME``… (+1 more)
 
 ### Community 593 - ".value"
 Cohesion: 0.12
@@ -3762,21 +3742,21 @@ Nodes (16): make_surface_transparent(), make_transparent_except(), ImageSurface,
 Cohesion: 0.33
 Nodes (7): color_png_data(), grayscale_png_data(), load_png_data(), fixture, Helper to load a PNG file from the test data directory., Fixture for a standard 8-bit/color RGBA PNG., Fixture for an 8-bit grayscale PNG with an alpha channel.
 
-### Community 597 - "Context"
-Cohesion: 0.15
-Nodes (10): Context, EntityID, GeoPoint, Matrix, Draw control handles for all beziers connected to a waypoint., Draws a semi-transparent blue underlay for the current path., Draws all sketch points, including selection highlights., Draws constraints, points, and handles on top of the canvas. (+2 more)
+### Community 597 - "SwitchRow"
+Cohesion: 0.10
+Nodes (14): OvercutRow, Any, SpinRow, Switch row bound to the ``remove_inner_paths`` attribute., Spin row bound to the ``overcut`` attribute., Switch row bound to the ``override_threshold`` attribute., RemoveInnerPathsRow, RescanContentRow (+6 more)
 
 ### Community 598 - "preprocess_raster_image"
 Cohesion: 0.12
 Nodes (13): RasterMode, _apply_raster_levels(), DepthMode, preprocess_raster_image(), Enum, ndarray, Convert a Cairo surface into an image array for a raster assembler. Handles…, Apply auto-levels or manual black/white-point normalization. This is the… (+5 more)
 
-### Community 599 - ".draw"
-Cohesion: 0.40
-Nodes (3): Context, Renders the workarea background as a filled rectangle., Renders the extent frame as a simple rectangle outline. Uses a 1-pixel stroke…
+### Community 599 - "SketchPropertyProvider"
+Cohesion: 0.09
+Nodes (18): main_window_ready(), on_unload(), hookimpl, Frontend entry point for sketcher addon. Registers UI widgets with the main…, Register SketchCmd with the command registry., Set up sketch studio and mode command when main window is ready., Clean up sketch studio when addon is disabled., register_commands() (+10 more)
 
-### Community 600 - "._on_visibility_changed"
-Cohesion: 0.29
-Nodes (4): Step, Initializes a StepElement. Args: step: The Step data object. pipeline: The…, Handles visibility changes from the model. It updates its own state and then…, THE CORE LOGIC: Finds all WorkPieceElement siblings in the same parent…
+### Community 600 - "ArrayCmd"
+Cohesion: 0.11
+Nodes (19): ArrayCmd, _get_item_layer(), _is_identity(), Matrix, Rect, Returns the collective world bbox of the selection, or None. Convenience…, Duplicates the selection into the array in one transaction. The original…, Duplicates ``item`` and applies a world-space delta to the copy. The copy keeps… (+11 more)
 
 ### Community 601 - ".refresh_previews"
 Cohesion: 0.11
@@ -3786,21 +3766,17 @@ Nodes (8): Main-thread callback to distribute assembled Ops to all consumers. Th
 Cohesion: 0.18
 Nodes (17): clear_queue(), create_3d_from_image_workflow(), create_text_to_image_workflow(), generate_3d_from_image(), generate_image(), get_history(), get_models(), get_queue() (+9 more)
 
-### Community 603 - ".seek"
+### Community 603 - "ProfileOuterStep"
 Cohesion: 0.12
-Nodes (7): create_home_state(), Doc, Layer, Ops, Create the machine-origin (home) state for a playback session., Return the layer that should drive playback configuration. Falls back to the…, SnapshotBuilder
-
-### Community 604 - "review_page.py"
-Cohesion: 0.15
-Nodes (12): _format(), _format_bool(), _format_connection(), _format_speed(), _format_tuple(), _prefill_name(), Step 11 — Review & name. Summarizes every value the wizard has collected so…, Speed stored in base units, shown in the preferred unit. (+4 more)
+Nodes (11): ProfileOuterStep, Any, ProfileSpec, cnc_step(), fixture, parametrize, Tests for the base CNC assembler step setters., test_all_recipe_keys_have_setters() (+3 more)
 
 ### Community 605 - "2026-05-04-rayforge-1.7-co2-lasers-ruida-octoprint-config-wizard.md"
 Cohesion: 0.11
 Nodes (17): 15 New Device Profiles, Better Layer Interaction, Bug Fixes, CO2 and Fiber Laser PWM Settings, Configuration Wizard, Direct Vector Editing, Download Rayforge 1.7, Job Sanity Checks (+9 more)
 
-### Community 606 - "Den Code erhalten"
-Cohesion: 0.11
-Nodes (16): Das Repository forken, Deinen Fork klonen, Den Code erhalten, Nächste Schritte, Repository verifizieren, Upstream-Repository hinzufügen, Einrichtung, Linux (+8 more)
+### Community 606 - "Windows"
+Cohesion: 0.20
+Nodes (10): Einrichtung, Linux, Nützliche Befehle, Nützliche Befehle, Pre-commit-Hooks (Optional), Pre-commit-Hooks (Optional), Schnellstart, Voraussetzungen (+2 more)
 
 ### Community 607 - "Lasersicherheit"
 Cohesion: 0.11
@@ -3822,9 +3798,9 @@ Nodes (16): Ajouter le dépôt amont, Cloner votre fork, Forker le dépôt, Obte
 Cohesion: 0.11
 Nodes (16): Додайте upstream репозиторій, Клонуйте ваш форк, Наступні кроки, Отримання коду, Перевірте репозиторій, Форкніть репозиторій, Linux, Pre-commit хуки (Опціонально) (+8 more)
 
-### Community 612 - "Windows"
-Cohesion: 0.20
-Nodes (10): Linux, Windows, 前提条件, 前提条件, 常用命令, 常用命令, 快速开始, 环境设置 (+2 more)
+### Community 612 - "获取代码"
+Cohesion: 0.11
+Nodes (16): Fork 仓库, 下一步, 克隆您的 Fork, 添加上游仓库, 获取代码, 验证仓库, Linux, Windows (+8 more)
 
 ### Community 613 - "Findings"
 Cohesion: 0.12
@@ -3843,7 +3819,7 @@ Cohesion: 0.19
 Nodes (9): get_caller_stack(), Get caller stack only if DEBUG-level logging is enabled. This avoids the…, Return a compact call stack string showing module:function names. Args: depth:…, safe_caller_stack(), inner_function(), middle_function(), outer_function(), TestGetCallerStack (+1 more)
 
 ### Community 617 - "CameraSelectionDialog"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (3): Show a dialog to select a new camera device., CameraSelectionDialog, CameraController
 
 ### Community 618 - "RecipePostProcessingPage"
@@ -3855,20 +3831,16 @@ Cohesion: 0.06
 Nodes (24): Formatter, _cleanup_old_logs(), ConsoleFormatter, ConsoleLogFilter, get_ui_formatter(), get_ui_log_records(), LogRecord, Path (+16 more)
 
 ### Community 620 - "validate_packet"
-Cohesion: 0.16
-Nodes (9): Handle raw data from underlying transport., calculate_checksum(), Calculate 16-bit checksum (sum of all bytes)., Validate a complete packet and extract payload. Args: data: Complete packet…, validate_packet(), Test checksum calculation., Test packet validation function., TestCalculateChecksum (+1 more)
+Cohesion: 0.07
+Nodes (13): Handle raw data from underlying transport., calculate_checksum(), Calculate 16-bit checksum (sum of all bytes)., Validate a complete packet and extract payload. Args: data: Complete packet…, validate_packet(), run_app(), SimpleUdpServer, SimulatorApp (+5 more)
 
 ### Community 622 - "LocalizedField"
 Cohesion: 0.09
 Nodes (14): LocalizedString, Post-initialization validation and setup., LocalizedField, str, Create a new LocalizedField. The string value is resolved from context language…, Get the default value., Get all translations., Create a LocalizedField from YAML data. Handles both simple strings and… (+6 more)
 
-### Community 623 - "CapturePage"
-Cohesion: 0.12
-Nodes (3): CapturePage, Box, Button
-
-### Community 624 - "WebSocketTransport"
-Cohesion: 0.14
-Nodes (10): Send data through the active connection., Clear any buffered data in the WebSocket transport. Discards any pending data…, WebSocket transport with robust state management., Receive messages and handle connection state internally., Safely close connection and reset the internal websocket object., Check if the transport's status is CONNECTED., Internal helper to set status and send signal, avoiding duplicates., Establish and maintain a connection, reconnecting on failure. (+2 more)
+### Community 624 - "test_assembler.py"
+Cohesion: 0.13
+Nodes (17): ItemAssembler, Any, Geometry, Layer, Rect, Create a configured step on the layer from importer settings. Layers tagged…, Phase 5: Object Assembly. Factory that instantiates Rayforge domain objects…, Creates DocItems from the layout plan. Instantiates WorkPieces and Layers based… (+9 more)
 
 ### Community 625 - "Exporting Documents"
 Cohesion: 0.12
@@ -3914,9 +3886,9 @@ Nodes (17): Adicionando uma Cabeça de Laser, Cabeças de Laser, Configurações
 Cohesion: 0.12
 Nodes (17): Вивід G-code, Випадки використання, Випадки використання, Доступні формати, Доступні формати, Експорт G-code, Експорт документів, Експорт з Rayforge (+9 more)
 
-### Community 636 - "test_ruida_speed_units.py"
-Cohesion: 0.21
-Nodes (16): machine(), _one_layer_job(), fixture, Ops, parametrize, One conversion, end to end, for every speed the Ruida encoder emits. The model…, The cut speed range is 0.1 - 1000 mm/s. Both ends have to reach the controller…, Put a speed through the single UI boundary conversion. (+8 more)
+### Community 636 - "test_speed_range_ends_survive_the_mm_min_boundary"
+Cohesion: 0.24
+Nodes (13): _one_layer_job(), Ops, parametrize, The cut speed range is 0.1 - 1000 mm/s. Both ends have to reach the controller…, Put a speed through the single UI boundary conversion., 10 mm/s is stored as 600, and still lands as 10000 um/s., A mid-layer speed change takes the same single conversion., _speeds() (+5 more)
 
 ### Community 637 - "Властивості лазерної головки"
 Cohesion: 0.12
@@ -3930,49 +3902,45 @@ Nodes (17): G 代码输出, 从 Rayforge 导出, 可用格式, 可用格式, 如
 Cohesion: 0.12
 Nodes (17): 3D 模型, PWM 设置, 光斑大小, 切割颜色, 另请参阅, 名称, 对焦功率, 工具编号 (+9 more)
 
-### Community 640 - "datetime"
-Cohesion: 0.24
-Nodes (7): datetime, Returns True if user has consented to usage tracking after the current policy…, LicenseProvider, LicenseStatus, LicenseType, ABC, Enum
+### Community 640 - "LicenseValidator"
+Cohesion: 0.12
+Nodes (10): datetime, Returns the license validator., LicenseProvider, LicenseStatus, LicenseType, ABC, Enum, LicenseValidator (+2 more)
 
-### Community 641 - "CutScaleDialog"
-Cohesion: 0.15
-Nodes (16): CutScaleDialog, Asks for the speed and power of a bounding-box cut., Handle Cut Scale: ask for speed and power, then cut., _capture(), main(), _open_cut_scale_sheet(), _open_machine_settings(), T (+8 more)
+### Community 641 - "CardPage"
+Cohesion: 0.10
+Nodes (9): Pixbuf, CalibrationCaptureSurface, numpy_to_pixbuf(), CameraController, ndarray, Snapshot, Box, CardPage (+1 more)
 
-### Community 642 - "ArrayParams"
+### Community 642 - "array_dialog.py"
 Cohesion: 0.07
-Nodes (32): GridArrayStrategy, Matrix, Arranges copies in a regular 2D grid. The anchor defaults to the bounding-box…, Grid's default anchor is the bbox origin corner., Returns the (x, y) center-to-center pitch., make_array_strategy(), Rect, Factory that builds the strategy for an :class:`ArrayParams`. (+24 more)
+Nodes (44): ArrayCmd: the document command handler for the Array / Pattern tool. It…, Grid (rows x columns) array strategy., make_array_strategy(), Rect, Array / Pattern tool strategies and parameters. This package is purely…, Factory that builds the strategy for an :class:`ArrayParams`., ArrayMode, ArrayParams (+36 more)
 
-### Community 643 - "parse_m114_position"
-Cohesion: 0.17
-Nodes (10): parse_m114_position(), Parse M114 output to extract the (X, Y, Z) position. Args: response_lines: List…, Tests for parse_m114_position function., Test parsing a valid M114 response line., Test parsing M114 response with integer coordinates., Test that no matching lines returns None., Test that empty list returns None., Test that the first matching line is returned. (+2 more)
+### Community 643 - "ShrinkWrapStep"
+Cohesion: 0.12
+Nodes (9): _build_shrinkwrap_part(), ComputePayload, Part, Build a :class:`Part` with vector geometry and a boolean image, and a…, Apply importer-provided settings this step owns., Build a :class:`Part` for the shrinkwrap assembler. The shrinkwrap assembler…, ShrinkWrapStep, True legacy files store shrink-wrap params in ``opsproducer_dict.params``;… (+1 more)
 
-### Community 645 - "TestScheduleDelayedOnMainThread"
-Cohesion: 0.20
-Nodes (6): Tests for the schedule_delayed_on_main_thread method., Verify the callback is executed after the specified delay., Verify the returned handle can cancel the scheduled callback., Verify a zero delay still executes the callback., Verify the main thread scheduler receives args/kwargs correctly., TestScheduleDelayedOnMainThread
+### Community 645 - "test_manager.py"
+Cohesion: 0.04
+Nodes (37): Shuts down the current worker pool and starts a new one., Lazily creates the TaskManager instance in a thread-safe manner., Delegates attribute access to the real TaskManager instance, creating it on…, Delegate iteration to the real TaskManager instance., A lazy-initializing proxy for the TaskManager singleton. This object can be…, Provides configuration for the TaskManager before it is created. This must be…, TaskManagerProxy, ControllableTimer (+29 more)
 
 ### Community 646 - "ColorPresetListWidget"
-Cohesion: 0.18
-Nodes (7): _available_step_types(), ColorPresetDialog, ColorPresetListWidget, Window, Displays a list of color presets and allows adding/editing/deleting., Returns (class name, typelabel) pairs for all non-hidden steps. The list is…, A dialog for creating or editing a ColorPreset.
+Cohesion: 0.11
+Nodes (14): _available_step_types(), ColorPresetDialog, ColorPresetListWidget, _hex_to_rgba(), Any, Window, Returns the entered data as a dict suitable for ColorPreset., Convert a Gdk.RGBA to a lowercase hex string. (+6 more)
 
 ### Community 647 - "PlaybackPlayer"
 Cohesion: 0.12
 Nodes (6): PlaybackPlayer, Protocol, Minimal OpPlayer surface required by the playback overlay., Set the OpPlayer backing this overlay's slider and seek calls.…, Seek the OpPlayer by fraction (0.0 to 1.0) and sync the slider., Update slider range for the given number of commands. initial_index sets the…
 
-### Community 648 - "SerialServerTransport"
-Cohesion: 0.04
-Nodes (32): Called when the master FD is readable (data from slave)., Serial server transport that creates a PTY pair. Creates a pseudo-terminal pair…, Handle PTY peer close asynchronously., Handle read error asynchronously., Returns the path clients should connect to., SerialServerTransport, asyncio, Test that sending without connecting raises ConnectionError. (+24 more)
+### Community 648 - "TestSerialServerTransport"
+Cohesion: 0.12
+Nodes (9): Test that sending without connecting raises ConnectionError., Test that purge() is a no-op for serial server., Test that baudrate is stored correctly., Test slave_path property returns None before connect., Test that send() works on connected transport., Tests for SerialServerTransport using real PTY., Test that disconnect() closes the PTY., Test that disconnecting when not connected is safe. (+1 more)
 
-### Community 649 - ".handle_key_event"
-Cohesion: 0.16
-Nodes (7): Context, Extends the selection to a new position., Live-updates the box points to match the current text buffer., Returns normalized selection range (start, end)., Returns the currently selected text., Clears the current selection., Draws the selection highlight for selected text.
+### Community 649 - "_AddStockCommand"
+Cohesion: 0.11
+Nodes (10): _AddStockCommand, ConvertToStockCommand, Doc, Geometry, Adds a new StockAsset and a linking StockItem to the document. This is a single…, A private command to handle the creation of a StockAsset and StockItem., Converts a WorkPiece to a StockItem with its own StockAsset. This is a single…, Command to remove a StockAsset from the document. (+2 more)
 
 ### Community 650 - "AxisRenderer"
-Cohesion: 0.10
-Nodes (7): AxisRenderer, Calculates the base pixels/mm for a zoom level of 1.0., Helper class to render the grid, axes, and labels on a Cairo context. This…, Calculates the maximum height of the X-axis labels., Calculates the maximum width of the Y-axis labels., Returns the effective height for layout calculations., Calculates the content area's rectangle in widget pixels, respecting the mm…
-
-### Community 651 - "PanelOrientation"
-Cohesion: 0.12
-Nodes (9): PanelOrientation, Enum, Display-facing projection of a machine's coordinate space. MachineSpace (in…, How the native machine bed is presented on screen. The machine always reads and…, The panel orientation (NATIVE / ROTATED_LEFT / ROTATED_RIGHT)., How the native bed is presented on screen., Set how the native bed is presented on screen. See…, Tests for orientation state management via a real Machine. (+1 more)
+Cohesion: 0.06
+Nodes (20): AxisRenderer, Context, Matrix, Calculates the base pixels/mm for a zoom level of 1.0., Calculates an appropriate grid spacing in mm based on the current zoom level…, Helper class to render the grid, axes, and labels on a Cairo context. This…, Draws the grid, axes, and labels onto the Cairo context using the provided…, Internal helper to draw the infinite grid lines. (+12 more)
 
 ### Community 653 - "2026-06-09-rayforge-1.8-rust-pipeline-faster-rasterizing-grbl-simple.md"
 Cohesion: 0.12
@@ -3990,25 +3958,25 @@ Nodes (15): Aperçu du pilote, Configuration et cycle de vie, Contrôle de l'app
 Cohesion: 0.12
 Nodes (15): A Linguagem `Ops`, Configuração e Ciclo de Vida, Configurações de Firmware (se `supports_settings` for `True`), Controle de Dispositivo, Controle de Dispositivo, Emitindo Sinais, Exceções, Guia de Desenvolvimento de Driver (+7 more)
 
-### Community 657 - "RecipeSelectorDialog"
-Cohesion: 0.17
-Nodes (10): Recipe editor UI widgets., ListBox, Window, Fetches all recipes and populates the list for the first time., Filters recipes based on search and compatibility switch., Handles when a recipe is selected by activation., A dialog for selecting a recipe from a filterable list. The dialog is confirmed…, A custom row to hold a reference to its recipe. (+2 more)
-
-### Community 658 - "AddMaterialDialog"
-Cohesion: 0.14
-Nodes (10): AddMaterialDialog, Any, Returns a dictionary with the entered material data., A dialog for creating a new material., Handle Enter key pressed in entry fields., Get the text from the name entry., Get the text from the category entry., Get the color as a hex string. (+2 more)
-
-### Community 659 - "test_base_tool.py"
-Cohesion: 0.17
-Nodes (14): mock_element(), fixture, ui, Create a mock SketchElement for testing., Create a concrete SketchTool subclass for testing., Test that SketchTool initializes correctly., Test that on_hover_motion does nothing by default., Test that on_deactivate does nothing by default. (+6 more)
-
-### Community 660 - "._prepare_point_drag"
-Cohesion: 0.18
-Nodes (7): EntityID, Sets up state for dragging a single point., Sets up state for dragging an entity (or group of entities)., Sets up state for dragging a control point. Does not clear selection., Logic for dragging a control point offset., Caches transforms and ALL state (points + entities) at start of drag., Calculates distance (in entity hops) from a start point to all others using…
-
-### Community 661 - "HttpTransport"
+### Community 657 - "test_fill_tool.py"
 Cohesion: 0.13
-Nodes (8): HttpTransport, Initialize HTTP transport. Args: base_url: Server endpoint URL…, Maintain persistent connection with reconnect logic., Terminate connection and cancel background tasks., Send data to HTTP endpoint via POST request., Clear any buffered data in the HTTP transport. HTTP transport uses a new…, HTTP transport using persistent connection with auto-reconnect., Listen for server-sent events from streaming endpoint.
+Nodes (20): fill_tool(), mock_element(), fixture, ui, Create a mock SketchElement for testing., Create a FillTool instance for testing., Test that FillTool initializes correctly., Test on_press when no loops are found. (+12 more)
+
+### Community 658 - ".mm_to_degrees"
+Cohesion: 0.15
+Nodes (4): Convert a surface distance (mm) on the cylinder to degrees., Convert degrees to linear mm via the firmware travel per rotation (mm)., TestDegreesToScaledMu, TestMuToDegrees
+
+### Community 659 - "FrameStep"
+Cohesion: 0.14
+Nodes (7): FrameStep, ComputePayload, Part, Apply importer-provided settings this step owns., Build a :class:`Part` (from the workpiece's vector geometry) and a…, True legacy files store frame params in ``opsproducer_dict.params``; loading…, TestFrameStep
+
+### Community 660 - "ModelLibrary"
+Cohesion: 0.16
+Nodes (6): ModelLibrary, Represents a source of 3D models. Each library has a root ``path`` on the…, TestModelLibrary, TestModelManagerGetAllModels, TestModelManagerGetModels, TestModelManagerLibraryRegistration
+
+### Community 661 - "TestDeclaredMotionExtent"
+Cohesion: 0.14
+Nodes (14): _bounds(), _decode_s35(), _raster_job_ops(), A one-layer raster job: two 20mm scan rows at 100 mm/s., A cut job whose travel reaches past the cutting geometry., A 35-bit Ruida value, read as signed., The declared doc bounds, job-local micrometers., The declared bounds cover every motion, not just the content. (+6 more)
 
 ### Community 662 - "ProviderEditorWidget"
 Cohesion: 0.22
@@ -4019,20 +3987,20 @@ Cohesion: 0.13
 Nodes (8): LayoutStrategyRegistry, Registry for layout strategy classes. Allows addons to register custom layout…, Return a list of all registered strategy classes. Returns: List of…, Return a list of all registered strategy names. Returns: List of strategy names., Register a layout strategy class. Args: strategy_class: The LayoutStrategy…, Unregister a layout strategy by name. Args: name: The name of the strategy to…, Unregister all strategies registered by a specific addon. Args: addon_name: The…, Look up a strategy class by name. Args: name: The name of the strategy.…
 
 ### Community 665 - "test_vips.py"
-Cohesion: 0.04
-Nodes (67): ImageSurface, ndarray, Convert an RGBA uint8 array to a premultiplied Cairo ARGB32 ImageSurface.…, rgba_to_cairo_surface(), apply_mask_to_vips_image(), extract_vips_metadata(), get_mm_per_pixel(), get_physical_size_mm() (+59 more)
+Cohesion: 0.08
+Nodes (31): extract_vips_metadata(), Any, Extracts file-based and content-based metadata from a pyvips Image., Resize a pyvips image in linear light for correct interpolation. Converts to…, resize_linear(), Tests that short, non-UTF-8 binary data is sanitized., Test that an RGBA uchar image is passed through correctly., Test that a grayscale+alpha image is converted to sRGB RGBA. (+23 more)
 
-### Community 666 - "LicenseResult"
-Cohesion: 0.22
-Nodes (3): LicenseResult, Any, TestLicenseResult
+### Community 666 - "AIProvider"
+Cohesion: 0.12
+Nodes (10): Load providers from persisted configuration. Args: data: Dictionary with…, Register a new AI provider. Args: config: Provider configuration. Returns: The…, Update an existing provider's configuration. Args: config: New provider…, AIProvider, ABC, Base interface for AI providers., Stream chat completion response. This is an async generator that yields content…, List available models. (+2 more)
 
-### Community 667 - "is_error_response"
-Cohesion: 0.19
-Nodes (9): is_error_response(), Check whether a line is a Marlin error response. Args: line: A single response…, Tests for is_error_response function., Test 'Error:Unknown command' returns True., Test 'error:foo' returns False (lowercase)., Test 'ok' returns False., Test empty string returns False., Test ' Error:foo' returns True. (+1 more)
-
-### Community 668 - "TestPipeline"
+### Community 667 - "Path"
 Cohesion: 0.18
-Nodes (10): asyncio, usefixtures, Tests that job generation fails when no document is loaded., Job generation must fail fast without scheduling a rebuild when the document…, A workflow whose steps are all hidden cannot produce a job aggregate, so…, Black-box integration test that simulates a rapid invalidation cancelling an…, Tests that resizing a workpiece triggers a pipeline rebuild and the artifact…, Helper to correctly link a workpiece to a source within a doc. (+2 more)
+Nodes (12): compile_po_to_mo(), Compile a .po file to a .mo file. Entries with an empty msgstr (i.e.…, Path, Tests for compile_po_to_mo function., Test basic compilation from .po to .mo., Test that compilation creates parent directories., Test that .po file with only header compiles successfully., Test that invalid .po file returns False. (+4 more)
+
+### Community 668 - "OverscanSettingsGroup"
+Cohesion: 0.17
+Nodes (9): OverscanSettingsGroup, OverscanTransformer, Recalculate the overscan distance based on current step settings., Handle step updates to recalculate overscan distance if needed., Handle machine updates (e.g. acceleration) to recalculate overscan., UI for configuring the OverscanTransformer., Whether the active machine's driver applies overscan itself., Enabled overscan that the driver handles itself. (+1 more)
 
 ### Community 669 - "GcodeViewer"
 Cohesion: 0.19
@@ -4040,31 +4008,31 @@ Nodes (5): GcodeViewer, Clears the content of the previewer., Highlights a speci
 
 ### Community 670 - "ThemeColorService"
 Cohesion: 0.06
-Nodes (42): ColorAtom, ColorSpec, ColorSpecDict, GradientSpec, Returns the shared theme colour service. The service is created lazily on first…, GtkColorResolver, _is_gradient_spec(), _is_spec_with_alpha() (+34 more)
+Nodes (43): ColorAtom, ColorSpec, ColorSpecDict, GradientSpec, Returns the shared theme colour service. The service is created lazily on first…, GtkColorResolver, _is_gradient_spec(), _is_spec_with_alpha() (+35 more)
 
 ### Community 671 - "PostProcessingPage"
-Cohesion: 0.14
-Nodes (11): PostProcessingPage, Any, Step, Persist a widget's announced change via the editor., A page for the post-processing transformers of a Step. The transformer widgets…, Build groups for the given transformer dicts., Render the empty-state message when no groups were added., _find_label() (+3 more)
+Cohesion: 0.18
+Nodes (9): PostProcessingPage, Step, A page for the post-processing transformers of a Step. The transformer widgets…, Build groups for the given transformer dicts., Render the empty-state message when no groups were added., _find_label(), ui, Iteratively search a widget tree for a Gtk.Label. Uses a visited set so a… (+1 more)
 
-### Community 673 - "Optimize"
+### Community 673 - "SpeedVar"
 Cohesion: 0.14
-Nodes (10): OptimizeSpec, Optimize, Any, Optimizes toolpaths to minimize travel distance. Delegates to the Rust-based…, The layer settings toggle defaults to on., Tests that the optimizer does not split a ScanLinePowerCommand that has been…, Verify that ScanLine segments with different states are not reordered across…, test_optimize_is_enabled_by_default() (+2 more)
+Nodes (9): The VarSet used to render this step type's recipe editor. The base returns the…, The step attribute keys eligible for recipe extraction. Derived from…, Split :meth:`recipe_varset` into named groups for the editor. Returns a list of…, Settings groups common to all the given step types. Used by the recipe editor…, An IntVar representing a speed value (e.g. cut speed, travel speed). Hints the…, SpeedVar, Test SpeedVar with min/max bounds., Test serializing (with and without value) and deserializing. (+1 more)
 
-### Community 674 - "EllipsePreviewState"
-Cohesion: 0.14
-Nodes (13): EllipsePreviewState, EntityID, Preview state for ellipse tool's drag-to-create workflow., Test EllipsePreviewState.get_preview_point_ids., Test EllipsePreviewState.get_hidden_point_ids., test_ellipse_preview_get_hidden_point_ids(), test_ellipse_preview_get_preview_point_ids(), Test on_press when snapping to an existing point. (+5 more)
+### Community 674 - "parse_po_file"
+Cohesion: 0.15
+Nodes (11): parse_po_file(), Parse a .po file and return list of (msgid, msgstr) tuples. Args: po_path: Path…, Test that empty msgid (header) is included., Test parsing entries with empty translations., Tests for parse_po_file function., Test parsing a simple single-entry .po file., Test parsing multiple entries., Test parsing multi-line strings. (+3 more)
 
 ### Community 675 - "test_expression_context.py"
 Cohesion: 0.14
 Nodes (14): fixture, Provides a pre-populated ExpressionContext for tests., Tests that an ExpressionContext can be created with no arguments., Tests that an ExpressionContext is populated correctly on creation., Tests the is_variable method., Tests the is_function method., Tests the get_variable_type method., sample_context() (+6 more)
 
 ### Community 676 - "SketchHitTester"
-Cohesion: 0.21
+Cohesion: 0.19
 Nodes (8): Any, Precise point hit-testing in SCREEN coordinates., Handles geometric hit testing for sketch elements., Converts world coordinates to Model coordinates (accounting for…, Returns Matrix: Model -> Screen., Determines what was clicked using Model coordinates. Returns (type_string,…, Finds all points and entities within a Model Space rectangle. Args: min_x,…, SketchHitTester
 
-### Community 677 - "ValueError"
-Cohesion: 0.02
-Nodes (57): FrameStep, ComputePayload, Part, Apply importer-provided settings this step owns., Build a :class:`Part` (from the workpiece's vector geometry) and a…, LaserStep, Any, Ops (+49 more)
+### Community 677 - "MaterialTestStep"
+Cohesion: 0.09
+Nodes (13): MaterialTestStep, ComputePayload, Part, Build a :class:`Part` (empty — the material-test grid needs no geometry) and a…, mock_context(), OverscanTransformerType, fixture, Protocol (+5 more)
 
 ### Community 678 - "Tasker: Background Task Management"
 Cohesion: 0.13
@@ -4074,9 +4042,9 @@ Nodes (14): API Reference, Cancellation, `context` (Inside your background funct
 Cohesion: 0.13
 Nodes (15): Adding Holding Tabs, Editing Tabs, Enabling/Disabling Tabs, Equidistant Tabs, Holding Tabs, How Holding Tabs Work, Quick Add, Related Pages (+7 more)
 
-### Community 680 - "LicenseValidator"
-Cohesion: 0.13
-Nodes (5): Returns the license validator., LicenseValidator, Path, Thread, Check if addon requires and has valid license. Returns: Tuple of (is_allowed,…
+### Community 680 - "LicenseSettingsPage"
+Cohesion: 0.18
+Nodes (4): LicenseSettingsPage, PreferencesGroup, Settings page for managing licenses., Get list of addon names that use this product ID.
 
 ### Community 681 - "Tasker: Hintergrund-Task-Verwaltung"
 Cohesion: 0.13
@@ -4102,45 +4070,45 @@ Nodes (15): Ancho de Pestaña, Añadir Pestañas de Sujeción, Añadir Rápido, 
 Cohesion: 0.13
 Nodes (14): Annulation, Concepts de base, `context` (À l'intérieur de votre fonction en arrière-plan), Démarrage rapide, Exécuter une tâche liée au CPU (par exemple, calcul lourd), Exécuter une tâche liée aux E/S (par exemple, réseau, accès fichier), Exécuter une tâche liée à un thread, Gérer l'achèvement (+6 more)
 
-### Community 687 - "CameraManager"
-Cohesion: 0.12
-Nodes (12): CameraManager, CameraController, Handler for when the currently active machine's properties change (e.g., a…, Safely unsubscribes, stops, and removes a controller., Synchronizes the set of active CameraControllers with the cameras defined in…, Manages the lifecycle of CameraController instances. This class acts as the…, Performs initial setup after all managers are available. This is where signal…, Shuts down all active camera controllers. (+4 more)
+### Community 687 - "TestPngImporterContract"
+Cohesion: 0.11
+Nodes (10): Tests for the Importer contract compliance of PngImporter., Tests that importer class has required attributes., Tests that scan() returns ImportManifest with correct data., Tests that scan() handles invalid PNG data gracefully., Tests that parse() returns ParsingResult with correct data., Tests that parse() returns None for invalid PNG data., Tests that vectorize() returns VectorizationResult., Tests that vectorize() raises TypeError for non-TraceSpec. (+2 more)
 
-### Community 688 - "LibraryManager"
-Cohesion: 0.03
-Nodes (44): Returns the material manager., LibraryManager, Path, Save library changes to disk by delegating to the library's save method. Args:…, Get a library by ID. Args: library_id: ID of the library Returns:…, Get all libraries. Returns: List of all MaterialLibrary instances, Get a material by UID, searching all libraries. Args: uid: Unique identifier of…, Application-wide manager for material libraries. Manages multiple… (+36 more)
+### Community 688 - "ToolManager"
+Cohesion: 0.15
+Nodes (10): mgr(), fixture, Path, CRUD manager for the user tool library., Reload every tool YAML from ``base_dir`` into memory., Add or update a tool, persist it, and emit ``changed``., Remove a tool by uid, delete its file, and emit ``changed``., Return the tool with this uid, or ``None``. (+2 more)
 
 ### Community 689 - "Ponts de Maintien"
 Cohesion: 0.13
 Nodes (15): Activer/Désactiver les Ponts, Ajout Rapide, Ajouter des Ponts de Maintien, Comment Fonctionnent les Ponts de Maintien, Largeur du Pont, Pages Connexes, Ponts de Maintien, Ponts Équidistants (+7 more)
 
-### Community 690 - "ndarray"
-Cohesion: 0.21
-Nodes (7): ndarray, Point3D, Return a 4x4 world transform for each link with a 3D model. For prismatic…, Return the static 4x4 cylinder base pose (no spin). Derives position and…, Return head positions above the cylinder surface. Positions each HEAD link at…, Return the 4x4 world transform for the rotary cylinder. The cylinder is a child…, _rotation_matrix_4x4()
-
-### Community 691 - "TestWebsocketUrlVar"
+### Community 690 - "UpdateCommand"
 Cohesion: 0.12
-Nodes (9): Tests for the WebsocketUrlVar class., Test that valid ws:// URLs pass validation., Test that valid wss:// URLs pass validation., Test that http:// URLs fail validation., Test that URLs without a scheme fail validation., Test that empty URLs fail validation., Test that default value is used correctly., Test that WebsocketUrlVar serializes correctly. (+1 more)
+Nodes (11): The async worker that installs multiple addons concurrently., Handles checking for and installing addon updates. This class orchestrates the…, Initiates a background task to check for addon updates. This method is non-…, The async worker that performs the update check in a thread., Initiates a background task to install a list of addon updates. This method is…, UpdateCommand, mock_context(), fixture (+3 more)
+
+### Community 691 - "WebsocketUrlVar"
+Cohesion: 0.16
+Nodes (11): A Var subclass specifically for WebSocket URLs (ws:// or wss://)., WebsocketUrlVar, Tests for the WebsocketUrlVar class., Test that valid ws:// URLs pass validation., Test that valid wss:// URLs pass validation., Test that http:// URLs fail validation., Test that URLs without a scheme fail validation., Test that empty URLs fail validation. (+3 more)
 
 ### Community 692 - "DeviceProfileManager"
-Cohesion: 0.05
-Nodes (34): Returns the device profile manager., DeviceProfileManager, _extract_zip_to(), _find_manifest_in_zip(), Path, Scan all source directories for device profiles and return the loaded list.…, Load a single device profile from the given directory. Also registers it in the…, Install a device profile from a ``.zip`` file. Validates that the zip contains… (+26 more)
+Cohesion: 0.07
+Nodes (12): Returns the device profile manager., DeviceProfileManager, Path, Scan all source directories for device profiles and return the loaded list.…, Load a single device profile from the given directory. Also registers it in the…, Export a :class:`Machine` as a shareable ``.rfdevice.zip``. Creates a temporary…, Discovers, loads, and manages device profiles from one or more source…, _make_device() (+4 more)
 
 ### Community 693 - "Tasker: Gerenciamento de Tarefas em Segundo Plano"
 Cohesion: 0.13
 Nodes (14): Atualizando a UI, Cancelamento, Conceitos Principais, `context` (Dentro da sua função em segundo plano), Executando uma Tarefa em Thread, Executando uma Tarefa Limitada por CPU (ex.: computação pesada), Executando uma Tarefa Limitada por I/O (ex.: rede, acesso a arquivo), Início Rápido (+6 more)
 
-### Community 694 - "TestJpgImporterContract"
-Cohesion: 0.12
-Nodes (9): Tests that scan() handles invalid JPEG data gracefully., Tests that parse() returns ParsingResult with correct data., Tests that parse() returns None for invalid JPEG data., Tests that vectorize() returns VectorizationResult., Tests that create_source_asset() returns SourceAsset., Tests for the Importer contract compliance of JpgImporter., Tests that importer class has required attributes., Tests that scan() returns ImportManifest with correct data. (+1 more)
+### Community 694 - "JpgImporter"
+Cohesion: 0.06
+Nodes (27): JpgImporter, Path, Scans the JPEG to extract physical dimensions from its metadata., color_jpg_data(), color_workpiece(), load_jpg_data(), fixture, parametrize (+19 more)
 
 ### Community 695 - "Abas de Fixação"
 Cohesion: 0.13
 Nodes (15): Abas de Fixação, Abas Equidistantes, Adicionando Abas de Fixação, Adição Rápida, Como Abas de Fixação Funcionam, Editando Abas, Habilitando/Desabilitando Abas, Largura da Aba (+7 more)
 
-### Community 696 - "TestAxisRendererDrawing"
-Cohesion: 0.12
-Nodes (9): Tests the actual drawing logic by inspecting calls to a mocked context., Verify grid lines are drawn at correct multiples without an offset., Verify grid lines are shifted correctly when a WCS offset is applied., Verify labels are drawn correctly with no offset., Verify labels are drawn correctly with a WCS offset., Verify the '0' label is only drawn once at the origin., Verify custom font size is applied when drawing labels., Labels are shown in the user's preferred length unit. (+1 more)
+### Community 696 - "StepSettingsPageRegistry"
+Cohesion: 0.15
+Nodes (10): hookimpl, Frontend entry point for cnc-essentials addon. Registers UI widgets with the…, Register step settings page classes based on assembler name., register_step_settings_pages(), test_frontend_registers_pages(), Registry for step settings page classes. Maps a step's assembler name…, Register a settings page class for an assembler name. Args: assembler_name: The…, Look up the settings page class for an assembler name. Returns: The page class,… (+2 more)
 
 ### Community 697 - "Tasker: Керування фоновими завданнями"
 Cohesion: 0.13
@@ -4162,41 +4130,37 @@ Nodes (15): 为什么要使用固定标签？, 使用标签, 使用添加标签�
 Cohesion: 0.14
 Nodes (7): PropertyProviderRegistry, Registry for property provider classes. Allows registration of providers that…, Register a property provider class. Providers are sorted by priority when…, Unregister a property provider class. Returns True if the provider was found…, Unregister all providers registered by a specific addon. Args: addon_name: The…, Create instances of all registered providers, sorted by priority. Lower…, Return all registered provider classes.
 
-### Community 702 - "._update_status_bar"
-Cohesion: 0.14
-Nodes (7): Loads a sketch model into the studio., Handles selection changes to show/hide font properties., Handles tool changes to update status bar., Handles start of edit mode drag to show context shortcuts., Handles end of edit mode drag to restore default shortcuts., Handles preview state changes to update status bar shortcuts., Updates the status bar with current shortcuts.
+### Community 702 - "material_test_helpers.py"
+Cohesion: 0.18
+Nodes (13): draw_material_test_preview(), draw_preview(), get_material_test_proportional_size(), GridMode, MaterialTestGridType, Any, Context, Enum (+5 more)
 
-### Community 703 - "ConflictingConstraintsWidget"
-Cohesion: 0.14
-Nodes (8): ConflictingConstraintsWidget, Highlights the constraint on the canvas when hovering., Removes highlight when leaving the row., Selects the constraint when the row is clicked., Deletes the constraint., A widget that displays conflicting constraints in the sketch studio. Shows a…, Sets the sketch element to monitor for conflicts., Updates the list of conflicting constraints.
-
-### Community 704 - "PointRotationParams"
-Cohesion: 0.11
-Nodes (10): PointRotationParams, Any, Parameters for a point-rotation array. Copies are rotated in place around the…, PointRotationStrategy, Matrix, Rotates copies in place around the selection's own center. Each copy is the…, A 4-copy point-rotation array keeps the original + 3 copies. All copies share…, test_point_rotation_array_creates_copies() (+2 more)
+### Community 703 - "SplitMenuButton"
+Cohesion: 0.17
+Nodes (9): Popover, Called when a user clicks an item in the popover menu. This updates the main…, Updates the main button to show the new active action's icon and connects it to…, Updates the list of actions in the button. Args: actions: A sequence of tuples,…, A composite widget that mimics a split button, integrated with Gio.Action. It…, Initializes the SplitMenuButton. Args: actions: A sequence of tuples, where…, Sets the sensitivity of the entire composite button., Creates the popover menu with buttons for all actions. (+1 more)
 
 ### Community 705 - "CommandRegistry"
 Cohesion: 0.14
 Nodes (7): CommandRegistry, Registry for editor command classes. Allows addons to register command handlers…, Register a command class. Args: command_name: The name to use for this command.…, Unregister a command class by name. Args: command_name: The name of command to…, Unregister all commands registered by a specific addon. Args: addon_name: The…, Look up a command class by name. Args: command_name: The name of command.…, Return a copy of all registered command classes. Returns: Dictionary mapping…
 
-### Community 706 - "Layer"
-Cohesion: 0.11
-Nodes (8): Layer, setter, T, Returns a list of all child items that are Layers., Returns the currently active layer., Sets the active layer by instance., Look up the layer_uid for a step by its UID. Args: step_uid: The unique…, Look up the layer a job's layer marker belongs to. Job ops carry the *step* uid…
-
-### Community 707 - "build_marlin_profile"
-Cohesion: 0.33
-Nodes (3): build_marlin_profile(), Build a ``DeviceProfile`` from raw Marlin M115, M211, M503, and M149 response…, TestBuildMarlinProfile
-
-### Community 708 - "SketcherApp"
+### Community 706 - "basic_workpiece"
 Cohesion: 0.14
-Nodes (5): Handles saving the current sketch to a file using Gtk.FileDialog., Creates and adds the first sketch with demo geometry., Handler for the 'quit' action., Handles opening a sketch from a file using Gtk.FileDialog., SketcherApp
+Nodes (16): basic_pdf_data(), basic_workpiece(), create_pdf_data(), create_pdf_with_shapes(), large_pdf_data(), large_workpiece(), fixture, PDF data for a 1000pt x 500pt page for chunking tests. (+8 more)
+
+### Community 707 - "_FakeGesture"
+Cohesion: 0.14
+Nodes (10): _FakeEvent, _FakeGesture, Camera, ndarray, Minimal GestureDrag stand-in for the drag handlers., Minimal Gdk.Event stand-in providing a cursor position., Projects a world point to NDC screen coordinates., _screen_pos() (+2 more)
+
+### Community 708 - "Swift Cut layout tokens"
+Cohesion: 0.13
+Nodes (14): 1. Spacing — a 4px scale, by role, 2. Control sizes — two density contexts, 3. The row contract, 4. Radii, 5.1 Four roles, one class each, 5.2 A caption earns its line, 5.3 Units appear exactly once, in the field, 5.4 One placeholder (+6 more)
 
 ### Community 709 - "lru_cache_unless_forced"
 Cohesion: 0.25
 Nodes (3): lru_cache_unless_forced(), Extends functools.lru_cache by a "force" argument that allows to force a cache…, TestLruCacheUnlessForced
 
 ### Community 710 - "sizes_are_close"
-Cohesion: 0.25
-Nodes (3): Compares two size tuples with a safe tolerance for float errors., sizes_are_close(), TestSizesAreClose
+Cohesion: 0.15
+Nodes (7): format_byte_size(), Size comparison utilities for pipeline artifacts., Compares two size tuples with a safe tolerance for float errors., Format a byte size as a human-readable string. Args: size_bytes: The size in…, sizes_are_close(), TestFormatByteSize, TestSizesAreClose
 
 ### Community 711 - "._jog_to_limit"
 Cohesion: 0.14
@@ -4262,33 +4226,33 @@ Nodes (14): `api_version`, `author`, `description`, `display_name`, `name`, 入�
 Cohesion: 0.14
 Nodes (14): BMP（位图）, DXF（Drawing Exchange Format）, JPEG（联合图像专家组）, LightBurn (.lbrn / .lbrn2), PDF（便携式文档格式）, PNG（便携式网络图形）, RFS（Rayforge 草图）, SVG（可缩放矢量图形） (+6 more)
 
-### Community 727 - "._send_and_wait"
-Cohesion: 0.13
-Nodes (5): Jogs the machine using G91 incremental mode. Args: speed: The jog speed in…, Sends a tool change command for the given tool number., Sets the laser power to the specified percentage of max power. Args: head: The…, Sets the laser power for focus mode using the focus_laser_on command. Args:…, Sets a WCS offset using Smoothie's G10 L20 command.
+### Community 727 - "GridArrayStrategy"
+Cohesion: 0.17
+Nodes (8): GridArrayStrategy, Matrix, Arranges copies in a regular 2D grid. The anchor defaults to the bounding-box…, Grid's default anchor is the bbox origin corner., Returns the (x, y) center-to-center pitch., Returns the (tx, ty) component of a delta matrix., TestGridStrategy, _trans()
 
 ### Community 728 - "ImageMetadataDialog"
-Cohesion: 0.14
-Nodes (11): ImageMetadataDialog, Any, Window, Creates the Basic Information section directly from import_source., Creates the Metadata section containing all metadata attributes. Args: items:…, A dialog that displays image metadata in a clean, organized format., Formats a metadata value for display., Copy all metadata to clipboard. (+3 more)
+Cohesion: 0.06
+Nodes (20): ImageMetadataDialog, Any, Window, Creates the Basic Information section directly from import_source., Creates the Metadata section containing all metadata attributes. Args: items:…, A dialog that displays image metadata in a clean, organized format., Formats a metadata value for display., Copy all metadata to clipboard. (+12 more)
 
 ### Community 729 - "StockElement"
 Cohesion: 0.16
 Nodes (9): Context, Matrix, A CanvasElement that visualizes a single StockItem model., Disconnects signals before removal., Handler for when the stock item's geometry changes., Handler for when the stock item's visibility changes., Handler for when the stock item's transform changes., Draws the stock geometry directly to the main canvas context. (+1 more)
 
-### Community 730 - "ProfilePage"
-Cohesion: 0.19
-Nodes (5): ProfilePage, _ProfileRow, Button, ListBox, A custom row to hold a reference to its device profile.
+### Community 730 - "MacroTrigger"
+Cohesion: 0.14
+Nodes (9): MacroTrigger, Enum, Defines events in the job lifecycle where G-code can be injected., Return a translatable label for this trigger., Return a translatable description for this trigger., MessageDialog, Switch, Handles the response from the reset confirmation dialog. (+1 more)
 
-### Community 731 - "LayerSettingsDialog"
-Cohesion: 0.15
-Nodes (4): LayerSettingsDialog, Layer, Window, Dialog for configuring layer-level settings including rotary.
+### Community 731 - "SettingsWindow"
+Cohesion: 0.04
+Nodes (38): CheckButton, SettingsWindow renders a 'Tools' page from the addon registry., Switching category rebuilds the geometry rows for that shape., test_dialog_geometry_adapts_to_category(), test_tool_page_present_in_settings_dialog(), LayerSettingsDialog, Layer, Window (+30 more)
 
 ### Community 732 - "machine_settings_camera.py"
 Cohesion: 0.22
 Nodes (14): add_mock_camera(), inject_mock_image(), load_mock_image(), main(), parse_target(), Screenshot: Machine settings - Camera page and dialogs., Ensure a mock camera exists and is selected on the camera page., Open the lens calibration wizard directly and take a screenshot. (+6 more)
 
-### Community 733 - "asyncio"
+### Community 733 - "ConcreteSvgImporter"
 Cohesion: 0.13
-Nodes (8): asyncio, Test executing a simple command that waits for 'ok'., Test the full G-code streaming process for a simple job., Test running a raw multi-line G-code string., Test setting a WCS offset for Smoothie., Test that read_wcs_offsets raises NotImplementedError., Test that run_probe_cycle raises NotImplementedError., Test that read_parser_state returns None (not implemented).
+Nodes (14): ConcreteSvgImporter, Test that _analytical_trim correctly crops the SVG viewbox., Test helper method extracts SVG object and standardized bounds., Test that the world_frame_of_reference is calculated correctly., Concrete implementation of SvgImporterBase for testing purposes., Test scanning correctly identifies Inkscape layers and dimensions., Test scanning a simple SVG with no explicit layer groups., Test scanning a malformed file returns errors instead of crashing. (+6 more)
 
 ### Community 734 - "Registration Hooks"
 Cohesion: 0.15
@@ -4298,9 +4262,9 @@ Nodes (13): `register_actions(action_registry)`, `register_asset_types(asset_typ
 Cohesion: 0.15
 Nodes (13): Frame Settings, Framing with Camera, Framing Your Job, How to Frame, Method 1: Outline Only, Method 2: Low Power Preview, Overview, Related Topics (+5 more)
 
-### Community 736 - "TestUrlVar"
-Cohesion: 0.14
-Nodes (8): Tests for the UrlVar class., Test that valid URLs pass validation., Test that HTTPS URLs pass validation., Test that URLs without a scheme fail validation., Test that empty URLs fail validation., Test that allowed_schemes restricts valid schemes., Test that default value is used correctly., TestUrlVar
+### Community 736 - "UrlVar"
+Cohesion: 0.17
+Nodes (10): A Var subclass for generic URLs., UrlVar, Tests for the UrlVar class., Test that valid URLs pass validation., Test that HTTPS URLs pass validation., Test that URLs without a scheme fail validation., Test that empty URLs fail validation., Test that allowed_schemes restricts valid schemes. (+2 more)
 
 ### Community 737 - "Quick Start Guide"
 Cohesion: 0.15
@@ -4390,25 +4354,29 @@ Nodes (13): 何时使用框定, 使用摄像头框定, 使用框定结果, 如�
 Cohesion: 0.15
 Nodes (13): 下一步, 任务执行期间, 准备材料, 开始任务, 快速入门指南, 成功提示, 添加操作, 第 1 步：导入设计 (+5 more)
 
-### Community 759 - "._step_stage"
-Cohesion: 0.09
-Nodes (19): Aggregate, GcodeSpec, MachineParams, MachineTransformSpec, _approximate_job_ops(), Ops, Build the 4×4 placement matrix for a workpiece's aggregate input. The…, Build a minimal Ops spanning the estimated job extents. Used by… (+11 more)
-
-### Community 760 - "._build_transformer_specs"
+### Community 759 - "TestJogDelegation"
 Cohesion: 0.15
-Nodes (7): Compute, Create a MachineSpace from a Machine configuration. Args: machine: The machine…, Get the machine's coordinate space configuration. Returns: A MachineSpace…, Build a compute :class:`StageSpec.Compute` for the workpiece node by delegating…, Build typed Rust ``*Spec`` pyclasses from a list of serialised transformer…, Return the settings dict forwarded to ``to_spec``. Currently this carries the…, Return the world-space stock boundary geometries. Transformers such as…
+Nodes (9): parametrize, Tests that get_soft_limits correctly calculates the workspace boundaries based…, Native mode preserves all pre-orientation reference transforms., Tests jog-related logic: delta calculation, driver delegation, and soft limit…, Machine backed by isolated_context but with a real controller so that async…, Tests that machine.jog() calls the driver with the correct signed delta,…, Tests that jog delta calculation correctly accounts for origin position and…, Tests the soft limit checking logic under various conditions, including… (+1 more)
+
+### Community 760 - "_parse_buffer_state"
+Cohesion: 0.19
+Nodes (9): _parse_buffer_state(), Parse buffer state from Bf attribute. Args: attrib: Attribute string like…, Tests for _parse_buffer_state function., Test parsing valid buffer state., Test parsing buffer state with zero., Test parsing buffer state with large values., Test that non-Bf attribute returns None., Test that invalid Bf format returns None. (+1 more)
+
+### Community 763 - "_parse_feed_rate"
+Cohesion: 0.19
+Nodes (9): _parse_feed_rate(), Parse feed rate from FS attribute. Args: attrib: Attribute string like…, Tests for _parse_feed_rate function., Test parsing valid feed rate., Test parsing feed rate with zero., Test parsing large feed rate., Test that non-FS attribute returns None., Test that invalid FS format returns None. (+1 more)
 
 ### Community 764 - "TestMarlinSerialDriverRealSerial"
-Cohesion: 0.15
-Nodes (6): _fast_sleep(), asyncio, fixture, skipif, Tests that exercise the full driver + SerialTransport stack over a real virtual…, TestMarlinSerialDriverRealSerial
+Cohesion: 0.09
+Nodes (8): _fast_sleep(), MarlinSimulator, asyncio, fixture, skipif, Tests that exercise the full driver + SerialTransport stack over a real virtual…, Simulates a Marlin firmware device over the master end of a pty pair. Reads…, TestMarlinSerialDriverRealSerial
 
-### Community 765 - "Layer"
-Cohesion: 0.01
-Nodes (143): Exports the parametric source data of a sketch-based WorkPiece., Initializes the exporter for a specific sketch-based WorkPiece. Args: doc_item:…, Retrieves the serialized Sketch definition from the document's sketch registry.…, SketchExporter, fixture, Creates a simple sketch object., Tests that the SketchExporter correctly extracts the sketch definition from a…, Tests that the SketchExporter raises a ValueError if the WorkPiece is not based… (+135 more)
+### Community 765 - "test_layer.py"
+Cohesion: 0.06
+Nodes (29): doc(), layer(), mock_workpiece_with_signals(), fixture, A transform change on a workpiece (via .transform_changed) should bubble a…, Tests deserializing a Layer from a dictionary., Tests deserializing a Layer with no children., Tests that from_dict ignores children with unknown types. (+21 more)
 
-### Community 766 - "TestSvgRenderer"
-Cohesion: 0.15
-Nodes (7): Tests that a crop_window_px with a TraceSpec is IGNORED. The renderer should…, Color-layer renders exclude shapes of other colors from the base image., Tests a standard vector render with no special attributes. The spec should be a…, Tests that when a layer_id is present, it's added to the kwargs for the…, Color-layer segments carry a color key (e.g. '#ff0000') as their layer id.…, Tests that a crop_window_px with a PassthroughSpec results in a 'viewbox' kwarg…, TestSvgRenderer
+### Community 766 - "_split_status_line"
+Cohesion: 0.19
+Nodes (9): Split status line into status part and attribute parts. Args: state_str: Status…, _split_status_line(), Tests for _split_status_line function., Test splitting a basic status line., Test splitting status line with multiple attributes., Test splitting status line with alarm status., Test splitting status line with only status., Test splitting status line with empty parts. (+1 more)
 
 ### Community 767 - "blog/2026-01-29-rayforge-1.0-first-birthday.md"
 Cohesion: 0.17
@@ -4422,9 +4390,9 @@ Nodes (11): 3D Simulator, Asset Browser, Bezier Curves (G5), Dockable Bottom Pan
 Cohesion: 0.17
 Nodes (11): Bug Fixes, Download Rayforge 1.8, Join the Community, LightBurn Import, New Device Profiles, Ops Redesign, Other Improvements, Performance (+3 more)
 
-### Community 770 - "Color Rules"
-Cohesion: 0.17
-Nodes (12): 1. Open the Color Rules Page, 2. Add a Rule, 3. Save, Automatic Color Grouping, Color Rules, Color Rules and Recipes, Creating Color Rules, Example Workflow (+4 more)
+### Community 770 - "SerialServerTransport"
+Cohesion: 0.14
+Nodes (5): Serial server transport that creates a PTY pair. Creates a pseudo-terminal pair…, Returns the path clients should connect to., SerialServerTransport, Test that purge on disconnected transport is safe., Test multiple connect/disconnect cycles.
 
 ### Community 771 - "Submitting Changes"
 Cohesion: 0.17
@@ -4454,9 +4422,9 @@ Nodes (12): Ausführungsreihenfolge, Ebene hinzufügen, Ebene löschen, Ebenen-E
 Cohesion: 0.17
 Nodes (11): Bosquejador Paramétrico con Soporte de Texto, Descarga Rayforge 1.0, El Camino Recorrido, Funciones Destacadas, Guardar/Cargar Proyectos, Otras Mejoras, Panel Inferior Unificado, Qué hay Nuevo en 1.0 (+3 more)
 
-### Community 778 - "MockSmoothieServer"
-Cohesion: 0.15
-Nodes (9): connected_driver(), driver(), MockSmoothieServer, fixture, Manages the lifecycle of the MockSmoothieServer for a test., Provides a configured, but not connected, SmoothieDriver instance. Handles…, An async fixture that connects a driver and handles teardown., A mock Telnet server that behaves like a Smoothieware controller. (+1 more)
+### Community 778 - "UsageTracker"
+Cohesion: 0.16
+Nodes (8): get_monitor_geometry(), get_screen_size(), Returns a rectangle for the current monitor dimensions. If not found, may…, Get the current monitor's screen size as (width, height)., _get_language(), _get_os_info(), UsageTracker, Rectangle
 
 ### Community 779 - "Guía de Desarrollo de Drivers"
 Cohesion: 0.17
@@ -4474,9 +4442,9 @@ Nodes (12): Asignar piezas de trabajo a capas, Añadir una capa, Crear y gestion
 Cohesion: 0.17
 Nodes (11): Autres améliorations, Esquisseur paramétrique avec prise en charge du texte, Et maintenant ?, Le parcours jusqu'ici, Panneau inférieur unifié, Points forts des fonctionnalités, Quoi de neuf dans la 1.0, Rejoignez la communauté (+3 more)
 
-### Community 783 - "Règles de couleur"
-Cohesion: 0.17
-Nodes (12): 1. Ouvrir la page des règles de couleur, 2. Ajouter une règle, 3. Enregistrer, Comportement d'importation, Créer des règles de couleur, Exemple de flux de travail, Fonctionnement, Gérer les règles (+4 more)
+### Community 783 - "Suivi d'utilisation"
+Cohesion: 0.04
+Nodes (49): Addons, Addons Installés, Aperçu, Gérer les Addons, Installer des Addons, Mettre à Jour les Addons, Sources d'Addons, Sujets Connexes (+41 more)
 
 ### Community 784 - "Soumettre des changements"
 Cohesion: 0.17
@@ -4487,7 +4455,7 @@ Cohesion: 0.17
 Nodes (12): Ajouter un calque, Assigner des pièces aux calques, Créer et gérer les calques, Flux de travail des calques, Flux de travail multi-calques, Import de fichiers vectoriels, Ordre d'exécution, Pages associées (+4 more)
 
 ### Community 786 - "Configuration de l'axe rotatif"
-Cohesion: 0.17
+Cohesion: 0.18
 Nodes (11): Accessoires rotatifs à rouleaux, Aperçu 3D en mode rotatif, Avance en Z, Configuration de l'axe rotatif, Configurer un module rotatif, Conseils pour de bons résultats, Mode rotatif par couche, Modes rotatifs (+3 more)
 
 ### Community 787 - "pt-BR/docusaurus-plugin-content-blog/2026-01-29-rayforge-1.0-first-birthday.md"
@@ -4558,21 +4526,25 @@ Nodes (12): 创建和管理图层, 删除图层, 图层属性, 图层工作流�
 Cohesion: 0.17
 Nodes (11): Z 轴步进下切, 何时需要旋转模式, 按图层设置旋转模式, 旋转模块 3D 模型, 旋转模式, 旋转模式下的 3D 预览, 旋转轴设置, 滚轮式旋转附件 (+3 more)
 
+### Community 804 - "addon_list.py"
+Cohesion: 0.09
+Nodes (12): AddonRegistryDialog, Fetches the registry using the AddonManager in a thread., Check if user already has a valid license for this addon., Extract product IDs from addon license config., Populates the list box with registry items., A dialog that fetches and lists available addons from the online registry via…, Handle click on Unlock button for premium addon., Allows manual URL entry if not in registry. (+4 more)
+
 ### Community 805 - "Sketch"
 Cohesion: 0.01
-Nodes (256): EllipseCommand, GeoPoint, A command to create an ellipse., GridCommand, Any, A command to create a homogeneous grid of construction lines., Calculates points, entities, and constraints for a grid. Args: rows: Number of…, Returns True if this constraint can be applied to the current selection.… (+248 more)
+Nodes (283): ColorRGBA, LineCommand, EntityID, GeoPoint, A command to create a line between two points., The final end point ID after execute(), or None if not applicable., Creates initial preview state with start point, end point, and line. Args:…, Updates the preview end point position. Args: registry: The entity registry.… (+275 more)
 
-### Community 806 - "._build_ui"
-Cohesion: 0.18
-Nodes (5): The menu model for the Sketch Studio mode., SketchMenu, Window, Initializes the menu model., Initializes the action group and shortcut controller.
+### Community 806 - "PWMParams"
+Cohesion: 0.26
+Nodes (11): A machine's PWM settings expose the driver's PWM defaults., test_machine_reports_pwm_settings(), pwm_varset(), PWMParams, PWM configuration reported by a driver for a laser head., Build the PWM frequency / pulse-width settings VarSet., Returns the PWM parameters reported by the driver for the given head, or None…, Tests for the core PWM settings varset. (+3 more)
 
 ### Community 807 - ".__init__"
 Cohesion: 0.18
 Nodes (7): MenuButton, Gets all variables available up to a certain context level from the static…, Window, Creates and populates the popover with variable documentation., Creates and populates the popover for including other macros., Checks the validity of the macro name and updates UI feedback., Initializes the macro editor dialog. Args: parent: The parent window. macro:…
 
-### Community 808 - "._draw_fills"
-Cohesion: 0.17
-Nodes (6): Draws the filled regions of the sketch., Generate geometry for a single fill., Apply fill color or gradient to the cairo context., Apply a linear gradient fill., Apply a radial gradient fill., Draw fills for text box entities.
+### Community 808 - "display_name"
+Cohesion: 0.20
+Nodes (6): display_name(), Return a human-readable display name for a camera device. For by-id paths,…, Camera, Handles the request to add a new camera to the machine., Handles the request to remove a camera from the machine., TestDisplayName
 
 ### Community 809 - ".from_lists"
 Cohesion: 0.27
@@ -4586,29 +4558,29 @@ Nodes (6): Register a transformer class. Args: transformer_class: The OpsTransfo
 Cohesion: 0.12
 Nodes (10): MockPlugin, hookimpl, Test that register_machines hook receives the correct manager., Test cases for hook lifecycle execution., Test that hooks are triggered in the correct order., Test that multiple plugins have their hooks executed., Test that plugins without hookimpl are not called., A fake plugin defined in memory. (+2 more)
 
-### Community 812 - ".execute_interactive_command"
-Cohesion: 0.18
-Nodes (3): Axis, Pos, Send a command and await its full response.
+### Community 812 - "call_registration_hooks"
+Cohesion: 0.26
+Nodes (9): Returns the addon manager., Loads addons and calls registration hooks. This is called automatically when…, call_registration_hooks(), get_registries(), _import_registry(), Any, Import and return a dict of all active registries. The returned dict maps…, Call all appropriate registration hooks on the plugin manager. This is the… (+1 more)
 
-### Community 813 - "Axis"
+### Community 813 - "file_filter_to_gtk"
 Cohesion: 0.17
-Nodes (7): Axis, Pos, Smoothie supports homing for all axes., Homes the specified axes or all axes if none specified. Args: axes: Optional…, Smoothie supports jogging for all axes., Reading all WCS offsets is not supported by Smoothie., Probing is not implemented due to difficulty in reliably capturing real-time…
+Nodes (10): FileFilter, Get all supported import filters. Returns: A list of FileFilter objects., Get all supported export filters. Returns: A list of FileFilter objects., Any, Shows the save file dialog for exporting a workpiece. Available formats are…, Shows the file chooser dialog for importing files. Args: win: The parent…, show_export_object_dialog(), show_import_dialog() (+2 more)
 
 ### Community 814 - "update_supporters.py"
 Cohesion: 0.35
 Nodes (10): build_included_lookup(), fetch_supporters(), format_entry(), get_campaign_id(), is_paying_supporter(), load_config(), main(), parse_existing_names() (+2 more)
 
-### Community 815 - "JobArtifact"
-Cohesion: 0.08
-Nodes (23): JobArtifact, Any, Ops, Converts the artifact to a dictionary for serialization., Creates an artifact from a dictionary., Represents a final job artifact containing G-code and operation data for…, Returns the ops suitable for 3D preview/playback. Prefers the rotary-mapped ops…, Lazily decodes and caches the G-code string from encoded_output. (+15 more)
+### Community 815 - "parse_lbdev"
+Cohesion: 0.24
+Nodes (6): parse_lbdev(), Path, Parse a LightBurn .lbdev JSON file and return the first device., Path, UTF-8 BOM should be handled gracefully., TestParseLBDev
 
 ### Community 816 - "test_step_row.py"
 Cohesion: 0.31
 Nodes (7): CountRow, ui, test_commit_skips_unchanged_value(), test_commit_uses_setter(), test_commit_without_setter(), test_dependencies_reapply_on_step_update(), VisibilityRow
 
-### Community 817 - "TestParseGrblParserState"
-Cohesion: 0.17
-Nodes (7): Tests for parse_grbl_parser_state function., Test parsing G54 state., Test parsing G59 state., Test when no WCS is found., Test parsing multiple lines., Test parsing empty list., TestParseGrblParserState
+### Community 817 - "frame_packet"
+Cohesion: 0.21
+Nodes (6): Send a framed command to a specific client. Args: command: Unswizzled command…, Send a Ruida command with swizzle encoding and framing. Args: command:…, frame_packet(), Create a framed packet with checksum prefix. Args: payload: The payload bytes…, Test packet framing function., TestFramePacket
 
 ### Community 818 - "blog/2025-01-10-multi-laser-support.md"
 Cohesion: 0.18
@@ -4634,16 +4606,16 @@ Nodes (11): 1. Menu Bar, 2. Toolbar, 3. Canvas, 4. Side Panel, 5. Bottom Panel, 
 Cohesion: 0.18
 Nodes (10): 1. Konfiguriere mehrere Laser in deinem Maschinenprofil, 2. Weise Laser Operationen zu, 3. Vorschau und Ausführung, Anwendungsfälle, Erste Schritte, Hybrid-Gravur und -Schnitt, Materialspezifische Optimierung, So richtest du es ein (+2 more)
 
-### Community 824 - "Materialeigenschaften erklärt"
-Cohesion: 0.18
-Nodes (11): Bestehende Materialien verwalten, Ein neues Material erstellen, Eine neue Bibliothek erstellen, Farbe, Kategorie, Materialeigenschaften erklärt, Materialien, Materialien bearbeiten (+3 more)
+### Community 824 - "write_mo_file"
+Cohesion: 0.21
+Nodes (8): Write entries to a .mo file. Args: mo_path: Path to write the .mo file.…, write_mo_file(), Tests for the pure Python .po to .mo compiler., Tests for write_mo_file function., Test that .mo file has correct header., Test that entries are sorted by msgid., Test that writing empty entries raises error., TestWriteMoFile
 
 ### Community 825 - "Addon-Entwicklung Übersicht"
 Cohesion: 0.18
 Nodes (11): Addon-Entwicklung Übersicht, Auf Rayforges Daten zugreifen, Dein Addon teilen, Dein erstes Addon, Deine Komponenten registrieren, Einstiegspunkte verstehen, Schnellstart, Testen während der Entwicklung (+3 more)
 
 ### Community 826 - "Rotationsachse einrichten"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (11): 3D-Vorschau im Rotationsmodus, Rollen-Rotationsvorsätze, Rotationsachse einrichten, Rotationsmodi, Rotationsmodul 3D-Modell, Rotationsmodul einrichten, Rotationsmodus pro Ebene, Tipps für gute Ergebnisse (+3 more)
 
 ### Community 827 - "Canvas-Werkzeuge"
@@ -4663,7 +4635,7 @@ Cohesion: 0.18
 Nodes (11): Accediendo a los Datos de Rayforge, Agregando Traducciones, Compartiendo tu Addon, Conectando con Rayforge mediante Hooks, Cómo Funcionan los Addons, Entendiendo los Puntos de Entrada, Inicio Rápido, Probando Durante el Desarrollo (+3 more)
 
 ### Community 831 - "Configuración de Eje Rotativo"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (11): Accesorios rotativos de tipo rodillo, Configuración de Eje Rotativo, Configurar un módulo rotativo, Consejos para buenos resultados, Cuándo necesitas el modo rotativo, Descenso de Z, Modelo 3D del Módulo Rotativo, Modo rotativo por capa (+3 more)
 
 ### Community 833 - "Diseño de la Ventana"
@@ -4738,25 +4710,25 @@ Nodes (11): 1. 菜单栏, 2. 工具栏, 3. 画布, 4. 侧面板, 5. 底部面板
 Cohesion: 0.20
 Nodes (3): recipe_keys() composition through the step hierarchy., Steps without extra attrs inherit CncAssemblerStep keys., TestRecipeKeys
 
-### Community 851 - "Deepnest"
-Cohesion: 0.15
-Nodes (12): Configuración de nesting, Deepnest, Después del nesting, Ejecutar el diseño de nesting, Requisitos previos, Temas relacionados, Compensación de Kerf, Compensación de Kerf Manual (+4 more)
+### Community 851 - "MachineDropdown"
+Cohesion: 0.20
+Nodes (4): MachineDropdown, MachineListItem, Update the ETA for the active machine's status label., A dropdown for selecting the active machine, showing connection state and…
 
-### Community 852 - ".apply_best_recipe_to_step"
-Cohesion: 0.18
-Nodes (7): Step, Apply a recipe's transformer settings to a fresh step. Direct mutation of the…, Renames a step with an undoable command., Adds a default Contour step to the first layer if it has no steps. Called on…, Adds default steps to newly imported layers. For each layer: - If it was…, Resolve the step class a color rule maps to for a layer. Inspects each…, Finds the best matching recipe for a given step and applies its settings. This…
+### Community 852 - "ZoneRenderer"
+Cohesion: 0.20
+Nodes (7): RenderContext, No per-frame state to prepare., ZoneRenderer, ui, Tests for the ZoneRenderer resource lifecycle., Repeated updates must untrack deleted GL objects so that cleanup does not…, test_update_zones_twice_then_cleanup_no_double_delete()
 
-### Community 853 - "scene_presenter.py"
+### Community 853 - "Canvas3D"
 Cohesion: 0.03
-Nodes (59): Camera + interaction controller for the 3D canvas. Owns the :class:`Camera`…, Defines the Camera class for managing 3D perspective and navigation., Creates a rotation matrix from an axis and an angle (Rodrigues)., rotation_matrix_from_axis_angle(), ViewDirection, Canvas3D, True if the cached job handle is from an older generation., Returns the current document from the editor. (+51 more)
+Nodes (33): Canvas3D, True if the cached job handle is from an older generation., Returns the current document from the editor., Returns the current pipeline from the editor., Resets the camera to the specified preset view., Toggles the 3D camera between perspective and orthographic. Returns True if the…, Attach the playback overlay widget and bind it to this canvas., Called when the GLArea is ready to have its context made current. (+25 more)
 
-### Community 854 - "test_kinematics.py"
-Cohesion: 0.14
-Nodes (17): create_kinematics(), Kinematics, ndarray, Point3D, Translates MachineState into spatial data via an Assembly., _make_3axis_set(), _make_4axis_set(), _make_module_a() (+9 more)
+### Community 854 - "TestFitAndPositionAtReferenceOrigin"
+Cohesion: 0.17
+Nodes (7): Tests for _position_at_reference_origin method., Test that method returns early when no config is available., Test that method returns early when no machine is configured., Test that method returns early when bbox cannot be calculated., Test scaling down items that are too large., Test positioning items at reference origin., TestFitAndPositionAtReferenceOrigin
 
-### Community 855 - "EntityID"
-Cohesion: 0.18
-Nodes (6): EntityID, Returns True if this constraint explicitly defines or links the radius/length…, Checks if the constraint references any of the given point IDs., Checks if the constraint references any of the given entity IDs., Returns a point ID that can be dragged to manipulate this constraint. Override…, Returns True if this constraint restricts the length/distance of the segment…
+### Community 855 - "TestDefaultRefPoint"
+Cohesion: 0.17
+Nodes (7): The default WCS anchors jobs at the user-set panel origin., A freshly set up driver selects REF0, not machine space., With the default WCS the job opens with the D8 12 ref point., A profile stuck on MACHINE must not put D8 10 in the job., The mode poller must not push MACHINE back onto the profile., A machine that already names a valid slot keeps it., TestDefaultRefPoint
 
 ### Community 856 - "test_ops_renderer_update_from_vertex_layer.py"
 Cohesion: 0.33
@@ -4776,23 +4748,23 @@ Nodes (9): 10 New Device Profiles, Better Layer Interaction, Bug Fixes, Download
 
 ### Community 860 - "Usage Tracking"
 Cohesion: 0.04
-Nodes (47): Addon Sources, Addons, Installed Addons, Installing Addons, Managing Addons, Overview, Related Topics, Removing Addons (+39 more)
+Nodes (50): Adding a Provider, AI Provider, How It Works, Managing Providers, OpenAI Compatible, Provider Types, Related Topics, 1. Open the Color Rules Page (+42 more)
 
 ### Community 861 - "Addon Hooks"
 Cohesion: 0.20
 Nodes (10): Addon Hooks, API Version History, How Hooks Work, Lifecycle Hooks, `main_window_ready(main_window)`, `on_unload()`, `rayforge_init(context)`, `step_settings_loaded(dialog, step, producer)` (+2 more)
 
-### Community 862 - "sketcher/worker.py"
-Cohesion: 0.24
-Nodes (10): hookimpl, Backend entry point for sketcher addon. Registers asset types and renderers…, Register Sketch asset type with the asset type registry., Register sketch renderer with the renderer registry., Register sketch exporter with the exporter registry., Register sketch importer with the importer registry., register_asset_types(), register_exporters() (+2 more)
+### Community 862 - "SignalTracker"
+Cohesion: 0.17
+Nodes (5): A helper to track calls to a blinker Signal., Test error handling when PTY creation fails., Returns the data from the last 'received' signal call., Test status signals during connect/disconnect cycle., SignalTracker
 
 ### Community 863 - "Advanced Settings"
 Cohesion: 0.20
 Nodes (10): Advanced Settings, Allow Single Axis Homing, Arc and Curve Settings, Arc and Curve Tolerance, Clear Alarms on Connect, Connection Behavior, Home on Connect, See Also (+2 more)
 
-### Community 864 - "DxfRenderer"
-Cohesion: 0.24
-Nodes (7): DxfRenderer, Image, A renderer for DXF workpieces. Uses OpsRenderer for vector outlines and…, Specifies that 'boundaries' and 'source_metadata' are required for rendering…, Generates a preview by rendering the vectorized geometry., A renderer for Ruida workpieces. Inherits vector rendering logic from…, RuidaRenderer
+### Community 864 - "RenderSpecification"
+Cohesion: 0.04
+Nodes (38): Specifies that 'boundaries' and 'fills' geometries are required for rendering…, RenderContext, Calculates the render specification for a raster source. If the source is…, Always returns minimal render spec to avoid crashes., Instructions from a Renderer on how to execute a render job., Calculates the strategy for rendering. Subclasses will override this. The…, RenderSpecification, DxfRenderer (+30 more)
 
 ### Community 865 - "Addon-Hooks"
 Cohesion: 0.20
@@ -4810,36 +4782,36 @@ Nodes (10): Cómo Funcionan los Hooks, Historial de Versiones de API, Hooks de A
 Cohesion: 0.20
 Nodes (10): Ajustes Avanzados, Ajustes de Arcos y Curvas, Comportamiento de Conexión, Home al Conectar, Limpiar Alarmas al Conectar, Permitir Homing de Eje Individual, Soportar Arcos, Soportar Curvas Bézier (+2 more)
 
-### Community 869 - "._handle_response_line"
-Cohesion: 0.18
-Nodes (5): Send command without waiting for response (fire and forget)., Parse incoming serial data and dispatch responses., Process complete lines from the receive buffer., Route a single decoded response line., Process a GRBL status report like <Idle|MPos:0,0,0>.
-
-### Community 870 - "TextAreaVar"
+### Community 869 - "test_project_import.py"
 Cohesion: 0.24
-Nodes (6): A Var subclass for multi-line string values that hints to the UI that it should…, TextAreaVar, Returns a dictionary of VarSets that define the editable fields for this…, Test serializing (with and without value) and deserializing., Test TextAreaVar creation and default value handling., TestTextAreaVar
+Nodes (11): app_and_window(), assets_path(), process_events_for_duration(), fixture, Path, ui, Tests that loading a project file (workpieces_project.ryp) loads document but…, Processes all pending GTK events for a given duration without blocking. (+3 more)
+
+### Community 870 - "ToolListWidget"
+Cohesion: 0.27
+Nodes (3): Button, Editable list of tools, backed by the :class:`ToolManager`., ToolListWidget
 
 ### Community 871 - "Comportement de Connexion"
 Cohesion: 0.20
 Nodes (10): Comportement de Connexion, Effacer les Alarmes à la Connexion, Homing à la Connexion, Paramètres Avancés, Paramètres d'Arcs et de Courbes, Permettre le Homing d'Axe Unique, Supporter les Arcs, Supporter les Courbes Bézier (+2 more)
 
-### Community 872 - "Maintenance"
-Cohesion: 0.20
-Nodes (9): Compteurs de Maintenance Personnalisés, Créer un Compteur, Exemples de Compteurs, Fonctionnalités du Compteur, Heures Totales, Maintenance, Réinitialiser les Compteurs, Suivi d'Utilisation (+1 more)
+### Community 872 - "category_to_name"
+Cohesion: 0.18
+Nodes (8): Widget, A single tool entry in the list., ToolRow, category_to_name(), Any, Serialize to a dict suitable for YAML., Return the canonical name of a ``ToolCategory`` member., ToolCategory
 
 ### Community 873 - "Hooks de Addons"
 Cohesion: 0.20
 Nodes (10): Como os Hooks Funcionam, Histórico de Versões da API, Hooks de Addons, Hooks de Ciclo de Vida, Hooks de Extensão de Interface, `main_window_ready(main_window)`, `on_unload()`, `rayforge_init(context)` (+2 more)
 
 ### Community 874 - "Obtendo o Código"
-Cohesion: 0.11
-Nodes (16): Adicione o Repositório Upstream, Clone Seu Fork, Faça Fork do Repositório, Obtendo o Código, Próximos Passos, Verifique o Repositório, Comandos Úteis, Comandos Úteis (+8 more)
+Cohesion: 0.09
+Nodes (19): Adicione o Repositório Upstream, Clone Seu Fork, Faça Fork do Repositório, Obtendo o Código, Próximos Passos, Verifique o Repositório, Comandos Úteis, Comandos Úteis (+11 more)
 
 ### Community 875 - "Comportamento de Conexão"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (10): Comportamento de Conexão, Configurações Avançadas, Configurações de Arcos e Curvas, Limpar Alarmes ao Conectar, Origem ao Conectar, Permitir Homing de Eixo Único, Suportar Arcos, Suportar Curvas Bézier (+2 more)
 
 ### Community 876 - "Manutenção"
-Cohesion: 0.22
+Cohesion: 0.20
 Nodes (9): Contadores de Manutenção Personalizados, Criando um Contador, Exemplos de Contadores, Horas Totais, Manutenção, Rastreamento de Uso, Recursos do Contador, Resetando Contadores (+1 more)
 
 ### Community 877 - "Налаштування дуг та кривих"
@@ -4858,9 +4830,9 @@ Nodes (3): tutorials, detectOs(), HeroSection()
 Cohesion: 0.22
 Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
 
-### Community 881 - "_MarlinProbeDriver"
-Cohesion: 0.12
-Nodes (10): _MarlinProbeDriver, probe_marlin_device(), Any, Protocol, Protocol describing the interface ``probe_marlin_device`` needs from any Marlin…, Shared probe orchestration for all Marlin drivers. Creates a temporary machine…, Any, _make_mock_serial() (+2 more)
+### Community 881 - "_RevisionSignal"
+Cohesion: 0.22
+Nodes (7): Any, Signal, A :class:`~blinker.Signal` subclass that bumps a revision counter on its owning…, _RevisionSignal, ref, A WorkPiece subclass for testing that avoids complex dependencies., SimpleWorkPiece
 
 ### Community 882 - "Any"
 Cohesion: 0.20
@@ -4874,45 +4846,45 @@ Nodes (4): _GrblProbeDriver, Any, Protocol, Protocol describing the interface ``
 Cohesion: 0.29
 Nodes (4): ConnectionStatusIconWidget, ConnectionStatusWidget, Update the status icon based on the given status., Map the status to an appropriate icon name.
 
-### Community 885 - "format_byte_size"
-Cohesion: 0.33
-Nodes (4): format_byte_size(), Size comparison utilities for pipeline artifacts., Format a byte size as a human-readable string. Args: size_bytes: The size in…, TestFormatByteSize
-
-### Community 886 - "ProbePage"
+### Community 885 - "falsify"
 Cohesion: 0.25
-Nodes (3): ProbePage, Any, Button
+Nodes (4): falsify(), Wrapper for GLib.idle_add, as function must return False, otherwise it is…, TestDebounceMixin, TestFalsify
 
 ### Community 887 - "TransformerWidgetRegistry"
 Cohesion: 0.22
 Nodes (5): Registry for post-processor transformer settings widget classes. Maps an…, Register a widget class for a transformer type. Args: transformer_cls: The…, Look up the widget class for a transformer type. Returns: The widget class, or…, Unregister all widgets registered by a specific addon. Args: addon_name: The…, TransformerWidgetRegistry
 
-### Community 889 - "Any"
-Cohesion: 0.20
-Nodes (7): AddonLicense, Any, Converts the license to a dictionary for serialization., Returns all product IDs (both single and list)., Converts metadata back to a dictionary for YAML serialization., Represents licensing information for an addon. Attributes: name: SPDX license…, Creates an AddonLicense from a dictionary, or None if empty.
+### Community 889 - "test_texture_renderer_update_from_artifact.py"
+Cohesion: 0.33
+Nodes (10): _make_artifact(), _make_texture_layer(), fixture, ui, Tests for TextureArtifactRenderer texture-layer ingestion., renderer(), test_add_instance_from_texture_layer_laser_index(), test_add_instance_from_texture_layer_missing_laser_uid() (+2 more)
 
 ### Community 890 - "TestCoordinateSpaces"
 Cohesion: 0.22
 Nodes (6): usefixtures, Axis reversal should not affect workarea origin offset., Workarea mode with BOTTOM_LEFT origin and reversed Y axis., Full pipeline with TOP_LEFT origin., Combined tests for coordinate space transformations. Tests all coordinate space…, TestCoordinateSpaces
 
-### Community 893 - ".evaluate_all"
-Cohesion: 0.24
-Nodes (6): Any, Serializes the parameter context to a dictionary., Gets the evaluated value of a parameter., Evaluates all expressions and returns a dictionary of all values., Evaluates an arbitrary expression string using current context., Iteratively resolves dependencies. Simple multi-pass solver to handle out-of-…
+### Community 891 - "test_doc_signals.py"
+Cohesion: 0.53
+Nodes (10): _doc(), _layer(), _machine(), _make_hub(), ui, test_connect_active_layer_wcs(), test_connect_subscribes_machine_signals(), test_disconnect_unsubscribes_machine() (+2 more)
+
+### Community 893 - "Herramientas del Lienzo"
+Cohesion: 0.18
+Nodes (11): Consejos para Uso Eficiente del Lienzo, Cuadrícula y Ajuste, Edición de Vectores, Herramienta de Desplazamiento, Herramienta de Medición, Herramienta de Selección, Herramienta de Zoom, Herramientas de Alineación (+3 more)
 
 ### Community 894 - "TestBedOverrunWarning"
 Cohesion: 0.28
 Nodes (4): A job that cannot fit from here is flagged, not blocked., ops.rect() would miss this; the head still goes there., The controller adds the raster run-up itself, so it is absent from the ops but…, TestBedOverrunWarning
 
-### Community 895 - "_run_full_pipeline"
-Cohesion: 0.24
-Nodes (11): _extract_cut_coords(), parametrize, Build a doc with a 10×10 square workpiece, run the full IntentBuilder pipeline,…, Return a list of (x, y) tuples from G0/G1 motion lines in the G-code, tracking…, The machine-transform stage flips coordinates according to the machine origin…, The machine-transform stage subtracts the active WCS offset from the G-code…, WCS offset must be subtracted in machine space (after w2m), not in world space…, _run_full_pipeline() (+3 more)
+### Community 895 - "_extract_cut_coords"
+Cohesion: 0.25
+Nodes (9): _extract_cut_coords(), parametrize, Return a list of (x, y) tuples from G0/G1 motion lines in the G-code, tracking…, The machine-transform stage flips coordinates according to the machine origin…, The machine-transform stage subtracts the active WCS offset from the G-code…, WCS offset must be subtracted in machine space (after w2m), not in world space…, test_machine_transform_origin_in_gcode(), test_machine_transform_wcs_offset_in_gcode() (+1 more)
 
 ### Community 896 - "What Makes Rayforge Different?"
 Cohesion: 0.22
 Nodes (8): 3D G-code Preview, Advanced Path Generation, Camera Integration, Getting Started, Join the Community, Multi-Layer Operations, What Makes Rayforge Different?, Why Rayforge?
 
-### Community 897 - "wavefront.py"
-Cohesion: 0.22
-Nodes (10): _images_visually_equal(), Image, Path, Compare two images using a perceptual heuristic. Args: img1: First image to…, Take a screenshot of the active window and crop it. Args: output_name: Filename…, Save a PNG image deterministically, only updating if content changed. Strips…, _save_png_deterministic(), take_cropped_screenshot() (+2 more)
+### Community 897 - "_save_png_deterministic"
+Cohesion: 0.40
+Nodes (6): _images_visually_equal(), Image, Path, Compare two images using a perceptual heuristic. Args: img1: First image to…, Save a PNG image deterministically, only updating if content changed. Strips…, _save_png_deterministic()
 
 ### Community 898 - "Lead-In / Lead-Out"
 Cohesion: 0.22
@@ -4959,16 +4931,16 @@ Cohesion: 0.22
 Nodes (9): Ajustes de Hardware, Dirección del Eje, Ejes, Encontrando Tu Origen, Extensión X/Y, Límites Suaves, Origen de Coordenadas, Ver También (+1 more)
 
 ### Community 909 - "Mantenimiento"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (9): Características del Contador, Contadores de Ejemplo, Contadores de Mantenimiento Personalizados, Creando un Contador, Horas Totales, Mantenimiento, Reiniciando Contadores, Seguimiento de Uso (+1 more)
 
 ### Community 910 - "Qu'est-ce qui différencie Rayforge ?"
 Cohesion: 0.22
 Nodes (8): Aperçu 3D du G-code, Génération de trajets avancée, Intégration de caméra, Opérations multi-couches, Pour commencer, Pourquoi Rayforge ?, Qu'est-ce qui différencie Rayforge ?, Rejoignez la communauté
 
-### Community 911 - ".format_string"
+### Community 911 - "UI consistency audit — after the Swift Cut reskin"
 Cohesion: 0.20
-Nodes (5): Formats coordinates respecting the user's locale., Resolves a dot-notation path like 'machine.axis_extents[0]'., Formats a single line by replacing all variable placeholders., Public entry point to fully expand a macro. Args: macro: The top-level macro…, Recursively expands a macro, processing includes and formatting variables.
+Nodes (9): 0. How the captures were made, 1. Spacing, 2. Alignment, 3. Sizing, 4. Typography, 5. Iconography, 6. Theme rules that do not reach their widget, 7. What Phase 2 has to define (+1 more)
 
 ### Community 912 - "Approche / Sortie"
 Cohesion: 0.22
@@ -4989,6 +4961,10 @@ Nodes (9): Axes, Direction des Axes, Limites Logicielles, Origine des Coordonné
 ### Community 916 - "O que Torna o Rayforge Diferente?"
 Cohesion: 0.22
 Nodes (8): Começando, Geração Avançada de Trajetórias, Integração com Câmera, Junte-se à Comunidade, O que Torna o Rayforge Diferente?, Operações Multicamadas, Por que o Rayforge?, Visualização 3D de G-code
+
+### Community 917 - "test_snap_types.py"
+Cohesion: 0.05
+Nodes (44): GeoPoint, SnapLineStyle, SnapResult, Context, Draw snap lines and snap point indicators. Args: ctx: Cairo context for drawing…, Draw the indicator for the primary snap point., Draw equidistant snap indicator with double arrows., Draw all available snap lines for debugging. (+36 more)
 
 ### Community 918 - "Aproximação / Saída"
 Cohesion: 0.22
@@ -5038,13 +5014,13 @@ Nodes (9): 加速度, 另请参阅, 导出机器配置, 常规设置, 最大切�
 Cohesion: 0.22
 Nodes (9): X/Y 范围, 另请参阅, 坐标原点, 工作区域, 查找原点, 硬件设置, 软限位, 轴 (+1 more)
 
-### Community 930 - "RuidaResponse"
-Cohesion: 0.24
-Nodes (5): Represents a Ruida response. Attributes: data: Raw response bytes success:…, Create a standard ACK response., Create a standard error response., Create response from raw bytes., RuidaResponse
+### Community 930 - "tool.py"
+Cohesion: 0.27
+Nodes (9): _int(), _length(), ParamSpec, _plain(), Tool dataclass: a rayforge-side wrapper around the raygeo…, Return the canonical name of a ``ToolMaterial`` member., One editable geometry parameter for a tool category. ``quantity="length"``…, tool_material_to_name() (+1 more)
 
-### Community 931 - "_FakeProvider"
-Cohesion: 0.20
-Nodes (5): _FakeProvider, _make_disjoint_loops(), _make_workpiece(), Two widely-separated square pockets as a single Geometry., A minimal IGeometryProvider returning a fixed Geometry.
+### Community 931 - "WavefrontStep"
+Cohesion: 0.08
+Nodes (16): ComputePayload, Part, Build a :class:`Part` with normalised-winding vector geometry and a…, WavefrontStep, _FakeProvider, _make_disjoint_loops(), _make_workpiece(), Two widely-separated square pockets as a single Geometry. (+8 more)
 
 ### Community 932 - "_AddonDomainChain"
 Cohesion: 0.25
@@ -5066,9 +5042,9 @@ Nodes (7): create_feature_image(), find_font(), generate_video(), Path, Find a f
 Cohesion: 0.25
 Nodes (5): Tests for the get_importer_info method., Test finding an importer and its features by MIME type., Test fallback to extension matching., Test case where no importer is found., TestGetImporterInfo
 
-### Community 939 - "test_spin_row.py"
-Cohesion: 0.57
-Nodes (7): ui, _spin_row(), test_change_schedules_debounced_commit(), test_commit_writes_to_step(), test_external_update_does_not_clobber_pending_edit(), test_set_range(), test_syncs_value_from_step()
+### Community 939 - "SpinRow"
+Cohesion: 0.15
+Nodes (13): SpinRow, CNC target depth row widget., A spin row bound to ``CncAssemblerStep.target_depth``., TargetDepthRow, A spin row bound to one numeric step attribute., SpinRow, ui, _spin_row() (+5 more)
 
 ### Community 940 - "Arrays"
 Cohesion: 0.25
@@ -5098,9 +5074,9 @@ Nodes (8): Auf Rohmaterial zuschneiden, Auf-Rohmaterial-Zuschneiden aktivieren, 
 Cohesion: 0.25
 Nodes (8): Anzahl der Durchgänge, Einstellungen, Funktionsweise, Mehrfach-Durchgang, Tipps, Verwandte Themen, Wann Mehrfach-Durchgang verwenden, Z-Abstieg pro Durchgang
 
-### Community 947 - ".draw_grid_and_labels"
-Cohesion: 0.29
-Nodes (6): Context, Matrix, Calculates an appropriate grid spacing in mm based on the current zoom level…, Draws the grid, axes, and labels onto the Cairo context using the provided…, Internal helper to draw the infinite grid lines., Internal helper to draw the main XY axes and text labels.
+### Community 947 - ".hidden"
+Cohesion: 0.20
+Nodes (7): setter, Indicates if this asset should be hidden from the UI., Sets the hidden state and sends an update signal if changed., The unique identifier of the asset instance., Set the unique identifier. Used for deserialization., The user-facing name of the asset., Sets the asset name and sends an update signal if changed.
 
 ### Community 948 - "Pfad-Glättung"
 Cohesion: 0.25
@@ -5119,8 +5095,8 @@ Cohesion: 0.25
 Nodes (8): Ajustes, Consejos, Cuándo Usar Multi-Pasada, Cómo Funciona, Descenso Z por Pasada, Multi-Pasada, Número de Pasadas, Temas Relacionados
 
 ### Community 952 - "es/docusaurus-plugin-content-docs/current/features/operations/contour.md"
-Cohesion: 0.06
-Nodes (28): Abrir el asistente, Paso 1: Seleccionar puntos de diseño, Paso 2: Registrar posiciones físicas, Paso 3: Revisar y aplicar la transformación, Print & Cut, Requisitos previos, Temas relacionados, Abrir la ventana del proyector (+20 more)
+Cohesion: 0.09
+Nodes (25): Compensación de Kerf, Compensación de Kerf Manual, Cómo Funciona la Compensación de Kerf, Midiendo Kerf, Páginas Relacionadas, ¿Qué es Kerf?, Cuándo no usarlo, Cuándo usarlo (+17 more)
 
 ### Community 953 - "Suavizar Trayectoria"
 Cohesion: 0.25
@@ -5206,9 +5182,9 @@ Nodes (5): Code style, General commands, Other rules, Raygeo (Rust/PyO3 geometry
 Cohesion: 0.29
 Nodes (5): 1. Think Before Coding, 2. Simplicity First, 3. Surgical Changes, 4. Goal-Driven Execution, graphify
 
-### Community 974 - "._query_snap_engine"
-Cohesion: 0.38
-Nodes (4): GeoPoint, Query snap engine during drag operations. Args: element: The SketchElement…, Internal method to query the snap engine., Query snap engine for geometry creation. This is used during hover/press in…
+### Community 974 - "CrosshairElement"
+Cohesion: 0.20
+Nodes (4): CrosshairElement, Context, A small, draggable crosshair at a given world position. Call ``move_to(x, y)``…, Places the visual centre at ``(x, y)`` world.
 
 ### Community 975 - "rayforge-addon-sketcher/tests/conftest.py"
 Cohesion: 0.29
@@ -5219,12 +5195,8 @@ Cohesion: 0.29
 Nodes (5): setter, Sets the asset name. Provided for protocol compatibility., Indicates if this asset should be hidden from the UI., Sets the hidden state., The user-facing name of the asset instance.
 
 ### Community 978 - "test_marlin_util.py"
-Cohesion: 0.09
-Nodes (20): detect_unit_system_from_m149(), extract_marlin_device_name(), parse_m115_firmware_info(), parse_m211_endstops(), parse_marlin_version(), Parsing utilities for the Marlin firmware driver., Parse M115 response to extract firmware name and machine type. Returns a dict…, Parse M211 output to extract X/Y max travel from software endstops. Returns… (+12 more)
-
-### Community 979 - "._update_scale_buttons"
-Cohesion: 0.20
-Nodes (5): Whether a scale run could be started right now., Reflect the running state in the two scale buttons., Handle Go Scale: start, or stop while running., The scale run finished, was cancelled, or failed., A document with no ops has no outline to scale.
+Cohesion: 0.02
+Nodes (83): build_marlin_profile(), _MarlinProbeDriver, probe_marlin_device(), Any, Protocol, Build a ``DeviceProfile`` from raw Marlin M115, M211, M503, and M149 response…, Protocol describing the interface ``probe_marlin_device`` needs from any Marlin…, Shared probe orchestration for all Marlin drivers. Creates a temporary machine… (+75 more)
 
 ### Community 980 - "CanvasProjection"
 Cohesion: 0.52
@@ -5242,17 +5214,13 @@ Nodes (9): fixture, Test setting a step parameter., Test that setting the same v
 Cohesion: 0.62
 Nodes (6): _calc_columns(), find_font(), generate_image(), main(), parse_supporters(), Path
 
-### Community 984 - "parse_error_message"
-Cohesion: 0.24
-Nodes (7): parse_error_message(), Extract the error message from an ``Error:...`` line. Args: line: A single…, Tests for parse_error_message function., Test 'Error:Unknown command: \"?\"'., Test non-matching line returns empty string., Test that message is whitespace-stripped., TestParseErrorMessage
+### Community 987 - "test_serial_server_transport.py"
+Cohesion: 0.22
+Nodes (6): asyncio, Tests for SerialServerTransport I/O operations., Test receiving data written to the slave PTY., Test that send() writes data to the PTY (readable from slave)., Test full bidirectional communication., TestSerialServerTransportIO
 
-### Community 987 - "test_jog_button_limit_warning"
-Cohesion: 0.24
-Nodes (10): parametrize, ui, Verifies that jog buttons send the correct native axis deltas when the…, Verifies that jog buttons show a 'warning' CSS class if the jog would exceed…, The arrow-to-delta mapping is read from the machine profile's origin corner,…, Verifies that each jog button sends the correct signed distance to the machine…, test_jog_button_direction(), test_jog_button_direction_with_rotated_workspace() (+2 more)
-
-### Community 988 - "_ClientSpy"
-Cohesion: 0.07
-Nodes (23): _ClientSpy, _cut_extents(), _moves(), asyncio, Ops, parametrize, Run a job through the driver and return what it sent., Whatever the corner, the job is normalized the same way. (+15 more)
+### Community 988 - "test_ruida_start_corner.py"
+Cohesion: 0.05
+Nodes (52): _cut_scale_ops(), The closed bounding-box loop, starting and ending at (0, 0)., Build a one-layer job that cuts the bounding box., _rect_corners(), Enum, Which corner of the job the head is standing on. The operator parks the head on…, StartCorner, _commands() (+44 more)
 
 ### Community 989 - "ControllableTimer"
 Cohesion: 0.29
@@ -5278,9 +5246,9 @@ Nodes (6): 1. Verwende Overscan für glattere Rastergravur, 2. Optimiere die Fah
 Cohesion: 0.20
 Nodes (6): A wait that cannot end takes the whole app with it., MOT-10: an unanswered status read must not hang forever., MOT-11: reading Current X says nothing about homing., MOT-23: the head is at zero after homing, not where it was., MOT-14: the travel-time term must not always be zero., TestWaitsAreBounded
 
-### Community 995 - "Maintenance"
+### Community 995 - "Wartung"
 Cohesion: 0.20
-Nodes (9): Counter Features, Creating a Counter, Custom Maintenance Counters, Example Counters, Maintenance, Resetting Counters, See Also, Total Hours (+1 more)
+Nodes (9): Beispielzähler, Benutzerdefinierte Wartungszähler, Einen Zähler erstellen, Gesamtstunden, Nutzungsverfolgung, Siehe auch, Wartung, Zähler-Funktionen (+1 more)
 
 ### Community 996 - "G-Code-Einstellungen"
 Cohesion: 0.29
@@ -5291,8 +5259,8 @@ Cohesion: 0.29
 Nodes (6): 1. Usa Overscan para un Grabado Raster Más Suave, 2. Optimiza el Tiempo de Desplazamiento con Ordenamiento de Trayectorias, 3. Agrega Pestañas de Sujeción para Prevenir el Movimiento de Piezas, 4. Previsualiza tu Trabajo en 3D Antes de Ejecutarlo, 5. Usa Ganchos de G-code Personalizados para Flujos de Trabajo Consistentes, Consejo Extra: Prueba Primero en Material de Desecho
 
 ### Community 998 - "Seguimiento de uso"
-Cohesion: 0.20
-Nodes (9): Completamente opcional, Cómo funciona, Desactivar el seguimiento, Lo que NO rastreamos, Lo que vemos, Por qué rastreamos, Páginas relacionadas, Qué rastreamos (+1 more)
+Cohesion: 0.04
+Nodes (47): Actualizando Addons, Addons, Addons Instalados, Eliminando Addons, Fuentes de Addons, Gestionando Addons, Instalando Addons, Resumen (+39 more)
 
 ### Community 999 - "test_theme_resolver.py"
 Cohesion: 0.44
@@ -5322,33 +5290,29 @@ Nodes (10): 1. Accéder au Gestionnaire de Recettes, 2. Créer une Nouvelle Rece
 Cohesion: 0.29
 Nodes (7): Activer l'Optimisation, Comment Ça Affecte Votre Travail, Comment Ça Fonctionne, Optimisation de Parcours, Paramètres, Quand Utiliser l'Optimisation, Sujets Connexes
 
-### Community 1006 - "Suivi d'utilisation"
+### Community 1006 - "维护"
 Cohesion: 0.20
-Nodes (9): Ce que nous ne suivons PAS, Ce que nous suivons, Ce que nous voyons, Comment cela fonctionne, Désactiver le suivi, Entièrement facultatif, Pages connexes, Pourquoi nous suivons (+1 more)
+Nodes (9): 使用跟踪, 创建计数器, 另请参阅, 总小时数, 示例计数器, 维护, 自定义维护计数器, 计数器功能 (+1 more)
 
-### Community 1007 - "Rastreamento de uso"
-Cohesion: 0.20
-Nodes (9): Como funciona, Desativar o rastreamento, O que NÃO rastreamos, O que rastreamos, O que vemos, Por que rastreamos, Páginas relacionadas, Rastreamento de uso (+1 more)
+### Community 1007 - "Any"
+Cohesion: 0.22
+Nodes (5): Any, Serializes the VarSet's definition to a dictionary. Args: include_value: If…, Sets the value of an existing Var by its key., Returns a dictionary of all keys and their current values., Sets the values for multiple Vars from a dictionary. Ignores keys that are not…
 
 ### Community 1008 - "pt-BR/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md"
 Cohesion: 0.29
 Nodes (6): 1. Use Overscan para Gravação Raster mais Suave, 2. Otimize o Tempo de Deslocamento com Ordenação de Trajetórias, 3. Adicione Abas de Fixação para Prevenir Movimento da Peça, 4. Visualize Seu Trabalho em 3D Antes de Executar, 5. Use Ganchos de G-code Personalizados para Fluxos de Trabalho Consistentes, Dica Bônus: Teste em Material de Sobra Primeiro
 
-### Community 1009 - "widgets/dialog.py"
-Cohesion: 0.13
-Nodes (13): AISvgGeneratorController, GenerationResult, Geometry, Protocol, Cancel any ongoing generation., Protocol for Sketch instance with name attribute., Protocol for Sketch class with from_geometry classmethod., Create a Sketch from Geometry. (+5 more)
+### Community 1009 - "hooks.py"
+Cohesion: 0.05
+Nodes (40): AISvgGeneratorController, GenerationResult, Geometry, Protocol, Cancel any ongoing generation., Protocol for Sketch instance with name attribute., Protocol for Sketch class with from_geometry classmethod., Create a Sketch from Geometry. (+32 more)
 
-### Community 1010 - "get_color_preset_mgr"
+### Community 1010 - ".on_config_changed"
 Cohesion: 0.22
-Nodes (7): Returns the color preset manager., get_color_preset_mgr(), Returns the process-wide ColorPresetManager, creating it on first use. The…, TestColorPresetManagerSingleton, color_rules(), fixture, Points the color preset manager at a temporary directory so tests can add rules…
+Nodes (3): Called when machine hours change. Checks for maintenance notifications., Opens the machine settings dialog on the Hours page., Reads the theme from config and applies it to the UI.
 
 ### Community 1011 - "uk/docusaurus-plugin-content-blog/2025-02-20-5-tips-better-engraving.md"
 Cohesion: 0.29
 Nodes (6): 1. Використовуйте Overscan для плавнішого растрового гравірування, 2. Оптимізуйте час переміщення з впорядкуванням шляхів, 3. Додайте утримуючі вкладки щоб запобігти переміщенню деталі, 4. Попередньо перегляньте ваше завдання в 3D перед запуском, 5. Використовуйте власні хуки G-code для узгоджених робочих процесів, Бонусна порада: Тестуйте на відходах спочатку
-
-### Community 1012 - ".create"
-Cohesion: 0.22
-Nodes (5): Creates a new user library and returns its ID. Args: display_name: The human-…, Path, Initialize a material library. Args: directory: Directory containing material…, Create a new material library with the given display name. This class method…, Test creating a new library using the class method.
 
 ### Community 1013 - "Налаштування G-code"
 Cohesion: 0.29
@@ -5378,33 +5342,37 @@ Nodes (5): For /graphify explain, For /graphify path, graphify reference: query,
 Cohesion: 0.33
 Nodes (5): Index, Motion subsystem audit, Reference-material caveat, resolve: waiters = self._pending_mem_reads.get(mem_address) # while, Severity
 
-### Community 1020 - "._build_toolbar"
-Cohesion: 0.40
-Nodes (3): ColorRGBA, Get the current fill color for new fills., Set the current fill color for new fills.
+### Community 1020 - "TestMachineController"
+Cohesion: 0.22
+Nodes (6): usefixtures, Test suite for the MachineController class., Test that MachineController can be initialized., Test that the controller has a driver property., Test that controller has all required signals., TestMachineController
 
-### Community 1021 - ".add_preset"
-Cohesion: 0.33
-Nodes (3): Adds or replaces a preset for its color. The color is normalized before…, Deletes the preset for a given color. Args: color: The color to remove…, Persists all presets to the presets file.
+### Community 1021 - "normalize_color"
+Cohesion: 0.15
+Nodes (7): normalize_color(), Adds or replaces a preset for its color. The color is normalized before…, Deletes the preset for a given color. Args: color: The color to remove…, Returns the preset for a color, or None if none matches. Args: color: The color…, Persists all presets to the presets file., Normalize a color string to a canonical lowercase 6-digit hex value. Accepts…, TestNormalizeColor
 
 ### Community 1022 - ".render_preview_image"
-Cohesion: 0.25
-Nodes (5): Image, Always returns None since we can't render without the actual renderer., Always returns None since we can't render without the actual renderer., Renders raw data into a pyvips Image of the specified dimensions. This method…, Generates a high-resolution preview image from a full ImportResult. This allows…
+Cohesion: 0.33
+Nodes (4): Image, Always returns None since we can't render without the actual renderer., Renders raw data into a pyvips Image of the specified dimensions. This method…, Generates a high-resolution preview image from a full ImportResult. This allows…
 
-### Community 1023 - "test_canvas_axis.py"
-Cohesion: 0.28
-Nodes (7): mock_context(), mock_context_with_font_size(), fixture, Provides a mocked Cairo context with font size tracking., Provides a default AxisRenderer instance for testing., Provides a mocked Cairo context to spy on drawing calls., renderer()
+### Community 1023 - "MockUdpClient"
+Cohesion: 0.22
+Nodes (3): MockUdpClient, Test handling multiple clients., A simple UDP client for testing UdpServerTransport.
 
-### Community 1024 - "mainwindow.py"
-Cohesion: 0.02
-Nodes (135): hookimpl, Frontend entry point for laser-essentials addon. Registers UI widgets and…, Register step settings page classes based on assembler name., Register editor command handlers., Register actions with menu placement., register_actions(), register_commands(), register_step_settings_pages() (+127 more)
+### Community 1024 - "_UngroupCommand"
+Cohesion: 0.14
+Nodes (8): Layer, Matrix, An undoable command to dissolve one or more Groups., Calculates the new local matrices for a group's children using a pre-calculated…, Performs the ungrouping operation., Reverts the ungrouping by re-creating the original groups., Creates and executes an undoable command to group items. This operation runs as…, _UngroupCommand
 
 ### Community 1025 - ".draw"
 Cohesion: 0.25
 Nodes (5): Context, Draws a custom overlay in world coordinates (pixel space). The cairo context's…, Draws a custom overlay for editing, only called when the element is the…, Renders the element and its children to the cairo context. This method applies…, Draws the element's own content. The cairo context is assumed to be in the…
 
-### Community 1027 - ".get_preset_data"
-Cohesion: 0.22
-Nodes (7): _hex_to_rgba(), Any, Returns the entered data as a dict suitable for ColorPreset., Convert a Gdk.RGBA to a lowercase hex string., Parse a hex color string into a Gdk.RGBA, defaulting to magenta., _rgba_to_hex(), RGBA
+### Community 1026 - "WorkflowView"
+Cohesion: 0.06
+Nodes (16): Step, Overrides GObject.Object.do_destroy to disconnect signals., StepBox, Workflow, Shows a popup to select and add a new step type., Handles the creation of a new step after the popup closes., Handles deletion of a step with an undoable command., Handles reordering of steps with an undoable command. (+8 more)
+
+### Community 1027 - "test_cylinder_renderer_update_from_state.py"
+Cohesion: 0.36
+Nodes (8): _make_ctx(), _make_shaders(), fixture, ui, Tests for CylinderRenderer.prepare and render., renderer(), test_render_noop_without_prepare(), test_render_uses_cached_mvp()
 
 ### Community 1028 - "mac_build.sh"
 Cohesion: 0.53
@@ -5414,13 +5382,13 @@ Nodes (5): copy_keg_lib(), copy_missing_deps(), MACOSX_DEPLOYMENT_TARGET, print_
 Cohesion: 0.53
 Nodes (5): generate_help_text(), get_matching_targets(), main(), Find all leaf targets that match the given target spec. Supports glob patterns…, run_script()
 
-### Community 1030 - "test_grbl_serial_simple_driver.py"
-Cohesion: 0.28
-Nodes (8): asyncio, fixture, A GrblSerialSimpleDriver with a mocked, connected transport., Cancel must not leave an in-flight command waiting for timeout., Cancelling mid-job stops streaming immediately, without errors., simple_driver(), test_cancel_interrupts_streaming_job_promptly(), test_cancel_wakes_inflight_ping_pong()
+### Community 1030 - "Addons"
+Cohesion: 0.22
+Nodes (9): Addon Sources, Addons, Installed Addons, Installing Addons, Managing Addons, Overview, Related Topics, Removing Addons (+1 more)
 
 ### Community 1033 - "test_surface.py"
-Cohesion: 0.25
-Nodes (8): mock_work_origin(), fixture, parametrize, ui, Verifies that the Work Origin marker is placed at the correct visual…, Creates a WorkSurface instance bypassing the GTK initialization (which would…, surface(), test_wcs_visual_marker_location()
+Cohesion: 0.17
+Nodes (10): Create a MachineSpace from a Machine configuration. Args: machine: The machine…, Get the machine's coordinate space configuration. Returns: A MachineSpace…, mock_work_origin(), fixture, parametrize, ui, Verifies that the Work Origin marker is placed at the correct visual…, Creates a WorkSurface instance bypassing the GTK initialization (which would… (+2 more)
 
 ### Community 1034 - "Optional Fields"
 Cohesion: 0.33
@@ -5446,13 +5414,9 @@ Nodes (6): `api_version`, `author`, Campos Requeridos, `description`, `display_n
 Cohesion: 0.33
 Nodes (6): Colocación en Barra de Herramientas, Colocación en Menú, Parámetros de Acción, Recuperando Acciones, Registrando una Acción, Registro de Acciones
 
-### Community 1041 - ".from_dict"
+### Community 1041 - "Аддони"
 Cohesion: 0.22
-Nodes (5): Any, Geometry, Return the typed Rust spec for this transformer. The returned object is one of…, Serializes the transformer's configuration to a dictionary., Acts as a factory to create a transformer instance from a dictionary. This…
-
-### Community 1042 - "Addons"
-Cohesion: 0.22
-Nodes (9): Actualizando Addons, Addons, Addons Instalados, Eliminando Addons, Fuentes de Addons, Gestionando Addons, Instalando Addons, Resumen (+1 more)
+Nodes (9): Аддони, Видалення аддонів, Встановлення аддонів, Встановлені аддони, Джерела аддонів, Керування аддонами, Огляд, Оновлення аддонів (+1 more)
 
 ### Community 1044 - "Champs requis"
 Cohesion: 0.33
@@ -5478,13 +5442,9 @@ Nodes (6): Campos Opcionais, `depends`, `maturity`, `requires`, `url`, `version`
 Cohesion: 0.33
 Nodes (6): Parâmetros de Ação, Posicionamento em Barra de Ferramentas, Posicionamento em Menu, Recuperando Ações, Registrando uma Ação, Registro de Ações
 
-### Community 1051 - "es/docusaurus-plugin-content-docs/current/machine/nogo-zones.md"
-Cohesion: 0.22
-Nodes (7): Comprobaciones de Sanity del Trabajo, Comprobaciones Realizadas, Páginas Relacionadas, Añadir una Zona Prohibida, Páginas Relacionadas, Visibilidad, Zonas Prohibidas
-
-### Community 1052 - "Addons"
-Cohesion: 0.22
-Nodes (9): Addons, Addons Installés, Aperçu, Gérer les Addons, Installer des Addons, Mettre à Jour les Addons, Sources d'Addons, Sujets Connexes (+1 more)
+### Community 1052 - "friendly_name_from_by_id"
+Cohesion: 0.39
+Nodes (3): friendly_name_from_by_id(), Extract a human-readable name from a by-id path. E.g. '/dev/v4l/by-…, TestFriendlyNameFromById
 
 ### Community 1054 - "Обов'язкові поля"
 Cohesion: 0.33
@@ -5526,29 +5486,33 @@ Nodes (5): 1.7.6, Added, Changed, Fixed, Performance
 Cohesion: 0.40
 Nodes (5): 1.9.0, Added, Changed, Fixed, Performance
 
-### Community 1066 - "fr/docusaurus-plugin-content-docs/current/machine/nogo-zones.md"
-Cohesion: 0.22
-Nodes (7): Pages associées, Vérifications de cohérence du travail, Vérifications effectuées, Ajouter une Zone Interdite, Pages Connexes, Visibilité, Zones Interdites
-
-### Community 1067 - "Addons"
-Cohesion: 0.22
-Nodes (9): Addons, Addons Instalados, Atualizando Addons, Fontes de Addons, Gerenciando Addons, Instalando Addons, Removendo Addons, Tópicos Relacionados (+1 more)
-
-### Community 1069 - "MaterialTestRenderer"
+### Community 1066 - "migrate_camera_data"
 Cohesion: 0.36
-Nodes (5): MaterialTestRenderer, Any, Context, Image, Renders material test grid previews.
+Nodes (4): migrate_camera_data(), Any, Migrate numeric device IDs to persistent by-id paths. On Linux, numeric device…, TestMigrateCameraData
 
-### Community 1071 - "SettingsPageRegistry"
-Cohesion: 0.18
-Nodes (6): Registry for addon-contributed Settings dialog pages., Collects settings page classes contributed by addons. A page class is a no-…, Register a settings page class. Re-registering the same class is a no-op (so an…, Return all registered page classes in insertion order., Remove all pages registered by the named addon. Returns: The number of pages…, SettingsPageRegistry
-
-### Community 1072 - "DebugLogDialog"
-Cohesion: 0.29
-Nodes (4): DebugLogDialog, Path, Window, Dialog shown before creating a debug dump archive. Lets the user choose whether…
-
-### Community 1073 - "SignalTracker"
+### Community 1067 - "WorkOriginElement"
 Cohesion: 0.25
-Nodes (4): A helper to track calls to a blinker Signal., Test that the driver periodically polls and correctly parses status., Test that the driver handles an abrupt server-side disconnect., SignalTracker
+Nodes (5): Context, Configure the arrow directions from the displayed axis orientation., Renders the origin symbol., A non-interactive CanvasElement that draws a CNC-style work origin symbol (a…, WorkOriginElement
+
+### Community 1068 - "test_recipe_keys.py"
+Cohesion: 0.20
+Nodes (3): Tests for step-declared recipe keys and recipe varsets. Verifies that each…, recipe_keys() composition through the step hierarchy., TestRecipeKeys
+
+### Community 1069 - "._draw_grid"
+Cohesion: 0.40
+Nodes (3): Any, Context, Image
+
+### Community 1071 - "._clear_drag_state"
+Cohesion: 0.25
+Nodes (4): Resets all state variables related to any drag operation., Resets the camera to the specified preset view., Handles the end of a drag operation., Handles the end of a Z-axis rotation drag.
+
+### Community 1072 - ".get_world_coords_on_plane"
+Cohesion: 0.25
+Nodes (4): Handles the start of a middle-mouse-button drag., Handles the mouse scroll wheel for zooming. Zooms towards the point on the…, Dollies the camera keeping the floor plane point under the cursor. The plane…, Calculates the 3D world coordinates on the XY plane from 2D.
+
+### Community 1073 - "ui_min_width.py"
+Cohesion: 0.36
+Nodes (7): main(), _min_width(), T, Widget, Report the minimum width every top-level UI region demands. The audit capture…, run_on_main_thread(), _walk()
 
 ### Community 1074 - ".add_stack_page"
 Cohesion: 0.40
@@ -5567,8 +5531,8 @@ Cohesion: 0.40
 Nodes (3): parametrize, Test world_point_to_machine for all combinations of origin and axis reversal., Verify get_workarea_origin_offset returns correct MACHINE space position for…
 
 ### Community 1079 - "app.py"
-Cohesion: 0.12
-Nodes (20): handle_exception(), main(), Catches unhandled exceptions, logs them, and shows a user-friendly dialog. This…, Allow running the application via ``python -m rayforge``., initialize(), Tries to initialize the required OpenGL bindings. This function attempts to…, Path, Execute a UI script in a background thread. Args: script_path: Path to the… (+12 more)
+Cohesion: 0.23
+Nodes (9): handle_exception(), main(), Catches unhandled exceptions, logs them, and shows a user-friendly dialog. This…, Allow running the application via ``python -m rayforge``., initialize(), Tries to initialize the required OpenGL bindings. This function attempts to…, Path, Execute a UI script in a background thread. Args: script_path: Path to the… (+1 more)
 
 ### Community 1080 - "FakeStep"
 Cohesion: 0.25
@@ -5766,13 +5730,13 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 Cohesion: 0.29
 Nodes (7): parametrize, The Swift Cut icon map resolves to real assets. The design ships each icon in…, GTK only recolours icons whose filename ends in `-symbolic.svg`. A name that…, Artboard 3a draws Go Scale with the frame glyph and Cut Scale with the laser…, test_go_scale_and_cut_scale_do_not_share_a_glyph(), test_icon_is_symbolic_so_gtk_recolours_it(), test_icon_resolves_to_a_file()
 
-### Community 1129 - "Overscan"
-Cohesion: 0.25
-Nodes (8): Das Problem: Beschleunigungs-Markierungen, Overscan, Overscan-Distanz wählen, Overscan-Einstellungen testen, Overscan konfigurieren, Verwandte Themen, Wann Overscan verwenden, Wie Overscan funktioniert
+### Community 1129 - "TestSetup"
+Cohesion: 0.29
+Nodes (4): _api_key_json(), fixture, setup_driver(), TestSetup
 
 ### Community 1130 - "Smart Stock"
 Cohesion: 0.25
-Nodes (8): Abrindo o diálogo de detecção, Capturando uma imagem de referência, Configurações de detecção, Criando itens de material, Detectando material, Pré-requisitos, Smart Stock, Tópicos relacionados
+Nodes (8): Bestand erkennen, Bestandselemente erstellen, Den Erkennungsdialog öffnen, Ein Referenzbild aufnehmen, Erkennungseinstellungen, Smart Stock, Verwandte Themen, Voraussetzungen
 
 ### Community 1132 - "get_pixel_color"
 Cohesion: 0.67
@@ -5782,9 +5746,9 @@ Nodes (3): get_pixel_color(), main(), Get the RGBA values of a pixel at the spec
 Cohesion: 0.50
 Nodes (3): fixture, Pytest configuration for LightBurn importer tests. Registers…, _register_laser_addons()
 
-### Community 1134 - "Context"
-Cohesion: 0.29
-Nodes (4): Context, Sets the standard drawing color for constraints based on hover and status., Draws a semi-transparent blue underlay for the current path., Draws a semi-transparent red underlay for conflicting items.
+### Community 1134 - "Оверскан"
+Cohesion: 0.25
+Nodes (8): Вибір відстані оверскану, Коли використовувати оверскан, Налаштування оверскану, Оверскан, Пов'язані теми, Проблема: Відмітини прискорення, Тестування налаштувань оверскану, Як працює оверскан
 
 ### Community 1139 - "Puntos de Entrada"
 Cohesion: 0.50
@@ -5794,13 +5758,13 @@ Nodes (4): Assets, Backend, Frontend, Puntos de Entrada
 Cohesion: 0.20
 Nodes (6): Returns the AI configuration manager., AIConfigManager, Path, Manages AI configuration persistence., Save AI configuration to file., Load AI configuration from file.
 
-### Community 1141 - ".from_path"
-Cohesion: 0.29
-Nodes (4): Path, Create a Model from a path, deriving the name from the stem., HeadSpec, Return the head specs used to build an assembly. Does not build or mutate…
+### Community 1141 - "HeadModelGroup"
+Cohesion: 0.04
+Nodes (36): Path, Create a Model from a path, deriving the name from the stem., HeadListEditor, HeadModelGroup, HeadPreferencesPage, HeadRow, Button, Widget (+28 more)
 
-### Community 1142 - ".home"
-Cohesion: 0.13
-Nodes (6): Axis, Pos, Stream C9 02 at the profile's max travel speed., Z is not implemented here, so it is not advertised. Both jog paths speak only X…, Machine-space micrometres as the controller counts them., Read reference point offsets from the controller. Returns offsets for REF0 and…
+### Community 1142 - "Axis"
+Cohesion: 0.25
+Nodes (4): Axis, Pos, Z is not implemented here, so it is not advertised. Both jog paths speak only X…, Read reference point offsets from the controller. Returns offsets for REF0 and…
 
 ### Community 1151 - "[0.15] - 2025-07-???"
 Cohesion: 0.67
@@ -5838,21 +5802,25 @@ Nodes (3): 1.7.9, Added, Fixed
 Cohesion: 0.67
 Nodes (3): 1.8.0, Added, Changed
 
+### Community 1162 - "ChangePropertyCommand"
+Cohesion: 0.08
+Nodes (25): Any, Updates the sketch parameters for one or more workpiece instances in a single…, EntryRow, Updates the sketch's name with undo support., ChangePropertyCommand, Any, A command to change a single property on an object., Merges another ChangePropertyCommand if it affects the same property. (+17 more)
+
 ### Community 1163 - "WorkPieceArtifact"
 Cohesion: 0.06
-Nodes (51): Represents an intermediate artifact produced during the pipeline, containing…, _get_ops_color_mode_enum(), Any, ndarray, Rect, An immutable contract describing all parameters from the UI required to perform…, Serializes the context to a dictionary., Deserializes a RenderContext from a dictionary. (+43 more)
+Nodes (53): Represents an intermediate artifact produced during the pipeline, containing…, _get_ops_color_mode_enum(), Any, ndarray, Rect, An immutable contract describing all parameters from the UI required to perform…, Serializes the context to a dictionary., Deserializes a RenderContext from a dictionary. (+45 more)
 
-### Community 1164 - "._ping_pong"
+### Community 1164 - "AddonRegistry"
 Cohesion: 0.29
-Nodes (3): _PingPongPending, Send *command* and wait for ``ok`` / ``error:`` response. Returns collected…, Tracks a single sent command awaiting its ``ok`` response.
+Nodes (5): AddonRegistry, Protocol, Set the registries dict for addon cleanup. Args: registries: Dict mapping hook…, Protocol for registries that support addon item cleanup., Unregister all items registered by the named addon. Args: addon_name: The…
 
-### Community 1165 - "._compute_playback_progress"
+### Community 1165 - "plunge_speed_row.py"
 Cohesion: 0.29
-Nodes (3): Command index in effect at simulated time *t* (seconds)., Cumulative simulated time (seconds) up to command *idx*., Set the simulated playback time and cache the playhead progress. The playhead…
+Nodes (4): PlungeSpeedRow, SpinRow, CNC plunge speed row widget., A spin row bound to ``CncAssemblerStep.plunge_speed``.
 
-### Community 1166 - "GestureClick"
+### Community 1166 - "machine"
 Cohesion: 0.29
-Nodes (4): GestureClick, Placeholder for handling right-clicks. Subclasses should override this to…, Override to suppress element selection when Space is held., Override to suppress click actions when Space is held.
+Nodes (7): machine(), fixture, A machine with a spindle head for CNC steps., Register all steps from cnc_essentials addon., Automatically register cnc_essentials steps for all tests in this addon., register_cnc_essentials(), _register_steps()
 
 ### Community 1169 - "._insert_text_at_cursor"
 Cohesion: 0.33
@@ -5958,145 +5926,161 @@ Nodes (3): 检索生成器, 注册生成器, 生成器注册表
 Cohesion: 0.67
 Nodes (3): 检索资源类型, 注册资源类型, 资源类型注册表
 
-### Community 1248 - "StateAwaiter"
-Cohesion: 0.29
-Nodes (3): Test the connect and cleanup flow., Helper to wait for a specific device state., StateAwaiter
+### Community 1248 - "resolve_device_id"
+Cohesion: 0.43
+Nodes (3): Resolve a numeric device ID to a persistent by-id path. If the device_id is…, resolve_device_id(), TestResolveDeviceId
+
+### Community 1249 - "WorkPiece"
+Cohesion: 0.01
+Nodes (166): Tests for the adaptive-clearing CNC step., CNC payloads express power as the spindle's RPM / max RPM ratio, so a running…, TestAdaptiveClearSpec, mock_context(), fixture, TestFrameComputePayload, mock_context(), fixture (+158 more)
 
 ### Community 1250 - "Print & Cut"
 Cohesion: 0.29
 Nodes (7): Den Assistenten öffnen, Print & Cut, Schritt 1: Designpunkte auswählen, Schritt 2: Physische Positionen aufzeichnen, Schritt 3: Transformation überprüfen und anwenden, Verwandte Themen, Voraussetzungen
 
-### Community 1251 - "Pfad-Optimierung"
+### Community 1251 - "po_compiler.py"
 Cohesion: 0.29
-Nodes (7): Auswirkungen auf deinen Job, Einstellungen, Funktionsweise, Optimierung aktivieren, Pfad-Optimierung, Verwandte Themen, Wann Optimierung verwenden
+Nodes (6): _join_po_lines(), needs_compilation(), Path, Pure Python .po to .mo compiler. This module provides a cross-platform way to…, Check if a .mo file needs to be compiled from its .po file. Args: po_path: Path…, Join quoted .po file lines into a single string. Handles multi-line strings…
 
-### Community 1252 - "get_context"
-Cohesion: 0.01
-Nodes (141): Initializes a new LaserHeadVar instance. Args: key: The unique machine-readable…, fixture, A UI context for post_processors addon tests., ui_context(), get_context(), A thread-safe, lazy-initializing accessor for the global RayforgeContext…, Returns the dialect manager., DialectManager (+133 more)
+### Community 1252 - "ValueError"
+Cohesion: 0.02
+Nodes (94): Retrieves the serialized Sketch definition from the document's sketch registry.…, Returns the dialect manager., _extract_zip_to(), _find_manifest_in_zip(), Install a device profile from a ``.zip`` file. Validates that the zip contains…, Zip a device profile directory. Returns the path to the created…, _safe_filename(), Sets the laser power to the specified percentage of max power. Args: head: The… (+86 more)
 
 ### Community 1304 - "stubs_to_markdown.py"
 Cohesion: 0.12
 Nodes (36): AsyncFunctionDef, expr, FunctionDef, Module, clean_type(), collect_members(), convert_docstring_sections(), convert_sphinx() (+28 more)
 
-### Community 1324 - "CameraWizard"
-Cohesion: 0.02
-Nodes (55): Pixbuf, CameraCalibrator, ndarray, Assess the quality of spatial coverage. Returns (level, message) where level is…, Get the spatial coverage of detected corners. Returns normalized coverage (0-1)…, CharucoBoard, CharucoConfig, ndarray (+47 more)
+### Community 1324 - "CharucoBoard"
+Cohesion: 0.05
+Nodes (20): CameraCalibrator, ndarray, Assess the quality of spatial coverage. Returns (level, message) where level is…, Get the spatial coverage of detected corners. Returns normalized coverage (0-1)…, CharucoBoard, CharucoConfig, ndarray, CalibrationResult (+12 more)
 
-### Community 1352 - "render_context/base.py"
+### Community 1351 - "theme.py"
+Cohesion: 0.43
+Nodes (6): _css_for(), install(), The Swift Cut theme: one stylesheet in a light and a dark variant. libadwaita…, Install the Swift Cut stylesheet and keep it following the theme. Safe to call…, _reload(), StyleManager
+
+### Community 1352 - "CameraContext"
 Cohesion: 0.04
-Nodes (46): Composite render context and its per-frame input bundle., CameraContext, ndarray, Frame-level camera matrices, colors, line width and display toggles. The plain…, Recomputes the camera section from the current frame inputs., HeadConfig, KinematicsContext, ndarray (+38 more)
+Nodes (42): ndarray, Build a 4x4 rotation matrix from an axis and angle (Rodrigues). Returns the…, rotation_4x4(), CameraContext, ndarray, Frame-level camera matrices, colors, line width and display toggles. The plain…, Recomputes the camera section from the current frame inputs., _current_rotary_diameter() (+34 more)
 
 ### Community 1353 - "Materiales"
 Cohesion: 0.18
 Nodes (11): Añadiendo Materiales a las Bibliotecas, Categoría, Color, Creando un Nuevo Material, Creando una Nueva Biblioteca, Editando Materiales, Eliminando Materiales, Gestionando Materiales Existentes (+3 more)
 
-### Community 1354 - "Materiais"
-Cohesion: 0.18
-Nodes (11): Adicionando Materiais às Bibliotecas, Categoria, Cor, Criando um Novo Material, Criando uma Nova Biblioteca, Editando Materiais, Excluindo Materiais, Gerenciando Materiais Existentes (+3 more)
+### Community 1354 - "Rastreamento de uso"
+Cohesion: 0.04
+Nodes (48): Addons, Addons Instalados, Atualizando Addons, Fontes de Addons, Gerenciando Addons, Instalando Addons, Removendo Addons, Tópicos Relacionados (+40 more)
 
 ### Community 1355 - "Ferramentas de Tela"
 Cohesion: 0.18
 Nodes (11): Dicas para Uso Eficiente da Tela, Edição de Vetores, Ferramenta de Medição, Ferramenta de Seleção, Ferramenta Pan, Ferramenta Zoom, Ferramentas de Alinhamento, Ferramentas de Tela (+3 more)
 
-### Community 1356 - "Proveedor de IA"
+### Community 1356 - "Mallinfo"
 Cohesion: 0.29
-Nodes (7): Añadir un Proveedor, Compatible con OpenAI, Cómo Funciona, Gestionar Proveedores, Proveedor de IA, Temas Relacionados, Tipos de Proveedor
+Nodes (5): _make_mallinfo_struct(), Mallinfo, _probe_mallinfo(), Read glibc's in-use heap bytes (``uordblks``). ``mallinfo2`` (glibc >= 2.33)…, Total bytes currently allocated via malloc (uordblks).
 
-### Community 1357 - "Smart Stock"
-Cohesion: 0.25
-Nodes (8): Abrir el diálogo de detección, Capturar una imagen de referencia, Configuración de detección, Crear elementos de stock, Detectar stock, Requisitos previos, Smart Stock, Temas relacionados
-
-### Community 1358 - "Overscan"
-Cohesion: 0.25
-Nodes (8): Configurando Overscan, Cuándo Usar Overscan, Cómo Funciona Overscan, El Problema: Marcas de Aceleración, Elegir la Distancia de Overscan, Overscan, Probando Ajustes de Overscan, Temas Relacionados
-
-### Community 1359 - "General"
+### Community 1357 - "ConcreteRasterRenderer"
 Cohesion: 0.29
-Nodes (7): Ajustes, Apariencia, Comportamiento, General, Otros ajustes, Privacidad, Unidades
+Nodes (6): ConcreteRasterRenderer, fixture, raster_renderer(), A concrete class for testing the abstract RasterRenderer., Minimal implementation to satisfy the ABC., Provides an instance of a concrete RasterRenderer for testing.
 
-### Community 1360 - "Fournisseur IA"
+### Community 1358 - "ControllableTimer"
 Cohesion: 0.29
-Nodes (7): Ajouter un Fournisseur, Compatible OpenAI, Fonctionnement, Fournisseur IA, Gérer les Fournisseurs, Sujets Connexes, Types de Fournisseurs
+Nodes (3): ControllableTimer, Manually trigger the timer's function., A mock Timer class that can be manually controlled.
+
+### Community 1359 - "Print & Cut"
+Cohesion: 0.29
+Nodes (7): Abrir el asistente, Paso 1: Seleccionar puntos de diseño, Paso 2: Registrar posiciones físicas, Paso 3: Revisar y aplicar la transformación, Print & Cut, Requisitos previos, Temas relacionados
+
+### Community 1360 - "Режим проектора"
+Cohesion: 0.29
+Nodes (6): Відкриття вікна проектора, Непрозорість, Пов'язані теми, Повноекранний режим, Режим проектора, Що показує проектор
+
+### Community 1361 - "Оптимізація шляху"
+Cohesion: 0.29
+Nodes (7): Коли використовувати оптимізацію, Налаштування, Оптимізація шляху, Пов'язані теми, Увімкнути оптимізацію, Як це впливає на вашу роботу, Як це працює
 
 ### Community 1362 - "Paramètres G-code"
 Cohesion: 0.29
 Nodes (7): Dialecte G-code, Dialectes Disponibles, Paramètres G-code, Postscript, Préambule, Préambule et Postscript du Dialecte, Voir Aussi
 
-### Community 1363 - "Général"
+### Community 1363 - "Інструменти полотна"
 Cohesion: 0.29
-Nodes (7): Apparence, Autres paramètres, Comportement, Confidentialité, Général, Paramètres, Unités
+Nodes (7): Навігація, Поради для ефективного використання полотна, Редагування векторів, Трансформація об'єктів, Інструмент виділення, Інструменти вирівнювання, Інструменти полотна
 
 ### Community 1364 - "Print & Cut"
 Cohesion: 0.29
 Nodes (7): Abrindo o assistente, Etapa 1: Selecionar pontos do design, Etapa 2: Registrar posições físicas, Etapa 3: Revisar e aplicar a transformação, Print & Cut, Pré-requisitos, Tópicos relacionados
 
-### Community 1365 - "Modo Projetor"
-Cohesion: 0.29
-Nodes (6): Abrindo a janela do projetor, Modo Projetor, Modo tela cheia, O que o projetor mostra, Opacidade, Tópicos relacionados
+### Community 1365 - "step_length_row.py"
+Cohesion: 0.33
+Nodes (4): SpinRow, CNC step-length row widget., A spin row bound to the step's ``step_length`` attribute., StepLengthRow
 
-### Community 1366 - ".amount"
-Cohesion: 0.29
-Nodes (5): setter, The smoothing strength, from 0 (none) to 100 (heavy)., Updates the smoothing amount., The corner angle threshold in degrees., Sets the corner angle threshold from a value in degrees.
+### Community 1366 - "tool_diameter_row.py"
+Cohesion: 0.33
+Nodes (4): SpinRow, CNC tool diameter row widget., A spin row bound to ``CncAssemblerStep.tool_diameter``., ToolDiameterRow
 
-### Community 1367 - "Creando Recetas"
-Cohesion: 0.20
-Nodes (10): 1. Acceder al Gestor de Recetas, 2. Crear Nueva Receta, 3. Definir Criterios de Aplicabilidad, 4. Configurar Ajustes, Aplicando Recetas a Pasos, Creando Recetas, Gestión de Recetas, Recetas y Ajustes (+2 more)
+### Community 1367 - "_CreateGroupCommand"
+Cohesion: 0.33
+Nodes (4): _CreateGroupCommand, An undoable command to group a list of DocItems into a new Group., Performs the grouping operation., Reverts the grouping operation.
 
-### Community 1368 - "Provedor de IA"
-Cohesion: 0.29
-Nodes (7): Adicionar um Provedor, Como Funciona, Compatível com OpenAI, Gerenciar Provedores, Provedor de IA, Tipos de Provedor, Tópicos Relacionados
+### Community 1368 - "get_physical_size_mm"
+Cohesion: 0.33
+Nodes (6): get_physical_size_mm(), Determines the physical size of a vips image in mm., Test physical size calculation with resolution metadata present., Test physical size calculation falling back to a default DPI., test_get_physical_size_with_resolution(), test_get_physical_size_without_resolution()
 
-### Community 1369 - "Otimização de Caminho"
-Cohesion: 0.29
-Nodes (7): Como Afeta Seu Trabalho, Como Funciona, Configurações, Habilitar Otimização, Otimização de Caminho, Quando Usar Otimização, Tópicos Relacionados
+### Community 1369 - "._on_readable"
+Cohesion: 0.33
+Nodes (3): Called when the master FD is readable (data from slave)., Handle PTY peer close asynchronously., Handle read error asynchronously.
 
-### Community 1370 - "Geral"
-Cohesion: 0.29
-Nodes (7): Aparência, Comportamento, Configurações, Geral, Outras configurações, Privacidade, Unidades
+### Community 1370 - "CameraDistortionGroup"
+Cohesion: 0.47
+Nodes (3): CameraDistortionGroup, SpinButton, A widget for correcting fisheye/wide-angle lens distortion.
 
-### Community 1371 - "Print & Cut"
-Cohesion: 0.29
-Nodes (7): Print & Cut, Відкриття майстра, Крок 1: Вибір точок дизайну, Крок 2: Запис фізичних позицій, Крок 3: Перевірка та застосування перетворення, Передумови, Пов'язані теми
-
-### Community 1372 - "路径优化"
-Cohesion: 0.29
-Nodes (7): 何时使用优化, 启用优化, 如何影响您的作业, 工作原理, 相关主题, 设置, 路径优化
+### Community 1371 - "._on_library_selected"
+Cohesion: 0.33
+Nodes (4): ListBox, ListBoxRow, Populates the list with libraries and selects a specific one. Args:…, Handle library selection.
 
 ### Community 1373 - "PointOnLineConstraint"
-Cohesion: 0.04
-Nodes (44): CoincidentConstraint, Any, EntityID, Returns p1 as the draggable point for coincident constraints., Enforces two points are at the same location., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint., Returns a human-readable subtitle describing constrained points. (+36 more)
+Cohesion: 0.06
+Nodes (32): PointOnLineConstraint, Any, Context, EntityID, Enforces a point lies on the infinite geometry of a shape., Returns the point that lies on the line/shape., Returns to human-readable name of this constraint type., Returns a human-readable title for this constraint. (+24 more)
 
-### Community 1374 - "ControllableTimer"
-Cohesion: 0.29
-Nodes (3): ControllableTimer, A mock Timer class that can be manually controlled., Manually trigger the timer's function.
+### Community 1374 - "PyvipsLogFilter"
+Cohesion: 0.33
+Nodes (5): LogRecord, pytest_configure(), PyvipsLogFilter, Filter to suppress spammy pyvips debug messages., Configure test-only components. This hook is called early in the pytest process…
 
-### Community 1375 - "Print & Cut"
-Cohesion: 0.29
-Nodes (7): Opening the Wizard, Prerequisites, Print & Cut, Related Topics, Step 1: Pick Design Points, Step 2: Record Physical Positions, Step 3: Review and Apply the Transform
+### Community 1375 - "TestSwizzleEncodingVariants"
+Cohesion: 0.33
+Nodes (3): parametrize, Test swizzle encoding with various magic keys., TestSwizzleEncodingVariants
 
-### Community 1376 - "Optimización de Trayectoria"
-Cohesion: 0.29
-Nodes (7): Ajustes, Cuándo Usar Optimización, Cómo Afecta Tu Trabajo, Cómo Funciona, Habilitar Optimización, Optimización de Trayectoria, Temas Relacionados
+### Community 1376 - "real_workpiece"
+Cohesion: 0.33
+Nodes (6): doc(), fixture, Apply zero debounce delay to all tests in this file., Creates a lightweight WorkPiece with transforms, but no source., real_workpiece(), _zero_debounce()
 
 ### Community 1377 - "Configurações de G-code"
 Cohesion: 0.29
 Nodes (7): Configurações de G-code, Dialeto de G-code, Dialetos Disponíveis, Postscript, Preâmbulo, Preâmbulo e Postscript do Dialeto, Veja Também
 
-### Community 1378 - "test_run_optimization"
+### Community 1378 - "real_workpiece"
 Cohesion: 0.33
-Nodes (6): _calculate_travel_distance(), Helper to calculate only the travel distance., Test the full optimization process on a sample Ops object., Verify the optimizer can flip a fully "on" ScanLinePowerCommand without…, test_run_optimization(), test_run_optimization_with_unsplit_scanline()
+Nodes (6): doc(), fixture, Apply zero debounce delay to all tests in this file., Creates a lightweight WorkPiece with transforms, but no source., real_workpiece(), _zero_debounce()
 
-### Community 1380 - ".on_key_pressed"
-Cohesion: 0.40
-Nodes (4): EventControllerKey, ModifierType, Handles key press events for the work surface., Handles key release events for the work surface.
+### Community 1379 - "real_workpiece"
+Cohesion: 0.33
+Nodes (6): doc(), fixture, Apply zero debounce delay to all tests in this file., Creates a lightweight WorkPiece with transforms, but no source., real_workpiece(), _zero_debounce()
 
-### Community 1381 - "material_test_cmd.py"
-Cohesion: 0.09
-Nodes (20): Laser Essentials Commands. Provides command implementations for laser…, _extract_params(), MaterialTestCmd, Any, Step, Extract material test params from step attributes., Handles creation and updates for material test grids. Registered with the…, draw_material_test_preview() (+12 more)
+### Community 1380 - "TestMoFileWithGettext"
+Cohesion: 0.33
+Nodes (4): Integration tests using Python's gettext module., Test that compiled .mo file can be loaded by gettext., Test .mo file with format strings., TestMoFileWithGettext
+
+### Community 1381 - "MaterialTestCmd"
+Cohesion: 0.15
+Nodes (8): Laser Essentials Commands. Provides command implementations for laser…, _extract_params(), MaterialTestCmd, Any, Step, Extract material test params from step attributes., Handles creation and updates for material test grids. Registered with the…, Creates a new material test grid, including its Step and WorkPiece, and adds…
 
 ### Community 1383 - "Draggable"
 Cohesion: 0.33
 Nodes (5): Draggable, ContentProvider, Protocol, A protocol for widgets that can provide content for a drag operation. This is…, Provides the content for a drag operation.
+
+### Community 1384 - "test_proxy.py"
+Cohesion: 0.40
+Nodes (5): manager(), mock_queue(), fixture, Provides a standard queue for proxy tests., Provides a multiprocessing Manager for shared state tests.
 
 ### Community 1385 - "TestLightBurnImporter"
 Cohesion: 0.04
@@ -6106,29 +6090,29 @@ Nodes (31): _apply_xform_to_geo(), BitmapInfo, _build_ellipse(), _build_path_fro
 Cohesion: 0.33
 Nodes (5): _first_move_after_each_switch(), The opcode of the first motion command after every CA 02., A part switch makes the controller forget where the head was., CA 02 resets the controller's first-move state. The DLL's RD_wSetLayerNum calls…, TestPartSwitchResetsPosition
 
-### Community 1387 - "Deepnest"
+### Community 1387 - "Den Code erhalten"
 Cohesion: 0.33
-Nodes (6): Após o nesting, Configurações de nesting, Deepnest, Executando o layout de nesting, Pré-requisitos, Tópicos relacionados
+Nodes (6): Das Repository forken, Deinen Fork klonen, Den Code erhalten, Nächste Schritte, Repository verifizieren, Upstream-Repository hinzufügen
 
-### Community 1388 - "Як створити звіт про debug"
+### Community 1388 - "So erstellst du einen Debug-Bericht"
 Cohesion: 0.33
-Nodes (6): 1. Збережіть звіт, 2. Створіть GitHub Issue, 3. Прикріпіть звіт, Усунення неполадок та звітування про проблеми, Що міститься у звіті про debug?, Як створити звіт про debug
+Nodes (6): 1. Den Bericht speichern, 2. Ein GitHub-Issue erstellen, 3. Den Bericht anhängen, Fehlerbehebung & Probleme melden, So erstellst du einen Debug-Bericht, Was ist im Debug-Bericht enthalten?
 
-### Community 1389 - "assembler_helpers.py"
-Cohesion: 0.06
-Nodes (32): _build_shrinkwrap_part(), ComputePayload, Part, Build a :class:`Part` with vector geometry and a boolean image, and a…, Build a :class:`Part` for the shrinkwrap assembler. The shrinkwrap assembler…, build_part_vector(), build_part_vector_with_raster_fallback(), compute_raster_auto_levels() (+24 more)
+### Community 1389 - "build_part_vector"
+Cohesion: 0.10
+Nodes (20): build_part_vector(), Geometry, ImageSurface, Part, Trace a rendered surface into a single Geometry in mm-space. The traced…, Build a ``Part`` carrying vector geometry for an assembler. This absorbs the…, _trace_surface_to_mm_geometry(), _make_filled_surface() (+12 more)
 
-### Community 1390 - "获取代码"
+### Community 1390 - "Cómo Crear un Reporte de Depuración"
 Cohesion: 0.33
-Nodes (6): Fork 仓库, 下一步, 克隆您的 Fork, 添加上游仓库, 获取代码, 验证仓库
+Nodes (6): 1. Guardar el Reporte, 2. Crear un Issue en GitHub, 3. Adjuntar el Reporte, Cómo Crear un Reporte de Depuración, ¿Qué Hay en el Reporte de Depuración?, Solución de Problemas y Reporte de Issues
 
-### Community 1391 - ".update_from_context"
+### Community 1391 - ".send_event_and_wait"
 Cohesion: 0.40
-Nodes (3): Any, Serializes the constraint to a dictionary., Re-evaluates the expression (if present) using the provided context and updates…
+Nodes (3): Logger, Sends a named event and waits for adoption acknowledgment. This is used for…, Sends a named event with a data payload to the parent.
 
-### Community 1392 - "asset_cmd"
-Cohesion: 0.40
-Nodes (5): asset_cmd(), doc(), fixture, Provides a Doc instance., Provides an AssetCmd instance.
+### Community 1392 - "AssetCmd"
+Cohesion: 0.09
+Nodes (18): asset_cmd(), doc(), fixture, Provides a Doc instance., Provides an AssetCmd instance., AssetCmd, Any, Doc (+10 more)
 
 ### Community 1393 - ".test_go_scale_runs_at_the_panel_speed"
 Cohesion: 0.33
@@ -6143,32 +6127,36 @@ Cohesion: 0.33
 Nodes (6): 1. Save the Report, 2. Create a GitHub Issue, 3. Attach the Report, How to Create a Debug Report, Troubleshooting & Reporting Issues, What's in the Debug Report?
 
 ### Community 1396 - "Assembly"
-Cohesion: 0.07
-Nodes (23): Assembly, JointType, Link, LinkRole, Enum, Return all links that have a 3D model assigned., Index (0=X, 1=Y) of the cylinder axis in world frame. Derived from the…, _axis_direction() (+15 more)
+Cohesion: 0.06
+Nodes (27): Assembly, JointType, Link, LinkRole, Enum, ndarray, Point3D, Return all links that have a 3D model assigned. (+19 more)
 
-### Community 1397 - "circle_tool"
+### Community 1397 - ".__init__"
 Cohesion: 0.40
-Nodes (5): circle_tool(), mock_element(), fixture, Create a mock SketchElement for testing., Create a CircleTool instance for testing.
+Nodes (3): Geometry, Signal, Signal emitted when the stock asset changes.
 
 ### Community 1398 - "GcodeEditor"
-Cohesion: 0.11
-Nodes (9): GcodeEditor, SearchEntry, setter, A self-contained widget for displaying and editing G-code, featuring syntax…, Returns the full text content of the editor., Sets the text content of the editor and triggers a full highlight., The text content of the editor., Inserts the given text at the current cursor position. (+1 more)
+Cohesion: 0.05
+Nodes (26): GcodeEditor, SearchEntry, setter, Widget, A self-contained widget for displaying and editing G-code, featuring syntax…, Starts the live highlighter when the widget is shown., Stops the live highlighter when the widget is hidden., Returns the full text content of the editor. (+18 more)
 
-### Community 1399 - "get_addon_data_dir"
+### Community 1399 - ".trace_frame"
 Cohesion: 0.40
-Nodes (5): get_addon_data_dir(), _get_config_dir(), Path, Get the config directory, respecting RAYFORGE_CONFIG_DIR env var., Get the data directory for an addon. Args: addon_name: The canonical name of…
+Nodes (3): Adds a task to traverse the job outline with the laser off. Args: machine: The…, Measure the job outline, then hand it to the driver., Adds a task to traverse the job's bounding box, laser off. The rectangle goes…
 
-### Community 1400 - ".get_geometry_world_bbox"
+### Community 1400 - ".set_focus_power"
 Cohesion: 0.40
-Nodes (3): Rect, Calculates the bounding box of the workpiece's geometry in world coordinates.…, WorkPieces are geometrically defined as a unit square (0,0,1,1) that is scaled…
+Nodes (3): Laser, Adds a task to set the laser power to a specific percentage. Args: head: The…, Adds a task to set the laser power for focus mode. Args: head: The laser head…
 
-### Community 1401 - "Smart Stock"
-Cohesion: 0.25
-Nodes (8): Smart Stock, 创建材料项目, 前提条件, 打开检测对话框, 捕获参考图像, 检测材料, 检测设置, 相关主题
+### Community 1401 - "._on_add_clicked"
+Cohesion: 0.40
+Nodes (3): Button, Emits the add_requested signal., Emits a signal requesting the removal of this camera.
 
-### Community 1402 - "过扫描"
-Cohesion: 0.25
-Nodes (8): 何时使用过扫描, 测试过扫描设置, 相关主题, 过扫描, 过扫描如何工作, 选择过扫描距离, 配置过扫描, 问题：加速标记
+### Community 1402 - "test_conversion_shuffles_channels_to_bgra"
+Cohesion: 0.40
+Nodes (5): get_pixel_bgra(), ImageSurface, Verify the RGBA to BGRA channel shuffling by sampling a known pixel., Samples a single pixel from a Cairo surface and returns its BGRA values.…, test_conversion_shuffles_channels_to_bgra()
+
+### Community 1403 - ".language"
+Cohesion: 0.50
+Nodes (3): setter, Get the current language code for localized content. Returns: Language code…, Set the current language for localized content. Args: value: Language code…
 
 ### Community 1404 - "Como Criar um Relatório de Depuração"
 Cohesion: 0.33
@@ -6178,73 +6166,61 @@ Nodes (6): 1. Salvar o Relatório, 2. Criar uma Issue no GitHub, 3. Anexar o Rel
 Cohesion: 0.40
 Nodes (3): Point3D, Calculates the offset to subtract from machine coordinates to obtain command…, Get the origin offset for axis labels. This computes the (x, y, z) offset that…
 
-### Community 1406 - ".draw"
-Cohesion: 0.40
-Nodes (3): Context, Draws a live preview of the bounding box during a child transform., Draws a crisp, dashed bounding box for the group, but only when it is NOT…
-
-### Community 1407 - "text_box_tool"
-Cohesion: 0.40
-Nodes (5): mock_element(), fixture, Create a mock SketchElement for testing tools., Create a TextBoxTool instance with a mocked element., text_box_tool()
-
 ### Community 1409 - "screenshot/material_test.py"
 Cohesion: 0.50
 Nodes (4): main(), Screenshot: Material test grid dialog., open_material_test(), Open material test grid dialog.
-
-### Community 1410 - "svg_renderer"
-Cohesion: 0.40
-Nodes (5): mock_render_context(), fixture, Provides an instance of the SvgRenderer for testing., Provides a default mock render context., svg_renderer()
 
 ### Community 1412 - "Canvas Tools"
 Cohesion: 0.29
 Nodes (7): Alignment Tools, Canvas Tools, Navigation, Object Transformation, Selection Tool, Tips for Efficient Canvas Use, Vector Editing
 
 ### Community 1413 - "pt-BR/docusaurus-plugin-content-docs/current/features/operations/contour.md"
-Cohesion: 0.10
-Nodes (17): Como Funciona a Compensação de Kerf, Compensação de Kerf, Compensação Manual de Kerf, Medindo o Kerf, O Que é Kerf?, Páginas Relacionadas, Mesclar linhas, Páginas relacionadas (+9 more)
+Cohesion: 0.09
+Nodes (25): Como Funciona a Compensação de Kerf, Compensação de Kerf, Compensação Manual de Kerf, Medindo o Kerf, O Que é Kerf?, Páginas Relacionadas, Mesclar linhas, Páginas relacionadas (+17 more)
 
-### Community 1417 - "SnapEngine"
-Cohesion: 0.10
-Nodes (14): GeoPoint, setter, SnapEngine, engine(), fixture, Tests the threshold property., Create a basic entity registry for testing., Create a SnapEngine with default threshold. (+6 more)
+### Community 1414 - "register_steps"
+Cohesion: 0.67
+Nodes (3): hookimpl, Register CNC steps with the step registry., register_steps()
 
-### Community 1418 - "._from_controller"
-Cohesion: 0.17
-Nodes (6): One controller reading in the profile's own machine space., A controller position pair in the profile's machine space., Record where the head is, in controller coordinates. None means "no longer…, Poll until the head reaches a single-step target, or time out. The timeout is…, Handle position update from client. The two axes arrive in separate replies, so…, Poll the current position, waiting for the reply. Returns whether the…
+### Community 1417 - "DragContext"
+Cohesion: 0.05
+Nodes (28): GeoPoint, setter, SnapEngine, GeoPoint, GeoPoint, DragContext, EntityID, GeoPoint (+20 more)
 
 ### Community 1419 - "test_file_cmd.py"
-Cohesion: 0.03
-Nodes (70): Human-readable labels of coolant methods used by the doc's steps that the…, _unsupported_coolant_labels(), _doc_with_mill_step(), file_cmd(), mock_editor(), asyncio, fixture, Provides a sample WorkPiece instance. (+62 more)
+Cohesion: 0.02
+Nodes (75): Human-readable labels of coolant methods used by the doc's steps that the…, _unsupported_coolant_labels(), _doc_with_mill_step(), file_cmd(), mock_editor(), asyncio, fixture, Provides a sample WorkPiece instance. (+67 more)
 
 ### Community 1421 - "test_swift_cut_handlers.py"
 Cohesion: 0.50
 Nodes (3): parametrize, The reskin must not cost the app a signal handler. Swift Cut is a surface…, test_no_handler_connections_were_removed()
 
+### Community 1422 - "MachineCapability"
+Cohesion: 0.05
+Nodes (37): LaserHeadVar, The laser-head selection VarSet variable., A special ChoiceVar that dynamically populates its choices with the names of…, Initializes a new LaserHeadVar instance. Args: key: The unique machine-readable…, Given a UID (value), return the display name., Given a display name, return the UID (value)., LeadInOutTransformerType, Protocol (+29 more)
+
+### Community 1423 - "mock_draw_func"
+Cohesion: 0.67
+Nodes (3): mock_draw_func(), Context, A mock function that draws a simple colored rectangle.
+
 ### Community 1424 - "Task"
-Cohesion: 0.04
-Nodes (51): Return an iterator over the active tasks., Any, Emit status_changed signal from the main thread., Get the current progress of the task., Get the current lifecycle status of the task., Get the current user-facing message for the task., Returns True if the task is in a terminal state., Returns True if the task is currently running. (+43 more)
+Cohesion: 0.03
+Nodes (56): Callback for when a rendering task finishes., Return an iterator over the active tasks., Retrieves a task by its key., Run an asyncio task and clean up when done., Clean up a completed asyncio task. This is NOT used for pooled tasks., Handle task status changes. This method is thread-safe., Any, Emit status_changed signal from the main thread. (+48 more)
 
 ### Community 1428 - ".test_release_path_stops_and_clears"
 Cohesion: 0.50
 Nodes (3): parametrize, Invariant: a held key must not survive any teardown path., TestEveryReleasePathStops
 
-### Community 1430 - "ctx"
-Cohesion: 0.67
-Nodes (3): ctx(), fixture, Provides a dummy execution context for functions that require it.
-
 ### Community 1431 - "AIService"
-Cohesion: 0.07
-Nodes (17): Returns the AI service., AIService, setter, Remove a provider. Args: provider_id: ID of the provider to remove., Get a provider by ID, or the default provider. Args: provider_id: Specific…, Get a provider configuration by ID., Send a chat request using the specified or default provider. Args: messages:…, Central service for AI operations. Manages multiple AI providers and exposes a… (+9 more)
-
-### Community 1432 - "complex_sketch"
-Cohesion: 0.67
-Nodes (3): complex_sketch(), fixture, Creates a moderately complex sketch for serialization testing.
+Cohesion: 0.09
+Nodes (13): Returns the AI service., AIService, setter, Remove a provider. Args: provider_id: ID of the provider to remove., Get a provider by ID, or the default provider. Args: provider_id: Specific…, Get a provider configuration by ID., Send a chat request using the specified or default provider. Args: messages:…, Central service for AI operations. Manages multiple AI providers and exposes a… (+5 more)
 
 ### Community 1439 - "Token"
 Cohesion: 0.09
 Nodes (22): Enum, ExpressionTokenizer, NamedTuple, Represents a single token with its type, value, and position., Breaks an expression string into a sequence of classified tokens for syntax…, Converts an expression string into a list of Token objects. Args: expression:…, Maps a standard library token to our simplified TokenType., Token (+14 more)
 
-### Community 1445 - "get_pixel_bgra"
-Cohesion: 0.67
-Nodes (3): get_pixel_bgra(), ImageSurface, Samples a single pixel from a Cairo surface and returns its BGRA values.…
+### Community 1440 - "encoder/context.py"
+Cohesion: 0.16
+Nodes (9): Finds a macro by UID, expands it, and runs it on the machine., GcodeContext, JobInfo, Point3D, Returns a dictionary mapping G-code template keys to the set of variables they…, Information about the entire job., A container for variables available during G-code generation., The (x, y, z) offset for the current layer's effective WCS. (+1 more)
 
 ### Community 1447 - "driver"
 Cohesion: 0.67
@@ -6252,11 +6228,11 @@ Nodes (3): driver(), fixture, A RuidaDriver with no transports; tests inject a c
 
 ### Community 1455 - "TemplateFormatter"
 Cohesion: 0.06
-Nodes (28): Finds a macro by UID, expands it, and runs it on the machine., GcodeContext, JobInfo, Information about the entire job., A container for variables available during G-code generation., The name of the current layer's effective WCS (e.g., 'G54')., Expands a macro by processing variable placeholders (e.g., {obj.attr}) and…, Initializes the formatter. Args: machine: The machine object, needed to look up… (+20 more)
+Nodes (27): Formats coordinates respecting the user's locale., Expands a macro by processing variable placeholders (e.g., {obj.attr}) and…, Initializes the formatter. Args: machine: The machine object, needed to look up…, Resolves a dot-notation path like 'machine.axis_extents[0]'., Formats a single line by replacing all variable placeholders., Public entry point to fully expand a macro. Args: macro: The top-level macro…, Recursively expands a macro, processing includes and formatting variables., TemplateFormatter (+19 more)
 
 ### Community 1473 - "LeadInOutTransformer"
-Cohesion: 0.08
-Nodes (29): LeadInOutSpec, LeadInOutTransformer, Any, Geometry, setter, Adds zero-power lead-in and lead-out moves to vector contour paths. For each…, Calculate the optimal lead-in/out distance based on step speed and machine…, LeadInOutSettingsGroup (+21 more)
+Cohesion: 0.10
+Nodes (27): LeadInOutSpec, LeadInOutTransformer, Any, Geometry, setter, Adds zero-power lead-in and lead-out moves to vector contour paths. For each…, Calculate the optimal lead-in/out distance based on step speed and machine…, _apply() (+19 more)
 
 ### Community 1476 - "fetch_download_stats.py"
 Cohesion: 0.25
@@ -6267,12 +6243,12 @@ Cohesion: 0.06
 Nodes (25): get_dialect_test_cases(), parse_gcode_line(), fixture, parametrize, Path, Tests for G-code generation across all dialects. This module contains…, Test that the expected G-code has valid command structure., Verify that all built-in dialects have corresponding test data. (+17 more)
 
 ### Community 1508 - "OpsTransformer"
-Cohesion: 0.01
-Nodes (139): MergeLinesSpec, MultiPassSpec, MultiPassTransformer, Post-processing transformers for toolpath optimization. This module provides…, MergeLinesTransformer, Any, Geometry, setter (+131 more)
+Cohesion: 0.04
+Nodes (39): Post-processing transformers for toolpath optimization. This module provides…, OpsTransformer, ABC, Any, Geometry, setter, Transforms an Ops object in-place. Examples may include: - Applying travel path…, Sets the enabled state and signals a change. (+31 more)
 
-### Community 1510 - "test_units.py"
-Cohesion: 0.06
-Nodes (48): Updates the grid unit when the user's unit preference changes., get_base_unit_for_quantity(), get_unit(), get_units_for_quantity(), Converts a value from this unit to the application's base unit., Converts a value from the application's base unit to this unit., Adds a unit to the central registry., Sets the application-wide base unit for a given quantity. (+40 more)
+### Community 1510 - "LaserStep"
+Cohesion: 0.08
+Nodes (12): LaserStep, Any, Ops, Step, Build the initial Ops object with step-wide machine settings., Bundles all physical process parameters into a dictionary. Only includes…, Apply importer-provided laser settings this step owns., Typed convenience — returns the selected LaserHead or None. (+4 more)
 
 ### Community 1517 - "test_expression_parser.py"
 Cohesion: 0.12
@@ -6284,23 +6260,23 @@ Nodes (21): GcodeDialectSpec, _make_context(), _make_doc_mock(), _make_machine_m
 
 ### Community 1671 - "SketchRenderer"
 Cohesion: 0.03
-Nodes (77): ColorRGBA, Image, Renders the sketch's vector data to a pyvips Image. It expects 'boundaries'…, Convert FillRenderData to an SVG path element., Convert RGBA tuple to SVG color string., Create SVG with linear gradient., Create SVG with radial gradient., Generate SVG gradient stop elements. (+69 more)
+Nodes (78): ColorRGBA, Image, Renders the sketch's vector data to a pyvips Image. It expects 'boundaries'…, Convert FillRenderData to an SVG path element., Convert RGBA tuple to SVG color string., Create SVG with linear gradient., Create SVG with radial gradient., Generate SVG gradient stop elements. (+70 more)
 
 ### Community 1776 - "_make_grbl_transport"
 Cohesion: 0.18
 Nodes (13): _build_response_stream(), _fragment(), _make_grbl_transport(), _make_mock_transport(), asyncio, Random, Stress tests for GrblSerialTransport buffer tracking and ack interleaving.…, Verify that acks embedded within or between status reports, errors, and alarms… (+5 more)
 
-### Community 1780 - "array/__init__.py"
-Cohesion: 0.08
-Nodes (22): ArrayStrategy, ABC, Matrix, Rect, Array strategies: pure-geometry calculators that turn array parameters into a…, Computes world-space delta matrices for an array arrangement. Each delta, when…, Args: unit_bbox: The collective world-space bounding box ``(min_x, min_y,…, The effective LOCAL anchor ``(u, v)`` for this strategy. (+14 more)
+### Community 1780 - "ArrayStrategy"
+Cohesion: 0.09
+Nodes (13): ArrayStrategy, ABC, Matrix, Rect, Array strategies: pure-geometry calculators that turn array parameters into a…, Computes world-space delta matrices for an array arrangement. Each delta, when…, Args: unit_bbox: The collective world-space bounding box ``(min_x, min_y,…, The effective LOCAL anchor ``(u, v)`` for this strategy. (+5 more)
 
 ### Community 1785 - "DialectEditorDialog"
-Cohesion: 0.04
-Nodes (41): Returns a dictionary mapping G-code template keys to the set of variables they…, DialectEditorDialog, _get_template_validation_error(), Button, PreferencesRow, Window, Connects `changed` signals for all relevant input widgets., Converts a single string with newlines to a list of non-empty strings. (+33 more)
+Cohesion: 0.05
+Nodes (28): DialectEditorDialog, _get_template_validation_error(), Button, PreferencesRow, Window, Connects `changed` signals for all relevant input widgets., Applies or removes an error state from a row., Converts a single string with newlines to a list of non-empty strings. (+20 more)
 
 ### Community 1823 - "TestWorkPiece"
 Cohesion: 0.02
-Nodes (75): make_sketch_with_geometry(), Tests retrieving the geometry provider from the document or from the transient…, Tests the WorkPiece.from_geometry_provider factory method logic., Tests that setting geometry_provider_params triggers regeneration and updates…, Tests that boundaries generated from a sketch are correctly normalized to the…, Two workpiece instances from the same sketch each get their own uuid4 value,…, A workpiece instance returns the same uuid4 on repeated boundary accesses…, in_world carries the resolved_text_cache so the subprocess uses the same uuid4. (+67 more)
+Nodes (52): Add a sketch-based workpiece to the document., make_sketch_with_geometry(), Tests retrieving the geometry provider from the document or from the transient…, Tests the WorkPiece.from_geometry_provider factory method logic., Tests that setting geometry_provider_params triggers regeneration and updates…, Tests that boundaries generated from a sketch are correctly normalized to the…, Two workpiece instances from the same sketch each get their own uuid4 value,…, A workpiece instance returns the same uuid4 on repeated boundary accesses… (+44 more)
 
 ### Community 1840 - "Zone"
 Cohesion: 0.08
@@ -6311,8 +6287,8 @@ Cohesion: 0.08
 Nodes (27): convert_surface_to_grayscale_inplace(), _extract_rgba(), get_visible_grayscale_values(), ImageSurface, ndarray, Grayscale and binary image conversion utilities for Cairo surfaces., Convert a Cairo ARGB32 surface to a grayscale array with alpha handling. Args:…, Convert a Cairo ARGB32 surface to a binary array using thresholding.… (+19 more)
 
 ### Community 1883 - "CropTransformer"
-Cohesion: 0.06
-Nodes (24): CropSpec, CropTransformer, Any, Geometry, setter, Crops cutting lines to stock boundary. This removes any toolpath that extends…, _apply(), create_rect_geometry() (+16 more)
+Cohesion: 0.07
+Nodes (18): CropSpec, CropTransformer, Any, Geometry, setter, Crops cutting lines to stock boundary. This removes any toolpath that extends…, _apply(), create_rect_geometry() (+10 more)
 
 ### Community 1895 - "dependencies"
 Cohesion: 0.06
@@ -6326,9 +6302,9 @@ Nodes (12): BinOp, Call, Constant, Expression, Name, AST, Custom exception for t
 Cohesion: 0.22
 Nodes (5): Box, Label, Widget, Window, SanityCheckDialog
 
-### Community 2062 - "TrackedPreferencesPage"
-Cohesion: 0.01
-Nodes (97): Head, ABC, Prepare the object for pickling. Removes unpickleable Signal., Restore the object after unpickling. Recreates the Signal., Base class for machine heads. Concrete head types (:class:`LaserHead`,…, The machine capability this head type implies, or ``None`` for passive heads…, Returns the first head, or raises an error if none exist., CameraPreferencesPage (+89 more)
+### Community 2062 - "MachineSettingsDialog"
+Cohesion: 0.03
+Nodes (43): AdvancedPreferencesPage, Update the machine's arcs support when the value changes., Update to machine's arc tolerance when value changes., Update the machine's curve support when the value changes., CapabilitiesPage, Machine settings page showing the machine's capabilities., Describes where a capability comes from., Rebuilds the capability list from the machine. (+35 more)
 
 ### Community 2066 - "ExpressionContext"
 Cohesion: 0.04
@@ -6340,23 +6316,15 @@ Nodes (39): MidpointsProducer, GeoPoint, drag_context(), producer(), fixture, Te
 
 ### Community 2097 - "estimate_packet_length"
 Cohesion: 0.13
-Nodes (8): estimate_packet_length(), Estimate the expected packet length from the payload. Args: payload: Payload…, Test packet length estimation., estimate_packet_length agrees with real command lengths., Every command in the reference file has the estimated length. Sole exception:…, Every command the encoder emits has the estimated length., TestEstimatePacketLength, TestPacketLengthOracle
+Nodes (9): estimate_packet_length(), Estimate the expected packet length from the payload. Args: payload: Payload…, _fixture_commands(), Test packet length estimation., Split a decoded stream into commands (MSB-set byte starts one)., Decode the RDWorks ground-truth file into a command list., Every command in the reference file has the estimated length. Sole exception:…, _split_commands() (+1 more)
 
 ### Community 2110 - "test_producer_on_entity.py"
 Cohesion: 0.04
 Nodes (49): OnEntityProducer, GeoPoint, drag_context(), producer(), fixture, Tests snapping to an arc., Tests that points outside arc sweep don't produce snaps., Tests that dragged entities are excluded from snap generation. (+41 more)
 
 ### Community 2114 - "GrblSerialSimpleDriver"
-Cohesion: 0.13
-Nodes (4): GrblSerialSimpleDriver, Any, Send a command using ping-pong and return response lines., A minimal GRBL serial driver using ping-pong communication. Sends one G-code…
-
-### Community 2205 - "ControllerPage"
-Cohesion: 0.23
-Nodes (5): FlowBox, FlowBoxChild, ControllerPage, Button, Re-select the tile matching the working profile's driver.
-
-### Community 2207 - "test_optimize_transformer.py"
-Cohesion: 0.13
-Nodes (28): _build_ops(), _count_cuts(), _cut_endpoints(), _geometry_set(), _line_endpoints(), Only order and direction may change, never the geometry., The same input must always produce the same ordering., Test the optimizer flips s3 so it connects directly to s1. s3 original:… (+20 more)
+Cohesion: 0.04
+Nodes (24): GrblSerialSimpleDriver, _PingPongPending, Any, Axis, Pos, Send *command* and wait for ``ok`` / ``error:`` response. Returns collected…, Send command without waiting for response (fire and forget)., Parse incoming serial data and dispatch responses. (+16 more)
 
 ### Community 2213 - "analyze_grbl_acks.py"
 Cohesion: 0.35
@@ -6378,10 +6346,6 @@ Nodes (8): _find_files(), _get_raygeo_version(), main(), _needs_update(), _newes
 Cohesion: 0.27
 Nodes (10): app_and_window(), assets_path(), process_events_for_duration(), fixture, Path, Processes all pending GTK events for a given duration without blocking., Waits for the 'document_settled' signal in a thread-safe manner., Sets up the Adw.Application and MainWindow without blocking. (+2 more)
 
-### Community 2443 - ".highlight"
-Cohesion: 0.29
-Nodes (5): TextBuffer, Applies tags to a single line of text., Called when the buffer content changes. To keep things simple and performant…, Highlights the specified range in the buffer. Args: start_iter: The starting…, TextIter
-
 ### Community 2450 - "LaserHeadDetailWidget"
 Cohesion: 0.06
 Nodes (17): ColorButton, LaserHeadDetailWidget, Owns the PreferencesGroups for editing a LaserHead., Syncs the laser rows with the given head., Update the name of the selected laser., Update the tool number of the selected laser., Update the max power of the selected laser., Update the frame power of the selected laser. (+9 more)
@@ -6390,53 +6354,45 @@ Nodes (17): ColorButton, LaserHeadDetailWidget, Owns the PreferencesGroups for e
 Cohesion: 0.48
 Nodes (6): load_specs(), main(), normalize(), Path, Sync pip requirement files with the pins in pixi.toml. pixi.toml is the single…, sync_file()
 
-### Community 2625 - "GcodeHighlighter"
-Cohesion: 0.15
-Nodes (9): GcodeHighlighter, StyleContext, TextTagTable, TextView, Applies syntax highlighting to a Gtk.TextBuffer containing G-code. It uses…, Looks up a named color from the theme, returning a fallback., Helper to create and add a Gtk.TextTag., Connects to buffer signals to enable live highlighting. (+1 more)
-
 ### Community 2767 - "semwraplib.c"
 Cohesion: 0.49
 Nodes (9): mode_t, sem_t, debug(), get_snap_name(), rewrite(), sem_open(), sem_unlink(), shm_open() (+1 more)
 
-### Community 2830 - "test_producer_centers.py"
-Cohesion: 0.05
-Nodes (39): drag_context(), producer(), fixture, Tests that dragged entities are excluded from snap generation., Tests that construction entities are excluded when configured., Create an empty drag context., Tests that construction entities are included when configured., Tests that centers outside threshold don't produce snaps. (+31 more)
+### Community 2830 - "drag_context"
+Cohesion: 0.40
+Nodes (5): drag_context(), fixture, Create an empty drag context., Create a basic entity registry for testing., registry()
 
 ### Community 2846 - "ModelManager"
-Cohesion: 0.07
-Nodes (19): AddonRegistry, Protocol, Set the registries dict for addon cleanup. Args: registries: Dict mapping hook…, Protocol for registries that support addon item cleanup., Unregister all items registered by the named addon. Args: addon_name: The…, Returns the model manager., ModelManager, Path (+11 more)
+Cohesion: 0.10
+Nodes (14): Returns the model manager., ModelManager, Path, Remove all libraries registered by the named addon. Implements the…, Resolve a Model to an absolute filesystem path. Searches registered libraries…, List model files directly in the library root directory. Args: library: The…, List all models across all libraries. Deduplicates by filename — earlier…, Application-wide read-only resolver for 3D model assets. Maintains an ordered… (+6 more)
 
 ### Community 3107 - "build-deb.sh"
 Cohesion: 0.40
 Nodes (3): DEBEMAIL, DEBFULLNAME, build-deb.sh script
 
-### Community 3167 - "._on_map"
-Cohesion: 0.40
-Nodes (3): Widget, Starts the live highlighter when the widget is shown., Stops the live highlighter when the widget is hidden.
-
 ### Community 3244 - "update_translations.sh"
 Cohesion: 1.00
 Nodes (3): compare_pot_files(), process_package(), update_translations.sh script
 
-### Community 3502 - "DragContext"
-Cohesion: 0.06
-Nodes (53): SnapLineProducer, CentersProducer, GeoPoint, EntityPointsProducer, GeoPoint, DragContext, Enum, SnapLineStyle (+45 more)
-
-### Community 3523 - "Layer"
+### Community 3502 - "SnapLineType"
 Cohesion: 0.03
-Nodes (47): pick_unused_color(), Return the first color from COLOR_PALETTE not in used_colors., AddLayerAndSetActiveCommand, MoveItemsLayerCommand, MoveWorkpiecesLayerCommand, Layer, Creates a new layer with a default, unique name and color., Adds the layer and makes it active. (+39 more)
+Nodes (120): SnapLineProducer, CentersProducer, EntityPointsProducer, Enum, SnapLineType, SnapPoint, producer(), Tests that dragged entities are excluded from snap generation. (+112 more)
+
+### Community 3523 - "test_layer_cmd.py"
+Cohesion: 0.06
+Nodes (29): pick_unused_color(), Return the first color from COLOR_PALETTE not in used_colors., AddLayerAndSetActiveCommand, Creates a new layer with a default, unique name and color., Adds the layer and makes it active., Removes the layer and restores the previous active layer., Adds a new layer to the document and sets it as the active layer., An undoable command to add a new layer and set it as the active layer. (+21 more)
 
 ### Community 4725 - "JobMonitor"
 Cohesion: 0.07
 Nodes (19): JobMonitor, Any, Ops, Marks the job as fully complete, setting progress to 100%., Tracks and reports the progress of a machine job based on Ops data. This class…, Initializes the JobMonitor. Args: ops: The Ops object representing the job to…, Returns the current progress metrics as a dictionary., Updates the progress based on a completed operation. Args: op_index: The index… (+11 more)
 
 ### Community 4928 - "MainMenu"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (9): MainMenu, The main application menu model, inheriting from Gio.Menu. Its constructor…, Handle action registry changes by refreshing addon items., Populate layout strategies in the Arrange menu., Populate addon menu items from the action registry., Populate view addon items into the visibility group., Clears and rebuilds the dynamic macro execution menu items., Clears and rebuilds the dynamic recent files menu. (+1 more)
 
-### Community 4941 - "._on_editor_notification"
-Cohesion: 0.12
-Nodes (8): The user-facing name of the item., Sets the item name and sends an update signal if changed., Called when machine hours change. Checks for maintenance notifications., Opens the machine settings dialog on the Hours page., Shows a toast when requested by the DocEditor. If 'persistent' is True, the…, Helper to add a toast to the overlay and track it., Shows a toast when requested by a child dialog., Toast
+### Community 4941 - "DebugLogDialog"
+Cohesion: 0.11
+Nodes (10): The user-facing name of the item., Sets the item name and sends an update signal if changed., DebugLogDialog, Path, Window, Dialog shown before creating a debug dump archive. Lets the user choose whether…, Shows a toast when requested by the DocEditor. If 'persistent' is True, the…, Helper to add a toast to the overlay and track it. (+2 more)
 
 ### Community 7934 - "MockProgressContext"
 Cohesion: 0.06
@@ -6469,9 +6425,9 @@ Nodes (17): MockProgressContext, Unified mock ProgressContext for testing. This 
   rayforge/builtin_addons/rayforge-addon-materials/materials/__library__.yaml · relation: shares_data_with
 
 ## Knowledge Gaps
-- **7229 isolated node(s):** `rayforge`, `build-deb.sh script`, `DEBEMAIL`, `DEBFULLNAME`, `clean.sh script` (+7224 more)
+- **7248 isolated node(s):** `rayforge`, `build-deb.sh script`, `DEBEMAIL`, `DEBFULLNAME`, `clean.sh script` (+7243 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **263 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **244 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

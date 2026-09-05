@@ -1,7 +1,7 @@
 {
   ".claude/settings.json": {
-    "mtime": 1788204164.4097736,
-    "seen": 1788205080.9104695,
+    "mtime": 1788562175.387523,
+    "seen": 1788566469.1687846,
     "ast_hash": "5137259aff06023f6d447f17841a8ac6",
     "semantic_hash": ""
   },
@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "check.py": {
-    "mtime": 1786650830.9746592,
-    "seen": 1788205080.9104776,
-    "ast_hash": "5c40f411e1d147b1e4b816b092f8d920",
+    "mtime": 1788549893.0894542,
+    "seen": 1788566469.168791,
+    "ast_hash": "1615150bb2d37bf1a8b5279cadaa247d",
     "semantic_hash": ""
   },
   "conftest.py": {
@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "pyproject.toml": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.910486,
-    "ast_hash": "5b7eef8bf33f4f11233022bdf57677e1",
+    "mtime": 1788558801.3383656,
+    "seen": 1788566469.1687984,
+    "ast_hash": "b0f5c0d63ed2f27b1a9e83b9fea11eed",
     "semantic_hash": ""
   },
   "rayforge/__init__.py": {
@@ -90,9 +90,9 @@
     "semantic_hash": ""
   },
   "rayforge/addon_mgr/addon_manager.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104915,
-    "ast_hash": "4569eca711b756ea69a6487bff02aa93",
+    "mtime": 1788558727.4451375,
+    "seen": 1788566469.1688037,
+    "ast_hash": "1e3fae4d34cd28bee20c93a64eca080e",
     "semantic_hash": ""
   },
   "rayforge/addon_mgr/update_cmd.py": {
@@ -102,303 +102,9 @@
     "semantic_hash": ""
   },
   "rayforge/app.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104934,
-    "ast_hash": "c7cf609e2cbf3c02cc34c578bcbba333",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/__init__.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104948,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/controller.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104958,
-    "ast_hash": "aa8613914ad430a9385f91a557705c9a",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/frontend.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104965,
-    "ast_hash": "98418e42066e489cc5866dcf2d134e30",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/generator.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104972,
-    "ast_hash": "2f4cdb42b8115d270b162debfd19cff8",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/widgets/__init__.py": {
-    "mtime": 1786648505.358788,
-    "seen": 1788205080.9104986,
-    "ast_hash": "a7d4bcf92d2959cb0ff6a9568be88085",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/ai_workpiece_generator/widgets/dialog.py": {
-    "mtime": 1788526784.8243117,
-    "seen": 1788527522.018629,
-    "ast_hash": "68534d0ea1f3184fdb3925ffb3769c7f",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/__init__.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105008,
-    "ast_hash": "e7e6249064824a9487cd3d4546e45191",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/commands/__init__.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105022,
-    "ast_hash": "fef90a1567f9efe23b6f17dbfa41aa25",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/commands/generate_plan_cmd.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.910503,
-    "ast_hash": "d7d61fee6fafc7011a8652c9a518ff14",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/frontend.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105039,
-    "ast_hash": "c60c1a26d019db629fe8d103fcbe5a90",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/__init__.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105048,
-    "ast_hash": "bf6818bce891a379fb29de98eaaa20dc",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/adaptive_clearing_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105058,
-    "ast_hash": "eb1a948ed9548de102940b2028293c31",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/cnc_assembler_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105065,
-    "ast_hash": "3d14daf4165307085e78bb86cd2cd21c",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/flat_spiral_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105072,
-    "ast_hash": "a0ae53e3a2acc03bc6eebbf08410d480",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/helix_plunge_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.910508,
-    "ast_hash": "d1cc6afe4663d47eec7397a007930884",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/profile_inner_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105093,
-    "ast_hash": "b4a9d80be5bebfc43fe3bca11bc795c4",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/profile_outer_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105098,
-    "ast_hash": "f2686c7189291be0db05336248707634",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/ramp_entry_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105108,
-    "ast_hash": "8ef263de38382feb11fc3354b27e5da4",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/slot_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105122,
-    "ast_hash": "94e7eaa4212dcc27add6b873d77ba74c",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/steps/toroidal_clear_step.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.910513,
-    "ast_hash": "ef4e5bc82bfc1edee3004399107e1357",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/__init__.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105139,
-    "ast_hash": "878dc786771f6e21edb59bb873f99268",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/__init__.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105146,
-    "ast_hash": "53aa82367f4a1f7944c8d6254a4ee2cb",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/adaptive_clear_page.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105158,
-    "ast_hash": "ed53df21d93eb72a0ac1ee4fcdd57843",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/cnc_step_page.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105167,
-    "ast_hash": "23b66015f7478cade29c3557f8aa9579",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/helix_plunge_page.py": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9105177,
-    "ast_hash": "96509544e1ad46c556f7931d5312eb59",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/profile_inner_page.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910519,
-    "ast_hash": "ac7b1426e736093a005886635c2dbfab",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/profile_outer_page.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105196,
-    "ast_hash": "5430142c83384ea8775e531cc31a1b07",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/slot_page.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105206,
-    "ast_hash": "a55a349babbd8efcd2fdcef5ca5a353b",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/pages/toroidal_clear_page.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105215,
-    "ast_hash": "9f18142509cfa9fa2f71438923833e1b",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/__init__.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105227,
-    "ast_hash": "d8244e5de0987ed9951df4a5538ea7a0",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/area_tolerance_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105234,
-    "ast_hash": "41bfdc887cf689f5cafd9c9f6bc7ceb2",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/depth_per_pass_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910524,
-    "ast_hash": "9ec649ecf695278ae6d88cf5d056c73c",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/max_deflection_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910525,
-    "ast_hash": "696158dbc0097825972f507e0ab6a705",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/plunge_speed_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105263,
-    "ast_hash": "53262524a8a3eee3926624ef41609cc9",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/safe_z_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910527,
-    "ast_hash": "1f1cf20da846eae7d7bc90c57e6cdea6",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/spindle_rpm_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105277,
-    "ast_hash": "72f5e57afa9caeb39cab91748ca68911",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/step_length_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105284,
-    "ast_hash": "50e0fecc3d7b416e8e2b1943e9b35785",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/step_over_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105296,
-    "ast_hash": "876ac9f437f07d3500a2b56750ead8a7",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/target_depth_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105303,
-    "ast_hash": "24ba8a23aaea85e609bb389f878adf6a",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/tool_diameter_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105313,
-    "ast_hash": "dca4a4db5f94205c323521606568f659",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/widgets/rows/wall_margin_row.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105322,
-    "ast_hash": "3c334285f7e673fe4d0d7daa800c8df3",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/cnc_essentials/worker.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105332,
-    "ast_hash": "c545e8be144370b9b200dceff2398355",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/conftest.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910534,
-    "ast_hash": "b215d62a24f0f69aed77721f87076798",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/steps/test_adaptive_clearing_step.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105349,
-    "ast_hash": "ebb66cd48b0914c7247b0132fdc79520",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/steps/test_cnc_assembler_step.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.910536,
-    "ast_hash": "53a9bd83909024056d62b5dd910d1afb",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/steps/test_cnc_recipe_keys.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105365,
-    "ast_hash": "42fb5a53a593baa1a01ff55b2ad7e012",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/ui_gtk/conftest.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105375,
-    "ast_hash": "73eeec260954e5f10a58b8a81442b032",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/ui_gtk/test_cnc_frontend_registry.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105384,
-    "ast_hash": "0ddb3e467c058c01518e0fd8e72ca3a1",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/tests/ui_gtk/test_cnc_pages.py": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9105396,
-    "ast_hash": "00fc990b6265661603f4b31e12bc1050",
+    "mtime": 1788558939.742745,
+    "seen": 1788566469.1688054,
+    "ast_hash": "cc159e5e5a28755ef060aeb3eb5c179e",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/__init__.py": {
@@ -1428,15 +1134,15 @@
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketch_mode_cmd.py": {
-    "mtime": 1786648505.5520022,
-    "seen": 1788205080.910676,
-    "ast_hash": "069a5714f5268f42f3a1cbdacc8c5fca",
+    "mtime": 1788545340.443349,
+    "seen": 1788566469.1689482,
+    "ast_hash": "b70524fabb83ecae48d0aa11bb2d6cea",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchcanvas.py": {
-    "mtime": 1786648505.5520022,
-    "seen": 1788205080.9106765,
-    "ast_hash": "759423f3d1c8998e6d4095ad567b8d7d",
+    "mtime": 1788554270.8674183,
+    "seen": 1788566469.168949,
+    "ast_hash": "759b4d51ddf8713cfb9e031da0fb754b",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/sketchelement.py": {
@@ -1446,9 +1152,9 @@
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/studio.py": {
-    "mtime": 1788464451.6258085,
-    "seen": 1788527522.0188248,
-    "ast_hash": "91d5b87fb6ac1055e738127a4c4b4641",
+    "mtime": 1788554233.964392,
+    "seen": 1788566469.1689506,
+    "ast_hash": "431568604dde4d02c01b47f187782696",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-sketcher/sketcher/ui_gtk/tools/__init__.py": {
@@ -2177,142 +1883,22 @@
     "ast_hash": "da50b031edb5e8922f552a04a9f03cb5",
     "semantic_hash": ""
   },
-  "rayforge/builtin_addons/rayforge-addon-tools/tests/test_singleton.py": {
-    "mtime": 1786648505.6229272,
-    "seen": 1788205080.9107776,
-    "ast_hash": "6f8847e7aba22a519b281cf00e7a6fed",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tests/test_tool.py": {
-    "mtime": 1786648505.6229272,
-    "seen": 1788205080.9107783,
-    "ast_hash": "081324c3d4b023d89f1e1767410d65cf",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tests/test_tool_manager.py": {
-    "mtime": 1786648505.6229272,
-    "seen": 1788205080.9107795,
-    "ast_hash": "d25d81d0530045121664caa9fc2c7080",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tests/ui_gtk/conftest.py": {
-    "mtime": 1786648505.6229272,
-    "seen": 1788205080.91078,
-    "ast_hash": "1f0c0bed16811e6d1c3ff5bad331deb4",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tests/ui_gtk/test_tool_page.py": {
-    "mtime": 1786648505.6281657,
-    "seen": 1788205080.910781,
-    "ast_hash": "e4becb7fe3fbe8f80ec491043d7d3f39",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tool_library/__init__.py": {
-    "mtime": 1786648505.6281657,
-    "seen": 1788205080.9107816,
-    "ast_hash": "5aa16df68464d7554a5c22aa49347151",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tool_library/edit_dialog.py": {
-    "mtime": 1788464451.6299307,
-    "seen": 1788527522.0189323,
-    "ast_hash": "9a2406666c70d8d73fc0f48c6384cf6b",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tool_library/frontend.py": {
-    "mtime": 1788526691.8118281,
-    "seen": 1788527522.018933,
-    "ast_hash": "b3503a97f92abce29501687e543d29ed",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tool_library/manager.py": {
-    "mtime": 1786648505.6301792,
-    "seen": 1788205080.910784,
-    "ast_hash": "60a1ff715c2933b7d42c29c1e0dc9e4b",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-tools/tool_library/tool.py": {
-    "mtime": 1786648505.6301792,
-    "seen": 1788205080.9107847,
-    "ast_hash": "a3510b600690d01c90c5fa9d47490414",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/__init__.py": {
-    "mtime": 1786648505.6301792,
-    "seen": 1788205080.9107857,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/calibration/__init__.py": {
-    "mtime": 1786648505.6301792,
-    "seen": 1788205080.9107864,
-    "ast_hash": "7b3c3dd0e2695cf1cebc3d551f4e2b55",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/calibration/calibrator.py": {
-    "mtime": 1786648505.6301792,
-    "seen": 1788205080.9107873,
-    "ast_hash": "0b0c3f4c9608878a96383976b74e6883",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/calibration/charuco.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.910788,
-    "ast_hash": "2b3c60661296b1c10fb6d552d9980c96",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/calibration/result.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107885,
-    "ast_hash": "f0eedb639f47e501b1c4b4771aa6a75d",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/controller.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107895,
-    "ast_hash": "4826a131c71d2ccd08613000865ea1c0",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/manager.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107904,
-    "ast_hash": "65dacacc6fea16475e4bc592404169c1",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/models/__init__.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107914,
-    "ast_hash": "409df32e4c455948cf0a56d27869893c",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/models/camera.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107919,
-    "ast_hash": "c3e32ad309f5d3c574a059203c9e9384",
-    "semantic_hash": ""
-  },
-  "rayforge/camera/v4l.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107924,
-    "ast_hash": "1db1b20e3ef22294c0ed9698fbf7ff35",
-    "semantic_hash": ""
-  },
   "rayforge/config.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107933,
-    "ast_hash": "399ce123fec0fdef2f4df190530c1565",
+    "mtime": 1788559100.9999053,
+    "seen": 1788566469.1690469,
+    "ast_hash": "b8e7ae0696fdfdb16db04f1d9adab6a2",
     "semantic_hash": ""
   },
   "rayforge/const.py": {
-    "mtime": 1788375123.2172163,
-    "seen": 1788375998.3437095,
-    "ast_hash": "667911fec3ab1f50b39ce199b611d109",
+    "mtime": 1788558679.6550822,
+    "seen": 1788566469.1690478,
+    "ast_hash": "683e8e4a9deca7ccef94921b087ed2fa",
     "semantic_hash": ""
   },
   "rayforge/context.py": {
-    "mtime": 1786648505.632748,
-    "seen": 1788205080.9107945,
-    "ast_hash": "f18237c308cccb1b5349b710d6865478",
+    "mtime": 1788554590.58489,
+    "seen": 1788566469.1690483,
+    "ast_hash": "23978f0a74c4fab1cef823d85cb648c4",
     "semantic_hash": ""
   },
   "rayforge/core/__init__.py": {
@@ -2325,42 +1911,6 @@
     "mtime": 1786648505.632748,
     "seen": 1788205080.9107957,
     "ast_hash": "5eb61c4f985378433bb1516165e82af2",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/__init__.py": {
-    "mtime": 1786648505.638628,
-    "seen": 1788205080.9107969,
-    "ast_hash": "57886adb311bf728ca25ec43ba51c5c4",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/ai_service.py": {
-    "mtime": 1786648505.638628,
-    "seen": 1788205080.9107976,
-    "ast_hash": "d4b85f01ac7366785261bb0a73a6b4f2",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/config.py": {
-    "mtime": 1786648505.638628,
-    "seen": 1788205080.910798,
-    "ast_hash": "f56208aa849626d7e7e5b7fa4f56d08f",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/openai_provider.py": {
-    "mtime": 1786648505.638628,
-    "seen": 1788205080.9107988,
-    "ast_hash": "c11bea76293e449848925a2d5da480a8",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/provider.py": {
-    "mtime": 1786648505.6407843,
-    "seen": 1788205080.9107993,
-    "ast_hash": "c4ba3996a99c6c83ce00457c6881ea8b",
-    "semantic_hash": ""
-  },
-  "rayforge/core/ai/spec_lookup.py": {
-    "mtime": 1786648505.6407843,
-    "seen": 1788205080.9108002,
-    "ast_hash": "529191f68a07b7341a2e13b0bcbac12d",
     "semantic_hash": ""
   },
   "rayforge/core/asset.py": {
@@ -2394,9 +1944,9 @@
     "semantic_hash": ""
   },
   "rayforge/core/config.py": {
-    "mtime": 1787253235.7544334,
-    "seen": 1788205080.9108038,
-    "ast_hash": "1c780b2cd8fd95cfffec45ef6bab1e76",
+    "mtime": 1788564229.5138252,
+    "seen": 1788566469.1690552,
+    "ast_hash": "3ee85d471718a4d3925e620c0ed0c639",
     "semantic_hash": ""
   },
   "rayforge/core/cut_side.py": {
@@ -2904,9 +2454,9 @@
     "semantic_hash": ""
   },
   "rayforge/doceditor/layout_cmd.py": {
-    "mtime": 1786648505.6699886,
-    "seen": 1788205080.910868,
-    "ast_hash": "704347ccac1c72947956e31936e9cf3a",
+    "mtime": 1788545284.8159716,
+    "seen": 1788566469.1691222,
+    "ast_hash": "838b7a698934e1d803b040b7e097680a",
     "semantic_hash": ""
   },
   "rayforge/doceditor/split_cmd.py": {
@@ -2922,15 +2472,15 @@
     "semantic_hash": ""
   },
   "rayforge/doceditor/stock_cmd.py": {
-    "mtime": 1786648505.6699886,
-    "seen": 1788205080.9108703,
-    "ast_hash": "57f05756f65c2175628fcaf4ca9cc970",
+    "mtime": 1788545306.8608336,
+    "seen": 1788566469.1691244,
+    "ast_hash": "2166f5977b30242e95bb872f0324643d",
     "semantic_hash": ""
   },
   "rayforge/doceditor/tab_cmd.py": {
-    "mtime": 1786648505.6699886,
-    "seen": 1788205080.910871,
-    "ast_hash": "51ae2ef6f68bace579e55263a3cbcc8e",
+    "mtime": 1788545312.8002386,
+    "seen": 1788566469.169125,
+    "ast_hash": "ef0d74be8548d8759ac592d932364824",
     "semantic_hash": ""
   },
   "rayforge/doceditor/transform_cmd.py": {
@@ -3312,9 +2862,9 @@
     "semantic_hash": ""
   },
   "rayforge/license/patreon_provider.py": {
-    "mtime": 1786648505.7176046,
-    "seen": 1788205080.910918,
-    "ast_hash": "a2e122fd3afe66d92702f5ea42c0ad84",
+    "mtime": 1788558737.4222944,
+    "seen": 1788566469.1691744,
+    "ast_hash": "ae667eb3f3b2f82390d67f4e59c375a1",
     "semantic_hash": ""
   },
   "rayforge/license/provider.py": {
@@ -3342,9 +2892,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/assembly.py": {
-    "mtime": 1786648505.7342525,
-    "seen": 1788205080.9109218,
-    "ast_hash": "499e275d21ed8939d760be67d31ea49b",
+    "mtime": 1788552036.9010608,
+    "seen": 1788566469.1691785,
+    "ast_hash": "a18101222b0a494eafce69cb48cb7db7",
     "semantic_hash": ""
   },
   "rayforge/machine/cmd.py": {
@@ -3360,9 +2910,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/device/lightburn_importer.py": {
-    "mtime": 1787253235.7579634,
-    "seen": 1788205080.9109242,
-    "ast_hash": "d6cb219997b26786dad19fcb84a7c0a0",
+    "mtime": 1788555025.122001,
+    "seen": 1788566469.1691804,
+    "ast_hash": "bdd39c503270f7edfc74d73e7001798e",
     "semantic_hash": ""
   },
   "rayforge/machine/device/manager.py": {
@@ -3372,15 +2922,15 @@
     "semantic_hash": ""
   },
   "rayforge/machine/device/profile.py": {
-    "mtime": 1786648505.7342525,
-    "seen": 1788205080.910926,
-    "ast_hash": "e3ea7e028a215c8d7482189a018bf0ea",
+    "mtime": 1788554961.8041143,
+    "seen": 1788566469.1691823,
+    "ast_hash": "bf2dc0887fabeb03975c734b73ade179",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/__init__.py": {
-    "mtime": 1787686714.4418917,
-    "seen": 1788205080.9109268,
-    "ast_hash": "f7020c8878868d6072e091863e829338",
+    "mtime": 1788549892.992945,
+    "seen": 1788566469.1691828,
+    "ast_hash": "2c69405a7ac5a3898b16e9bd50186f4c",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/driver.py": {
@@ -3393,84 +2943,6 @@
     "mtime": 1786648505.7434268,
     "seen": 1788205080.9109285,
     "ast_hash": "86bd224507538258bf5bbe4dd357e18b",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/__init__.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.910929,
-    "ast_hash": "f72c676595fc8850b9a5f5f584b65fa1",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_network.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.91093,
-    "ast_hash": "0f06dfe496426eb17f048d019088bb65",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_probe.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.9109306,
-    "ast_hash": "6bfc962e77e4fd3f55f719704b0f91a8",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_serial.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.9109318,
-    "ast_hash": "0d700a8fc3e01dda9a5a5ac6cbabd8fb",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_serial_simple.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.9109325,
-    "ast_hash": "41c51845134c1c968ba58898920e4434",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_telnet.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.9109335,
-    "ast_hash": "18d85a92ebaec13a4f91f7649ad7ab00",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/grbl/grbl_util.py": {
-    "mtime": 1786648505.7434268,
-    "seen": 1788205080.9109342,
-    "ast_hash": "f29c4ef5f15c52ee5457e6603af32e50",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/marlin/__init__.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.910935,
-    "ast_hash": "1e1f0e571fe2ee225795ab1ab8e19afd",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/marlin/marlin_probe.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.9109359,
-    "ast_hash": "3df825fb0e3c42c9ef58e1da8658f24e",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/marlin/marlin_serial.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.9109366,
-    "ast_hash": "92074027ed525a8a03133c966d4a95d0",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/marlin/marlin_util.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.9109375,
-    "ast_hash": "c187ec511df57b76b73e960352b06ea9",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/octoprint/__init__.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.910938,
-    "ast_hash": "595888770bdcb0da259a5899ef9ad8da",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/driver/octoprint/octoprint_driver.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.910939,
-    "ast_hash": "4365051b03e2cd319065ac81e43dc2b5",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/ruida/__init__.py": {
@@ -3539,12 +3011,6 @@
     "ast_hash": "725f650d49336c784f86e1f12b95083e",
     "semantic_hash": ""
   },
-  "rayforge/machine/driver/smoothie.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.9109473,
-    "ast_hash": "3f8fae707fd93118cf0da8f69d31b39f",
-    "semantic_hash": ""
-  },
   "rayforge/machine/job_monitor.py": {
     "mtime": 1786648505.749192,
     "seen": 1788205080.910948,
@@ -3564,9 +3030,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/kinematics.py": {
-    "mtime": 1786648505.749192,
-    "seen": 1788205080.9109504,
-    "ast_hash": "c580c23279d08db4a96c73b430e4a70f",
+    "mtime": 1788552041.2820942,
+    "seen": 1788566469.1691966,
+    "ast_hash": "11d3a72e42c23d3b7a3cac22adc2efca",
     "semantic_hash": ""
   },
   "rayforge/machine/models/__init__.py": {
@@ -3678,9 +3144,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/models/machine.py": {
-    "mtime": 1788291602.6588902,
-    "seen": 1788293310.6855292,
-    "ast_hash": "909c2f999d3146b5b44773fcadc3a8b2",
+    "mtime": 1788554887.2534182,
+    "seen": 1788566469.1692135,
+    "ast_hash": "1e4391f8cc0de90fb8255f98e23dd899",
     "semantic_hash": ""
   },
   "rayforge/machine/models/machine_hours.py": {
@@ -3690,9 +3156,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/models/machine_panel.py": {
-    "mtime": 1787858702.7071505,
-    "seen": 1788205080.9109669,
-    "ast_hash": "0f09c0446059d50ae4b92b8fa233c571",
+    "mtime": 1788555222.4310396,
+    "seen": 1788566469.169215,
+    "ast_hash": "55b80346033be0dd58c47f615c61073e",
     "semantic_hash": ""
   },
   "rayforge/machine/models/macro.py": {
@@ -3702,9 +3168,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/models/manager.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.9109685,
-    "ast_hash": "dbe142a02733b751604e3fe75347a2a3",
+    "mtime": 1788556738.2935884,
+    "seen": 1788566469.1692164,
+    "ast_hash": "60ef4dc12be517162366dbb11b58b8df",
     "semantic_hash": ""
   },
   "rayforge/machine/models/rotary_module.py": {
@@ -3774,21 +3240,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/transport/__init__.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.9109776,
-    "ast_hash": "6cae0a4e46859721fd9e38a497f88485",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/transport/grbl.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.9109783,
-    "ast_hash": "8f511a264c480b37af65e5c435e010d3",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/transport/http.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.910979,
-    "ast_hash": "4e6c48a5103ab2784bf86cdaef64b841",
+    "mtime": 1788549892.992945,
+    "seen": 1788566469.1692271,
+    "ast_hash": "6633fbc84db8a20981fcd71553f6f851",
     "semantic_hash": ""
   },
   "rayforge/machine/transport/serial.py": {
@@ -3801,12 +3255,6 @@
     "mtime": 1786648505.7651322,
     "seen": 1788205080.9109807,
     "ast_hash": "5e9a309a54556141cac06b457caff0e3",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/transport/telnet.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.9109814,
-    "ast_hash": "909d198299b3412dc650623e884e2927",
     "semantic_hash": ""
   },
   "rayforge/machine/transport/transport.py": {
@@ -3825,12 +3273,6 @@
     "mtime": 1786648505.7651322,
     "seen": 1788205080.9109836,
     "ast_hash": "a14a00a2527831c67a68c02d844a82b4",
-    "semantic_hash": ""
-  },
-  "rayforge/machine/transport/websocket.py": {
-    "mtime": 1786648505.7651322,
-    "seen": 1788205080.9109845,
-    "ast_hash": "e22406e1394a148e23a3b9ce27c6ca65",
     "semantic_hash": ""
   },
   "rayforge/pipeline/__init__.py": {
@@ -3999,12 +3441,6 @@
     "mtime": 1786648505.7933,
     "seen": 1788205080.911005,
     "ast_hash": "02a4bffacf5499d3909c40fff1135f26",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/icons/rayforge.icon/icon.json": {
-    "mtime": 1786648505.892849,
-    "seen": 1788205080.9110055,
-    "ast_hash": "385dddb501df944fcdd587b49ce75687",
     "semantic_hash": ""
   },
   "rayforge/resources/models/__init__.py": {
@@ -4199,60 +3635,6 @@
     "ast_hash": "e6401210bef33ec49ef48c9fa354c283",
     "semantic_hash": ""
   },
-  "rayforge/simulator/__init__.py": {
-    "mtime": 1786648506.00152,
-    "seen": 1788205080.9110327,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/machine_state.py": {
-    "mtime": 1786648506.0029705,
-    "seen": 1788205080.9110334,
-    "ast_hash": "060edcc25e803b245580654571da15c6",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/op_player.py": {
-    "mtime": 1787858702.7071505,
-    "seen": 1788205080.911034,
-    "ast_hash": "2069d377df120bf494db4d7e154e50bb",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/__init__.py": {
-    "mtime": 1786648506.0037737,
-    "seen": 1788205080.9110348,
-    "ast_hash": "61bc8a5424640c5eca587ced1a5ca7b3",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/compiled_scene.py": {
-    "mtime": 1786648506.0037737,
-    "seen": 1788205080.9110353,
-    "ast_hash": "8871255bfc8673762fe40063ff63ba0c",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/cylinder_compiler.py": {
-    "mtime": 1786648506.004811,
-    "seen": 1788205080.9110363,
-    "ast_hash": "134148d2451c08ed39bb841502aa2f53",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/render_config.py": {
-    "mtime": 1786648506.004811,
-    "seen": 1788205080.9110367,
-    "ast_hash": "80d6267bf7cc29ac4b0950838d907bf7",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/scene_compiler.py": {
-    "mtime": 1786648506.00577,
-    "seen": 1788205080.9110374,
-    "ast_hash": "ff6f1f309bfd88e28b779bbefd8fb77b",
-    "semantic_hash": ""
-  },
-  "rayforge/simulator/scene3d/scene_compiler_runner.py": {
-    "mtime": 1786648506.00577,
-    "seen": 1788205080.9110382,
-    "ast_hash": "9d7d21019866abab91fb510ab779d67d",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/__init__.py": {
     "mtime": 1786648506.00577,
     "seen": 1788205080.9110386,
@@ -4260,9 +3642,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/about.py": {
-    "mtime": 1788526784.7297385,
-    "seen": 1788527522.0192182,
-    "ast_hash": "da29df211dc7d12fa78183615f74efb9",
+    "mtime": 1788559978.2766528,
+    "seen": 1788566469.1692822,
+    "ast_hash": "63c4c1335be64c2c8b5717f511f071a5",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/action_registry.py": {
@@ -4272,9 +3654,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/actions.py": {
-    "mtime": 1787228644.6207438,
-    "seen": 1788205080.911041,
-    "ast_hash": "a402e65294465e11fd84224cc5d78482",
+    "mtime": 1788564229.5138252,
+    "seen": 1788566469.169284,
+    "ast_hash": "42f5443de88164f9722751c39fe914af",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/addon_manager/__init__.py": {
@@ -4284,21 +3666,15 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/addon_manager/addon_dialog.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.0192215,
-    "ast_hash": "c4397bdf0ca691e825dfe8484dccda7c",
+    "mtime": 1788558695.3677118,
+    "seen": 1788566469.1692855,
+    "ast_hash": "518b3cd0ef74ba72dd3a3b3987cba2c2",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/addon_manager/addon_list.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.0192223,
-    "ast_hash": "9d4dca69f0043dc61b86eaf702ee9561",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/addon_manager/experimental_dialog.py": {
-    "mtime": 1786648506.0086546,
-    "seen": 1788205080.911044,
-    "ast_hash": "ea0e2a10d2283faf40f5c4a88f1a67b7",
+    "mtime": 1788558701.4482129,
+    "seen": 1788566469.1692865,
+    "ast_hash": "9707230c5b443ab1243a8735b6b89402",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/addon_manager/license_dialog.py": {
@@ -4311,138 +3687,6 @@
     "mtime": 1788525838.9376805,
     "seen": 1788527522.0192246,
     "ast_hash": "aa4efcac85c281e449724f67fda944e3",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/__init__.py": {
-    "mtime": 1786648506.0086546,
-    "seen": 1788205080.911046,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/alignment_dialog.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.019226,
-    "ast_hash": "50e0305a6379592a8e10227a4f6716b6",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/alignment_widget.py": {
-    "mtime": 1788527083.7562006,
-    "seen": 1788527522.0192268,
-    "ast_hash": "869c1a3454256d90b2de61e593728be8",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/camera_preferences_page.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.0192275,
-    "ast_hash": "ab18289568c9ece5b67b92b0b3499f78",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/capture_surface.py": {
-    "mtime": 1786648506.0137203,
-    "seen": 1788205080.9110491,
-    "ast_hash": "7c9e1f54434185be608ffc8138cdbc9d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/display_widget.py": {
-    "mtime": 1786648506.0144036,
-    "seen": 1788205080.9110503,
-    "ast_hash": "cee20af34b8e6a9e87ecd80ee5d12f3e",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/image_settings_dialog.py": {
-    "mtime": 1788526559.5757,
-    "seen": 1788527522.0192301,
-    "ast_hash": "bffd5b0c6a6806349018147f531f4edb",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/image_settings_widget.py": {
-    "mtime": 1788526027.8085098,
-    "seen": 1788527522.0192313,
-    "ast_hash": "776af51273c34556458ae92806fa256e",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/lens_calibration_dialog.py": {
-    "mtime": 1788526559.5757,
-    "seen": 1788527522.019232,
-    "ast_hash": "7da6c6a186b2ccde56331e105c22d28a",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/lens_calibration_widget.py": {
-    "mtime": 1786648506.015257,
-    "seen": 1788205080.9110527,
-    "ast_hash": "5174a23db38179e95152dc0a79925f9c",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/point_bubble_widget.py": {
-    "mtime": 1788527083.7571952,
-    "seen": 1788527522.0192335,
-    "ast_hash": "a53f1660299b1b12e211e1955a47c7ed",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/properties_widget.py": {
-    "mtime": 1788526890.3779628,
-    "seen": 1788527522.0192344,
-    "ast_hash": "d52ec7e338d2352811723398d610bcb9",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/selection_dialog.py": {
-    "mtime": 1788525838.94182,
-    "seen": 1788527522.0192351,
-    "ast_hash": "b9cb5dbfcd52b10a68f0a3bd8f61b80e",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/__init__.py": {
-    "mtime": 1786648506.0182626,
-    "seen": 1788205080.9110553,
-    "ast_hash": "4e87969a3da62dd78348c1d0644a88cf",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/alignment_page.py": {
-    "mtime": 1786648506.0182626,
-    "seen": 1788205080.9110558,
-    "ast_hash": "7ca89128518ef594ffdbc60590f4abb6",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/base_page.py": {
-    "mtime": 1786648506.0188482,
-    "seen": 1788205080.9110572,
-    "ast_hash": "bd4251ea24d74d7ee7bca2bffd10d563",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/capture_page.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.0192385,
-    "ast_hash": "53ae5f6738711fd46ab802e752b4188c",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/card_page.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.019239,
-    "ast_hash": "9544b33639ead041be54809dfc318603",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/image_settings_page.py": {
-    "mtime": 1786648506.0188482,
-    "seen": 1788205080.9110591,
-    "ast_hash": "188c5f801dc4d7ea71596f5037c3c850",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/lens_calibration_choice_page.py": {
-    "mtime": 1788526027.8153484,
-    "seen": 1788527522.0192406,
-    "ast_hash": "d42a34f1972de7eaa8bac8a6f7eac02f",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/lens_calibration_settings_page.py": {
-    "mtime": 1788525838.9439323,
-    "seen": 1788527522.0192416,
-    "ast_hash": "351cbdd61e50e74a93db8b4b29a8833d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/camera/wizard/wizard.py": {
-    "mtime": 1788526784.7313013,
-    "seen": 1788527522.0192423,
-    "ast_hash": "586557d88a11cdbf49d58633f7d6afe5",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas2d/__init__.py": {
@@ -4473,12 +3717,6 @@
     "mtime": 1786648506.0305896,
     "seen": 1788205080.9110649,
     "ast_hash": "02ba838fa7986630885a61b97da53b88",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/canvas2d/elements/camera_image.py": {
-    "mtime": 1786648506.0305896,
-    "seen": 1788205080.9110653,
-    "ast_hash": "fc4ee85e055bc0b8417522daf635c636",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas2d/elements/crosshair.py": {
@@ -4560,9 +3798,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas2d/surface.py": {
-    "mtime": 1788374780.9885836,
-    "seen": 1788375998.3440387,
-    "ast_hash": "323a59c1e81fed042262b48c24359ba4",
+    "mtime": 1788554374.2861817,
+    "seen": 1788566469.169304,
+    "ast_hash": "661d79d72781b8afbf9ab62dcfad49d7",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas/__init__.py": {
@@ -4638,9 +3876,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas/worldsurface.py": {
-    "mtime": 1786648506.0276847,
-    "seen": 1788205080.9110856,
-    "ast_hash": "f14d24f3da6ecfae44fcb8aff51bc404",
+    "mtime": 1788565557.3853579,
+    "seen": 1788566469.1693165,
+    "ast_hash": "1642cad0a1f36fb084cbbef88d503cd4",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/debug_log_dialog.py": {
@@ -4878,9 +4116,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/doceditor/step_settings/dialog.py": {
-    "mtime": 1788464351.16734,
-    "seen": 1788527522.0193026,
-    "ast_hash": "9a69c02fd666b8e0e3f545493fec5d21",
+    "mtime": 1788550541.9661484,
+    "seen": 1788566469.1693482,
+    "ast_hash": "0b104c904d901425ad34fad773749ee0",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/doceditor/step_settings/groups/__init__.py": {
@@ -5046,9 +4284,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/console.py": {
-    "mtime": 1788525838.9550025,
-    "seen": 1788527522.0193295,
-    "ast_hash": "41a5b7810dc4a6039aa33f8ac6eddc8f",
+    "mtime": 1788545317.196258,
+    "seen": 1788566469.1693726,
+    "ast_hash": "7388985fe2c5d4bd0b5488e8b22508e3",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/cut_scale_dialog.py": {
@@ -5063,34 +4301,16 @@
     "ast_hash": "4e8e6a4419c731fe1f59ace4deaf8cc3",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/dialect_editor.py": {
-    "mtime": 1788526559.5757,
-    "seen": 1788527522.019332,
-    "ast_hash": "36a5de278dbb96a5e7d712f8db5b532a",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/dialect_list.py": {
-    "mtime": 1788526784.7609642,
-    "seen": 1788527522.0193326,
-    "ast_hash": "acd73c94ec164af96de5341d1e2f4e38",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/machine/gcode_editor.py": {
     "mtime": 1788526861.1739166,
     "seen": 1788527522.0193334,
     "ast_hash": "bd42e31d4ffa88ac896586d3f519e291",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/gcode_settings_page.py": {
-    "mtime": 1786648506.0694091,
-    "seen": 1788205080.9111407,
-    "ast_hash": "e254deb1c1c4a51c74d273e24cf72d22",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/machine/general_preferences_page.py": {
-    "mtime": 1788526177.417659,
-    "seen": 1788527522.0193348,
-    "ast_hash": "2af1cca3cc29ab25233be9c910333ff9",
+    "mtime": 1788547076.90924,
+    "seen": 1788566469.1693757,
+    "ast_hash": "4cf569664d99c196ab72630878d21c18",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/hardware_page.py": {
@@ -5100,9 +4320,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/head_preferences_page.py": {
-    "mtime": 1788526784.7645113,
-    "seen": 1788527522.0193365,
-    "ast_hash": "014f931ae8530b1c6c186118ecc5870c",
+    "mtime": 1788551971.2755508,
+    "seen": 1788566469.1693776,
+    "ast_hash": "70495691a343b6fe8810b5efd2da3b01",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/hook_list.py": {
@@ -5129,18 +4349,6 @@
     "ast_hash": "21f01f446b6e3ee1365540b8caaf54fb",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/lbdev_import_dialog.py": {
-    "mtime": 1788464351.1815596,
-    "seen": 1788527522.0193405,
-    "ast_hash": "2242ba70ccde0cd37af6c2ffa17939a7",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/machine_dropdown.py": {
-    "mtime": 1788464248.336645,
-    "seen": 1788527522.0193412,
-    "ast_hash": "47768bf8edfc515fd8dd1d4ee4fa9224",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/machine/macro_list.py": {
     "mtime": 1788526784.7658217,
     "seen": 1788527522.0193424,
@@ -5159,22 +4367,16 @@
     "ast_hash": "284c165a0a0cb5a6824241bb9fe6ab1d",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/profile_importer.py": {
-    "mtime": 1786648506.0800831,
-    "seen": 1788205080.911151,
-    "ast_hash": "072ab7f2e526bc53514c837db775bd9b",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/machine/rotary_module_page.py": {
-    "mtime": 1788526784.7658217,
-    "seen": 1788527522.0193455,
-    "ast_hash": "5fb665d1d341fb060ebbe742785b0a14",
+    "mtime": 1788551976.2275684,
+    "seen": 1788566469.169384,
+    "ast_hash": "ac4ad24870973cfb27dec174a25f32a7",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/settings_dialog.py": {
-    "mtime": 1788526784.7658217,
-    "seen": 1788527522.0193462,
-    "ast_hash": "cbcce36332e5bac4c45966c59aa0108f",
+    "mtime": 1788554555.6828527,
+    "seen": 1788566469.1693847,
+    "ast_hash": "4fde279046db35e37584ee0ff954b64b",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/status_widget.py": {
@@ -5183,112 +4385,28 @@
     "ast_hash": "f6b85cb129120ba386acae2f0e06438c",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/template_selector.py": {
-    "mtime": 1788525838.9620466,
-    "seen": 1788527522.0193477,
-    "ast_hash": "8672836e1bd6e56196347ca79e3b5eff",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/unified_wizard.py": {
-    "mtime": 1788526784.7658217,
-    "seen": 1788527522.0193481,
-    "ast_hash": "5544a3b1c6df567edfc7222a35400651",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/machine/wcs_dialog.py": {
     "mtime": 1786648506.0836124,
     "seen": 1788205080.9111552,
     "ast_hash": "ae636e7d7f4266d91c5f8f776e631f54",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/machine/wizard_pages/__init__.py": {
-    "mtime": 1788526784.7658217,
-    "seen": 1788527522.01935,
-    "ast_hash": "140029bbeef07e7c0d507c1f6eef365b",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/ai_lookup_page.py": {
-    "mtime": 1788464351.1903558,
-    "seen": 1788527522.0193508,
-    "ast_hash": "100fd13cc0076162a192ae080d5ce570",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/camera_page.py": {
-    "mtime": 1786648506.0836124,
-    "seen": 1788205080.9111578,
-    "ast_hash": "db72e52011f4583f923a0dc55f8fa722",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/connection_page.py": {
-    "mtime": 1786648506.0856206,
-    "seen": 1788205080.9111586,
-    "ast_hash": "95d04a9406bdbcb6a166993fe7bd5bb2",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/controller_page.py": {
-    "mtime": 1788526784.7658217,
-    "seen": 1788527522.0193532,
-    "ast_hash": "c6e78cb0b36071a72dc97890ed08388d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/hardware_page.py": {
-    "mtime": 1788526177.4253712,
-    "seen": 1788527522.019354,
-    "ast_hash": "91c132f2aa893287920407d5aa1fbe51",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/head_page.py": {
-    "mtime": 1788463682.0950341,
-    "seen": 1788527522.0193546,
-    "ast_hash": "29a8a3d99555d075e6cee6684a0dd0ef",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/probe_page.py": {
-    "mtime": 1786648506.0872836,
-    "seen": 1788205080.9111614,
-    "ast_hash": "56eaaeace04d9c0dba705b9667141e3c",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/profile_page.py": {
-    "mtime": 1786648506.0872836,
-    "seen": 1788205080.9111624,
-    "ast_hash": "ad953dbd9c8ea54339dda192be20cb37",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/provider_page.py": {
-    "mtime": 1786648506.0872836,
-    "seen": 1788205080.9111629,
-    "ast_hash": "6e1540bac81722193fc8861960230bf8",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/review_page.py": {
-    "mtime": 1787253235.7752213,
-    "seen": 1788205080.9111636,
-    "ast_hash": "164985839417de3f4530f8f14fb2ab82",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/machine/wizard_pages/rotary_page.py": {
-    "mtime": 1786648506.0872836,
-    "seen": 1788205080.9111645,
-    "ast_hash": "ae1f1083b2a173590a4a003c673b9ff7",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/main_menu.py": {
-    "mtime": 1787228644.6253483,
-    "seen": 1788205080.9111652,
-    "ast_hash": "10cd9b0d15ecac1f9f19310525b2e8f4",
+    "mtime": 1788564229.5212262,
+    "seen": 1788566469.1693873,
+    "ast_hash": "217f2c5e09ec4c6912b747b961923b7d",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/mainwindow.py": {
-    "mtime": 1788526784.7780855,
-    "seen": 1788527522.0193605,
-    "ast_hash": "6d36914ceff883105b0fddc5f0e83ed7",
+    "mtime": 1788564229.5232508,
+    "seen": 1788566469.169388,
+    "ast_hash": "ac0b16e9158135f7ae947b5669826704",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/project_cmd.py": {
-    "mtime": 1786648506.0900877,
-    "seen": 1788205080.911167,
-    "ast_hash": "7720a023f9daa4b2c43248fcb87ced49",
+    "mtime": 1788545326.1432333,
+    "seen": 1788566469.1693888,
+    "ast_hash": "e8db55fbb4a5f7a49dde3f7a68d5f547",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/__init__.py": {
@@ -5303,12 +4421,6 @@
     "ast_hash": "66c41b1fc7135943ed489889eab97991",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/settings/ai_settings_page.py": {
-    "mtime": 1788526784.7796676,
-    "seen": 1788527522.0193639,
-    "ast_hash": "fc853a0622111c06fe311c82cab85db8",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/settings/color_presets_page.py": {
     "mtime": 1788526784.7796676,
     "seen": 1788527522.0193646,
@@ -5316,21 +4428,15 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/general_preferences_page.py": {
-    "mtime": 1788526890.3878388,
-    "seen": 1788527522.0193653,
-    "ast_hash": "8069ac812580c53c16c525fe4a1f01b5",
+    "mtime": 1788558716.9376605,
+    "seen": 1788566469.169392,
+    "ast_hash": "6df6cea7bb4431bfe0d6b6405d6bb445",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/license_settings_page.py": {
     "mtime": 1788526028.1165557,
     "seen": 1788527522.0193658,
     "ast_hash": "bf15a8fdeff4411c0e3b7114cf7c17c9",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/settings/machine_settings_page.py": {
-    "mtime": 1788526784.7813158,
-    "seen": 1788527522.0193667,
-    "ast_hash": "373f25aa2f99c318c38aa41904fdd927",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/material_manager_page.py": {
@@ -5340,9 +4446,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/model_preview_widget.py": {
-    "mtime": 1786648506.0920987,
-    "seen": 1788205080.9111729,
-    "ast_hash": "887918b20514706e6c4262d62d6f5b32",
+    "mtime": 1788551980.2421806,
+    "seen": 1788566469.1693945,
+    "ast_hash": "8ff0aeecfe361433f1cc494f71da54dc",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/recipe_manager_page.py": {
@@ -5358,9 +4464,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/settings/settings_dialog.py": {
-    "mtime": 1788526784.784787,
-    "seen": 1788527522.0193708,
-    "ast_hash": "a1f455fda298f33c83a39b872bbeaea0",
+    "mtime": 1788550540.0216959,
+    "seen": 1788566469.1693966,
+    "ast_hash": "84652aca5d4a193b3404a2e8472ae86e",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/__init__.py": {
@@ -5460,9 +4566,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/model_selection_dialog.py": {
-    "mtime": 1788525838.9694057,
-    "seen": 1788527522.0193844,
-    "ast_hash": "6d211cf38b44dc3da314e520d371a5fd",
+    "mtime": 1788551983.9472227,
+    "seen": 1788566469.169417,
+    "ast_hash": "9684bbdc1364d177673b90b36f4e96a2",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/number_badge.py": {
@@ -5478,9 +4584,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/patched_dialog_window.py": {
-    "mtime": 1786648506.1035612,
-    "seen": 1788205080.9111907,
-    "ast_hash": "c11b1bd5fbaa2736bcadf959e9e6afc3",
+    "mtime": 1788550539.067486,
+    "seen": 1788566469.169419,
+    "ast_hash": "c71b60e5091681f2bc3b2532c4cc5c7b",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/piemenu.py": {
@@ -5550,9 +4656,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/preferences_page.py": {
-    "mtime": 1786648506.1095884,
-    "seen": 1788205080.9111998,
-    "ast_hash": "aa0b66d1f2549063fdead448cd971848",
+    "mtime": 1788545270.9847865,
+    "seen": 1788566469.1694288,
+    "ast_hash": "fc31c9b47f88c27485a701f0e3d0b1c4",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/shared/progress_bar.py": {
@@ -5627,244 +4733,10 @@
     "ast_hash": "2dad29f3eb889531229382c421e8e4f3",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/shared/usage_consent_dialog.py": {
-    "mtime": 1788526784.7928643,
-    "seen": 1788527522.0194073,
-    "ast_hash": "b68999844a81edd4744140e8df7a7dab",
-    "semantic_hash": ""
-  },
   "rayforge/ui_gtk/shared/visibility_overlay.py": {
-    "mtime": 1788462957.7774606,
-    "seen": 1788527522.019408,
-    "ast_hash": "94036e42d78d34f214a056fc06baa922",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/__init__.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112105,
-    "ast_hash": "7e9025cdb39edcb432474c6d695c9fa9",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/camera.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112113,
-    "ast_hash": "ba237d4b3f1087514f6b6600c2931687",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/camera_controller.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112117,
-    "ast_hash": "2d41c787444b07a279f8089edae7fb0c",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/canvas3d.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112122,
-    "ast_hash": "0b9b60f16d2b2eb31686cc256f276d4d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/chunked_upload.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112132,
-    "ast_hash": "f07c3fb141c78eff063580b85b60f0a4",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/doc_signals.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112139,
-    "ast_hash": "41d02053d3b271061a7c911df2c327d4",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/gl_state.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112146,
-    "ast_hash": "bff82eb240dbbfab543d06bb5504aef7",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/gl_utils.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112153,
-    "ast_hash": "bc923b003a0c787d2072924bc1f8c736",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/playback_overlay.py": {
-    "mtime": 1788526691.7181947,
-    "seen": 1788527522.0194156,
-    "ast_hash": "e5a3af5d1cfc4658c0dbbb81da268969",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/__init__.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112167,
-    "ast_hash": "968841029d8e587222a98ae92d0dfc16",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/base.py": {
-    "mtime": 1786648506.1126063,
-    "seen": 1788205080.9112175,
-    "ast_hash": "8b70ef80244c97396842f938fd34b55a",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/camera.py": {
-    "mtime": 1786648506.1215487,
-    "seen": 1788205080.9112182,
-    "ast_hash": "f40e12bc258586e0f1e0902d1ee1e842",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/kinematics.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112186,
-    "ast_hash": "2a8c889e30f66c8ad2c469a095745527",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/playback.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112196,
-    "ast_hash": "372af68cc7aa5426e6043a342e41b91d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/render_context/viewport.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112206,
-    "ast_hash": "7e89c2097746be794e8e2554a40021b0",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/__init__.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.911221,
-    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/axis_renderer_3d.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.911222,
-    "ast_hash": "6ffbc2693b540cb0f77ecd15c9d787c3",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/background_renderer.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112227,
-    "ast_hash": "b7f340c8be5828dde5654b41b122f7c2",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/base.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112234,
-    "ast_hash": "db86e1944cebdf4bf36034a0d0a1ef85",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/cylinder_renderer.py": {
-    "mtime": 1786648506.122056,
-    "seen": 1788205080.9112241,
-    "ast_hash": "5855d8d115248c809c92f805dd49d166",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/laser_beam_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.9112248,
-    "ast_hash": "aeae5b8953c0e5204310948becccdfea",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/model_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.9112256,
-    "ast_hash": "70a9d862dde24ce530f39b09709120f1",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/ops_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.911226,
-    "ast_hash": "0c5a8035105f98c8e10074a52c8c4e71",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/plane_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.911227,
-    "ast_hash": "e526fcda2127e2c5006dbdc68ef2b031",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/ring_buffer_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.9112277,
-    "ast_hash": "414a4deb8d66f252b903d54edb50cbed",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/scene_renderer.py": {
-    "mtime": 1786648506.1257563,
-    "seen": 1788205080.9112282,
-    "ast_hash": "f2baa51d7ac036e31eed9078f2ccc5cf",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/text_renderer.py": {
-    "mtime": 1786648506.1286151,
-    "seen": 1788205080.911229,
-    "ast_hash": "14aacaadd50bd4587a7461ce91a5f9cd",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/texture_renderer.py": {
-    "mtime": 1786648506.1286151,
-    "seen": 1788205080.9112294,
-    "ast_hash": "1525ab9b0fc9514b5fb995f8429c3d72",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/renderer/zone_renderer.py": {
-    "mtime": 1786648506.1286151,
-    "seen": 1788205080.9112306,
-    "ast_hash": "9a1babe99392e92a409acbeeebd6a31d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/scene_presenter.py": {
-    "mtime": 1788288204.6093445,
-    "seen": 1788288790.8507576,
-    "ast_hash": "15693ad81ed3dbb7a742caef65ad4276",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/__init__.py": {
-    "mtime": 1786648506.129704,
-    "seen": 1788205080.9112318,
-    "ast_hash": "168be44f002e9047c512f2366491f0e0",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/background_shader.py": {
-    "mtime": 1786648506.129704,
-    "seen": 1788205080.9112325,
-    "ast_hash": "f95b145243e76ea60a9e3165bfc832db",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/base.py": {
-    "mtime": 1786648506.129704,
-    "seen": 1788205080.9112332,
-    "ast_hash": "8fc569670dd787de598e5f90e6a7926d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/simple_shader.py": {
-    "mtime": 1786648506.129704,
-    "seen": 1788205080.9112341,
-    "ast_hash": "840045bf0759ea5d066758cb3e31480d",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/text_shader.py": {
-    "mtime": 1786648506.1320837,
-    "seen": 1788205080.9112349,
-    "ast_hash": "de5f7fe953b49023345de672ebac9966",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/shader/texture_shader.py": {
-    "mtime": 1786648506.1320837,
-    "seen": 1788205080.9112356,
-    "ast_hash": "fbfe85d091b5693801e8744e79c15006",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/theme_resolver.py": {
-    "mtime": 1786648506.1320837,
-    "seen": 1788205080.9112363,
-    "ast_hash": "19148bd3efa047480d0a32af991295e5",
-    "semantic_hash": ""
-  },
-  "rayforge/ui_gtk/sim3d/viewport.py": {
-    "mtime": 1786648506.13359,
-    "seen": 1788205080.911237,
-    "ast_hash": "58850b91761f0d546a9795ef99e7484e",
+    "mtime": 1788554423.7343516,
+    "seen": 1788566469.169439,
+    "ast_hash": "71feb53ed13245868526ea81d3c44e31",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/task_bar.py": {
@@ -5874,9 +4746,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/toolbar.py": {
-    "mtime": 1788525838.9734757,
-    "seen": 1788527522.0194433,
-    "ast_hash": "e63dda90e0c56c4aa50827dd95aaa66b",
+    "mtime": 1788552388.0372226,
+    "seen": 1788566469.169443,
+    "ast_hash": "a1e1116558ccf1ce97463e308caefd0b",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/varset/__init__.py": {
@@ -5975,28 +4847,10 @@
     "ast_hash": "541099607bc864ea8c71044cd1ebba40",
     "semantic_hash": ""
   },
-  "rayforge/ui_gtk/view_mode_cmd.py": {
-    "mtime": 1786648506.140839,
-    "seen": 1788205080.9112506,
-    "ast_hash": "f84fdfdb22b249c751c0404373bb2bed",
-    "semantic_hash": ""
-  },
   "rayforge/uiscript.py": {
     "mtime": 1786648506.140839,
     "seen": 1788205080.9112518,
     "ast_hash": "7523ac5f9aa365de522010d3fae9bfd3",
-    "semantic_hash": ""
-  },
-  "rayforge/updater.py": {
-    "mtime": 1788527235.366933,
-    "seen": 1788527522.0194588,
-    "ast_hash": "07228a97b9ebbc57edc52d20bc4e64ac",
-    "semantic_hash": ""
-  },
-  "rayforge/usage.py": {
-    "mtime": 1786648506.1428504,
-    "seen": 1788205080.9112532,
-    "ast_hash": "f850671f9098f38f9ee560f303c17eb2",
     "semantic_hash": ""
   },
   "rayforge/version.py": {
@@ -6054,21 +4908,21 @@
     "semantic_hash": ""
   },
   "scripts/mac/mac_build.sh": {
-    "mtime": 1786648506.153717,
-    "seen": 1788205080.9112604,
-    "ast_hash": "f45c1162b2406a16481addc0d0e4a3aa",
+    "mtime": 1788558836.09278,
+    "seen": 1788566469.1694643,
+    "ast_hash": "8c0efdad9e5623f8e6db7b4bdc78a12c",
     "semantic_hash": ""
   },
   "scripts/mac/mac_create_icon.sh": {
-    "mtime": 1786648506.153717,
-    "seen": 1788205080.9112608,
-    "ast_hash": "b31179f5f606a156b2a8ed7a8f912e41",
+    "mtime": 1788558846.4313674,
+    "seen": 1788566469.169465,
+    "ast_hash": "eb1637148ceb1d87b4d3343175598067",
     "semantic_hash": ""
   },
   "scripts/mac/mac_setup.sh": {
-    "mtime": 1786648506.153717,
-    "seen": 1788205080.9112616,
-    "ast_hash": "b34c355f671f275f656310f6061755c7",
+    "mtime": 1788558849.2315161,
+    "seen": 1788566469.1694655,
+    "ast_hash": "8378b4a32d0af652dde8b2bd241d8aaf",
     "semantic_hash": ""
   },
   "scripts/media/comfyui_client.py": {
@@ -6149,40 +5003,16 @@
     "ast_hash": "ca0c1a48bb4caa329ff54ebefa8563c8",
     "semantic_hash": ""
   },
-  "scripts/screenshot/add_machine_dialog.py": {
-    "mtime": 1786648506.1597502,
-    "seen": 1788205080.9112713,
-    "ast_hash": "616cc99e7736c8d997ef4e81352d8485",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/ai_workpiece_generator.py": {
-    "mtime": 1786648506.161764,
-    "seen": 1788205080.9112723,
-    "ast_hash": "668a499851bc0c511a9f408fc1161b2b",
-    "semantic_hash": ""
-  },
   "scripts/screenshot/app_settings_addons.py": {
     "mtime": 1786648506.161764,
     "seen": 1788205080.911273,
     "ast_hash": "82c577e6b4644271fe26c19297f428b4",
     "semantic_hash": ""
   },
-  "scripts/screenshot/app_settings_ai.py": {
-    "mtime": 1786648506.161764,
-    "seen": 1788205080.9112735,
-    "ast_hash": "9a4c1658df80a82872eac639555ceed1",
-    "semantic_hash": ""
-  },
   "scripts/screenshot/app_settings_general.py": {
     "mtime": 1786648506.161764,
     "seen": 1788205080.9112744,
     "ast_hash": "b94390da300e8ed69b14d75c7fdd6ae9",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/app_settings_machines.py": {
-    "mtime": 1786648506.161764,
-    "seen": 1788205080.9112751,
-    "ast_hash": "34dcce808354d0a2915bebf90032c0a5",
     "semantic_hash": ""
   },
   "scripts/screenshot/app_settings_materials.py": {
@@ -6222,15 +5052,9 @@
     "semantic_hash": ""
   },
   "scripts/screenshot/cli.py": {
-    "mtime": 1786648506.1650755,
-    "seen": 1788205080.91128,
-    "ast_hash": "052f41e2dd302da81034b134517e7b04",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/config_wizard.py": {
-    "mtime": 1786648506.1650755,
-    "seen": 1788205080.9112806,
-    "ast_hash": "cd9bcd594166594e76c74e265940283f",
+    "mtime": 1788554190.8423758,
+    "seen": 1788566469.1694832,
+    "ast_hash": "4c4c63f0e332921270eacb59c1f620c9",
     "semantic_hash": ""
   },
   "scripts/screenshot/deepnest.py": {
@@ -6249,24 +5073,6 @@
     "mtime": 1786648506.167086,
     "seen": 1788205080.9112828,
     "ast_hash": "ce0b107f9c8b2e4086a6770b367e777f",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/machine_settings_camera.py": {
-    "mtime": 1786648506.167086,
-    "seen": 1788205080.9112837,
-    "ast_hash": "ed4baf4996f6f2d1d84681f2a1ee0678",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/machine_settings_device.py": {
-    "mtime": 1786648506.167086,
-    "seen": 1788205080.9112844,
-    "ast_hash": "36208f12bfabdddfbaf2cf44a8c793b9",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/machine_settings_gcode.py": {
-    "mtime": 1786648506.1690927,
-    "seen": 1788205080.9112852,
-    "ast_hash": "9b2e75dc99df8322fe821f88d4785ac1",
     "semantic_hash": ""
   },
   "scripts/screenshot/machine_settings_general.py": {
@@ -6309,18 +5115,6 @@
     "mtime": 1786648506.171104,
     "seen": 1788205080.9112902,
     "ast_hash": "32cf5f66a71e8a068392df8c84425d15",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/main_3d.py": {
-    "mtime": 1786648506.171104,
-    "seen": 1788205080.911291,
-    "ast_hash": "4c152ee0ca3a33afc1973ad71023ff42",
-    "semantic_hash": ""
-  },
-  "scripts/screenshot/main_3d_rotary.py": {
-    "mtime": 1786648506.17311,
-    "seen": 1788205080.9112914,
-    "ast_hash": "59a3e68d4cb385fed35eef3e091a23f9",
     "semantic_hash": ""
   },
   "scripts/screenshot/main_standard.py": {
@@ -6384,9 +5178,9 @@
     "semantic_hash": ""
   },
   "scripts/screenshot/utils.py": {
-    "mtime": 1786648506.1771224,
-    "seen": 1788205080.9113002,
-    "ast_hash": "05afce989f4e193d876ba0c114879265",
+    "mtime": 1788552581.4225411,
+    "seen": 1788566469.1695025,
+    "ast_hash": "08112c1d6329514d885fe1985e8c85a5",
     "semantic_hash": ""
   },
   "scripts/screenshot/wavefront.py": {
@@ -6396,9 +5190,9 @@
     "semantic_hash": ""
   },
   "scripts/snapshot_memory.py": {
-    "mtime": 1786648506.1771224,
-    "seen": 1788205080.9113019,
-    "ast_hash": "0f93bbb7112fb0657be2384d2dc4e344",
+    "mtime": 1788554107.4465203,
+    "seen": 1788566469.169504,
+    "ast_hash": "f131eb0662bcedab8c057c8f30e4ca72",
     "semantic_hash": ""
   },
   "scripts/stubs_to_markdown.py": {
@@ -6426,21 +5220,21 @@
     "semantic_hash": ""
   },
   "scripts/win/win_build.sh": {
-    "mtime": 1786648506.181134,
-    "seen": 1788205080.9113052,
-    "ast_hash": "71a7bc2075b6b2332220e4dee28f2bb7",
+    "mtime": 1788558855.663358,
+    "seen": 1788566469.1695077,
+    "ast_hash": "c9ca5810b553d807f2dd9e18986b0c97",
     "semantic_hash": ""
   },
   "scripts/win/win_create_icon.py": {
-    "mtime": 1786648506.181134,
-    "seen": 1788205080.911306,
-    "ast_hash": "e9dfad2f9662d9f7f0508ead9e29b778",
+    "mtime": 1788558856.7821224,
+    "seen": 1788566469.1695087,
+    "ast_hash": "2a397208500ed5f627863f0a8220f701",
     "semantic_hash": ""
   },
   "scripts/win/win_create_icon.sh": {
-    "mtime": 1786648506.181134,
-    "seen": 1788205080.9113064,
-    "ast_hash": "f275ec9e1ab7a747371715b2d334ccce",
+    "mtime": 1788558857.8464231,
+    "seen": 1788566469.1695094,
+    "ast_hash": "0c49eb71118a422713a9d56532d6dab9",
     "semantic_hash": ""
   },
   "scripts/win/win_format.sh": {
@@ -6456,15 +5250,15 @@
     "semantic_hash": ""
   },
   "scripts/win/win_run.sh": {
-    "mtime": 1786648506.1831398,
-    "seen": 1788205080.911309,
-    "ast_hash": "b85e439dde692abb267523a01fa8ad4f",
+    "mtime": 1788558858.949592,
+    "seen": 1788566469.169512,
+    "ast_hash": "8c9911a2041f4f6ad5b9b0a93e89a6c7",
     "semantic_hash": ""
   },
   "scripts/win/win_run_ui_test.sh": {
-    "mtime": 1786648506.1831398,
-    "seen": 1788205080.9113097,
-    "ast_hash": "5ce051d8ba8b87119fc66f8e363a576e",
+    "mtime": 1788558860.029398,
+    "seen": 1788566469.1695125,
+    "ast_hash": "d133ab1c5ee4a354831258fa42f4ee7d",
     "semantic_hash": ""
   },
   "scripts/win/win_setup.sh": {
@@ -6504,8 +5298,8 @@
     "semantic_hash": ""
   },
   "send_fixture_test.py": {
-    "mtime": 1787168219.8878584,
-    "seen": 1788205080.911315,
+    "mtime": 1788549893.0909758,
+    "seen": 1788566469.169518,
     "ast_hash": "7c01cb49f158c6d9c3c1a2f3c3383c7b",
     "semantic_hash": ""
   },
@@ -6545,36 +5339,6 @@
     "ast_hash": "0112ba63fe582fb864be212e4017cf60",
     "semantic_hash": ""
   },
-  "tests/camera/test_camera.py": {
-    "mtime": 1786648506.1974506,
-    "seen": 1788205080.9113197,
-    "ast_hash": "9243b2db7c3ca1089d58476809f10f8c",
-    "semantic_hash": ""
-  },
-  "tests/camera/test_charuco.py": {
-    "mtime": 1786648506.1974506,
-    "seen": 1788205080.9113202,
-    "ast_hash": "bb552389cc7b72a88d164fa8f2970d85",
-    "semantic_hash": ""
-  },
-  "tests/camera/test_controller.py": {
-    "mtime": 1786648506.1974506,
-    "seen": 1788205080.9113212,
-    "ast_hash": "ec263fc1605102097f981351d91c1b6f",
-    "semantic_hash": ""
-  },
-  "tests/camera/test_v4l.py": {
-    "mtime": 1786648506.1974506,
-    "seen": 1788205080.9113219,
-    "ast_hash": "87ea81740aa68872e2fe987e4c6a967f",
-    "semantic_hash": ""
-  },
-  "tests/camera/visual_test_camera_scaling.py": {
-    "mtime": 1786648506.199457,
-    "seen": 1788205080.9113226,
-    "ast_hash": "c6114b066a8ec950c8ff77277c13b035",
-    "semantic_hash": ""
-  },
   "tests/canvasapp.py": {
     "mtime": 1786648506.199457,
     "seen": 1788205080.9113233,
@@ -6582,15 +5346,9 @@
     "semantic_hash": ""
   },
   "tests/conftest.py": {
-    "mtime": 1786648506.2075975,
-    "seen": 1788205080.9113243,
-    "ast_hash": "7ad2d24055469ae854ea72dd4a145a15",
-    "semantic_hash": ""
-  },
-  "tests/core/ai/test_spec_lookup.py": {
-    "mtime": 1786648506.2075975,
-    "seen": 1788205080.9113247,
-    "ast_hash": "0bc79514415fe7299eb6cba4099a5a6f",
+    "mtime": 1788557384.9207368,
+    "seen": 1788566469.1695266,
+    "ast_hash": "c3ee2b865afcb91f54d205a976868b8f",
     "semantic_hash": ""
   },
   "tests/core/expression/test_expression_context.py": {
@@ -7242,63 +6000,9 @@
     "semantic_hash": ""
   },
   "tests/machine/device/test_lbdev_importer.py": {
-    "mtime": 1787253235.7782745,
-    "seen": 1788205080.9114053,
-    "ast_hash": "2e7d8f30e35f5f540ca3873fc1bb75eb",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/grbl/test_grbl_probe.py": {
-    "mtime": 1786648506.2865386,
-    "seen": 1788205080.911406,
-    "ast_hash": "129cacc78258c189399a84f24eb6bc9a",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/grbl/test_grbl_serial_driver.py": {
-    "mtime": 1786648506.2865386,
-    "seen": 1788205080.9114068,
-    "ast_hash": "8f179c2b2042e1e5316cf69a060d6ff6",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/grbl/test_grbl_serial_driver_stress.py": {
-    "mtime": 1786648506.2865386,
-    "seen": 1788205080.911408,
-    "ast_hash": "80d30e3f30c562d1e59532e1a738e0a5",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/grbl/test_grbl_serial_simple_driver.py": {
-    "mtime": 1786648506.2865386,
-    "seen": 1788205080.9114087,
-    "ast_hash": "190bead9042d9ea2e493966f4ac79e4e",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/grbl/test_grbl_util.py": {
-    "mtime": 1786648506.2885528,
-    "seen": 1788205080.9114094,
-    "ast_hash": "444b7f620e03d2c28559938329493ea0",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/marlin/test_marlin_probe.py": {
-    "mtime": 1786648506.2885528,
-    "seen": 1788205080.91141,
-    "ast_hash": "241015cba62226f80b2d187e28891dea",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/marlin/test_marlin_serial_driver.py": {
-    "mtime": 1786648506.2885528,
-    "seen": 1788205080.911411,
-    "ast_hash": "46e1f5adb242e7c2040b66bfa6fd2809",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/marlin/test_marlin_util.py": {
-    "mtime": 1786648506.2885528,
-    "seen": 1788205080.9114118,
-    "ast_hash": "0d07b2dec9fe5afd4d929c5781cbd7b6",
-    "semantic_hash": ""
-  },
-  "tests/machine/driver/octoprint/test_octoprint_driver.py": {
-    "mtime": 1786648506.2905605,
-    "seen": 1788205080.9114125,
-    "ast_hash": "25fd5fdea0582a1f8a7a975de49db2f6",
+    "mtime": 1788555072.4324653,
+    "seen": 1788566469.169624,
+    "ast_hash": "d5a58420af3f59a1e6a3c76e1381890d",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/client_app.py": {
@@ -7415,12 +6119,6 @@
     "ast_hash": "7e29c303ce35546b055354388a419c27",
     "semantic_hash": ""
   },
-  "tests/machine/driver/test_smoothie_driver.py": {
-    "mtime": 1786648506.2965963,
-    "seen": 1788205080.911427,
-    "ast_hash": "bbd41fceafe9d770bc7c667b73cf6541",
-    "semantic_hash": ""
-  },
   "tests/machine/models/dialects/test_dialect_gcode.py": {
     "mtime": 1786648506.2999103,
     "seen": 1788205080.9114275,
@@ -7464,9 +6162,9 @@
     "semantic_hash": ""
   },
   "tests/machine/models/test_kinematics.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114332,
-    "ast_hash": "4a42010c1544bc6adf3291baad90806c",
+    "mtime": 1788552066.2695415,
+    "seen": 1788566469.169648,
+    "ast_hash": "7e879e3845dce1b3f629193b0429c0ea",
     "semantic_hash": ""
   },
   "tests/machine/models/test_laser.py": {
@@ -7476,15 +6174,15 @@
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine.py": {
-    "mtime": 1787686714.4635174,
-    "seen": 1788205080.9114344,
-    "ast_hash": "830ba1f4c0744d2929146fdea3d76fb8",
+    "mtime": 1788555120.0285766,
+    "seen": 1788566469.1696494,
+    "ast_hash": "f1f9cdae71649de80d35f3dfea2fc70e",
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine_assembly.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114356,
-    "ast_hash": "8bfe0f6347b7f2c6d6211b5fd12a9d04",
+    "mtime": 1788552067.9966328,
+    "seen": 1788566469.16965,
+    "ast_hash": "aedf9fa762ecb739b16afde42931da98",
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine_controller.py": {
@@ -7512,9 +6210,9 @@
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine_profile.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114392,
-    "ast_hash": "0db828f129a837ddc50e56d104774851",
+    "mtime": 1788549892.9975176,
+    "seen": 1788566469.1696537,
+    "ast_hash": "60c7f9c832656eadcc3692dfb86dcc26",
     "semantic_hash": ""
   },
   "tests/machine/models/test_macro.py": {
@@ -7524,9 +6222,9 @@
     "semantic_hash": ""
   },
   "tests/machine/models/test_profile_driver_assignment.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114408,
-    "ast_hash": "770b3e2262f8fe0a76dd7cc3c36237b7",
+    "mtime": 1788549892.9975176,
+    "seen": 1788566469.1696553,
+    "ast_hash": "770ab49ae2b6a064fdc1f160f4220c00",
     "semantic_hash": ""
   },
   "tests/machine/models/test_rotary_module.py": {
@@ -7578,9 +6276,9 @@
     "semantic_hash": ""
   },
   "tests/machine/test_assembly.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114478,
-    "ast_hash": "a1293534c034825778fdbba677d9f5b5",
+    "mtime": 1788552064.0799048,
+    "seen": 1788566469.1696627,
+    "ast_hash": "b9ab1ef2a1ecd8aa9946d819750dfc7d",
     "semantic_hash": ""
   },
   "tests/machine/test_job_monitor.py": {
@@ -7590,9 +6288,9 @@
     "semantic_hash": ""
   },
   "tests/machine/test_kinematic_mapping.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.9114492,
-    "ast_hash": "029d96d8cb8b57ab0eded13cf3163c36",
+    "mtime": 1788552638.6193736,
+    "seen": 1788566469.1696641,
+    "ast_hash": "938c899cdcee0c476a09d093899082a5",
     "semantic_hash": ""
   },
   "tests/machine/test_kinematic_math.py": {
@@ -7607,12 +6305,6 @@
     "ast_hash": "0175f40c715ac224623cbe84b979e71a",
     "semantic_hash": ""
   },
-  "tests/machine/transport/test_grbl_serial_transport_stress.py": {
-    "mtime": 1786648506.3033662,
-    "seen": 1788205080.911451,
-    "ast_hash": "4d94b7724868e7e1f98b7e230c369d20",
-    "semantic_hash": ""
-  },
   "tests/machine/transport/test_serial_server_transport.py": {
     "mtime": 1786648506.3033662,
     "seen": 1788205080.911452,
@@ -7623,12 +6315,6 @@
     "mtime": 1786648506.3163362,
     "seen": 1788205080.911453,
     "ast_hash": "9f5462b4b88e866d30602fe29f6f6c8e",
-    "semantic_hash": ""
-  },
-  "tests/machine/transport/test_telnet_transport.py": {
-    "mtime": 1786648506.3163362,
-    "seen": 1788205080.911454,
-    "ast_hash": "9f35647cd2a41f3bac5e9f0504c0750a",
     "semantic_hash": ""
   },
   "tests/machine/transport/test_udp_server_transport.py": {
@@ -7859,48 +6545,6 @@
     "ast_hash": "d2f43797a84be45bddf85060001fc11d",
     "semantic_hash": ""
   },
-  "tests/simulator/compile_scene_helper.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114823,
-    "ast_hash": "50ed1f019d6ba650fddee72e2e6f9461",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_compiled_scene.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114828,
-    "ast_hash": "929793fc26e07283955da0c6053e9718",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_machine_state.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114838,
-    "ast_hash": "9ef957d7673ff2ec325d3d4f699e8603",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_op_player.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114845,
-    "ast_hash": "3345c391298b3778c86c501b069d0236",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_render_config.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114852,
-    "ast_hash": "e7f5da055a52596f9b2410db376bdae5",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_scene_compiler.py": {
-    "mtime": 1786648506.3435354,
-    "seen": 1788205080.9114861,
-    "ast_hash": "18bfa4a6f0bda0db124619523f6bce46",
-    "semantic_hash": ""
-  },
-  "tests/simulator/test_scene_compiler_runner.py": {
-    "mtime": 1786648506.3464904,
-    "seen": 1788205080.9114866,
-    "ast_hash": "c8ac179c531711cf7f93a20295cc5891",
-    "semantic_hash": ""
-  },
   "tests/tasker/test_context.py": {
     "mtime": 1786648506.3464904,
     "seen": 1788205080.911488,
@@ -7929,18 +6573,6 @@
     "mtime": 1786648506.3464904,
     "seen": 1788205080.911491,
     "ast_hash": "0621877ff4eb061499f99bf63e2b01b9",
-    "semantic_hash": ""
-  },
-  "tests/test_updater.py": {
-    "mtime": 1786648506.3498204,
-    "seen": 1788205080.9114916,
-    "ast_hash": "a01f8975012b62ca2d3734d3666855ce",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/addon_manager/test_experimental_dialog.py": {
-    "mtime": 1786648506.3498204,
-    "seen": 1788205080.911492,
-    "ast_hash": "3f744f987213a4f5b2768ad36ea68377",
     "semantic_hash": ""
   },
   "tests/ui_gtk/canvas2d/test_laser_dot_position.py": {
@@ -8105,12 +6737,6 @@
     "ast_hash": "fd14c29482f8242520143e1a8a79fdcb",
     "semantic_hash": ""
   },
-  "tests/ui_gtk/machine/test_unified_wizard.py": {
-    "mtime": 1786648506.3636858,
-    "seen": 1788205080.9115136,
-    "ast_hash": "88a7c821be1ce92bb7605d7952e78fb5",
-    "semantic_hash": ""
-  },
   "tests/ui_gtk/shared/test_color_lut_provider.py": {
     "mtime": 1786648506.3636858,
     "seen": 1788205080.9115143,
@@ -8129,138 +6755,6 @@
     "ast_hash": "8874ff35bc54ed71c3a6b230b45d23ad",
     "semantic_hash": ""
   },
-  "tests/ui_gtk/sim3d/renderer/test_axis_renderer_3d.py": {
-    "mtime": 1786648506.366786,
-    "seen": 1788205080.9115167,
-    "ast_hash": "644ed23d2236d4f30adc2c99efeca194",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_cylinder_renderer_update_from_state.py": {
-    "mtime": 1786648506.366786,
-    "seen": 1788205080.9115174,
-    "ast_hash": "80d25b0c4bb55b363a1dbb47d2b8d58b",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_model_renderer.py": {
-    "mtime": 1786648506.366786,
-    "seen": 1788205080.9115179,
-    "ast_hash": "afd9a93df83a25dfc39736eb489b64d4",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_ops_renderer.py": {
-    "mtime": 1786648506.366786,
-    "seen": 1788205080.9115188,
-    "ast_hash": "e861b57e1c9dd34c9974a646901870ba",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_ops_renderer_update_from_vertex_layer.py": {
-    "mtime": 1786648506.3687942,
-    "seen": 1788205080.9115195,
-    "ast_hash": "9c3f3f3347e99cb62949bc76abb5e87a",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_ring_buffer_renderer.py": {
-    "mtime": 1786648506.3687942,
-    "seen": 1788205080.9115205,
-    "ast_hash": "ebbac901c3599562a3f6a1e0e8d3dac0",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_scene_renderer_init.py": {
-    "mtime": 1786648506.3687942,
-    "seen": 1788205080.9115212,
-    "ast_hash": "62233ecf324b247f3caf1a1b3a78eba4",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_text_renderer.py": {
-    "mtime": 1786648506.3687942,
-    "seen": 1788205080.9115222,
-    "ast_hash": "2798dc56a26a40a98c5e4c0e615e474b",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_texture_renderer.py": {
-    "mtime": 1786648506.3707998,
-    "seen": 1788205080.9115229,
-    "ast_hash": "225089dee845f374a3b7b63acee725f3",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_texture_renderer_update_from_artifact.py": {
-    "mtime": 1786648506.3707998,
-    "seen": 1788205080.9115236,
-    "ast_hash": "84646a5b143f4960769ecfe84502e86a",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/renderer/test_zone_renderer.py": {
-    "mtime": 1786648506.3707998,
-    "seen": 1788205080.9115243,
-    "ast_hash": "6f08666f092063c769cd2c298bba3ca5",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_camera_controller.py": {
-    "mtime": 1786648506.3707998,
-    "seen": 1788205080.9115524,
-    "ast_hash": "d7182906e9db12e14c71b307af804f38",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_canvas3d_wcs_origin.py": {
-    "mtime": 1786648506.3707998,
-    "seen": 1788205080.9115534,
-    "ast_hash": "7b1a23d65c9ad2e0df21d10d0f9f2388",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_chunked_upload.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.911554,
-    "ast_hash": "28712b02f34e553b3f4ff467f61cb06b",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_doc_signals.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115548,
-    "ast_hash": "ba1ea68e30a2fe1f2375de13a91a3412",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_gl_state.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115555,
-    "ast_hash": "c32c19a38d2bc24e6b10b93b93be900b",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_matrix_convention.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115567,
-    "ast_hash": "691436cccf08c424b62de812f7b57d83",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_playback_overlay.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115574,
-    "ast_hash": "be9c7b787ec1957361cd818b44f646f6",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_render_context_update.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115584,
-    "ast_hash": "a4eb8daada8fda65c3b4a7ab1bb470f0",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_scene_presenter.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115593,
-    "ast_hash": "9bcfa6880025e6eba08c68d2d28f959d",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_theme_resolver.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115603,
-    "ast_hash": "d338da8f888035c4420eb03147aeb320",
-    "semantic_hash": ""
-  },
-  "tests/ui_gtk/sim3d/test_viewport_config.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115608,
-    "ast_hash": "c41ae2a6ad65befea0bb50ca018de1d6",
-    "semantic_hash": ""
-  },
   "tests/ui_gtk/test_array_dialog.py": {
     "mtime": 1786648506.3728077,
     "seen": 1788205080.9115615,
@@ -8268,15 +6762,15 @@
     "semantic_hash": ""
   },
   "tests/ui_gtk/test_mainwindow.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.911562,
-    "ast_hash": "8970192e6bebfd6ba66881950b8d30b4",
+    "mtime": 1788552012.7226744,
+    "seen": 1788566469.1697402,
+    "ast_hash": "39796b1f230991da6b4c0e4f613e59cc",
     "semantic_hash": ""
   },
   "tests/ui_gtk/test_project_import.py": {
-    "mtime": 1786648506.3728077,
-    "seen": 1788205080.9115624,
-    "ast_hash": "9efc651fb959a8b9dd61de71f721bef0",
+    "mtime": 1788552016.4138546,
+    "seen": 1788566469.1697428,
+    "ast_hash": "9ea6acaf2886cf1728d943df20b26477",
     "semantic_hash": ""
   },
   "tests/ui_gtk/varset/test_combo_adapter.py": {
@@ -8676,63 +7170,63 @@
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
-    "mtime": 1787941253.4634473,
-    "seen": 1788205080.9116135,
-    "ast_hash": "c232166e6492ba1ed955030b16979b05",
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.169826,
+    "ast_hash": "5fa2071f6392840b826f765cd2f1b9f7",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/SKILL.md": {
-    "mtime": 1787941253.4514093,
-    "seen": 1788205080.9116144,
-    "ast_hash": "2e223eed9c5bb9ec3999615806cf0681",
+    "mtime": 1788549893.0838988,
+    "seen": 1788566469.1698267,
+    "ast_hash": "9d4646e0e2a9b27a47b1d8be44bd0ca3",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/add-watch.md": {
-    "mtime": 1787941204.004448,
-    "seen": 1788205080.911615,
-    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "mtime": 1788549893.0838988,
+    "seen": 1788566469.1698277,
+    "ast_hash": "58c888b5ec0689a886543dd765c1acc9",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/exports.md": {
-    "mtime": 1787941204.0066006,
-    "seen": 1788205080.9116158,
-    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698284,
+    "ast_hash": "ecc0c36852fee4ba6280cdf2b9149039",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/extraction-spec.md": {
-    "mtime": 1787941204.0087085,
-    "seen": 1788205080.9116166,
-    "ast_hash": "42fef56a01698118f7fd722acdadea34",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698291,
+    "ast_hash": "024c6f2a3c146b03c72cc871dc56ed3c",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/github-and-merge.md": {
-    "mtime": 1787941204.0102189,
-    "seen": 1788205080.911617,
-    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698296,
+    "ast_hash": "aa0e7ef186392cad062e60483ca7dbbf",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/hooks.md": {
-    "mtime": 1787941204.0114965,
-    "seen": 1788205080.9116178,
-    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698303,
+    "ast_hash": "0045c2f12c69bff3a641a8908a1ac057",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/query.md": {
-    "mtime": 1787941204.0125785,
-    "seen": 1788205080.9116182,
-    "ast_hash": "3c46f8ad006874260614ed8657d02307",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698313,
+    "ast_hash": "852ef14334d60a75ae666ea103d4c4f0",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/transcribe.md": {
-    "mtime": 1787941204.013173,
-    "seen": 1788205080.9116192,
-    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "mtime": 1788549893.086666,
+    "seen": 1788566469.1698318,
+    "ast_hash": "5c6a9af05d12b5797b2fa8b9493dcc37",
     "semantic_hash": ""
   },
   ".claude/skills/graphify/references/update.md": {
-    "mtime": 1787941204.013173,
-    "seen": 1788205080.9116197,
-    "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "mtime": 1788549893.0894542,
+    "seen": 1788566469.1698325,
+    "ast_hash": "07bf4293ea21b4e00a9655dd4e7f0af5",
     "semantic_hash": ""
   },
   ".github/ISSUE_TEMPLATE/bug_report.md": {
@@ -8754,15 +7248,15 @@
     "semantic_hash": ""
   },
   ".github/workflows/build-exe.yml": {
-    "mtime": 1786648505.334452,
-    "seen": 1788205080.9116228,
-    "ast_hash": "836964542e6978f7fe08bdda4d98e4b4",
+    "mtime": 1788559461.9279199,
+    "seen": 1788566469.1698356,
+    "ast_hash": "52d8696e96764dec03e1a5ba7708bf3a",
     "semantic_hash": ""
   },
   ".github/workflows/build-macos-universal.yml": {
-    "mtime": 1786648505.334452,
-    "seen": 1788205080.9116235,
-    "ast_hash": "f84d6a4090a4eb2fb62b2bb428573d60",
+    "mtime": 1788559492.8843064,
+    "seen": 1788566469.1698363,
+    "ast_hash": "4a6e668dc96bd502e84116323639f907",
     "semantic_hash": ""
   },
   ".github/workflows/download-stats.yml": {
@@ -8850,15 +7344,15 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786648505.3387887,
-    "seen": 1788205080.9116347,
-    "ast_hash": "16dd685e1959b0b000282369b4684da8",
+    "mtime": 1788558912.7972407,
+    "seen": 1788566469.1698487,
+    "ast_hash": "f74fa869efb0a61561d4611fff783b5e",
     "semantic_hash": ""
   },
   "RELEASE_MANIFEST.md": {
-    "mtime": 1786648505.3387887,
-    "seen": 1788205080.9116356,
-    "ast_hash": "aef7b89ad5d3bf9f3d1ace9101b8653a",
+    "mtime": 1788559531.8066597,
+    "seen": 1788566469.1698496,
+    "ast_hash": "3058249667695539c2f3ceccb59a13d3",
     "semantic_hash": ""
   },
   "debian/requirements-bundle.txt": {
@@ -8871,18 +7365,6 @@
     "mtime": 1787943269.5405297,
     "seen": 1788205080.911637,
     "ast_hash": "5d6db3a3506da22c2f1e1ad5dd1340d5",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-ai-workpiece/rayforge-addon.yaml": {
-    "mtime": 1786648505.3756506,
-    "seen": 1788205080.9116375,
-    "ast_hash": "ee90d8fc1c4666f0aa3b84f0f6749c2f",
-    "semantic_hash": ""
-  },
-  "rayforge/builtin_addons/rayforge-addon-cnc/rayforge-addon.yaml": {
-    "mtime": 1786648505.3864617,
-    "seen": 1788205080.9116383,
-    "ast_hash": "16c38f8b2d1be1bda82dea54e8e7a333",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-laser/rayforge-addon.yaml": {
@@ -9323,184 +7805,10 @@
     "ast_hash": "eee36d8439bf1feddf11252bd6b4330c",
     "semantic_hash": ""
   },
-  "rayforge/builtin_addons/rayforge-addon-tools/rayforge-addon.yaml": {
-    "mtime": 1786648505.6229272,
-    "seen": 1788205080.9117017,
-    "ast_hash": "3b28a9e0d5f4da096975197fafe7a2d5",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/acmer-p3/device.yaml": {
-    "mtime": 1786648505.7933,
-    "seen": 1788205080.9117029,
-    "ast_hash": "5cf6987226327f7596c11850b76e717d",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/acmer-p3/dialect.yaml": {
-    "mtime": 1786648505.7933,
-    "seen": 1788205080.9117038,
-    "ast_hash": "4020315cbdb9ca8f61283ee4eb524790",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/acmer-s1/device.yaml": {
-    "mtime": 1786648505.7933,
-    "seen": 1788205080.9117045,
-    "ast_hash": "d74467dacad9b8790a519b7c868a19da",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/acmer-s1/dialect.yaml": {
-    "mtime": 1786648505.796584,
-    "seen": 1788205080.9117053,
-    "ast_hash": "4020315cbdb9ca8f61283ee4eb524790",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/atomstack-a70/device.yaml": {
-    "mtime": 1786648505.7970905,
-    "seen": 1788205080.9117062,
-    "ast_hash": "537d2083e2fa3c50594d4aba8664a866",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/atomstack-a70/dialect.yaml": {
-    "mtime": 1786648505.7970905,
-    "seen": 1788205080.911707,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/atomstack-x40-pro/device.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.9117076,
-    "ast_hash": "37ef879746a5684ee1b3b19229680451",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/atomstack-x40-pro/dialect.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.9117084,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/carvera-air/device.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.911709,
-    "ast_hash": "07e132c167616eb4d00ff72760ab79f2",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/carvera-air/dialect.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.9117098,
-    "ast_hash": "da8073e359a762615e0b930efd75303b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/carvera/device.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.9117105,
-    "ast_hash": "49138a2df106cf70d8eaa8fbabdb6728",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/carvera/dialect.yaml": {
-    "mtime": 1786648505.7980032,
-    "seen": 1788205080.9117112,
-    "ast_hash": "da8073e359a762615e0b930efd75303b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-10w/device.yaml": {
-    "mtime": 1786648505.8012292,
-    "seen": 1788205080.911712,
-    "ast_hash": "0886cfddad6f97228d24a65759c30ba4",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-10w/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.911713,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-2-pro/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117134,
-    "ast_hash": "0e32a17bb67a3413366926ccb56d5fc4",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-2-pro/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.911714,
-    "ast_hash": "17a0c57aff082f4591b061eb2ca17e72",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-a1/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117148,
-    "ast_hash": "ff14ecd07370d1c491b528bb9b6f9185",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/creality-falcon-a1/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117153,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/elidor-z6/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117157,
-    "ast_hash": "50b5a61704d02d034066dc8fd0d1aea6",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/elidor-z6/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117167,
-    "ast_hash": "4020315cbdb9ca8f61283ee4eb524790",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/grbl-mks-dlc32/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117174,
-    "ast_hash": "6eeedf221a3ec845353d8e184f50b22d",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/grbl-mks-dlc32/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117184,
-    "ast_hash": "acf8431ed8ace3ec6436a5e23c079e90",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/longer-ray5/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117193,
-    "ast_hash": "8324935332567704be27616677596424",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/longer-ray5/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117203,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
   "rayforge/resources/devices/monport-60w-co2/device.yaml": {
     "mtime": 1786648505.8020194,
     "seen": 1788205080.911721,
     "ast_hash": "52b6869f035c982fb68952d61163fc58",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/neje-master-3-max/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117217,
-    "ast_hash": "f2978d712cac0f3566326434bae74a02",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/neje-master-3-max/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117224,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/omtech-k40plus/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.911723,
-    "ast_hash": "c9af5629a7f384056e076b1b6f746d44",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/omtech-k40plus/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117239,
-    "ast_hash": "4f3d836be39a2a3fd7ec0926769718c7",
     "semantic_hash": ""
   },
   "rayforge/resources/devices/omtech-polar/device.yaml": {
@@ -9509,142 +7817,10 @@
     "ast_hash": "97d557c09f7a39b99de48438995a30f9",
     "semantic_hash": ""
   },
-  "rayforge/resources/devices/ortur-laser-master-3/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117255,
-    "ast_hash": "1a0ced0db70d84c35950b16e50ad045a",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/ortur-laser-master-3/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117262,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/ortur-laser-master-4/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117272,
-    "ast_hash": "3c7c5774ed21d1a53e70b998a3a2cce1",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/ortur-laser-master-4/dialect.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.911728,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-c1/device.yaml": {
-    "mtime": 1786648505.8020194,
-    "seen": 1788205080.9117284,
-    "ast_hash": "4332f5ef1f4f6c1eb616f440e54d9bd2",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-c1/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117293,
-    "ast_hash": "4020315cbdb9ca8f61283ee4eb524790",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-icube-ultra/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117303,
-    "ast_hash": "effb2fd07cc3da892ab93a6de6f30346",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-icube-ultra/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.911731,
-    "ast_hash": "3258234a407b7e8c994b83c1ec93b98d",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-icube/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.911732,
-    "ast_hash": "350ab20b152dc80100ec5643c0a5306a",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-icube/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117327,
-    "ast_hash": "3258234a407b7e8c994b83c1ec93b98d",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s30-pro-max/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117334,
-    "ast_hash": "58e4e929dbfee62eedef7a5e9ff4ac83",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s30-pro-max/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.911734,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s30/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.911735,
-    "ast_hash": "0b0477910c3bfa62e7f3e88110638871",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s30/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117358,
-    "ast_hash": "3258234a407b7e8c994b83c1ec93b98d",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s40-max/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117365,
-    "ast_hash": "10c5ce329c948528dae6cf7163d63022",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s40-max/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117374,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s70-max/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117382,
-    "ast_hash": "fa4c0b84a4b69d61e14d4ff4745bac56",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/sculpfun-s70-max/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117386,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
   "rayforge/resources/devices/thunder-laser-nova35/device.yaml": {
     "mtime": 1786648505.812706,
     "seen": 1788205080.9117393,
     "ast_hash": "5ca52e46d03b2677f63501202b0413f7",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/twotrees-tts55/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117398,
-    "ast_hash": "e953038a257c09e1abc26a591d29fd56",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/twotrees-tts55/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117408,
-    "ast_hash": "92f9d8988a711f31fee32763d3eee52b",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/xtool-d1-pro/device.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.9117415,
-    "ast_hash": "1b9d29982a297286d0f767183b57d222",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/devices/xtool-d1-pro/dialect.yaml": {
-    "mtime": 1786648505.812706,
-    "seen": 1788205080.911742,
-    "ast_hash": "265895642330273e707aae8f688ac14b",
     "semantic_hash": ""
   },
   "rayforge/shared/README.md": {
@@ -9654,15 +7830,15 @@
     "semantic_hash": ""
   },
   "requirements.txt": {
-    "mtime": 1786648506.1451101,
-    "seen": 1788205080.911744,
-    "ast_hash": "76fd3fc8fe838351d7dc298634047873",
+    "mtime": 1788549892.992945,
+    "seen": 1788566469.169921,
+    "ast_hash": "5e52ef42481568018cd00e5b58433644",
     "semantic_hash": ""
   },
   "snap/snapcraft.yaml": {
-    "mtime": 1786648506.1831398,
-    "seen": 1788205080.9117448,
-    "ast_hash": "f7fa105c1d61cb297ffcabda6e2e42fc",
+    "mtime": 1788558888.6046345,
+    "seen": 1788566469.1699216,
+    "ast_hash": "37f532985030536158fd250b49c479d5",
     "semantic_hash": ""
   },
   "tests/config/ai.yaml": {
@@ -14009,12 +12185,6 @@
     "ast_hash": "f7b54bc37008bab699aefdc4ef6af352",
     "semantic_hash": ""
   },
-  "rayforge/resources/icons/org.rayforge.rayforge.svg": {
-    "mtime": 1786648505.885232,
-    "seen": 1788205080.912365,
-    "ast_hash": "7a7edb22bd1cba62e6167365995e52b3",
-    "semantic_hash": ""
-  },
   "rayforge/resources/icons/palette-symbolic.svg": {
     "mtime": 1786648505.885232,
     "seen": 1788205080.9123662,
@@ -14097,12 +12267,6 @@
     "mtime": 1786648505.892849,
     "seen": 1788205080.912376,
     "ast_hash": "54bdbce4470c82339e8b01f5d9bf3985",
-    "semantic_hash": ""
-  },
-  "rayforge/resources/icons/rayforge.icon/Assets/icon.png": {
-    "mtime": 1786648505.892849,
-    "seen": 1788205080.9123769,
-    "ast_hash": "e8081a3e2e62491f5c52a3b8460c5cad",
     "semantic_hash": ""
   },
   "rayforge/resources/icons/recipe-symbolic.svg": {
@@ -15336,9 +13500,9 @@
     "semantic_hash": ""
   },
   "scripts/screenshot/ui_audit.py": {
-    "mtime": 1788464640.182028,
-    "seen": 1788527522.019516,
-    "ast_hash": "8e72cd6dd0038acb3671ab1ab354279c",
+    "mtime": 1788554198.804907,
+    "seen": 1788566469.1695008,
+    "ast_hash": "c90f2d78f88c4a107b41a02739e23fd9",
     "semantic_hash": ""
   },
   "scripts/screenshot/ui_min_width.py": {
@@ -16893,6 +15057,498 @@
     "mtime": 1788462149.4154801,
     "seen": 1788527522.0209281,
     "ast_hash": "b60eaca65411df070e28852be7ee927d",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/__init__.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1687648,
+    "ast_hash": "d6acae7e188357d1bc1258ce02a29811",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/__main__.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1687694,
+    "ast_hash": "5bd0e02db4907bf4e435e5d770256fef",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/benchmark.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.168771,
+    "ast_hash": "98430522d4bc3cbf02ee535074d7a439",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/cli.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.168772,
+    "ast_hash": "9ed03f4b75aae3f25ea0d9c15dbf6894",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/compress.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1687734,
+    "ast_hash": "4a0775ddcd4d3ed09b33db407b75d595",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/detect.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1687744,
+    "ast_hash": "b7a6f632da399c89e50892c29b4b13ba",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/scripts/validate.py": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1687758,
+    "ast_hash": "2ed6476e2ad23f1d373e837db852541e",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-explore/package.json": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1687768,
+    "ast_hash": "226d2586b554cc932a84dfdbb902fd15",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-explore/tests/skill-file.test.mjs": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1687782,
+    "ast_hash": "f86716faaea961c417b486877b7bc14b",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/package.json": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1687794,
+    "ast_hash": "8e9486fb9b24c16c7fbcb4d90ea56910",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/tests/index.js": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.16878,
+    "ast_hash": "7866c68f2f5987e1e84cf74994151939",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/tests/skill-file.test.mjs": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1687808,
+    "ast_hash": "8c14b721b77429f8f70b9d75383e6711",
+    "semantic_hash": ""
+  },
+  "rayforge/machine/machine_state.py": {
+    "mtime": 1788552028.5436032,
+    "seen": 1788566469.1691976,
+    "ast_hash": "91235869cec000e9d81dc589e5f9fe49",
+    "semantic_hash": ""
+  },
+  "rayforge/machine/models/default_profile.py": {
+    "mtime": 1788556738.3363812,
+    "seen": 1788566469.1692033,
+    "ast_hash": "9cb6dd12169124173f0eebb1209ec057",
+    "semantic_hash": ""
+  },
+  "rayforge/resources/icons/swiftcut.icon/icon.json": {
+    "mtime": 1786648505.892849,
+    "seen": 1788566469.1692543,
+    "ast_hash": "385dddb501df944fcdd587b49ce75687",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/canvas/camera.py": {
+    "mtime": 1788565425.7959821,
+    "seen": 1788566469.1693063,
+    "ast_hash": "3d158c385d831d0718de18c794274613",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/canvas/camera_animator.py": {
+    "mtime": 1788564229.569825,
+    "seen": 1788566469.1693075,
+    "ast_hash": "983551b081e6a8bf04606b14980a26a9",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/__init__.py": {
+    "mtime": 1788551902.06337,
+    "seen": 1788566469.1694098,
+    "ast_hash": "704cc59279ef1f5428874e585c361783",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/camera.py": {
+    "mtime": 1788551907.9142282,
+    "seen": 1788566469.1694107,
+    "ast_hash": "ba237d4b3f1087514f6b6600c2931687",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/gl_state.py": {
+    "mtime": 1788551918.5116985,
+    "seen": 1788566469.169412,
+    "ast_hash": "bff82eb240dbbfab543d06bb5504aef7",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/mesh_loader.py": {
+    "mtime": 1788551953.938093,
+    "seen": 1788566469.1694126,
+    "ast_hash": "9635b3b246422060d8944751bc0d4f23",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/renderer_base.py": {
+    "mtime": 1788551941.7164564,
+    "seen": 1788566469.169413,
+    "ast_hash": "9e8051c0d68399305baa6f46b8b91067",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/shader/__init__.py": {
+    "mtime": 1788551913.4021897,
+    "seen": 1788566469.1694138,
+    "ast_hash": "123ac5b7b562edf2d6d911f6964a1918",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/shader/base.py": {
+    "mtime": 1788551907.9343011,
+    "seen": 1788566469.1694148,
+    "ast_hash": "8fc569670dd787de598e5f90e6a7926d",
+    "semantic_hash": ""
+  },
+  "rayforge/ui_gtk/shared/model_preview/shader/simple_shader.py": {
+    "mtime": 1788551907.9507935,
+    "seen": 1788566469.1694155,
+    "ast_hash": "840045bf0759ea5d066758cb3e31480d",
+    "semantic_hash": ""
+  },
+  "skills-lock.json": {
+    "mtime": 1788549893.0909758,
+    "seen": 1788566469.1695192,
+    "ast_hash": "daeb6261083583a2b0169d1bc4ae3f36",
+    "semantic_hash": ""
+  },
+  "tests/machine/models/test_default_profile.py": {
+    "mtime": 1788556738.3363812,
+    "seen": 1788566469.1696448,
+    "ast_hash": "8a079add08f65a378ddfeda490cfb063",
+    "semantic_hash": ""
+  },
+  "tests/machine/test_machine_state.py": {
+    "mtime": 1788552078.4892774,
+    "seen": 1788566469.1696663,
+    "ast_hash": "a52451b9662a66863e4c7467a4ed2219",
+    "semantic_hash": ""
+  },
+  "tests/test_config.py": {
+    "mtime": 1788559358.7568665,
+    "seen": 1788566469.1697023,
+    "ast_hash": "9d8754aaa4cce963f8f5ad4c4ee866bd",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/conftest.py": {
+    "mtime": 1788564229.5242758,
+    "seen": 1788566469.169707,
+    "ast_hash": "d5d4d132b0508616ed68f257905c1e47",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_camera.py": {
+    "mtime": 1788565633.453462,
+    "seen": 1788566469.1697075,
+    "ast_hash": "3bd9db1f2b05c01ceb824a68cca93bcd",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_camera_animator.py": {
+    "mtime": 1788564229.569825,
+    "seen": 1788566469.1697083,
+    "ast_hash": "721e7189fe6d0a544e58d5d59239df0e",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_canvas_snap_and_handles.py": {
+    "mtime": 1788561131.1635723,
+    "seen": 1788566469.16971,
+    "ast_hash": "e5145c9538c228d6ba3be147c09f1412",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_worldsurface_gesture_leaks.py": {
+    "mtime": 1788564229.569825,
+    "seen": 1788566469.1697114,
+    "ast_hash": "1fde5356bf66c747a5f301855ce50fff",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_worldsurface_navigation.py": {
+    "mtime": 1788565616.6588469,
+    "seen": 1788566469.1697123,
+    "ast_hash": "1bec3f60447c7ab97fdd8049dafcdd14",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_worldsurface_pan_clamp.py": {
+    "mtime": 1788565658.0643249,
+    "seen": 1788566469.1697135,
+    "ast_hash": "0d043cb9738e958db4ebe249e6b07b12",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/canvas/test_worldsurface_pan_zoom.py": {
+    "mtime": 1788565600.6745386,
+    "seen": 1788566469.169714,
+    "ast_hash": "e6c9d6bdd1d8673a65a47b6a5da1ff31",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/shared/model_preview/test_gl_state.py": {
+    "mtime": 1788552128.9496071,
+    "seen": 1788566469.1697328,
+    "ast_hash": "5738fe5a89dac234d6498afdc9ccd213",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/shared/model_preview/test_mesh_loader.py": {
+    "mtime": 1788552140.4790998,
+    "seen": 1788566469.169734,
+    "ast_hash": "da1c83f3a215df207f7eaa0df13dd6c2",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/test_about_dialog.py": {
+    "mtime": 1788559366.567013,
+    "seen": 1788566469.1697378,
+    "ast_hash": "cda93f9f5766dd0ca275d6a8f47b148e",
+    "semantic_hash": ""
+  },
+  "tests/ui_gtk/test_no_rayforge_branding.py": {
+    "mtime": 1788559344.4497397,
+    "seen": 1788566469.1697419,
+    "ast_hash": "14e155120b9c75908587c464929765a0",
+    "semantic_hash": ""
+  },
+  ".agents/skills/cavecrew/README.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1697996,
+    "ast_hash": "bcc28e621cb99c0bf2c67942e1603cb6",
+    "semantic_hash": ""
+  },
+  ".agents/skills/cavecrew/SKILL.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1698003,
+    "ast_hash": "b597f6330037c519f1a316529823ce15",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-commit/README.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1698012,
+    "ast_hash": "2fe1d98cadbd2709a34ee3c77795a143",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-commit/SKILL.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1698017,
+    "ast_hash": "904376484e740ded495bd7e225548431",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/README.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1698024,
+    "ast_hash": "6cc4518fbaa75e8189b91655567b1165",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/SECURITY.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.1698034,
+    "ast_hash": "589743048edf17a6916588e639c9adff",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-compress/SKILL.md": {
+    "mtime": 1788549893.050349,
+    "seen": 1788566469.169804,
+    "ast_hash": "cd983f70406722db4af467ce06d8a471",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-discover/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698046,
+    "ast_hash": "14733ab85315e89b6f26d98f88d05be3",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-evidence-review/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698053,
+    "ast_hash": "63a0af2a68fc6bc376a25ae9776d8dd5",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-explore/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169806,
+    "ast_hash": "6c9692a8ef40de3434542d8d5960fdb0",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-help/README.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698065,
+    "ast_hash": "f49266e99b58d33c1d40b7bf0a644ec3",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-help/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698077,
+    "ast_hash": "ccd7795ee7e3395e8d6dc597d8b80a5f",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/CLAUDE.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698086,
+    "ast_hash": "c8bb2afdac209e04afe8355b1111d050",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/README.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698093,
+    "ast_hash": "4d3505b5b7677cad653f2fdbf28afb37",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-learn/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698103,
+    "ast_hash": "aba80f1d57bec89d7d9521cef7b1d9a1",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-manage/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698112,
+    "ast_hash": "6c965de8034158e43d1ca93a05a00595",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-optimize/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169812,
+    "ast_hash": "132f89b8e5dc7f1d23623a22b6850ecd",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-review/README.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698127,
+    "ast_hash": "9777a26704850f1e091ab072f02fa10f",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-review/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698132,
+    "ast_hash": "aa95cbc6cb6b31347f9237e714f5f6ae",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-setup/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169814,
+    "ast_hash": "25212859408404ab7bafdb2f8c7b64dd",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-stats/README.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698146,
+    "ast_hash": "a376abf3011cc28d9639db89c9b31909",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman-stats/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698158,
+    "ast_hash": "a473b7b647327b19d5319bd899f18680",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman/README.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698163,
+    "ast_hash": "0bc62afc353fc8bd9880b162614da262",
+    "semantic_hash": ""
+  },
+  ".agents/skills/caveman/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169817,
+    "ast_hash": "b4f2aad74ebf75b3bdea1bcf90eaf68b",
+    "semantic_hash": ""
+  },
+  ".agents/skills/investigate-first/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169818,
+    "ast_hash": "0af8831817ef473c9010157c631651b8",
+    "semantic_hash": ""
+  },
+  ".agents/skills/investigate-first/agents/openai.yaml": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698186,
+    "ast_hash": "209c38a40ea03a84e225039dbfe827e4",
+    "semantic_hash": ""
+  },
+  ".agents/skills/lean-build/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.169819,
+    "ast_hash": "b76d5e5227372b410b6a573d88b16138",
+    "semantic_hash": ""
+  },
+  ".agents/skills/lean-build/agents/openai.yaml": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698198,
+    "ast_hash": "0ad44e4029b25938ec1bfeb222a3ec41",
+    "semantic_hash": ""
+  },
+  ".agents/skills/migration/SKILL.md": {
+    "mtime": 1788549893.0622258,
+    "seen": 1788566469.1698208,
+    "ast_hash": "2174815cbaad0bbaeeda007d0fe34ce0",
+    "semantic_hash": ""
+  },
+  ".agents/skills/migration/agents/openai.yaml": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.1698213,
+    "ast_hash": "0ebe5301a9f53474a5c4920d64adb0d8",
+    "semantic_hash": ""
+  },
+  ".agents/skills/safe-refactor/SKILL.md": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.169822,
+    "ast_hash": "d8139b566754e0a959a38e0e24ed838d",
+    "semantic_hash": ""
+  },
+  ".agents/skills/safe-refactor/agents/openai.yaml": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.1698225,
+    "ast_hash": "d4f62126fbc9b7c8a1690427a9f29497",
+    "semantic_hash": ""
+  },
+  ".agents/skills/surgical-patch/SKILL.md": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.169823,
+    "ast_hash": "731086cc90409a6ae6d7de56e59a4a57",
+    "semantic_hash": ""
+  },
+  ".agents/skills/surgical-patch/agents/openai.yaml": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.1698236,
+    "ast_hash": "1061e8a85e72e7abffc5a22ec4a950bb",
+    "semantic_hash": ""
+  },
+  ".agents/skills/verify-and-stop/SKILL.md": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.1698246,
+    "ast_hash": "c5344fceaf8b6cb66ca1da8e9c190d3d",
+    "semantic_hash": ""
+  },
+  ".agents/skills/verify-and-stop/agents/openai.yaml": {
+    "mtime": 1788549893.077906,
+    "seen": 1788566469.1698253,
+    "ast_hash": "5ea25823402e46ac00b73544dc0f73cd",
+    "semantic_hash": ""
+  },
+  "docs/graphify-map-2026-09-04.md": {
+    "mtime": 1788529741.8219717,
+    "seen": 1788566469.1698542,
+    "ast_hash": "70fa21e1b074fad87fb14ae9b060be26",
+    "semantic_hash": ""
+  },
+  "docs/profiles/ilab-614.source.yaml": {
+    "mtime": 1788556125.2522619,
+    "seen": 1788566469.169856,
+    "ast_hash": "84d1e3c8b644422a458511b9ac37d086",
+    "semantic_hash": ""
+  },
+  "docs/removal-inventory-2026-09-04.md": {
+    "mtime": 1788544428.6183376,
+    "seen": 1788566469.1698565,
+    "ast_hash": "858e390817c6e2e603d4d141e7175e21",
+    "semantic_hash": ""
+  },
+  "rayforge/resources/icons/org.ilab.SwiftCut.svg": {
+    "mtime": 1786648505.885232,
+    "seen": 1788566469.1708548,
+    "ast_hash": "7a7edb22bd1cba62e6167365995e52b3",
+    "semantic_hash": ""
+  },
+  "rayforge/resources/icons/swiftcut.icon/Assets/icon.png": {
+    "mtime": 1786648505.892849,
+    "seen": 1788566469.17092,
+    "ast_hash": "e8081a3e2e62491f5c52a3b8460c5cad",
     "semantic_hash": ""
   }
 }
