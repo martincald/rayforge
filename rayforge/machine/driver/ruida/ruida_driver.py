@@ -933,9 +933,12 @@ class RuidaDriver(Driver):
         corner of the job the head is standing on, and this is the
         distance from that corner to the one the job starts at.
 
-        Which way is west and north is not decided here.
-        calculate_jog already answers that for the jog panel and for
-        the home park, so the axis mapping keeps its single home.
+        Which way is west and north is not decided here. The jog
+        panel's calculate_jog is the calibrated answer -- it is what
+        the arrow keys move -- so the axis mapping keeps its single
+        home there. It replies in native axes with the panel rotation
+        already applied, so a visual west can land on Y; both
+        components are accumulated.
         """
         # Imported here, not at module scope: machine.py imports this
         # package for get_driver_cls, which is why Machine itself is
@@ -943,11 +946,16 @@ class RuidaDriver(Driver):
         from ...models.machine import JogDirection, StartCorner
 
         corner = self._machine.start_corner
-        dx_mm = dy_mm = 0.0
+        jogs = []
         if corner in (StartCorner.TOP_RIGHT, StartCorner.BOTTOM_RIGHT):
-            dx_mm = self._machine.calculate_jog(JogDirection.WEST, width_mm)
+            jogs.append((JogDirection.WEST, width_mm))
         if corner in (StartCorner.BOTTOM_LEFT, StartCorner.BOTTOM_RIGHT):
-            dy_mm = self._machine.calculate_jog(JogDirection.NORTH, height_mm)
+            jogs.append((JogDirection.NORTH, height_mm))
+        dx_mm = dy_mm = 0.0
+        for direction, distance in jogs:
+            delta = self._machine.panel.calculate_jog(direction, distance)
+            dx_mm += delta.get(Axis.X, 0.0)
+            dy_mm += delta.get(Axis.Y, 0.0)
         return int(dx_mm * 1000), int(dy_mm * 1000)
 
     def _log_start_corner_premove(self, x_um: int, y_um: int) -> None:

@@ -35,14 +35,17 @@ HEAD = (500000, 400000)
 
 # Where the pre-move puts it, per corner. The head has to end up on
 # the corner the job starts at -- its bounding box minimum -- so a
-# head standing on the right edge moves west by the job's width, and
-# one standing on the bottom edge moves north by its height. None
-# means the head is already there and nothing is sent.
+# head standing on the right edge jogs west by the job's width, and
+# one standing on the bottom edge jogs north by its height. Which
+# axis delta a west or a north is, is the jog panel's convention:
+# MachinePanel.calculate_jog is what the arrow keys move, and it is
+# the calibrated one. None means the head is already there and
+# nothing is sent.
 EXPECTED_PREMOVE = {
     StartCorner.TOP_LEFT: None,
-    StartCorner.TOP_RIGHT: (HEAD[0] - WIDTH_UM, HEAD[1]),
+    StartCorner.TOP_RIGHT: (HEAD[0] + WIDTH_UM, HEAD[1]),
     StartCorner.BOTTOM_LEFT: (HEAD[0], HEAD[1] - HEIGHT_UM),
-    StartCorner.BOTTOM_RIGHT: (HEAD[0] - WIDTH_UM, HEAD[1] - HEIGHT_UM),
+    StartCorner.BOTTOM_RIGHT: (HEAD[0] + WIDTH_UM, HEAD[1] - HEIGHT_UM),
 }
 
 
@@ -223,6 +226,34 @@ class TestJobPreMove:
         spy = await _run_job(ruida_driver, _rect_job())
 
         expected = EXPECTED_PREMOVE[corner]
+        assert _moves(spy.commands) == ([] if expected is None else [expected])
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "corner, expected",
+        [
+            (StartCorner.TOP_LEFT, None),
+            (StartCorner.TOP_RIGHT, (HEAD[0] + WIDTH_UM, HEAD[1])),
+            (StartCorner.BOTTOM_LEFT, (HEAD[0], HEAD[1] - HEIGHT_UM)),
+            (
+                StartCorner.BOTTOM_RIGHT,
+                (HEAD[0] + WIDTH_UM, HEAD[1] - HEIGHT_UM),
+            ),
+        ],
+    )
+    async def test_the_corner_jogs_the_way_the_panel_does(
+        self, ruida_driver, machine, corner, expected
+    ):
+        """The arrow keys are the calibrated convention.
+
+        A head on a right corner jogs west, and on this profile the
+        panel's west is +X; north stays -Y. Spelled out in absolute
+        micrometres so the direction cannot quietly flip again.
+        """
+        machine.set_start_corner(corner)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
         assert _moves(spy.commands) == ([] if expected is None else [expected])
 
     @pytest.mark.asyncio
