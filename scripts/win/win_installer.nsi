@@ -118,6 +118,9 @@ Section "MainSection" SEC01
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${EXECUTABLE_NAME}"
   CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\uninstall.exe"
+
+  ; Create Desktop shortcut
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${EXECUTABLE_NAME}"
 SectionEnd
 
 ;--------------------------------
@@ -172,4 +175,5 @@ Section "Uninstall"
   ; Remove shortcuts
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\*.*"
   RMDir /r "$SMPROGRAMS\${PRODUCT_NAME}"
+  Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
 SectionEnd

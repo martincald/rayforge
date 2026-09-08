@@ -26,10 +26,12 @@ echo "${APP_VERSION}" > rayforge/version.txt
 
 
 # ----------------------------------------------------
-# STEP 1: Generate .ico file from PNG
+# STEP 1: Generate .ico file and splash image from PNG
 # ----------------------------------------------------
 echo "Creating application icon..."
 python3 scripts/win/win_create_icon.py
+echo "Creating splash image..."
+python3 scripts/win/win_create_splash.py
 
 # ----------------------------------------------------
 # STEP 2: Configure GTK Theme for the bundle
@@ -57,18 +59,16 @@ fi
 # ----------------------------------------------------
 echo "Building application directory with PyInstaller..."
 
-# Using --noconsole prevents any logs from showing, even
-# if started from an existing console. So we use --hide-console
-# for debuggability instead.
+# --windowed builds against the GUI-subsystem bootloader, for which Windows
+# never allocates a console. --hide-console only *hides* a console that was
+# already allocated, which the user sees as a black flash.
 WIN_MSYS2_PATH=$(cygpath -w "$MSYS2_PATH")
 echo "Using Windows MSYS2 Path for PyInstaller assets: $WIN_MSYS2_PATH"
 
-# PyInstaller 6.22.0 writes "hide_console=''hide-early''" into the
-# generated spec file, which is a syntax error. In that case, fix the
-# offending line and rebuild from the spec file.
-if ! pyinstaller --onedir --hide-console hide-early \
+pyinstaller --noconfirm --onedir --windowed \
+  --splash "swiftcut_splash.png" \
   --log-level INFO \
-  --name "${BUNDLE_NAME}" \
+  --name "SwiftCut" \
   --icon="swiftcut.ico" \
   --add-data "rayforge/version.txt;rayforge" \
   --add-data "rayforge/resources;rayforge/resources" \
@@ -90,13 +90,9 @@ if ! pyinstaller --onedir --hide-console hide-early \
   --hidden-import "rayforge.core.expression.tokenizer" \
   --hidden-import "rayforge.core.expression.validator" \
   --additional-hooks-dir "hooks" \
-  rayforge/app.py; then
-    sed -i "s/hide_console=''hide-early''/hide_console='hide-early'/" \
-        "${BUNDLE_NAME}.spec"
-    pyinstaller --noconfirm "${BUNDLE_NAME}.spec"
-fi
+  rayforge/app.py
 
-echo "✅ PyInstaller build complete: dist/${BUNDLE_NAME}/"
+echo "✅ PyInstaller build complete: dist/SwiftCut/"
 
 # ----------------------------------------------------
 # STEP 5: Build Installer with NSIS
@@ -105,8 +101,8 @@ echo "Building installer with NSIS..."
 
 makensis -V2 \
   -DAPP_VERSION="${CLEAN_VERSION}" \
-  -DAPP_DIR_NAME="${BUNDLE_NAME}" \
-  -DEXECUTABLE_NAME="${BUNDLE_NAME}.exe" \
+  -DAPP_DIR_NAME="SwiftCut" \
+  -DEXECUTABLE_NAME="SwiftCut.exe" \
   -DICON_FILE="swiftcut.ico" \
   scripts/win/win_installer.nsi
 

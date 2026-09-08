@@ -16,6 +16,7 @@ setlocal
 ::   run format     - Formats and auto-fixes code
 ::   run build      - Builds the final .exe
 ::   run app        - Runs the application from source
+::   run app-gui    - Runs the application with no console window
 ::
 :: Prerequisite:
 ::   MSYS2 must be installed at "C:\msys64". If your path is different,
@@ -44,6 +45,7 @@ if /i "%~1"=="lint"    goto :lint
 if /i "%~1"=="format"  goto :format
 if /i "%~1"=="build"   goto :build
 if /i "%~1"=="app"     goto :app
+if /i "%~1"=="app-gui" goto :appgui
 
 echo ERROR: Unknown command "%~1".
 echo.
@@ -96,6 +98,19 @@ shift
 %MSYS2_SHELL% %MSYS2_ARGS% "(source .msys2_env && python -m rayforge.app %APP_ARGS%)%PAUSE_ON_ERROR%"
 goto :eof
 
+:appgui
+:: Launch the GUI with no console window. This deliberately bypasses
+:: msys2_shell.cmd, which is itself a batch file and would keep the app
+:: parented to a console for its whole lifetime. pythonw.exe is the
+:: GUI-subsystem interpreter, so Windows allocates no console for it.
+:: PATH provides the mingw64 DLLs and GI_TYPELIB_PATH the GObject typelibs;
+:: the native interpreter already has its own site-packages on sys.path,
+:: so no PYTHONPATH is needed.
+set "PATH=C:\msys64\mingw64\bin;%PATH%"
+set "GI_TYPELIB_PATH=C:\msys64\mingw64\lib\girepository-1.0"
+start "" "C:\msys64\mingw64\bin\pythonw.exe" -m rayforge.app %APP_ARGS%
+goto :eof
+
 
 :: --------------------------------------------------------------------------
 :: Usage Information
@@ -112,4 +127,5 @@ echo   lint       Run all linters
 echo   format     Format and auto-fix code
 echo   build      Build the Windows executable
 echo   app        Run the application from source
+echo   app-gui    Run the application with no console window
 goto :eof

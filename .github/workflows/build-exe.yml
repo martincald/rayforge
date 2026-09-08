@@ -119,7 +119,7 @@ jobs:
       - name: Compress PyInstaller Bundle
         shell: msys2 {0}
         run: |
-          BUNDLE_DIR="dist/swiftcut-v${{ env.VERSION }}"
+          BUNDLE_DIR="dist/SwiftCut"
           ZIP_FILE="dist/swiftcut-v${{ env.VERSION }}-windows-bundle.zip"
           zip -r9 "${ZIP_FILE}" "${BUNDLE_DIR}"
 
@@ -162,8 +162,8 @@ jobs:
           ls -l
 
           # Define paths based on the extracted directory
-          BUNDLE_DIR="dist/swiftcut-v${{ needs.build.outputs.version }}"
-          EXECUTABLE_NAME="swiftcut-v${{ needs.build.outputs.version }}.exe"
+          BUNDLE_DIR="dist/SwiftCut"
+          EXECUTABLE_NAME="SwiftCut.exe"
 
           echo "Listing files in extracted directory:"
           ls -lR "${BUNDLE_DIR}"
@@ -175,8 +175,8 @@ jobs:
         shell: bash
         run: |
           bash scripts/win/win_run_ui_test.sh \
-            "dist/swiftcut-v${{ needs.build.outputs.version }}" \
-            "swiftcut-v${{ needs.build.outputs.version }}.exe"
+            "dist/SwiftCut" \
+            "SwiftCut.exe"
 
   release:
     name: Create GitHub Release

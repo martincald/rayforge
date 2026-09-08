@@ -205,19 +205,25 @@ def setup_logging(loglevel_str: str):
     # 1. Add the console handler IMMEDIATELY after clearing.
     # This prevents logging calls in helper functions (like _cleanup_old_logs)
     # from implicitly re-triggering basicConfig.
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(log_level)
-    console_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    console_handler.setFormatter(console_formatter)
-    console_handler.addFilter(ConsoleLogFilter())
-    root_logger.addHandler(console_handler)
+    # Only when there is a stream to write to: in a windowed launch (a
+    # PyInstaller console=False bundle, or pythonw.exe started detached)
+    # sys.stdout is None, and StreamHandler(None) falls back to sys.stderr -
+    # also None - producing a handler that silently discards every record.
+    if sys.stdout is not None:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(log_level)
+        console_formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        console_handler.setFormatter(console_formatter)
+        console_handler.addFilter(ConsoleLogFilter())
+        root_logger.addHandler(console_handler)
 
-    # Now it is safe to run functions that might log things.
-    _cleanup_old_logs(LOG_DIR, LOG_FILES_TO_KEEP)
-
-    # 2. Session File Handler (for persistent, detailed logs)
+    # 2. Session File Handler (for persistent, detailed logs).
+    # Added before the cleanup below so the root logger always has at least
+    # one handler: without a console there would be none, and the
+    # module-level logging calls in _cleanup_old_logs would re-trigger
+    # basicConfig, adding a dead StreamHandler back.
     timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     log_file = LOG_DIR / f"session-{timestamp}.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
@@ -229,6 +235,9 @@ def setup_logging(loglevel_str: str):
         )
     )
     root_logger.addHandler(file_handler)
+
+    # Now it is safe to run functions that might log things.
+    _cleanup_old_logs(LOG_DIR, LOG_FILES_TO_KEEP)
 
     # 3. UI Log Handler (for the MachineLogDialog)
     ui_handler = UILogHandler()

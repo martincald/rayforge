@@ -20,6 +20,7 @@ for i, arg in enumerate(sys.argv):
         os.environ["RAYFORGE_CONFIG_DIR"] = sys.argv[i + 1]
         break
 
+from rayforge.config import LOG_DIR
 from rayforge.logging_setup import setup_logging
 
 # ===================================================================
@@ -145,6 +146,48 @@ if hasattr(sys, "_MEIPASS"):
                 pass
 
 
+def _show_error_dialog(title, message):
+    """
+    Shows a native Windows message box. Best effort: it must never raise,
+    because its only caller is the excepthook.
+
+    Deliberately not GTK-based: main() installs sys.excepthook before
+    `import gi`, so this can be reached with GTK never imported (a missing
+    typelib or a bad DLL path in a bundle), and it can be reached off the
+    main thread, where touching GTK is illegal.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        # MB_OK | MB_ICONERROR | MB_SETFOREGROUND
+        ctypes.windll.user32.MessageBoxW(
+            None, message, title, 0x0 | 0x10 | 0x10000
+        )
+    except Exception:
+        pass
+
+
+def _close_splash():
+    """
+    Closes the PyInstaller splash screen, if this is a bundle that has one.
+
+    Also stops worker subprocesses from raising a splash of their own: they
+    re-execute this same executable via multiprocessing 'spawn', so their
+    bootloader would start a second splash. The variable is read by the
+    bootloader only, so it has to be set here, in the parent, for the
+    children to inherit it.
+    """
+    os.environ["PYINSTALLER_SUPPRESS_SPLASH_SCREEN"] = "1"
+    try:
+        import pyi_splash
+
+        pyi_splash.close()
+    except Exception:
+        pass
+
+
 def handle_exception(exc_type, exc_value, exc_traceback):
     """
     Catches unhandled exceptions, logs them, and shows a user-friendly dialog.
@@ -158,11 +201,24 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
     _unhandled_exception = True
 
-    # Print full traceback to stderr (console or log)
-    traceback.print_exception(exc_type, exc_value, exc_traceback)
-
+    # Log first, so the session log is written even if the dialog fails.
     logger.error(
         "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
+    )
+
+    # Format rather than print: in a windowed launch sys.stderr can be None,
+    # and traceback.print_exception then writes the traceback nowhere.
+    text = "".join(
+        traceback.format_exception(exc_type, exc_value, exc_traceback)
+    )
+    if sys.stderr is not None:
+        sys.stderr.write(text)
+
+    _show_error_dialog(
+        "SwiftCut - Unexpected Error",
+        f"SwiftCut hit an unexpected error and must close.\n\n"
+        f"{exc_type.__name__}: {exc_value}\n\n"
+        f"Details were written to:\n{LOG_DIR}",
     )
     logging.shutdown()
 
@@ -279,6 +335,9 @@ def main():
 
             self.win = MainWindow(application=self)
 
+            # Take the splash down once the window is actually on screen.
+            self.win.connect("map", self._on_window_mapped)
+
             # Don't load files until the window is fully mapped and
             # allocated on screen. The 'map' signal guarantees this.
             if self.args.filenames:
@@ -299,6 +358,11 @@ def main():
             context = get_context()
             if context.machine_mgr:
                 context.machine_mgr.initialize_connections()
+
+        def _on_window_mapped(self, widget):
+            """Runs once, when the main window is first mapped on screen."""
+            widget.disconnect_by_func(self._on_window_mapped)
+            _close_splash()
 
         def _load_initial_files(self, widget):
             """

@@ -44,5 +44,7 @@ external/
 # macOS icon build artifacts
 Assets.car
 swiftcut.icns
+# Windows splash build artifact
+swiftcut_splash.png
 # Large vendor archive (exceeds GitHub 100MB limit)
 RDWorksV8.zip
