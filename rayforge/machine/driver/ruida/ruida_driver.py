@@ -1393,10 +1393,6 @@ class RuidaDriver(Driver):
             speed: Jog speed in mm/min.
         """
         self._jog_speed_mm_min = max(1, int(speed))
-        logger.info(
-            f"Hold jog speed: {self._jog_speed_mm_min} mm/min",
-            extra=self._log_extra("MACHINE_EVENT"),
-        )
 
     async def jog(self, speed: int, **deltas: float) -> None:
         """
