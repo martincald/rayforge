@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "rayforge/app.py": {
-    "mtime": 1788558939.742745,
-    "seen": 1788566469.1688054,
-    "ast_hash": "cc159e5e5a28755ef060aeb3eb5c179e",
+    "mtime": 1788894427.389996,
+    "seen": 1788897127.4410868,
+    "ast_hash": "d5ce1bf90acf074bc4109db180f77259",
     "semantic_hash": ""
   },
   "rayforge/builtin_addons/rayforge-addon-laser/laser_essentials/__init__.py": {
@@ -2880,9 +2880,9 @@
     "semantic_hash": ""
   },
   "rayforge/logging_setup.py": {
-    "mtime": 1786648505.7342525,
-    "seen": 1788205080.9109201,
-    "ast_hash": "6e9e10e18311d080a60fa0614c5fd812",
+    "mtime": 1788894400.070297,
+    "seen": 1788897127.441465,
+    "ast_hash": "ffe67c5a85acf02011e169ac92b51766",
     "semantic_hash": ""
   },
   "rayforge/machine/__init__.py": {
@@ -2898,9 +2898,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/cmd.py": {
-    "mtime": 1787771460.610596,
-    "seen": 1788205080.9109228,
-    "ast_hash": "a7a2fdf41978eb7483561c0c426a69c2",
+    "mtime": 1788896695.0116124,
+    "seen": 1788897127.4414673,
+    "ast_hash": "ebbca77eeb3bf63036dd8310430bf123",
     "semantic_hash": ""
   },
   "rayforge/machine/device/__init__.py": {
@@ -2934,9 +2934,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/driver/driver.py": {
-    "mtime": 1787686714.4436443,
-    "seen": 1788205080.9109275,
-    "ast_hash": "05829e05d5b2a1846ca23ef65f2be068",
+    "mtime": 1788896695.0272567,
+    "seen": 1788897127.4414725,
+    "ast_hash": "74ba4c3d1dc2e74f651e68ee263a0d63",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/dummy.py": {
@@ -2964,9 +2964,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/driver/ruida/ruida_driver.py": {
-    "mtime": 1788292273.3873115,
-    "seen": 1788293310.6855042,
-    "ast_hash": "16869b2e9264cf0046d57b6eab6966db",
+    "mtime": 1788896695.050667,
+    "seen": 1788897127.4414768,
+    "ast_hash": "bc8ee4698693c8db9c522c42eaab38fb",
     "semantic_hash": ""
   },
   "rayforge/machine/driver/ruida/ruida_encoder.py": {
@@ -3144,9 +3144,9 @@
     "semantic_hash": ""
   },
   "rayforge/machine/models/machine.py": {
-    "mtime": 1788554887.2534182,
-    "seen": 1788566469.1692135,
-    "ast_hash": "1e4391f8cc0de90fb8255f98e23dd899",
+    "mtime": 1788895463.1104462,
+    "seen": 1788897127.4415045,
+    "ast_hash": "c355d4b5d4945454e444a0259ced4916",
     "semantic_hash": ""
   },
   "rayforge/machine/models/machine_hours.py": {
@@ -3876,9 +3876,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/canvas/worldsurface.py": {
-    "mtime": 1788565557.3853579,
-    "seen": 1788566469.1693165,
-    "ast_hash": "1642cad0a1f36fb084cbbef88d503cd4",
+    "mtime": 1788890632.108332,
+    "seen": 1788891100.9776473,
+    "ast_hash": "15f3950d39ec8753663acd3ec1ccd818",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/debug_log_dialog.py": {
@@ -4290,9 +4290,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/cut_scale_dialog.py": {
-    "mtime": 1788375727.6887548,
-    "seen": 1788375998.3441153,
-    "ast_hash": "ddebb1d284b2cbe8a7f44d013f838d9b",
+    "mtime": 1788895463.1284366,
+    "seen": 1788897127.4416692,
+    "ast_hash": "c770f06c35fb36fb19f30d2d3405f161",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/device_settings_page.py": {
@@ -4338,9 +4338,9 @@
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/jog_widget.py": {
-    "mtime": 1788463735.2249632,
-    "seen": 1788527522.019339,
-    "ast_hash": "1b0c3c7c3ed72fc8428a2b18cd423cc8",
+    "mtime": 1788895463.158268,
+    "seen": 1788897127.4416766,
+    "ast_hash": "83b3670e20e4828fdf47b1d10c3d4cff",
     "semantic_hash": ""
   },
   "rayforge/ui_gtk/machine/laser_control_widget.py": {
@@ -5220,9 +5220,9 @@
     "semantic_hash": ""
   },
   "scripts/win/win_build.sh": {
-    "mtime": 1788558855.663358,
-    "seen": 1788566469.1695077,
-    "ast_hash": "c9ca5810b553d807f2dd9e18986b0c97",
+    "mtime": 1788894450.147879,
+    "seen": 1788897127.4418175,
+    "ast_hash": "44dd9561f8417a86971e1b53c575b660",
     "semantic_hash": ""
   },
   "scripts/win/win_create_icon.py": {
@@ -6066,9 +6066,9 @@
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_scale_jobs.py": {
-    "mtime": 1788291950.2515821,
-    "seen": 1788293310.6860256,
-    "ast_hash": "60c210ec149c08b110bcebf762ca7437",
+    "mtime": 1788896651.6887343,
+    "seen": 1788897127.4419403,
+    "ast_hash": "d7caf240f7a9729a2f6a3631aeab3c22",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_server.py": {
@@ -6090,9 +6090,9 @@
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_start_corner.py": {
-    "mtime": 1788291823.5749805,
-    "seen": 1788293310.6860292,
-    "ast_hash": "77196a11ce32fd4b619973e7b6463d6c",
+    "mtime": 1788894628.5727546,
+    "seen": 1788897127.4419444,
+    "ast_hash": "6bd7bda4efcfd575dd25631a978168c7",
     "semantic_hash": ""
   },
   "tests/machine/driver/ruida/test_ruida_transport.py": {
@@ -6198,9 +6198,9 @@
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine_model.py": {
-    "mtime": 1787334786.6442814,
-    "seen": 1788205080.9114375,
-    "ast_hash": "673ce770553c687b2193c7482c9d3919",
+    "mtime": 1788895426.710671,
+    "seen": 1788897127.44196,
+    "ast_hash": "9e4fa443e2a424e5864798835d387d2d",
     "semantic_hash": ""
   },
   "tests/machine/models/test_machine_panel.py": {
@@ -6732,9 +6732,9 @@
     "semantic_hash": ""
   },
   "tests/ui_gtk/machine/test_jog_widget_scale.py": {
-    "mtime": 1787686714.4695795,
-    "seen": 1788205080.9115129,
-    "ast_hash": "fd14c29482f8242520143e1a8a79fdcb",
+    "mtime": 1788895426.710671,
+    "seen": 1788897127.442063,
+    "ast_hash": "e0a95ba0c56d61dad26a9ca54044ed47",
     "semantic_hash": ""
   },
   "tests/ui_gtk/shared/test_color_lut_provider.py": {
@@ -7248,9 +7248,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/build-exe.yml": {
-    "mtime": 1788559461.9279199,
-    "seen": 1788566469.1698356,
-    "ast_hash": "52d8696e96764dec03e1a5ba7708bf3a",
+    "mtime": 1788894544.09737,
+    "seen": 1788897127.4421768,
+    "ast_hash": "234bf3ae959db3b09a7a45986e27107d",
     "semantic_hash": ""
   },
   ".github/workflows/build-macos-universal.yml": {
@@ -7338,9 +7338,9 @@
     "semantic_hash": ""
   },
   "MOTION_AUDIT.md": {
-    "mtime": 1787771460.610596,
-    "seen": 1788205080.911634,
-    "ast_hash": "a057ed9e02a51d6f80e4cc82c8856595",
+    "mtime": 1788896835.3683262,
+    "seen": 1788897127.442189,
+    "ast_hash": "27d9d6c0bcd0b92bc2cb44a3c553ff11",
     "semantic_hash": ""
   },
   "README.md": {
@@ -15264,9 +15264,9 @@
     "semantic_hash": ""
   },
   "tests/ui_gtk/canvas/test_worldsurface_navigation.py": {
-    "mtime": 1788565616.6588469,
-    "seen": 1788566469.1697123,
-    "ast_hash": "1bec3f60447c7ab97fdd8049dafcdd14",
+    "mtime": 1788890819.3803508,
+    "seen": 1788891100.9780653,
+    "ast_hash": "64f7a7bd159775e61d3784a022a3bcdd",
     "semantic_hash": ""
   },
   "tests/ui_gtk/canvas/test_worldsurface_pan_clamp.py": {
@@ -15549,6 +15549,18 @@
     "mtime": 1786648505.892849,
     "seen": 1788566469.17092,
     "ast_hash": "e8081a3e2e62491f5c52a3b8460c5cad",
+    "semantic_hash": ""
+  },
+  "scripts/win/win_create_splash.py": {
+    "mtime": 1788894457.8638468,
+    "seen": 1788897127.4418206,
+    "ast_hash": "8423f1a9a934d04ad6f71a6f89481aec",
+    "semantic_hash": ""
+  },
+  "scripts/win/win_smoke_test.ps1": {
+    "mtime": 1788894578.6056612,
+    "seen": 1788897127.441827,
+    "ast_hash": "5438194a7dec5c20061f1cd758b19019",
     "semantic_hash": ""
   }
 }
