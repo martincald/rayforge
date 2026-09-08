@@ -533,13 +533,18 @@ class WorldSurface(Canvas):
         """
         Pans the live camera by an incremental pixel delta from a
         trackpad's two-finger scroll, with zero lag.
+
+        The delta is negated so the content follows the fingers
+        ("natural" scrolling): two fingers down moves the view up,
+        left moves it right. Flick inertia feeds its decayed velocity
+        through here too, so the glide keeps the gesture's direction.
         """
         self._cancel_camera_animation()
         scale_x, scale_y = self.get_view_scale()
         if scale_x <= 0 or scale_y <= 0:
             return
         new_pan_x, new_pan_y = self._camera.pan_by_pixel_offset(
-            self.pan_x_mm, self.pan_y_mm, dx_px, dy_px, scale_x, scale_y
+            self.pan_x_mm, self.pan_y_mm, -dx_px, -dy_px, scale_x, scale_y
         )
         self.set_pan(new_pan_x, new_pan_y)
 

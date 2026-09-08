@@ -131,10 +131,12 @@ class TestTwoFingerScrollPan:
     def test_matches_the_shared_pan_by_pixel_offset_formula(
         self, world_surface_factory
     ):
+        """The scroll delta is negated (natural direction), then fed
+        through the one shared pan formula."""
         s = world_surface_factory()
         scale_x, scale_y = s.get_view_scale()
         expected_x, expected_y = s._camera.pan_by_pixel_offset(
-            0.0, 0.0, 20.0, -10.0, scale_x, scale_y
+            0.0, 0.0, -20.0, 10.0, scale_x, scale_y
         )
 
         controller = make_surface_scroll_controller(Gdk.ScrollUnit.SURFACE)
@@ -142,6 +144,29 @@ class TestTwoFingerScrollPan:
 
         assert s.pan_x_mm == pytest.approx(expected_x)
         assert s.pan_y_mm == pytest.approx(expected_y)
+
+    def test_scrolling_down_moves_the_content_up(self, world_surface_factory):
+        """Two fingers down (dy > 0) must move the view UP: the
+        content follows the fingers. Content moves up on screen when
+        pan_y_mm decreases (see the render transform's y-flip)."""
+        s = world_surface_factory()
+        controller = make_surface_scroll_controller(Gdk.ScrollUnit.SURFACE)
+        s.on_scroll(controller, 0.0, 12.0)
+
+        assert s.pan_y_mm < 0.0
+        assert s.pan_x_mm == pytest.approx(0.0)
+
+    def test_scrolling_left_moves_the_content_right(
+        self, world_surface_factory
+    ):
+        """Two fingers left (dx < 0) must move the view RIGHT.
+        Content moves right on screen when pan_x_mm decreases."""
+        s = world_surface_factory()
+        controller = make_surface_scroll_controller(Gdk.ScrollUnit.SURFACE)
+        s.on_scroll(controller, -12.0, 0.0)
+
+        assert s.pan_x_mm < 0.0
+        assert s.pan_y_mm == pytest.approx(0.0)
 
 
 class TestPinchZoom:
@@ -230,6 +255,24 @@ class TestPanInertiaToggle:
         s.on_scroll_decelerate(MagicMock(), 600.0, 0.0)
         assert s._inertia_tick_id is None
         assert s._pan_velocity_x == 0.0
+
+    def test_the_glide_goes_the_same_way_as_the_fingers(
+        self, world_surface_factory
+    ):
+        """A flick's inertia must continue in the gesture's own
+        direction: a downward flick keeps moving the content up, by
+        exactly the pan a live scroll of the decayed delta gives."""
+        live = world_surface_factory()
+        controller = make_surface_scroll_controller(Gdk.ScrollUnit.SURFACE)
+        live.on_scroll(controller, 0.0, 9.2)
+
+        glide = world_surface_factory()
+        # 600 px/sec -> 10 px/frame, decayed once by 0.92 -> 9.2.
+        glide.on_scroll_decelerate(MagicMock(), 0.0, 600.0)
+        glide._on_inertia_tick(glide, None)
+
+        assert live.pan_y_mm < 0.0
+        assert glide.pan_y_mm == pytest.approx(live.pan_y_mm)
 
 
 class TestZoomShortcuts:
