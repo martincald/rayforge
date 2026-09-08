@@ -482,7 +482,9 @@ class MachineCmd:
                 raise TypeError("Frame job did not produce a JobArtifact")
             min_x, min_y, max_x, max_y = artifact.ops.rect()
 
-        await driver.trace_frame(max_x - min_x, max_y - min_y)
+        refusal = await driver.trace_frame(max_x - min_x, max_y - min_y)
+        if refusal:
+            self._editor.notification_requested.send(self, message=refusal)
 
     def first_layer_power(self) -> float:
         """

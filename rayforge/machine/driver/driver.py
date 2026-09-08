@@ -558,7 +558,9 @@ class Driver(ABC):
         """
         return False
 
-    async def trace_frame(self, width_mm: float, height_mm: float) -> None:
+    async def trace_frame(
+        self, width_mm: float, height_mm: float
+    ) -> str | None:
         """
         Trace a rectangle of the given size around the job origin.
 
@@ -570,6 +572,10 @@ class Driver(ABC):
         Args:
             width_mm: Outline width in mm.
             height_mm: Outline height in mm.
+
+        Returns:
+            A message for the operator when the trace was refused, or
+            None when it ran.
         """
         raise NotImplementedError
 

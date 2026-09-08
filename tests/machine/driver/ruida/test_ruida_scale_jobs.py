@@ -5,17 +5,21 @@ else, so no process starts and the laser cannot fire. Cut Scale is an
 ordinary one-layer job around the same rectangle, and stays one.
 """
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 import pytest_asyncio
 from blinker import Signal
+from raygeo.ops import Ops
 
 from rayforge.core.doc import Doc
-from rayforge.machine.cmd import _cut_scale_ops
+from rayforge.machine.cmd import MachineCmd, _cut_scale_ops
 from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
 from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
 from rayforge.machine.models.laser import Laser
 from rayforge.machine.models.machine import Machine
+from rayforge.pipeline.artifact import JobArtifact
 
 # Opcodes that cut, and the power commands a layer body emits.
 CUT_OPCODES = (b"\xa8", b"\xa9", b"\xaa", b"\xab")
@@ -171,6 +175,61 @@ class TestGoScale:
         assert _corners(spy.commands) == [(0, 0), (100000, 0)]
         assert b"\xd8\x01" in spy.commands
         assert ruida_driver._jog_busy is False
+
+
+class TestGoScaleRefusesAnOffBedOutline:
+    """Refusing is right; being silent about it is the defect.
+
+    A clamped rectangle is not the job's outline, so an outline that
+    leaves the bed is not traced at all. The only feedback used to be
+    a line in the machine log, which reads as a dead button.
+    """
+
+    @pytest.mark.asyncio
+    async def test_nothing_is_sent_and_the_reason_names_the_corner(
+        self, ruida_driver
+    ):
+        ruida_driver._machine.set_axis_extents(400.0, 300.0)
+        # 100 x 50 mm from here runs 50 mm past the far edge of X.
+        spy = _ScaleClientSpy(position=(350000, 250000))
+        ruida_driver._client = spy
+
+        refusal = await ruida_driver.trace_frame(100.0, 50.0)
+
+        assert spy.commands == []
+        assert refusal is not None
+        assert "450.0" in refusal and "250.0" in refusal
+
+    @pytest.mark.asyncio
+    async def test_the_reason_reaches_the_operator_notification(self):
+        """MachineCmd turns the driver's reason into a notification."""
+        ops = Ops()
+        ops.move_to(0.0, 0.0, 0.0)
+        ops.line_to(100.0, 50.0, 0.0)
+        artifact = JobArtifact(
+            ops=ops, distance=ops.distance(), generation_id=1
+        )
+        editor = MagicMock()
+        editor.notification_requested = Signal()
+        editor.pipeline.generate_job_artifact_async = AsyncMock(
+            return_value=MagicMock()
+        )
+        store = editor.pipeline.artifact_store
+        store.checkout_handle.return_value.__enter__.return_value = artifact
+        machine = MagicMock()
+        machine.driver.trace_frame = AsyncMock(
+            return_value="the outline runs off the bed at 450.0, 250.0 mm"
+        )
+        seen: list[str] = []
+
+        def receiver(sender, message="", **kwargs):
+            seen.append(message)
+
+        editor.notification_requested.connect(receiver)
+
+        await MachineCmd(editor)._trace_frame(machine)
+
+        assert seen == ["the outline runs off the bed at 450.0, 250.0 mm"]
 
 
 def test_cut_scale_cuts_four_segments(machine):

@@ -836,7 +836,9 @@ class RuidaDriver(Driver):
     def can_trace_frame(self) -> bool:
         return True
 
-    async def trace_frame(self, width_mm: float, height_mm: float) -> None:
+    async def trace_frame(
+        self, width_mm: float, height_mm: float
+    ) -> str | None:
         """
         Traverse the job's bounding box as plain interactive rapids.
 
@@ -846,6 +848,10 @@ class RuidaDriver(Driver):
         nothing to gate. The corners are absolute targets built from
         the head position the trace starts at, driven by the same
         D9 10 primitive a jog uses.
+
+        Returns:
+            The reason the trace was refused, for the caller to show
+            the operator, or None when it ran.
         """
         assert self._client
         width_um = int(width_mm * 1000)
@@ -900,8 +906,9 @@ class RuidaDriver(Driver):
                 (0, 0),
             )
         ]
-        if not self._corners_fit(corners):
-            return
+        refusal = self._off_bed_refusal(corners)
+        if refusal:
+            return refusal
 
         self._jog_busy = True
         try:
@@ -1007,14 +1014,17 @@ class RuidaDriver(Driver):
             self._jog_busy = False
         return True
 
-    def _corners_fit(self, corners: list[tuple[int, int]]) -> bool:
+    def _off_bed_refusal(
+        self, corners: list[tuple[int, int]]
+    ) -> str | None:
         """
-        Whether every corner is reachable, warning about the ones that
-        are not.
+        Why the outline cannot be traced, or None if every corner is
+        reachable.
 
         A clamped corner would trace a rectangle that is not the job's,
         which is worse than tracing nothing: the user reads it as
-        proof the job fits.
+        proof the job fits. Refusing silently reads as a dead button,
+        so the reason goes back to the caller as well as to the log.
         """
         (x_lo, x_hi), (y_lo, y_hi) = (
             self._axis_range("x"),
@@ -1026,13 +1036,17 @@ class RuidaDriver(Driver):
             if not (x_lo <= c[0] <= x_hi and y_lo <= c[1] <= y_hi)
         ]
         if not outside:
-            return True
+            return None
+        x_mm, y_mm = outside[0][0] / 1000, outside[0][1] / 1000
         logger.warning(
             f"Go Scale not started: the outline runs off the bed at "
-            f"{outside[0][0] / 1000:.1f}, {outside[0][1] / 1000:.1f} mm",
+            f"{x_mm:.1f}, {y_mm:.1f} mm",
             extra=self._log_extra("USER_COMMAND"),
         )
-        return False
+        return _(
+            "Go Scale did not run: the outline runs off the bed at "
+            "{x:.1f}, {y:.1f} mm."
+        ).format(x=x_mm, y=y_mm)
 
     async def cancel_frame(self) -> None:
         """

@@ -100,6 +100,8 @@ entries below are marked NEEDS-HARDWARE rather than fixed blind.
 | MOT-49 | SMELL | `jog_widget.py:585` | _on_unmapped clears the root handler id even when it did not disconnect, and never remembers which root it connected to |
 | MOT-50 | SMELL | `jog_widget.py:599` | The jog-speed debounce timeout is never cancelled on teardown |
 | MOT-51 | SMELL | `jog_widget.py:652` | _on_connection_status_changed drops the held-key set without sending key-ups or the driver sweep |
+| MOT-52 | SAFETY | `ruida_driver.py:1011` | A job whose start corner puts its bounding box off the bed is not refused: the pre-move target is clamped, so the job cuts in the wrong place while Go Scale refuses the identical geometry |
+| MOT-53 | SAFETY | `ruida_driver.py:832` | The home park still takes its X end from Machine.calculate_jog, which answers in the pre-5289f52bc un-inverted sense, so after a Home All the head very likely parks at the wrong end of X |
 
 ---
 
@@ -4339,6 +4341,178 @@ he_held_key_set: after _hold(widget, EAST) and a DISCONNECTED status, assert
 machine_cmd.jog_key_up.assert_called_once_with(machine, 'x', 1) and
 machine_cmd.release_all_jog_keys.assert_called_once_with(machine), not just
 that _keys_down is empty.
+
+---
+
+### MOT-52 - A job whose start corner puts its bounding box off the bed is not refused: the pre-move target is clamped, so the job cuts in the wrong place while Go Scale refuses the identical geometry
+
+- **Severity:** SAFETY
+- **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:1011` (`_move_to_start_corner`) and `:1491` (`_jog_move_to`)
+- **Class:** Failure class 2 - sign / axis / frame errors in the interactive-motion subsystem (jog arrows -> D9 10 payload, Go Scale / Cut Scale framing)
+- **Status:** TODO - recorded, not fixed. The Go Scale half was made visible instead (the refusal now reaches the operator as a notification); the job half was left alone deliberately, under the surgical-changes rule, because refusing a job is a behaviour change the user has not asked for.
+
+**Evidence**
+
+```python
+ruida_driver.py:1007-1015 (_move_to_start_corner)
+                target_x = origin[0] + dx_um
+                target_y = origin[1] + dy_um
+                self._log_start_corner_premove(target_x, target_y)
+                await self._set_travel_speed(self._jog_speed_mm_min)
+                target = await self._jog_move_to(target_x, target_y)
+                await self._wait_for_frame_corner(*target, epoch=epoch)
+        finally:
+            self._jog_busy = False
+        return True
+
+ruida_driver.py:1488-1492 (_jog_move_to)
+        x_lo, x_hi = self._axis_range("x")
+        y_lo, y_hi = self._axis_range("y")
+        x_um = max(x_lo, min(x_um, x_hi))
+        y_um = max(y_lo, min(y_um, y_hi))
+```
+
+**Expected**
+
+The two paths frame the same rectangle from the same head position with the
+same offset - `_start_corner_offset_um` is called by both - so they should
+agree about whether that rectangle is reachable. Go Scale exists to show the
+operator where the job will cut; it is only truthful if the job cuts where
+the trace ran.
+
+**Actual**
+
+Go Scale refuses (`_off_bed_refusal`, ruida_driver.py:1017) and now says so.
+`_move_to_start_corner` never asks: it hands the target to `_jog_move_to`,
+which silently clamps both axes to the profile's travel, then returns True
+and lets the job run from wherever the clamp landed. The whole job is
+therefore cut, at full power, offset by the clamp distance - and the log
+line the operator does get (`Start corner ...: head -> (x, y)`) names the
+*unclamped* target, so it does not even record where the head actually went.
+
+**Verification**
+
+Observed on the live machine, in `swiftcut/Logs/session-*.log`: three Go
+Scale presses on a 52.0 x 80.4 mm job declared bottom_left, with the head
+65 mm from the top edge, produced three identical refusals -
+
+```
+INFO  Go Scale: tracing 52.0 x 80.4 mm ... which is the bottom_left corner
+INFO  Start corner bottom_left: head -> (585.5, -15.4)
+WARN  Go Scale not started: the outline runs off the bed at 585.5, -15.4 mm
+```
+
+The refusal is correct: -15.4 mm is off the bed. Running that same document
+would take the identical (585.5, -15.4) target through
+`_move_to_start_corner`, where Y clamps to 0 and the job cuts 15.4 mm from
+where it was placed. Nothing on that path consults `_off_bed_refusal` or any
+other extent check. Go Scale traces exactly what the job would cut only in
+the case where it fits.
+
+**Proposed fix**
+
+Give `_move_to_start_corner` the same guard: build the four corners from
+`ops.rect()` and the offset, run them through `_off_bed_refusal`, and return
+False with the reason when any is outside, so the job is refused before a
+byte is sent. `_move_to_start_corner` already returns bool and its caller
+already aborts on False, so the plumbing exists. The operator-visible half
+is the same notification hop Package B added to `MachineCmd._trace_frame`.
+Note this makes Go Scale and the job agree about *extent*; it does not fix
+MOT-24, where they disagree about the *anchor*.
+
+**Test strategy**
+
+Alongside the Go Scale refusal tests in
+`tests/machine/driver/ruida/test_ruida_scale_jobs.py`: drive
+`_move_to_start_corner` with a non-default start corner and an `Ops` whose
+rect leaves the bed from the spy's position, and assert it returns False and
+records no `D9 10`. Today it returns True and records one, at the clamped
+target.
+
+---
+
+### MOT-53 - The home park still takes its X end from Machine.calculate_jog, which answers in the pre-5289f52bc un-inverted sense, so after a Home All the head very likely parks at the wrong end of X
+
+- **Severity:** SAFETY
+- **Location:** `rayforge/machine/driver/ruida/ruida_driver.py:832` (`_axis_end`), reached from `:825` (`_top_left_corner`) and `:797` (`_park_after_home`)
+- **Class:** Failure class 2 - sign / axis / frame errors in the interactive-motion subsystem (jog arrows -> D9 10 payload, Go Scale / Cut Scale framing)
+- **Status:** TODO - NEEDS-HARDWARE. Carried forward from the start-corner work: the start-corner pre-move was moved onto the panel mapping, the home park deliberately was not (surgical-changes rule), so the two now disagree. Confirm on the machine which end of X is physically top-left before changing the park.
+
+**Evidence**
+
+```python
+ruida_driver.py:825-834
+            self._axis_end("x", JogDirection.WEST, margin_um),
+            self._axis_end("y", JogDirection.NORTH, margin_um),
+        )
+
+    def _axis_end(self, axis: str, direction, margin_um: int) -> int:
+        """The far end of one axis in a visual direction, inset."""
+        low, high = self._axis_range(axis)
+        if self._machine.calculate_jog(direction, 1.0) > 0:
+            return high - margin_um
+        return low + margin_um
+```
+
+**Expected**
+
+`_top_left_corner`'s own docstring says the answer "comes from the profile's
+own jog convention ... so no second axis mapping is introduced here". The
+profile's jog convention is what the arrow keys move, which since 5289f52bc
+is `MachinePanel.calculate_jog`.
+
+**Actual**
+
+`_axis_end` asks `Machine.calculate_jog`, not the panel's. Commit 5289f52bc
+("fix(jog): invert the X arrow mapping") inverted the effective X sign
+inside `MachinePanel.calculate_jog` and said so in as many words:
+"Machine.calculate_jog still answers in the older, un-inverted sense". So
+the park reads a visual west the arrow keys no longer agree with, and picks
+the low end of X where the panel says west is the high end. The head then
+traverses the full width of the bed to park at the wrong corner.
+
+**Verification**
+
+Measured on the live profile shape (origin=top_left, no reverse flags,
+native panel orientation), calling both mappings directly:
+
+```
+JogDirection.WEST   Machine.calculate_jog = -50.0   panel = {Axis.X: +50.0}
+JogDirection.NORTH  Machine.calculate_jog = -50.0   panel = {Axis.Y: -50.0}
+```
+
+X disagrees, Y agrees exactly - which matches 5289f52bc, where only X was
+inverted. `_axis_end` takes the sign of the first column, so it returns
+`low + margin` for X where the panel's convention gives `high - margin`.
+What is *not* verified is which of those two is the physically correct
+top-left on this machine: `D8 2A` seeks the limit switches and where it
+stops is a fact about the wiring (see the `_park_after_home` docstring and
+MOT-38 on the anchor frame), so the park's own tests
+(`TestHomeParksTheHead`, tests/machine/driver/ruida/test_motion_audit.py)
+pin today's convention rather than the hardware.
+
+**Proposed fix**
+
+One line: have `_axis_end` read
+`self._machine.panel.calculate_jog(direction, 1.0)` and take the component
+for the axis it was asked about, the way `_start_corner_offset_um` now does,
+so the driver has exactly one answer to "which way is west". The margin, the
+inset and the axis range are unchanged. Do it only after the hardware check
+below, and update
+`TestHomeParksTheHead::test_home_parks_at_the_top_left_corner` and
+`test_the_park_follows_the_reversed_axis` in the same change, since they
+encode the current sign.
+
+**Test strategy**
+
+The existing `TestHomeParksTheHead` cases already assert the parked target
+per profile; the fix flips the expected X for the un-reversed case. Add one
+that asserts `_top_left_corner()` agrees with `machine.panel.calculate_jog`
+on both axes, so the two mappings cannot drift apart again silently.
+
+**Hardware check:** Home All on the real machine, then read the reported X against the bed
+extents, and separately hold the left arrow to its limit and read X there.
+If the two land at opposite ends, the park is wrong and the panel is right.
 
 ---
 
