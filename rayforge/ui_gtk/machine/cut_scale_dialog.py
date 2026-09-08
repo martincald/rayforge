@@ -18,6 +18,7 @@ class CutScaleDialog(Adw.MessageDialog):
         self,
         default_power_percent: float,
         on_confirm: Callable[[int, float], None],
+        default_speed_mm_min: float = DEFAULT_SPEED_MM_MIN,
         **kwargs,
     ):
         super().__init__(
@@ -43,7 +44,7 @@ class CutScaleDialog(Adw.MessageDialog):
             _("Speed"),
             lower=1,
             upper=60000,
-            value_in_base=DEFAULT_SPEED_MM_MIN,
+            value_in_base=default_speed_mm_min,
         )
         group.add(self.speed_row)
 

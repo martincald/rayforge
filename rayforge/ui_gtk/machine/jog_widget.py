@@ -860,6 +860,7 @@ class JogWidget(Gtk.Widget):
         machine_cmd = self.machine_cmd
 
         def confirm(speed: int, power: float):
+            machine.set_cut_scale_settings(speed / 60.0, power * 100.0)
             self._scaling = True
             self._scale_kind = "cut"
             self._update_scale_buttons()
@@ -867,8 +868,13 @@ class JogWidget(Gtk.Widget):
                 machine, speed, power, on_done=self._on_scale_done
             )
 
+        power_pct = machine.cut_scale_power_pct
+        if power_pct is None:
+            power_pct = machine_cmd.first_layer_power() * 100.0
         dialog = CutScaleDialog(
-            machine_cmd.first_layer_power() * 100.0, confirm
+            power_pct,
+            confirm,
+            default_speed_mm_min=machine.cut_scale_speed_mm_s * 60.0,
         )
         root = self.get_root()
         if isinstance(root, Gtk.Window):

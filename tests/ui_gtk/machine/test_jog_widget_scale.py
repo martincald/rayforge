@@ -233,6 +233,43 @@ def test_cut_scale_dialog_defaults_to_the_first_layer_power(
 
 
 @pytest.mark.ui
+def test_cut_scale_dialog_prefills_the_saved_settings(
+    ui_context_initializer,
+):
+    machine_cmd = _scale_cmd()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+    machine.set_cut_scale_settings(35.0, 30.0)
+
+    with patch(
+        "rayforge.ui_gtk.machine.jog_widget.CutScaleDialog"
+    ) as dialog_cls:
+        widget._on_cut_scale_clicked(widget.cut_scale_btn)
+
+    # 30 %, not the 80 % first layer power, and 35 mm/s as mm/min.
+    assert dialog_cls.call_args.args[0] == 30.0
+    assert dialog_cls.call_args.kwargs["default_speed_mm_min"] == 2100.0
+
+
+@pytest.mark.ui
+def test_running_a_cut_scale_saves_the_settings(ui_context_initializer):
+    machine_cmd = _scale_cmd()
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+
+    with patch(
+        "rayforge.ui_gtk.machine.jog_widget.CutScaleDialog"
+    ) as dialog_cls:
+        widget._on_cut_scale_clicked(widget.cut_scale_btn)
+    confirm = dialog_cls.call_args.args[1]
+
+    confirm(2100, 0.55)
+
+    assert machine.cut_scale_speed_mm_s == 35.0
+    assert machine.cut_scale_power_pct == 55.0
+    profile = ui_context_initializer.machine_mgr.filename_from_id(machine.id)
+    assert "cut_scale_power_pct: 55.0" in profile.read_text()
+
+
+@pytest.mark.ui
 def test_cut_scale_dialog_cancel_runs_nothing(ui_context_initializer):
     from rayforge.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
 

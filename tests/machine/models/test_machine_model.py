@@ -867,3 +867,39 @@ class TestRuidaRefPointMigration:
         machine = Machine.from_dict(data, context=lite_context)
 
         assert machine.active_wcs == "MACHINE"
+
+
+class TestCutScaleSettings:
+    """Cut Scale remembers its speed and power in the profile."""
+
+    def test_the_settings_survive_a_round_trip(self, lite_context):
+        machine = Machine(lite_context)
+        machine.set_cut_scale_settings(35.0, 30.0)
+
+        restored = Machine.from_dict(machine.to_dict(), context=lite_context)
+
+        assert restored.cut_scale_speed_mm_s == 35.0
+        assert restored.cut_scale_power_pct == 30.0
+
+    def test_a_percent_does_not_drift_through_the_0_to_1_float(
+        self, lite_context
+    ):
+        """The dialog hands back 0.55, and 0.55 * 100 is not 55."""
+        drifted = (55 / 100.0) * 100.0
+        assert drifted != 55.0
+        machine = Machine(lite_context)
+
+        machine.set_cut_scale_settings(35.0, drifted)
+
+        assert machine.cut_scale_power_pct == 55.0
+        stored = machine.to_dict()["machine"]["cut_scale_power_pct"]
+        assert repr(stored) == "55.0"
+
+    def test_a_profile_without_the_keys_keeps_the_defaults(
+        self, lite_context
+    ):
+        """The whole install base predates these keys."""
+        machine = Machine.from_dict({"machine": {}}, context=lite_context)
+
+        assert machine.cut_scale_speed_mm_s == 20.0
+        assert machine.cut_scale_power_pct is None

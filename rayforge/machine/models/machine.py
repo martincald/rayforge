@@ -178,6 +178,8 @@ class Machine:
         self._soft_limits: Rect | None = None
         self.origin: Origin = Origin.BOTTOM_LEFT
         self.start_corner: StartCorner = StartCorner.TOP_LEFT
+        self.cut_scale_speed_mm_s: float = 20.0
+        self.cut_scale_power_pct: float | None = None
         self.panel = MachinePanel(self)
         self.rotary_enabled_default: bool = False
         self.default_rotary_module_uid: str | None = None
@@ -802,6 +804,22 @@ class Machine:
         if self.start_corner == corner:
             return
         self.start_corner = corner
+        self.changed.send(self)
+
+    def set_cut_scale_settings(self, speed_mm_s: float, power_pct: float):
+        """Remember the speed and power the last scale cut used.
+
+        The percent is rounded: it reaches us through a 0-1 float, and
+        55 comes back from that trip as 55.00000000000001.
+        """
+        power_pct = round(power_pct, 3)
+        if (
+            self.cut_scale_speed_mm_s == speed_mm_s
+            and self.cut_scale_power_pct == power_pct
+        ):
+            return
+        self.cut_scale_speed_mm_s = speed_mm_s
+        self.cut_scale_power_pct = power_pct
         self.changed.send(self)
 
     @property
@@ -1475,6 +1493,8 @@ class Machine:
                 else None,
                 "origin": self.origin.value,
                 "start_corner": self.start_corner.value,
+                "cut_scale_speed_mm_s": self.cut_scale_speed_mm_s,
+                "cut_scale_power_pct": self.cut_scale_power_pct,
                 "panel_orientation": self.panel.orientation.value,
                 "reverse_x_axis": self.reverse_x_axis,
                 "reverse_y_axis": self.reverse_y_axis,
@@ -1720,6 +1740,13 @@ class Machine:
                     "Unknown start corner '%s'; using top left",
                     corner_value,
                 )
+
+        ma.cut_scale_speed_mm_s = ma_data.get(
+            "cut_scale_speed_mm_s", ma.cut_scale_speed_mm_s
+        )
+        ma.cut_scale_power_pct = ma_data.get(
+            "cut_scale_power_pct", ma.cut_scale_power_pct
+        )
 
         origin_value = ma_data.get("origin", None)
         if origin_value is not None:
