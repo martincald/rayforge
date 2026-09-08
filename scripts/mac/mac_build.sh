@@ -260,7 +260,7 @@ PY
         fi
     fi
 
-    "$VENV_PY" -m PyInstaller --clean --noconfirm SwiftCut.spec
+    "$VENV_PY" -m PyInstaller --clean --noconfirm SwiftCut.macos.spec
 
     APP_ROOT="dist/SwiftCut.app/Contents"
     FW_DIR="$APP_ROOT/Frameworks"
