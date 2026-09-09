@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from rayforge.license import LicenseResult, LicenseStatus, LicenseType
+from swiftcut.license import LicenseResult, LicenseStatus, LicenseType
 
 
 class TestLicenseResult:

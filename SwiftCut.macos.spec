@@ -3,28 +3,28 @@ import os
 from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = ['gi._gi_cairo', 'cairosvg']
-hiddenimports += collect_submodules('rayforge.ui_gtk.canvas2d')
-hiddenimports += collect_submodules('rayforge.ui_gtk.canvas2d.elements')
-hiddenimports += collect_submodules('rayforge.ui_gtk.shared')
-hiddenimports += collect_submodules('rayforge.image')
-hiddenimports += collect_submodules('rayforge.core')
-hiddenimports.append('rayforge.ui_gtk.canvas2d.elements.workpiece')
+hiddenimports += collect_submodules('swiftcut.ui_gtk.canvas2d')
+hiddenimports += collect_submodules('swiftcut.ui_gtk.canvas2d.elements')
+hiddenimports += collect_submodules('swiftcut.ui_gtk.shared')
+hiddenimports += collect_submodules('swiftcut.image')
+hiddenimports += collect_submodules('swiftcut.core')
+hiddenimports.append('swiftcut.ui_gtk.canvas2d.elements.workpiece')
 
 # Use modern .icon (via Assets.car) when available, fall back to .icns.
 _use_car = os.path.exists('Assets.car')
 _icon = None if _use_car else 'swiftcut.icns'
 
 _datas = [
-    ('rayforge/version.txt', 'rayforge'),
-    ('rayforge/resources', 'rayforge/resources'),
-    ('rayforge/locale', 'rayforge/locale'),
-    ('rayforge/builtin_addons', 'rayforge/builtin_addons'),
+    ('swiftcut/version.txt', 'swiftcut'),
+    ('swiftcut/resources', 'swiftcut/resources'),
+    ('swiftcut/locale', 'swiftcut/locale'),
+    ('swiftcut/builtin_addons', 'swiftcut/builtin_addons'),
 ]
 if _use_car:
     _datas.append(('Assets.car', '.'))
 
 a = Analysis(
-    ['rayforge/app.py'],
+    ['swiftcut/app.py'],
     pathex=['.'],
     binaries=[],
     datas=_datas,

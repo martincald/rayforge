@@ -1,12 +1,4 @@
-[![GitHub Release](https://img.shields.io/github/release/barebaric/rayforge.svg?style=flat)](https://github.com/barebaric/rayforge/releases/)
-[![PyPI version](https://img.shields.io/pypi/v/rayforge)](https://pypi.org/project/rayforge/)
-[![Snap Release](https://snapcraft.io/rayforge/badge.svg)](https://snapcraft.io/rayforge)
-[![Launchpad PPA](https://img.shields.io/badge/PPA-blue)](https://launchpad.net/~knipknap/+archive/ubuntu/rayforge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-[![Get it from the Snap Store](https://snapcraft.io/en/light/install.svg)](https://snapcraft.io/rayforge)
-<a href="https://flathub.org/apps/org.rayforge.rayforge"><img alt="Get it from Flathub" src="website/static/images/flathub-badge.svg" height="55"/></a>
-<a href="https://www.patreon.com/c/knipknap"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" height="55"/></a>
 
 # SwiftCut
 
@@ -16,9 +8,6 @@ Built with Gtk4 and Libadwaita, it provides a clean, native interface for Linux,
 for both hobbyists and professionals.
 
 ![Screenshot](website/static/screenshots/main-3d-rotary.png)
-
-You can also check our [GitHub repository](https://github.com/ilab/swiftcut).
-We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ## Key Features
 
@@ -108,13 +97,14 @@ We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ## Installation
 
-For installation instructions [refer to our homepage](https://rayforge.org/docs/getting-started/installation).
+For installation instructions see
+[`website/docs/getting-started/`](website/docs/getting-started/).
 
 ## Development
 
 For detailed information about developing for SwiftCut, including setup instructions,
 testing, and contribution guidelines, please see the
-[Developer Documentation](https://rayforge.org/docs/developer/getting-started).
+[developer documentation](website/docs/developer/).
 
 ## License
 

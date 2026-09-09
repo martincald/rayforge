@@ -17,12 +17,12 @@ Allow-list: two categories of "rayforge" text are permitted to remain
 anywhere in the app by design and would be exempted here via
 `ALLOWLIST` if they ever appeared under the scanned directories:
   - the legacy config-dir migration path, which must always read the
-    literal directory name "rayforge" (see rayforge/config.py,
+    literal directory name "rayforge" (see swiftcut/config.py,
     `_migrate_legacy_config_dir` / `_get_config_dir`, covered by
     tests/test_config.py) - it is not under ui_gtk/ or resources/, so
     it never trips this gate;
   - the MIT copyright/attribution notice, which names the original
-    author "Samuel Abels" (see rayforge/ui_gtk/about.py) rather than
+    author "Samuel Abels" (see swiftcut/ui_gtk/about.py) rather than
     the word "Rayforge" itself, so it also never trips this gate.
 Neither currently needs an entry, but the mechanism must remain
 available for future additions.
@@ -36,9 +36,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCAN_ROOTS = [
-    REPO_ROOT / "rayforge" / "ui_gtk",
-    REPO_ROOT / "rayforge" / "resources",
+    REPO_ROOT / "swiftcut" / "ui_gtk",
+    REPO_ROOT / "swiftcut" / "resources",
 ]
+
+# A moved or renamed package would leave the roots pointing at nothing
+# and the gate would pass without scanning a single file.
+for _root in SCAN_ROOTS:
+    assert _root.is_dir(), f"scan root missing: {_root}"
 
 # Keyword argument names that, on any call, carry text shown to the user.
 UI_TEXT_KWARGS = {

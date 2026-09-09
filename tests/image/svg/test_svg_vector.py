@@ -3,15 +3,15 @@ from pathlib import Path
 import pytest
 from raygeo.svg.color import ColorAttr
 
-from rayforge.core.layer import Layer
-from rayforge.core.vectorization_spec import (
+from swiftcut.core.layer import Layer
+from swiftcut.core.vectorization_spec import (
     LayerImportMode,
     LayerSource,
     PassthroughSpec,
 )
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.svg.importer import SvgImporter
-from rayforge.image.svg.svg_vector import SvgVectorImporter
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.svg.importer import SvgImporter
+from swiftcut.image.svg.svg_vector import SvgVectorImporter
 
 SVG_BASIC = b"""
 <svg width="100mm" height="100mm" viewBox="0 0 100 100"

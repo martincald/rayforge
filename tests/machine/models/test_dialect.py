@@ -1,4 +1,4 @@
-from rayforge.machine.models.dialect import (
+from swiftcut.machine.models.dialect import (
     GRBL_DIALECT,
     LINUXCNC_DIALECT,
     MARLIN_DIALECT,

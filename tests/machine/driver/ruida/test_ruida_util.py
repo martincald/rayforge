@@ -8,9 +8,9 @@ import pytest
 from raygeo.ops import Ops
 from raygeo.ops.state import AirAssistMode
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import (
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import (
     UM_PER_MM,
     build_swizzle_lut,
     calculate_checksum,

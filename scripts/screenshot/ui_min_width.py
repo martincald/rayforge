@@ -7,7 +7,7 @@ the region that sets the floor can be named rather than guessed at.
 
 Run with::
 
-    python -m rayforge.app --config <isolated-config> \\
+    python -m swiftcut.app --config <isolated-config> \\
         --uiscript scripts/screenshot/ui_min_width.py
 """
 
@@ -18,7 +18,7 @@ from typing import TypeVar
 
 from gi.repository import GLib, Gtk
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 import pytest
 
-from rayforge.core.stock import StockItem
-from rayforge.core.stock_asset import StockAsset
-from rayforge.doceditor.asset_cmd import AssetCmd
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
+from swiftcut.doceditor.asset_cmd import AssetCmd
 
 
 @pytest.fixture

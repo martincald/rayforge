@@ -5,10 +5,10 @@ import pytest
 from blinker import Signal
 from raygeo.geo import Matrix
 
-from rayforge.core.doc import Doc
-from rayforge.core.layer import Layer
-from rayforge.core.step import Step
-from rayforge.core.workpiece import WorkPiece
+from swiftcut.core.doc import Doc
+from swiftcut.core.layer import Layer
+from swiftcut.core.step import Step
+from swiftcut.core.workpiece import WorkPiece
 
 
 @pytest.fixture
@@ -203,7 +203,7 @@ def test_layer_from_dict_ignores_unknown_child_types():
     }
 
     with patch(
-        "rayforge.core.workflow.Workflow.from_dict"
+        "swiftcut.core.workflow.Workflow.from_dict"
     ) as mock_workflow_from_dict:
         mock_workflow = MagicMock()
         mock_workflow.get_local_bbox.return_value = None

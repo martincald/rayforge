@@ -8,9 +8,9 @@ layers, with correct positions, and that everything is undoable.
 
 import pytest
 
-from rayforge.core.layer import Layer
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.array import (
+from swiftcut.core.layer import Layer
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.array import (
     ArrayMode,
     ArrayParams,
     CircularArrayParams,
@@ -18,7 +18,7 @@ from rayforge.doceditor.array import (
     PointRotationParams,
     SpacingMode,
 )
-from rayforge.doceditor.array_cmd import ArrayCmd
+from swiftcut.doceditor.array_cmd import ArrayCmd
 
 
 @pytest.fixture

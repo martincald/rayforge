@@ -3,13 +3,13 @@ from pathlib import Path
 
 from raygeo.ops.axis import Axis
 
-from rayforge.context import RayforgeContext
-from rayforge.core.layer import Layer
-from rayforge.machine.assembly import LinkRole
-from rayforge.machine.machine_state import MachineState
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.rotary_module import RotaryModule
+from swiftcut.context import RayforgeContext
+from swiftcut.core.layer import Layer
+from swiftcut.machine.assembly import LinkRole
+from swiftcut.machine.machine_state import MachineState
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.rotary_module import RotaryModule
 
 
 def _make_machine():

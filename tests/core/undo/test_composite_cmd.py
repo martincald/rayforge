@@ -1,5 +1,5 @@
-from rayforge.core.undo.command import Command
-from rayforge.core.undo.composite_cmd import CompositeCommand
+from swiftcut.core.undo.command import Command
+from swiftcut.core.undo.composite_cmd import CompositeCommand
 
 
 class SimpleCommand(Command):

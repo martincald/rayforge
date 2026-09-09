@@ -7,9 +7,9 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from rayforge.core.recipe import Recipe
-from rayforge.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
-from rayforge.ui_gtk.doceditor.step_settings.rows import SliderRow, SpinRow
+from swiftcut.core.recipe import Recipe
+from swiftcut.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
+from swiftcut.ui_gtk.doceditor.step_settings.rows import SliderRow, SpinRow
 
 
 @pytest.mark.ui

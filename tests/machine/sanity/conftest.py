@@ -1,7 +1,7 @@
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.machine.models.zone import Zone, ZoneShape
+from swiftcut.machine.models.zone import Zone, ZoneShape
 
 
 @pytest.fixture

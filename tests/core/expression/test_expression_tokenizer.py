@@ -1,6 +1,6 @@
 import pytest
 
-from rayforge.core.expression import tokenizer
+from swiftcut.core.expression import tokenizer
 
 
 @pytest.fixture

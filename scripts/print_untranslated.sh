@@ -42,7 +42,7 @@ if [ "$LANG_CODE" = "list" ]; then
   found=0
 
   # Check main app
-  for lang_dir in rayforge/locale/*/; do
+  for lang_dir in swiftcut/locale/*/; do
     lang=$(basename "$lang_dir")
     if [ -d "$lang_dir/LC_MESSAGES" ] && [ -f "$lang_dir/LC_MESSAGES/rayforge.po" ]; then
       if [ "$lang" != "en" ]; then
@@ -57,7 +57,7 @@ if [ "$LANG_CODE" = "list" ]; then
 
   # Check addons
   for addon_type in builtin_addons private_addons; do
-    for addon_dir in rayforge/$addon_type/*/; do
+    for addon_dir in swiftcut/$addon_type/*/; do
       # Extract addon name from rayforge-addon.yaml
       addon_yaml="$addon_dir/rayforge-addon.yaml"
       if [ -f "$addon_yaml" ]; then
@@ -97,7 +97,7 @@ fi
 if [ "$LANG_CODE" = "en" ]; then
   echo "Warning: English language file should never be translated."
   echo "Available languages:"
-  for lang_dir in rayforge/locale/*/; do
+  for lang_dir in swiftcut/locale/*/; do
     lang=$(basename "$lang_dir")
     if [ -d "$lang_dir/LC_MESSAGES" ] && [ -f "$lang_dir/LC_MESSAGES/rayforge.po" ]; then
       if [ "$lang" != "en" ]; then
@@ -108,13 +108,13 @@ if [ "$LANG_CODE" = "en" ]; then
   exit 1
 fi
 
-PO_FILE="rayforge/locale/${LANG_CODE}/LC_MESSAGES/rayforge.po"
+PO_FILE="swiftcut/locale/${LANG_CODE}/LC_MESSAGES/rayforge.po"
 
 # Check if the .po file exists
 if [ ! -f "$PO_FILE" ]; then
   echo "Error: Translation file not found: $PO_FILE"
   echo "Available languages:"
-  for lang_dir in rayforge/locale/*/; do
+  for lang_dir in swiftcut/locale/*/; do
     lang=$(basename "$lang_dir")
     if [ -d "$lang_dir/LC_MESSAGES" ] && [ -f "$lang_dir/LC_MESSAGES/rayforge.po" ]; then
       echo "  - $lang"
@@ -133,7 +133,7 @@ msgattrib --untranslated --no-obsolete "$PO_FILE" | awk '
 '
 
 # Check builtin packages
-for pkg_dir in rayforge/builtin_packages/*/; do
+for pkg_dir in swiftcut/builtin_packages/*/; do
   pkg_name=$(basename "$pkg_dir")
   locale_dir="$pkg_dir/locale"
   check_package "$pkg_name" "$locale_dir"
@@ -141,7 +141,7 @@ done
 
 # Check addons
 for addon_type in builtin_addons private_addons; do
-  for addon_dir in rayforge/$addon_type/*/; do
+  for addon_dir in swiftcut/$addon_type/*/; do
     # Extract addon name from rayforge-addon.yaml
     addon_yaml="$addon_dir/rayforge-addon.yaml"
     if [ -f "$addon_yaml" ]; then

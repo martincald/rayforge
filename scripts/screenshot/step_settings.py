@@ -14,7 +14,7 @@ from utils import (
     target_to_filename,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def parse_target(target: str) -> tuple[str, str, str | None]:
 
 def set_engrave_mode(dialog, mode_name: str):
     """Set the engrave mode in the dialog's engraver widget."""
-    from rayforge.pipeline.stage.assembler_helpers import DepthMode
+    from swiftcut.pipeline.stage.assembler_helpers import DepthMode
 
     mode_enum = DepthMode[mode_name]
     mode_index = list(DepthMode).index(mode_enum)

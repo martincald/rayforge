@@ -16,16 +16,16 @@ import pytest
 from raygeo.ops import Ops
 from raygeo.ops.state import AirAssistMode
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import (
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.ruida.ruida_encoder import (
     RuidaEncoder,
     build_rd_bytes,
     commands_to_rd_bytes,
     export_rd,
 )
-from rayforge.machine.driver.ruida.ruida_util import encode14, encode35
-from rayforge.machine.models.laser import Laser
-from rayforge.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
+from swiftcut.machine.driver.ruida.ruida_util import encode14, encode35
+from swiftcut.machine.models.laser import Laser
+from swiftcut.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "rdworks_reference.rd"
 

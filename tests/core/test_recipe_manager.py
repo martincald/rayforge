@@ -7,12 +7,12 @@ from unittest.mock import Mock
 import pytest
 import yaml
 
-from rayforge.core.doc import Doc
-from rayforge.core.recipe import Recipe
-from rayforge.core.recipe_manager import RecipeManager
-from rayforge.core.stock import StockItem
-from rayforge.core.stock_asset import StockAsset
-from rayforge.machine.models.machine import Machine
+from swiftcut.core.doc import Doc
+from swiftcut.core.recipe import Recipe
+from swiftcut.core.recipe_manager import RecipeManager
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
+from swiftcut.machine.models.machine import Machine
 
 
 class TestRecipeManager:

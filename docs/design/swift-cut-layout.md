@@ -8,8 +8,8 @@ the reskin never had, and the one
 The rule this document exists to enforce: **a widget never picks its
 own spacing, control size or row height.** It names a role, and the
 role has one value. Where GTK CSS can express the rule it lives in
-`rayforge/ui_gtk/theme.py`; where only Python can (margins, box
-spacing, size requests) it lives in `rayforge/ui_gtk/layout.py`.
+`swiftcut/ui_gtk/theme.py`; where only Python can (margins, box
+spacing, size requests) it lives in `swiftcut/ui_gtk/layout.py`.
 
 ---
 
@@ -199,10 +199,10 @@ quantity — but in the same format, and the duplicate
 
 | Rule | Home |
 | --- | --- |
-| Spacing scale, control sizes, row heights, max widths | `rayforge/ui_gtk/layout.py` (constants) |
-| Icon-button sizing, row minimum height, radii, type roles | `rayforge/ui_gtk/theme.py` (`_LAYOUT`) |
-| Suffix box, row-action buttons, position formatting | `rayforge/ui_gtk/layout.py` (helpers) |
-| Unit suffix | `rayforge/ui_gtk/shared/pref_rows/unit_spin_row.py` |
+| Spacing scale, control sizes, row heights, max widths | `swiftcut/ui_gtk/layout.py` (constants) |
+| Icon-button sizing, row minimum height, radii, type roles | `swiftcut/ui_gtk/theme.py` (`_LAYOUT`) |
+| Suffix box, row-action buttons, position formatting | `swiftcut/ui_gtk/layout.py` (helpers) |
+| Unit suffix | `swiftcut/ui_gtk/shared/pref_rows/unit_spin_row.py` |
 
 ### 6.1 The legacy colour names
 

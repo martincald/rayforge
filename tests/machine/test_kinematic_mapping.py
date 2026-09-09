@@ -6,16 +6,16 @@ from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 from raygeo.ops.types import CommandType
 
-from rayforge.context import RayforgeContext
-from rayforge.core.doc import Doc
-from rayforge.machine.kinematic_mapping import (
+from swiftcut.context import RayforgeContext
+from swiftcut.core.doc import Doc
+from swiftcut.machine.kinematic_mapping import (
     KinematicMapping,
     RotaryAxisConfig,
     build_layer_assembly,
     resolve_layer_rotary,
 )
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.rotary_module import (
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.rotary_module import (
     RotaryMode,
     RotaryModule,
     RotaryType,

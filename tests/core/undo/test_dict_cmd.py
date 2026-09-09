@@ -1,4 +1,4 @@
-from rayforge.core.undo.dict_cmd import DictItemCommand
+from swiftcut.core.undo.dict_cmd import DictItemCommand
 
 
 def test_dict_item_initialization():

@@ -8,8 +8,8 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gtk
 
-from rayforge.core.varset import ChoiceVar
-from rayforge.ui_gtk.varset.adapter import create_row_for_var
+from swiftcut.core.varset import ChoiceVar
+from swiftcut.ui_gtk.varset.adapter import create_row_for_var
 
 
 def _model_strings(row: Adw.ComboRow) -> list:

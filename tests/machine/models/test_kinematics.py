@@ -2,18 +2,18 @@ import math
 
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.kinematics import (
+from swiftcut.machine.kinematics import (
     Kinematics,
     create_kinematics,
 )
-from rayforge.machine.machine_state import MachineState
-from rayforge.machine.models.axis import (
+from swiftcut.machine.machine_state import MachineState
+from swiftcut.machine.models.axis import (
     AxisConfig,
     AxisSet,
     AxisType,
 )
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.rotary_module import RotaryModule
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.rotary_module import RotaryModule
 
 
 def _make_3axis_set():
@@ -128,7 +128,7 @@ def test_4axis_set_no_rotary_modules_is_cartesian():
 
 
 def test_machine_kinematics_no_rotary():
-    from rayforge.context import RayforgeContext
+    from swiftcut.context import RayforgeContext
 
     ctx = RayforgeContext()
     machine = Machine(ctx)
@@ -138,7 +138,7 @@ def test_machine_kinematics_no_rotary():
 
 
 def test_machine_kinematics_with_rotary():
-    from rayforge.context import RayforgeContext
+    from swiftcut.context import RayforgeContext
 
     ctx = RayforgeContext()
     machine = Machine(ctx)

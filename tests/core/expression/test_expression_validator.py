@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from rayforge.core.expression import (
+from swiftcut.core.expression import (
     context,
     errors,
     validator,

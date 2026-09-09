@@ -13,12 +13,12 @@ import pytest
 
 gi.require_version("Gtk", "4.0")
 
-from rayforge.machine.models.machine import Machine  # noqa: E402
-from rayforge.machine.transport import TransportStatus  # noqa: E402
+from swiftcut.machine.models.machine import Machine  # noqa: E402
+from swiftcut.machine.transport import TransportStatus  # noqa: E402
 
 
 def _widget(ui_context_initializer, machine_cmd):
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_axis_extents(200, 200)
@@ -241,7 +241,7 @@ def test_the_panel_speed_is_pushed_without_waiting_for_a_change(
     ui_context_initializer,
 ):
     """MOT-21: the driver must not keep its own seed value."""
-    from rayforge.ui_gtk.machine.jog_widget import DEFAULT_JOG_SPEED_BASE
+    from swiftcut.ui_gtk.machine.jog_widget import DEFAULT_JOG_SPEED_BASE
 
     machine_cmd = MagicMock()
     widget, machine = _widget(ui_context_initializer, machine_cmd)
@@ -256,7 +256,7 @@ def test_the_panel_speed_is_pushed_without_waiting_for_a_change(
 
 @pytest.mark.ui
 def test_speed_debounce_timeout_is_300ms(ui_context_initializer):
-    from rayforge.ui_gtk.machine import jog_widget
+    from swiftcut.ui_gtk.machine import jog_widget
 
     assert jog_widget._JOG_SPEED_DEBOUNCE_MS == 300
 
@@ -295,7 +295,7 @@ def test_focus_loss_cancels_a_pending_hold(ui_context_initializer):
 @pytest.mark.ui
 def test_hold_start_delay_is_200ms(ui_context_initializer):
     """A press shorter than this is a click: one step, not a hold."""
-    from rayforge.ui_gtk.machine import jog_widget
+    from swiftcut.ui_gtk.machine import jog_widget
 
     assert jog_widget._HOLD_START_DELAY_MS == 200
 
@@ -308,12 +308,12 @@ def _hold(widget, *directions):
 
 
 def _east():
-    from rayforge.machine.models.machine import JogDirection
+    from swiftcut.machine.models.machine import JogDirection
 
     return JogDirection.EAST
 
 
 def _north():
-    from rayforge.machine.models.machine import JogDirection
+    from swiftcut.machine.models.machine import JogDirection
 
     return JogDirection.NORTH

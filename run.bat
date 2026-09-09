@@ -95,7 +95,7 @@ goto :eof
 echo.
 echo --- Running Rayforge Application ---
 shift
-%MSYS2_SHELL% %MSYS2_ARGS% "(source .msys2_env && python -m rayforge.app %APP_ARGS%)%PAUSE_ON_ERROR%"
+%MSYS2_SHELL% %MSYS2_ARGS% "(source .msys2_env && python -m swiftcut.app %APP_ARGS%)%PAUSE_ON_ERROR%"
 goto :eof
 
 :appgui
@@ -108,7 +108,7 @@ goto :eof
 :: so no PYTHONPATH is needed.
 set "PATH=C:\msys64\mingw64\bin;%PATH%"
 set "GI_TYPELIB_PATH=C:\msys64\mingw64\lib\girepository-1.0"
-start "" "C:\msys64\mingw64\bin\pythonw.exe" -m rayforge.app %APP_ARGS%
+start "" "C:\msys64\mingw64\bin\pythonw.exe" -m swiftcut.app %APP_ARGS%
 goto :eof
 
 

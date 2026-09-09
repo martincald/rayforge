@@ -5,12 +5,12 @@ from typing import cast
 
 from raygeo.ops.state import CoolantMode
 
-from rayforge.core.capability import MachineCapability
-from rayforge.machine.models.head import head_from_dict
-from rayforge.machine.models.laser import LaserHead
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.rotary_module import RotaryModule
-from rayforge.machine.models.spindle import SpindleHead
+from swiftcut.core.capability import MachineCapability
+from swiftcut.machine.models.head import head_from_dict
+from swiftcut.machine.models.laser import LaserHead
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.rotary_module import RotaryModule
+from swiftcut.machine.models.spindle import SpindleHead
 
 
 def _configure(machine: Machine):

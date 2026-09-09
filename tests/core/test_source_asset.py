@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.image.registry import renderer_registry
-from rayforge.image.svg.renderer import SvgRenderer
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.image.registry import renderer_registry
+from swiftcut.image.svg.renderer import SvgRenderer
 
 
 @pytest.fixture

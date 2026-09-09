@@ -8,12 +8,12 @@ import numpy as np
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.dither import DitherAlgorithm
-from rayforge.pipeline.stage.assembler_helpers import (
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.dither import DitherAlgorithm
+from swiftcut.pipeline.stage.assembler_helpers import (
     DepthMode,
     build_part_vector,
     compute_raster_auto_levels,

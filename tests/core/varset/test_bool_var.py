@@ -1,5 +1,5 @@
-from rayforge.core.varset.boolvar import BoolVar
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.boolvar import BoolVar
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestBoolVar:

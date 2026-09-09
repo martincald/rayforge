@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.core.step import Step
-from rayforge.core.workflow import Workflow
+from swiftcut.core.step import Step
+from swiftcut.core.workflow import Workflow
 
 
 @pytest.fixture
@@ -143,7 +143,7 @@ def test_workflow_from_dict_ignores_non_step_children():
         ],
     }
 
-    with patch("rayforge.core.step.Step.from_dict") as mock_step_from_dict:
+    with patch("swiftcut.core.step.Step.from_dict") as mock_step_from_dict:
         mock_step = MagicMock()
         mock_step.get_local_bbox.return_value = None
         mock_step_from_dict.return_value = mock_step

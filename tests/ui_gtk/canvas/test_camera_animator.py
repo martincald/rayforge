@@ -7,8 +7,8 @@ matching test_camera.py.
 
 import pytest
 
-from rayforge.ui_gtk.canvas.camera import Camera
-from rayforge.ui_gtk.canvas.camera_animator import (
+from swiftcut.ui_gtk.canvas.camera import Camera
+from swiftcut.ui_gtk.canvas.camera_animator import (
     DEFAULT_DURATION_MS,
     CameraAnimator,
     ease_out_cubic,

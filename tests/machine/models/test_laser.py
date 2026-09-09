@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
-from rayforge.core.capability import MachineCapability
-from rayforge.machine.driver.driver import PWMParams
-from rayforge.machine.models.laser import Laser, LaserHead, LaserType
+from swiftcut.core.capability import MachineCapability
+from swiftcut.machine.driver.driver import PWMParams
+from swiftcut.machine.models.laser import Laser, LaserHead, LaserType
 
 
 def test_laser_initialization():

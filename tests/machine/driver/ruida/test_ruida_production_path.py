@@ -17,18 +17,18 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import (
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.ruida.ruida_encoder import (
     RD_MAGIC,
     RuidaEncoder,
     build_rd_bytes,
 )
-from rayforge.machine.driver.ruida.ruida_util import (
+from swiftcut.machine.driver.ruida.ruida_util import (
     build_swizzle_lut,
     decode35,
     encode14,
 )
-from rayforge.pipeline.pipeline import Pipeline
+from swiftcut.pipeline.pipeline import Pipeline
 
 from test_ruida_multistep_job import (
     CUT_POWER,

@@ -5,22 +5,22 @@ import pytest
 from raygeo.geo import Matrix
 from raygeo.ops.state import CoolantMode
 
-from rayforge.core.doc import Doc
-from rayforge.core.group import Group
-from rayforge.core.layer import Layer
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.step import Step
-from rayforge.core.stock_asset import StockAsset
-from rayforge.core.vectorization_spec import TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.editor import DocEditor
-from rayforge.doceditor.file_cmd import (
+from swiftcut.core.doc import Doc
+from swiftcut.core.group import Group
+from swiftcut.core.layer import Layer
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.step import Step
+from swiftcut.core.stock_asset import StockAsset
+from swiftcut.core.vectorization_spec import TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.doceditor.file_cmd import (
     FileCmd,
     ImportAction,
     PreviewResult,
     _unsupported_coolant_labels,
 )
-from rayforge.image import (
+from swiftcut.image import (
     ImporterFeature,
     ImportManifest,
     ImportPayload,
@@ -28,15 +28,15 @@ from rayforge.image import (
     LayerInfo,
     ParsingResult,
 )
-from rayforge.image.svg.renderer import SVG_RENDERER
-from rayforge.machine.models.coordspace import (
+from swiftcut.image.svg.renderer import SVG_RENDERER
+from swiftcut.machine.models.coordspace import (
     AxisDirection,
     MachineSpace,
     OriginCorner,
 )
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.spindle import SpindleHead
-from rayforge.shared.tasker.manager import TaskManager
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.spindle import SpindleHead
+from swiftcut.shared.tasker.manager import TaskManager
 
 
 @pytest.fixture
@@ -190,7 +190,7 @@ class TestScanImportFile:
         mock_importer_class.return_value = mock_importer_instance
 
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer_class,
         ):
             result = file_cmd.scan_import_file(svg_bytes, file_path, mime_type)
@@ -209,12 +209,12 @@ class TestScanImportFile:
 
         with (
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry."
+                "swiftcut.doceditor.file_cmd.importer_registry."
                 "get_by_mime_type",
                 return_value=None,
             ),
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry"
+                "swiftcut.doceditor.file_cmd.importer_registry"
                 ".get_by_extension",
                 return_value=None,
             ),
@@ -245,7 +245,7 @@ class TestScanImportFile:
         mock_importer_class.return_value = mock_importer_instance
 
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer_class,
         ):
             result = file_cmd.scan_import_file(svg_bytes, file_path, mime_type)
@@ -392,14 +392,14 @@ class TestFitAndPositionAtReferenceOrigin:
 
     def test_fit_and_position_no_config(self, file_cmd, sample_workpiece):
         """Test that method returns early when no config is available."""
-        with patch("rayforge.doceditor.file_cmd.get_context") as mock_ctx:
+        with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_ctx.return_value.config = None
 
             file_cmd._position_at_reference_origin([sample_workpiece])
 
     def test_fit_and_position_no_machine(self, file_cmd, sample_workpiece):
         """Test that method returns early when no machine is configured."""
-        with patch("rayforge.doceditor.file_cmd.get_context") as mock_ctx:
+        with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_ctx.return_value.config.machine = None
 
             file_cmd._position_at_reference_origin([sample_workpiece])
@@ -417,7 +417,7 @@ class TestFitAndPositionAtReferenceOrigin:
         wp.set_size(300.0, 200.0)
         wp.pos = (0.0, 0.0)
 
-        with patch("rayforge.doceditor.file_cmd.get_context") as mock_ctx:
+        with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_machine = MagicMock()
             mock_machine.axis_extents = (200, 150)
             mock_machine.work_area = (0, 0, 200, 150)
@@ -446,7 +446,7 @@ class TestFitAndPositionAtReferenceOrigin:
         wp.set_size(50.0, 50.0)
         wp.pos = (0.0, 0.0)
 
-        with patch("rayforge.doceditor.file_cmd.get_context") as mock_ctx:
+        with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_machine = MagicMock()
             mock_machine.axis_extents = (200, 150)
             mock_machine.work_area = (0, 0, 200, 150)
@@ -590,7 +590,7 @@ class TestGeneratePreviewImpl:
     def test_preview_impl_no_import_result(self, file_cmd):
         """Test preview when importer returns None."""
         with patch(
-            "rayforge.image.base_importer.Importer.get_doc_items",
+            "swiftcut.image.base_importer.Importer.get_doc_items",
             return_value=None,
         ):
             result = file_cmd._generate_preview_impl(
@@ -603,7 +603,7 @@ class TestGeneratePreviewImpl:
         sample_import_result.payload.items = []
         with (
             patch(
-                "rayforge.image.base_importer.Importer.get_doc_items",
+                "swiftcut.image.base_importer.Importer.get_doc_items",
                 return_value=sample_import_result,
             ),
             patch.object(
@@ -626,7 +626,7 @@ class TestLoadFileAsync:
     ):
         """Test successful async file load."""
         with patch(
-            "rayforge.image.base_importer.Importer.get_doc_items",
+            "swiftcut.image.base_importer.Importer.get_doc_items",
             return_value=sample_import_result,
         ):
             result = await file_cmd._load_file_async(
@@ -640,7 +640,7 @@ class TestLoadFileAsync:
     async def test_load_file_async_failure(self, file_cmd):
         """Test async file load failure."""
         with patch(
-            "rayforge.image.base_importer.Importer.get_doc_items",
+            "swiftcut.image.base_importer.Importer.get_doc_items",
             return_value=None,
         ):
             result = await file_cmd._load_file_async(
@@ -691,7 +691,7 @@ class TestGetImporterInfo:
         mock_importer = MagicMock()
         mock_importer.features = {ImporterFeature.DIRECT_VECTOR}
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer,
         ):
             cls, features = file_cmd.get_importer_info(
@@ -706,12 +706,12 @@ class TestGetImporterInfo:
         mock_importer.features = {ImporterFeature.BITMAP_TRACING}
         with (
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry."
+                "swiftcut.doceditor.file_cmd.importer_registry."
                 "get_by_mime_type",
                 return_value=None,
             ),
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry"
+                "swiftcut.doceditor.file_cmd.importer_registry"
                 ".get_by_extension",
                 return_value=mock_importer,
             ),
@@ -724,12 +724,12 @@ class TestGetImporterInfo:
         """Test case where no importer is found."""
         with (
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry."
+                "swiftcut.doceditor.file_cmd.importer_registry."
                 "get_by_mime_type",
                 return_value=None,
             ),
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry"
+                "swiftcut.doceditor.file_cmd.importer_registry"
                 ".get_by_extension",
                 return_value=None,
             ),
@@ -754,7 +754,7 @@ class TestAnalyzeImportTarget:
             ImporterFeature.LAYER_SELECTION,
         }
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer,
         ):
             action = file_cmd.analyze_import_target(path, "image/svg+xml")
@@ -766,7 +766,7 @@ class TestAnalyzeImportTarget:
         mock_importer = MagicMock()
         mock_importer.features = {ImporterFeature.BITMAP_TRACING}
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer,
         ):
             action = file_cmd.analyze_import_target(path, "image/png")
@@ -783,7 +783,7 @@ class TestAnalyzeImportTarget:
 
         # Test with explicit mime
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer,
         ):
             action = file_cmd.analyze_import_target(path, "image/vnd.dxf")
@@ -791,7 +791,7 @@ class TestAnalyzeImportTarget:
 
         # Test extension fallback
         with patch(
-            "rayforge.doceditor.file_cmd.importer_registry.get_by_extension",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_extension",
             return_value=mock_importer,
         ):
             action = file_cmd.analyze_import_target(path, None)
@@ -803,12 +803,12 @@ class TestAnalyzeImportTarget:
         # Ensure no importers match
         with (
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry."
+                "swiftcut.doceditor.file_cmd.importer_registry."
                 "get_by_mime_type",
                 return_value=None,
             ),
             patch(
-                "rayforge.doceditor.file_cmd.importer_registry"
+                "swiftcut.doceditor.file_cmd.importer_registry"
                 ".get_by_extension",
                 return_value=None,
             ),
@@ -1121,7 +1121,7 @@ class TestExportRdToPath:
 
     def _ruida_machine(self, context):
         """A machine whose driver is the Ruida one."""
-        from rayforge.machine.models.laser import Laser
+        from swiftcut.machine.models.laser import Laser
 
         machine = Machine(context)
         machine.driver_name = "RuidaDriver"
@@ -1149,7 +1149,7 @@ class TestExportRdToPath:
         """Drive the export with a stubbed job artifact."""
         from contextlib import contextmanager
 
-        from rayforge.pipeline.artifact import JobArtifact
+        from swiftcut.pipeline.artifact import JobArtifact
 
         artifact = JobArtifact(ops=ops, distance=0.0, generation_id=1)
 
@@ -1182,7 +1182,7 @@ class TestExportRdToPath:
         test_export_writes_the_same_blob_as_send ties that to what
         send_job actually transmits.
         """
-        from rayforge.machine.driver.ruida.ruida_encoder import build_rd_bytes
+        from swiftcut.machine.driver.ruida.ruida_encoder import build_rd_bytes
 
         machine = self._ruida_machine(context_initializer)
         ops = self._square_job_ops()

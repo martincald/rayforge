@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge.machine.models.dialect import GRBL_DIALECT
-from rayforge.machine.models.dialect_manager import DialectManager
-from rayforge.machine.models.machine import Machine
+from swiftcut.machine.models.dialect import GRBL_DIALECT
+from swiftcut.machine.models.dialect_manager import DialectManager
+from swiftcut.machine.models.machine import Machine
 
 CONFIGS_DIR = Path(__file__).parent.parent / "configs"
 

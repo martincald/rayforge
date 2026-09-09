@@ -7,11 +7,11 @@ from typing import Any, cast
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.core.layer import Layer
-from rayforge.core.step_registry import step_registry
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.image.assembler import ItemAssembler
-from rayforge.image.lightburn.importer import (
+from swiftcut.core.layer import Layer
+from swiftcut.core.step_registry import step_registry
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.image.assembler import ItemAssembler
+from swiftcut.image.lightburn.importer import (
     LightBurnImporter,
     _apply_xform_to_geo,
     _build_ellipse,
@@ -22,8 +22,8 @@ from rayforge.image.lightburn.importer import (
     _parse_verts,
     _parse_xform,
 )
-from rayforge.image.registry import importer_registry
-from rayforge.image.structures import (
+from swiftcut.image.registry import importer_registry
+from swiftcut.image.structures import (
     ImportManifest,
     ParsingResult,
     VectorizationResult,

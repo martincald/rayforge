@@ -3,4 +3,4 @@
 # binaries installed via pip. However, our explicit dependency on 'python3-numpy'
 # in debian/control satisfies this requirement in practice.
 # We are overriding this lintian error to acknowledge we have handled it.
-rayforge: missing-dependency-on-numpy-abi
+swiftcut: missing-dependency-on-numpy-abi

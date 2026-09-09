@@ -16,7 +16,7 @@ repo
 builddir
 .aider*
 
-debian/rayforge
+debian/swiftcut
 debian/.debhelper
 
 # Translations
@@ -31,8 +31,8 @@ website/build/
 website/docs/developer/raygeo-api/
 
 .mac_env
-rayforge/private_addons
-rayforge/version.txt
+swiftcut/private_addons
+swiftcut/version.txt
 
 # Rust ops crate
 target/

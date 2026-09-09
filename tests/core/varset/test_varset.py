@@ -2,12 +2,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from rayforge.core.varset.choicevar import ChoiceVar
-from rayforge.core.varset.floatvar import FloatVar
-from rayforge.core.varset.intvar import IntVar
-from rayforge.core.varset.urlvar import UrlVar, WebsocketUrlVar
-from rayforge.core.varset.var import ValidationError, Var
-from rayforge.core.varset.varset import VarSet, merge_varsets
+from swiftcut.core.varset.choicevar import ChoiceVar
+from swiftcut.core.varset.floatvar import FloatVar
+from swiftcut.core.varset.intvar import IntVar
+from swiftcut.core.varset.urlvar import UrlVar, WebsocketUrlVar
+from swiftcut.core.varset.var import ValidationError, Var
+from swiftcut.core.varset.varset import VarSet, merge_varsets
 
 
 class TestVarSet:

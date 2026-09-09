@@ -136,7 +136,7 @@ if (( RUN_APP == 1 )); then
     if [ -f .mac_env ]; then
         source .mac_env
     fi
-    python -m rayforge.app --loglevel=DEBUG
+    python -m swiftcut.app --loglevel=DEBUG
 fi
 
 echo ""
@@ -158,6 +158,6 @@ echo "  source .venv/bin/activate"
 echo "  python -m pip install --upgrade pip"
 echo "  python -m pip install -r requirements.txt"
 echo "  python -m pip install -e ."
-echo "  python -m rayforge.app --loglevel=DEBUG"
+echo "  python -m swiftcut.app --loglevel=DEBUG"
 echo ""
 echo ""

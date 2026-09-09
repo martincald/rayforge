@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from raygeo.geo import Geometry
 
-from rayforge.core.stock_asset import StockAsset
+from swiftcut.core.stock_asset import StockAsset
 
 
 def test_stock_asset_initialization():

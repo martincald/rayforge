@@ -2,7 +2,7 @@
 
 Run with::
 
-    python -m rayforge.app --config <isolated-config> \\
+    python -m swiftcut.app --config <isolated-config> \\
         --uiscript scripts/screenshot/ui_audit.py
 
 Output goes to ``docs/design/audit/`` as
@@ -34,7 +34,7 @@ from typing import TypeVar
 
 from gi.repository import Adw, GLib, Gtk
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ def _set_scheme(dark: bool) -> None:
     the "light" dialog captures dark. Setting the preference means
     every re-application agrees with the capture.
     """
-    from rayforge.context import get_context
+    from swiftcut.context import get_context
 
     get_context().config.set_theme("dark" if dark else "light")
     Adw.StyleManager.get_default().set_color_scheme(
@@ -211,8 +211,8 @@ def _show_dock_tab(name: str) -> None:
 
 
 def _machine_settings(page: str):
-    from rayforge.context import get_context
-    from rayforge.ui_gtk.machine.settings_dialog import MachineSettingsDialog
+    from swiftcut.context import get_context
+    from swiftcut.ui_gtk.machine.settings_dialog import MachineSettingsDialog
 
     machine = get_context().config.machine
     if machine is None:
@@ -223,13 +223,13 @@ def _machine_settings(page: str):
 
 
 def _app_settings(page: str):
-    from rayforge.ui_gtk.settings.settings_dialog import SettingsWindow
+    from swiftcut.ui_gtk.settings.settings_dialog import SettingsWindow
 
     return SettingsWindow(initial_page=page, transient_for=win)
 
 
 def _cut_scale_sheet():
-    from rayforge.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
+    from swiftcut.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
 
     dialog = CutScaleDialog(
         default_power_percent=15.0,
@@ -240,8 +240,8 @@ def _cut_scale_sheet():
 
 
 def _wcs_sheet():
-    from rayforge.context import get_context
-    from rayforge.ui_gtk.machine.wcs_dialog import WcsDialog
+    from swiftcut.context import get_context
+    from swiftcut.ui_gtk.machine.wcs_dialog import WcsDialog
 
     machine = get_context().config.machine
     if machine is None:
@@ -252,7 +252,7 @@ def _wcs_sheet():
 
 
 def _step_settings():
-    from rayforge.ui_gtk.doceditor.step_settings.dialog import (
+    from swiftcut.ui_gtk.doceditor.step_settings.dialog import (
         StepSettingsDialog,
     )
 
@@ -269,7 +269,7 @@ def _step_settings():
 
 
 def _step_type_sheet():
-    from rayforge.ui_gtk.doceditor.step_type_selection_dialog import (
+    from swiftcut.ui_gtk.doceditor.step_type_selection_dialog import (
         StepTypeSelectionDialog,
     )
 

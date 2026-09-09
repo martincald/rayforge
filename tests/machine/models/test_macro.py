@@ -1,4 +1,4 @@
-from rayforge.machine.models.macro import Macro
+from swiftcut.machine.models.macro import Macro
 
 
 def test_instantiation():

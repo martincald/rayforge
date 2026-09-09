@@ -2,8 +2,8 @@
 Tests for RuidaCodec class.
 """
 
-from rayforge.machine.driver.ruida.ruida_codec import RuidaCodec
-from rayforge.machine.driver.ruida.ruida_maps import CARD_ID_TO_MAGIC
+from swiftcut.machine.driver.ruida.ruida_codec import RuidaCodec
+from swiftcut.machine.driver.ruida.ruida_maps import CARD_ID_TO_MAGIC
 
 
 class TestInit:

@@ -8,9 +8,9 @@ gi.require_version("Adw", "1")
 
 import pytest
 
-from rayforge.core.varset import LengthVar
-from rayforge.ui_gtk.shared.pref_rows import LengthSpinRow
-from rayforge.ui_gtk.varset.adapter import create_row_for_var
+from swiftcut.core.varset import LengthVar
+from swiftcut.ui_gtk.shared.pref_rows import LengthSpinRow
+from swiftcut.ui_gtk.varset.adapter import create_row_for_var
 
 
 @pytest.mark.ui

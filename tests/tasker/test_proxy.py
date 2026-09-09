@@ -7,7 +7,7 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from rayforge.shared.tasker.proxy import ExecutionContextProxy
+from swiftcut.shared.tasker.proxy import ExecutionContextProxy
 
 
 @pytest.fixture

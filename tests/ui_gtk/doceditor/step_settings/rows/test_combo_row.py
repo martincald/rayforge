@@ -7,7 +7,7 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from rayforge.ui_gtk.doceditor.step_settings.rows import ComboRow
+from swiftcut.ui_gtk.doceditor.step_settings.rows import ComboRow
 
 _CHOICES = [("A", "a"), ("B", "b")]
 

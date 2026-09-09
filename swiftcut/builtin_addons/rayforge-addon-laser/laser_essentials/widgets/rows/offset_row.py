@@ -1,0 +1,34 @@
+"""Laser offset row widget."""
+
+from gettext import gettext as _
+from typing import Any
+
+from swiftcut.core.cut_side import CutSide
+from swiftcut.ui_gtk.doceditor.step_settings.rows import SpinRow
+
+
+class OffsetRow(SpinRow):
+    """A spin row bound to the step's ``offset_mm`` attribute.
+
+    The row is insensitive while the cut side is CENTERLINE, where an
+    offset has no effect.
+    """
+
+    def __init__(self, editor: Any, step: Any):
+        super().__init__(
+            editor,
+            step,
+            "offset_mm",
+            _("Offset"),
+            _("Defaults to the head's kerf; none on Centerline"),
+            0.0,
+            100.0,
+            0.1,
+            2,
+            quantity="length",
+        )
+
+    def _sync_dependencies(self):
+        self.set_sensitive(
+            getattr(self.step, "cut_side", None) != CutSide.CENTERLINE.name
+        )

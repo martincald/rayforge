@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).parents[3]
-_LASER_ADDON = _REPO_ROOT / "rayforge/builtin_addons/rayforge-addon-laser"
-_POST_ADDON = _REPO_ROOT / "rayforge/builtin_addons/rayforge-addon-post"
+_LASER_ADDON = _REPO_ROOT / "swiftcut/builtin_addons/rayforge-addon-laser"
+_POST_ADDON = _REPO_ROOT / "swiftcut/builtin_addons/rayforge-addon-post"
 
 for _p in (_LASER_ADDON, _POST_ADDON):
     _s = str(_p)
@@ -40,8 +40,8 @@ def _register_laser_addons():
         TabOpsTransformer,
     )
 
-    from rayforge.core.step_registry import step_registry
-    from rayforge.pipeline.transformer.registry import transformer_registry
+    from swiftcut.core.step_registry import step_registry
+    from swiftcut.pipeline.transformer.registry import transformer_registry
 
     if step_registry.get("ContourStep") is None:
         step_registry.register(ContourStep)

@@ -1,6 +1,6 @@
 # Ruida process-ordering audit
 
-How a Rayforge document becomes a Ruida process, and where that
+How a SwiftCut document becomes a Ruida process, and where that
 translation loses the operator's intent. Companion to
 `MOTION_AUDIT.md`, which covers interactive motion; this one covers
 the job stream: parts, their settings, the order they are declared
@@ -59,7 +59,7 @@ fixture exists. See PRO-09.
 ### PRO-01 - The pre-scan latches the first settings after a marker and discards every later group
 
 - **Severity:** SAFETY
-- **Location:** `rayforge/machine/driver/ruida/ruida_encoder.py`, `_collect_job_info`
+- **Location:** `swiftcut/machine/driver/ruida/ruida_encoder.py`, `_collect_job_info`
 - **Status:** FIXED (commit A)
 
 **Evidence**
@@ -279,7 +279,7 @@ no travel speed emits nothing.
 ### PRO-06 - `.rd` export reads data the pipeline strips
 
 - **Severity:** BROKEN
-- **Location:** `rayforge/doceditor/file_cmd.py`, `export_rd_to_path`
+- **Location:** `swiftcut/doceditor/file_cmd.py`, `export_rd_to_path`
 - **Status:** FIXED (commit B)
 
 **Evidence**

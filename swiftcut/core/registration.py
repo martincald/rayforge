@@ -1,0 +1,232 @@
+import importlib
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RegistryEntry:
+    hook_name: str | None
+    param_name: str
+    module_path: str
+    attr_name: str
+    worker_ok: bool
+    needs_window: bool
+
+
+REGISTRY_TABLE = [
+    RegistryEntry(
+        "register_steps",
+        "step_registry",
+        "swiftcut.core.step_registry",
+        "step_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_services",
+        "service_registry",
+        "swiftcut.core.service_registry",
+        "service_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_transformers",
+        "transformer_registry",
+        "swiftcut.pipeline.transformer.registry",
+        "transformer_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_layout_strategies",
+        "layout_registry",
+        "swiftcut.doceditor.layout.registry",
+        "layout_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_asset_types",
+        "asset_type_registry",
+        "swiftcut.core.asset_registry",
+        "asset_type_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_renderers",
+        "renderer_registry",
+        "swiftcut.image",
+        "renderer_registry",
+        worker_ok=True,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_commands",
+        "command_registry",
+        "swiftcut.doceditor.command_registry",
+        "command_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_exporters",
+        "exporter_registry",
+        "swiftcut.image",
+        "exporter_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_importers",
+        "importer_registry",
+        "swiftcut.image",
+        "importer_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_actions",
+        "action_registry",
+        "swiftcut.ui_gtk.action_registry",
+        "action_registry",
+        worker_ok=False,
+        needs_window=True,
+    ),
+    RegistryEntry(
+        "register_settings_pages",
+        "settings_page_registry",
+        "swiftcut.ui_gtk.settings.registry",
+        "settings_page_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_transformer_widgets",
+        "transformer_widget_registry",
+        "swiftcut.ui_gtk.doceditor.post_processor.registry",
+        "transformer_widget_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        "register_step_settings_pages",
+        "step_settings_page_registry",
+        "swiftcut.ui_gtk.doceditor.step_settings.page_registry",
+        "step_settings_page_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    # Extension registries have no dedicated hook: addons populate them
+    # as a side effect of other registration hooks. They are still
+    # listed here so the addon manager can clean them up on unload.
+    RegistryEntry(
+        None,
+        "action_extension_registry",
+        "swiftcut.ui_gtk.actions",
+        "action_extension_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        None,
+        "context_menu_extension_registry",
+        "swiftcut.ui_gtk.canvas2d.context_menu",
+        "context_menu_extension_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+    RegistryEntry(
+        None,
+        "property_provider_registry",
+        "swiftcut.ui_gtk.doceditor.property_providers",
+        "property_provider_registry",
+        worker_ok=False,
+        needs_window=False,
+    ),
+]
+
+LAZY_MANAGERS = {
+    "library_manager": (
+        "register_material_libraries",
+        "library_manager",
+    ),
+    "model_manager": (
+        "register_model_libraries",
+        "model_manager",
+    ),
+}
+
+
+def _import_registry(entry: RegistryEntry) -> Any:
+    module = importlib.import_module(entry.module_path)
+    return getattr(module, entry.attr_name)
+
+
+def get_registries(headless: bool = False) -> dict[str, Any]:
+    """
+    Import and return a dict of all active registries.
+
+    The returned dict maps param_name -> registry instance for all
+    registries appropriate for the given mode.
+    """
+    result: dict[str, Any] = {}
+    for entry in REGISTRY_TABLE:
+        if headless and not entry.worker_ok:
+            continue
+        result[entry.param_name] = _import_registry(entry)
+    return result
+
+
+def call_registration_hooks(
+    plugin_mgr,
+    headless: bool = False,
+    registries: dict[str, Any] | None = None,
+    window_required: bool = False,
+):
+    """
+    Call all appropriate registration hooks on the plugin manager.
+
+    This is the single entry point for registration hook invocation,
+    used during app startup, addon enable/reload, and worker init.
+
+    Args:
+        plugin_mgr: The pluggy PluginManager instance.
+        headless: If True, skip GUI-only registries (worker mode).
+        registries: Optional dict of pre-loaded registries. Entries not
+            found here will be imported from their module_path.
+        window_required: If True, call only hooks that register
+            actions and other UI elements that depend on the main
+            window being available (e.g. during addon enable/reload
+            at runtime). If False, call all other hooks (startup and
+            worker init).
+    """
+    registries = registries or {}
+    for entry in REGISTRY_TABLE:
+        if entry.hook_name is None:
+            continue
+        if window_required and not entry.needs_window:
+            continue
+        if not window_required and entry.needs_window:
+            continue
+        if headless and not entry.worker_ok:
+            continue
+        registry = registries.get(entry.param_name)
+        if registry is None:
+            try:
+                registry = _import_registry(entry)
+            except (ImportError, AttributeError):
+                continue
+        getattr(plugin_mgr.hook, entry.hook_name)(
+            **{entry.param_name: registry}
+        )
+    if not window_required:
+        for key, (hook_name, param_name) in LAZY_MANAGERS.items():
+            registry = registries.get(key)
+            if registry is not None:
+                logger.debug(f"Calling {hook_name} hook")
+                getattr(plugin_mgr.hook, hook_name)(**{param_name: registry})

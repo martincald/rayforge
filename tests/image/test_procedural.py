@@ -7,12 +7,12 @@ import cairo
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import ProceduralSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.procedural.importer import ProceduralImporter
-from rayforge.image.procedural.renderer import PROCEDURAL_RENDERER
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import ProceduralSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.procedural.importer import ProceduralImporter
+from swiftcut.image.procedural.renderer import PROCEDURAL_RENDERER
 
 # --- Mock Procedural Functions for Testing ---
 

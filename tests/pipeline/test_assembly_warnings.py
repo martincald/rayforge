@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from rayforge.pipeline import assembly_warnings
-from rayforge.pipeline.assembly_warnings import translate_assembly_warning
+from swiftcut.pipeline import assembly_warnings
+from swiftcut.pipeline.assembly_warnings import translate_assembly_warning
 
 
 @pytest.fixture(autouse=True)

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 from gi.repository import Gdk
 
-from rayforge.ui_gtk.canvas.worldsurface import WorldSurface
+from swiftcut.ui_gtk.canvas.worldsurface import WorldSurface
 
 
 def make_world_surface(

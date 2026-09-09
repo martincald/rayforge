@@ -3,8 +3,8 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-from rayforge.machine.transport import TransportStatus
-from rayforge.machine.transport.udp_server import (
+from swiftcut.machine.transport import TransportStatus
+from swiftcut.machine.transport.udp_server import (
     UdpServerProtocol,
     UdpServerTransport,
 )
@@ -302,7 +302,7 @@ class TestUdpServerTransport:
         mock_loop = mocker.Mock()
         mock_loop.create_datagram_endpoint = raise_error
         mocker.patch(
-            "rayforge.machine.transport.udp_server.asyncio.get_event_loop",
+            "swiftcut.machine.transport.udp_server.asyncio.get_event_loop",
             return_value=mock_loop,
         )
 

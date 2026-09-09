@@ -1,7 +1,7 @@
 from raygeo.geo import Geometry
 
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import TraceSpec
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import TraceSpec
 
 
 class TestSourceAssetSegment:

@@ -10,10 +10,10 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk
 
-from rayforge.core.recipe import Recipe
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import Machine
-from rayforge.ui_gtk.doceditor.recipes.edit_recipe_dialog import (
+from swiftcut.core.recipe import Recipe
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import Machine
+from swiftcut.ui_gtk.doceditor.recipes.edit_recipe_dialog import (
     AddEditRecipeDialog,
 )
 

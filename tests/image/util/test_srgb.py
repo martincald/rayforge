@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from rayforge.image.util.srgb import (
+from swiftcut.image.util.srgb import (
     create_lut_from_color,
     linear_to_srgb,
     resize_linear_nd,

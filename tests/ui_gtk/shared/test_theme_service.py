@@ -12,10 +12,10 @@ import numpy as np
 import pytest
 from blinker import Signal
 
-from rayforge.core.color import ColorSet
-from rayforge.machine.models.laser import LaserHead
-from rayforge.ui_gtk.shared.gtk_color import GtkColorResolver
-from rayforge.ui_gtk.shared.theme_service import ThemeColorService
+from swiftcut.core.color import ColorSet
+from swiftcut.machine.models.laser import LaserHead
+from swiftcut.ui_gtk.shared.gtk_color import GtkColorResolver
+from swiftcut.ui_gtk.shared.theme_service import ThemeColorService
 
 
 def _theme_color_set() -> ColorSet:

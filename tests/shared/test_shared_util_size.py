@@ -1,4 +1,4 @@
-from rayforge.shared.util.size import format_byte_size, sizes_are_close
+from swiftcut.shared.util.size import format_byte_size, sizes_are_close
 
 
 class TestSizesAreClose:

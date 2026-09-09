@@ -7,10 +7,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from rayforge.shared.tasker.context import ExecutionContext
-from rayforge.shared.tasker.manager import TaskManager, TaskManagerProxy
-from rayforge.shared.tasker.proxy import ExecutionContextProxy
-from rayforge.shared.tasker.task import CancelledError, Task
+from swiftcut.shared.tasker.context import ExecutionContext
+from swiftcut.shared.tasker.manager import TaskManager, TaskManagerProxy
+from swiftcut.shared.tasker.proxy import ExecutionContextProxy
+from swiftcut.shared.tasker.task import CancelledError, Task
 
 
 def simple_process_func(
@@ -152,7 +152,7 @@ def mock_timer_factory(mocker):
         timers.append(timer)
         return timer
 
-    mocker.patch("rayforge.shared.tasker.context.threading.Timer", factory)
+    mocker.patch("swiftcut.shared.tasker.context.threading.Timer", factory)
     return timers
 
 

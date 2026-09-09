@@ -26,7 +26,7 @@ gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, GLib
 
-from rayforge.ui_gtk.mainwindow import MainWindow
+from swiftcut.ui_gtk.mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def test_file_path(assets_path: Path) -> Path:
 @pytest.fixture
 def app_and_window(ui_context_initializer, request):
     """Sets up the Adw.Application and MainWindow without blocking."""
-    from rayforge.ui_gtk.shared import model_preview
+    from swiftcut.ui_gtk.shared import model_preview
 
     model_preview.initialize()
     assert model_preview.initialized, "OpenGL model preview failed to init"
@@ -102,7 +102,7 @@ def app_and_window(ui_context_initializer, request):
             self.win = win
 
     test_name = request.node.name.replace("_", "-")
-    app_id = f"org.rayforge.rayforge.test.{test_name}"
+    app_id = f"org.swiftcut.swiftcut.test.{test_name}"
     app = TestApp(application_id=app_id)
     app.register(None)
     app.activate()

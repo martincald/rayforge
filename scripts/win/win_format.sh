@@ -15,9 +15,9 @@ source .msys2_env
 PYTHON_EXEC="$MSYS2_PATH/mingw64/bin/python"
 
 echo "--- Running ruff format ---"
-$PYTHON_EXEC -m ruff format rayforge tests scripts "$@"
+$PYTHON_EXEC -m ruff format swiftcut tests scripts "$@"
 
 echo "--- Running ruff auto-fix ---"
-$PYTHON_EXEC -m ruff check --fix rayforge tests scripts "$@"
+$PYTHON_EXEC -m ruff check --fix swiftcut tests scripts "$@"
 
 echo "✅ Formatting complete."

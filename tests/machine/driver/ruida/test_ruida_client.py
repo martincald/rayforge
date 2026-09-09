@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from blinker import Signal
 
-from rayforge.machine.driver.ruida.ruida_client import (
+from swiftcut.machine.driver.ruida.ruida_client import (
     JOB_MAGIC,
     RuidaClient,
 )
-from rayforge.machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
-from rayforge.machine.driver.ruida.ruida_util import (
+from swiftcut.machine.driver.ruida.ruida_encoder import commands_to_rd_bytes
+from swiftcut.machine.driver.ruida.ruida_util import (
     encode14,
     encode35,
     swizzle_byte,

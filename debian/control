@@ -1,4 +1,4 @@
-Source: rayforge
+Source: swiftcut
 Section: graphics
 Priority: optional
 Maintainer: Samuel Abels <knipknap@gmail.com>
@@ -19,7 +19,7 @@ Build-Depends: cargo,
 Standards-Version: 4.6.2
 Homepage: https://github.com/ilab/swiftcut
 
-Package: rayforge
+Package: swiftcut
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends},
   python3-gi, python3-git, python3-cairo, python3-gi-cairo,

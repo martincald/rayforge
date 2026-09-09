@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 from pytest_mock import MockerFixture
 
-from rayforge.image.ruida.parser import RuidaParser
-from rayforge.machine.driver.ruida.ruida_util import encode14, encode35
+from swiftcut.image.ruida.parser import RuidaParser
+from swiftcut.machine.driver.ruida.ruida_util import encode14, encode35
 
 
 def _scramble(byte_val: int) -> int:
@@ -89,7 +89,7 @@ def test_parser_on_simple_square(
     This test is now independent of the RuidaGeoCommand class implementation.
     """
     # Mock the RuidaGeoCommand class within the parser's namespace
-    mock_cmd_cls = mocker.patch("rayforge.image.ruida.parser.RuidaGeoCommand")
+    mock_cmd_cls = mocker.patch("swiftcut.image.ruida.parser.RuidaGeoCommand")
 
     data = simple_square_rd_file.read_bytes()
     parser = RuidaParser(data)

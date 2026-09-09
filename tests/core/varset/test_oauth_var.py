@@ -1,8 +1,8 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from rayforge.core.varset import Var, VarSet
-from rayforge.core.varset.oauthvar import OAuthFlowVar
+from swiftcut.core.varset import Var, VarSet
+from swiftcut.core.varset.oauthvar import OAuthFlowVar
 
 
 class TestOAuthFlowVar:

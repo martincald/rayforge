@@ -1,4 +1,4 @@
-from rayforge.shared.util.cache import lru_cache_unless_forced
+from swiftcut.shared.util.cache import lru_cache_unless_forced
 
 
 class TestLruCacheUnlessForced:

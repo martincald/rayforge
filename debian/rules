@@ -16,8 +16,8 @@ override_dh_auto_build:
 	sed -i 's/enabled = true/enabled = false/' pyproject.toml; \
 	cat pyproject.toml; \
 	\
-	echo "Writing version to rayforge/version.txt: $$VERSION"; \
-	echo "$$VERSION" > rayforge/version.txt; \
+	echo "Writing version to swiftcut/version.txt: $$VERSION"; \
+	echo "$$VERSION" > swiftcut/version.txt; \
 	\
 	dh_auto_build
 
@@ -34,7 +34,7 @@ override_dh_auto_install:
 		--no-dependencies \
 		--no-index \
 		--find-links=file://$(CURDIR)/vendor/sdist \
-		--target=$(CURDIR)/debian/rayforge/usr/lib/python3/dist-packages \
+		--target=$(CURDIR)/debian/swiftcut/usr/lib/python3/dist-packages \
 		--upgrade \
 		vtracer pyvips asyncudp trimesh raygeo
 

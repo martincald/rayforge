@@ -5,7 +5,7 @@ from raygeo.image.dither import (
     apply_floyd_steinberg_dither,
 )
 
-from rayforge.image.dither import (
+from swiftcut.image.dither import (
     BAYER_MATRICES,
     DitherAlgorithm,
     surface_to_dithered_array,

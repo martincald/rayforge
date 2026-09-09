@@ -7,12 +7,12 @@ from unittest.mock import patch
 
 import pytest
 
-from rayforge.context import get_context
-from rayforge.core.step_registry import step_registry
-from rayforge.core.vectorization_spec import TraceSpec
-from rayforge.image.svg import svg_fallback
-from rayforge.machine.models.machine import Origin
-from rayforge.machine.models.rotary_module import RotaryModule
+from swiftcut.context import get_context
+from swiftcut.core.step_registry import step_registry
+from swiftcut.core.vectorization_spec import TraceSpec
+from swiftcut.image.svg import svg_fallback
+from swiftcut.machine.models.machine import Origin
+from swiftcut.machine.models.rotary_module import RotaryModule
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

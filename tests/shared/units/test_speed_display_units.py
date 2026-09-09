@@ -11,17 +11,17 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.core.config import Config
-from rayforge.core.step import Step
-from rayforge.machine.models.machine import Machine
-from rayforge.shared.units.definitions import (
+from swiftcut.core.config import Config
+from swiftcut.core.step import Step
+from swiftcut.machine.models.machine import Machine
+from swiftcut.shared.units.definitions import (
     get_base_unit_for_quantity,
     get_unit,
     get_units_for_quantity,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-UI_GTK_DIR = REPO_ROOT / "rayforge" / "ui_gtk"
+UI_GTK_DIR = REPO_ROOT / "swiftcut" / "ui_gtk"
 
 
 class TestSpeedUnitRegistry:

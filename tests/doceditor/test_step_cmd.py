@@ -1,6 +1,6 @@
 import pytest
 
-from rayforge.doceditor.step_cmd import StepCmd
+from swiftcut.doceditor.step_cmd import StepCmd
 
 
 @pytest.fixture

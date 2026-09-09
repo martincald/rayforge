@@ -14,7 +14,7 @@ from utils import (
     wait_for_settled,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ PHYSICAL_P2 = (50.0, 60.0)
 
 
 def setup_wizard():
-    from rayforge.context import get_context
+    from swiftcut.context import get_context
 
     wizard_mod = importlib.import_module(
         "rayforge_addons.print_and_cut.print_and_cut.wizard"

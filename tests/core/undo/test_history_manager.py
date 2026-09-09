@@ -1,6 +1,6 @@
-from rayforge.core.undo import HistoryManager
-from rayforge.core.undo.command import Command
-from rayforge.core.undo.property_cmd import ChangePropertyCommand
+from swiftcut.core.undo import HistoryManager
+from swiftcut.core.undo.command import Command
+from swiftcut.core.undo.property_cmd import ChangePropertyCommand
 
 
 class MockObj:

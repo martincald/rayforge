@@ -1,6 +1,6 @@
 """
 Tests for the ``geometry_revision`` / ``transform_revision`` monotonic
-counters on :class:`~rayforge.core.item.DocItem`.
+counters on :class:`~swiftcut.core.item.DocItem`.
 
 These counters are bumped transparently whenever ``updated`` or
 ``transform_changed`` is sent, respectively, and are read by the
@@ -10,9 +10,9 @@ pipeline to build stable ``version_token`` values for raygeo
 
 from raygeo.geo import Matrix
 
-from rayforge.core.doc import Doc
-from rayforge.core.group import Group
-from rayforge.core.item import DocItem
+from swiftcut.core.doc import Doc
+from swiftcut.core.group import Group
+from swiftcut.core.item import DocItem
 
 
 class LeafItem(DocItem):
@@ -111,7 +111,7 @@ def test_bubbling_signals_do_not_bump_parent_revision():
 
 def test_workpiece_revision_bumps():
     """End-to-end check using real WorkPiece / Doc / Layer wiring."""
-    from rayforge.core.workpiece import WorkPiece
+    from swiftcut.core.workpiece import WorkPiece
 
     doc = Doc()
     layer = doc.active_layer
@@ -135,7 +135,7 @@ def test_step_name_change_bumps_geometry_revision():
     """
     from typing import Any
 
-    from rayforge.core.step import Step
+    from swiftcut.core.step import Step
 
     class _DummyStep(Step):
         def to_dict(self) -> dict[str, Any]:

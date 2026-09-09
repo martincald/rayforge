@@ -16,7 +16,7 @@ gi.require_version("Rsvg", "2.0")
 from gi.repository import Rsvg  # noqa: E402
 
 here = Path(__file__).parent.parent.parent
-source_path = here / "rayforge/resources/icons/org.ilab.SwiftCut.svg"
+source_path = here / "swiftcut/resources/icons/org.ilab.SwiftCut.svg"
 ico_path = here / "swiftcut.ico"
 
 SIZES = [256, 128, 64, 48, 32, 16]

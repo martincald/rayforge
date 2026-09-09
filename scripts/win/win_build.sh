@@ -21,8 +21,8 @@ BUNDLE_NAME="swiftcut-v${CLEAN_VERSION}"
 INSTALLER_EXE_NAME="${BUNDLE_NAME}-installer.exe"
 
 echo "--- Starting Windows Build Process (Version: $APP_VERSION) ---"
-echo "Embedding version ${APP_VERSION} into rayforge/version.txt"
-echo "${APP_VERSION}" > rayforge/version.txt
+echo "Embedding version ${APP_VERSION} into swiftcut/version.txt"
+echo "${APP_VERSION}" > swiftcut/version.txt
 
 
 # ----------------------------------------------------
@@ -70,10 +70,10 @@ pyinstaller --noconfirm --onedir --windowed \
   --log-level INFO \
   --name "SwiftCut" \
   --icon="swiftcut.ico" \
-  --add-data "rayforge/version.txt;rayforge" \
-  --add-data "rayforge/resources;rayforge/resources" \
-  --add-data "rayforge/locale;rayforge/locale" \
-  --add-data "rayforge/builtin_addons;rayforge/builtin_addons" \
+  --add-data "swiftcut/version.txt;swiftcut" \
+  --add-data "swiftcut/resources;swiftcut/resources" \
+  --add-data "swiftcut/locale;swiftcut/locale" \
+  --add-data "swiftcut/builtin_addons;swiftcut/builtin_addons" \
   --add-data "etc;etc" \
   --add-data "${WIN_MSYS2_PATH}\\mingw64\\share\\glib-2.0\\schemas;glib-2.0\\schemas" \
   --add-data "${WIN_MSYS2_PATH}\\mingw64\\share\\icons;share\\icons" \
@@ -82,15 +82,15 @@ pyinstaller --noconfirm --onedir --windowed \
   --add-binary "${WIN_MSYS2_PATH}\\mingw64\\bin\\libGLESv2.dll;." \
   --add-binary "${WIN_MSYS2_PATH}\\mingw64\\bin\\libvips-42.dll;." \
   --hidden-import "gi._gi_cairo" \
-  --hidden-import "rayforge.core.expression" \
-  --hidden-import "rayforge.core.expression.evaluator" \
-  --hidden-import "rayforge.core.expression.context" \
-  --hidden-import "rayforge.core.expression.errors" \
-  --hidden-import "rayforge.core.expression.parser" \
-  --hidden-import "rayforge.core.expression.tokenizer" \
-  --hidden-import "rayforge.core.expression.validator" \
+  --hidden-import "swiftcut.core.expression" \
+  --hidden-import "swiftcut.core.expression.evaluator" \
+  --hidden-import "swiftcut.core.expression.context" \
+  --hidden-import "swiftcut.core.expression.errors" \
+  --hidden-import "swiftcut.core.expression.parser" \
+  --hidden-import "swiftcut.core.expression.tokenizer" \
+  --hidden-import "swiftcut.core.expression.validator" \
   --additional-hooks-dir "hooks" \
-  rayforge/app.py
+  swiftcut/app.py
 
 echo "✅ PyInstaller build complete: dist/SwiftCut/"
 

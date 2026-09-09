@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from rayforge.core.varset import Var, VarSet
-from rayforge.core.varset.appkeyvar import AppKeyVar
+from swiftcut.core.varset import Var, VarSet
+from swiftcut.core.varset.appkeyvar import AppKeyVar
 
 
 class TestAppKeyVarCreation:

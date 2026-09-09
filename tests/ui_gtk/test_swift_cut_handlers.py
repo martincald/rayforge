@@ -16,10 +16,10 @@ import pytest
 
 # (package, module, the number of `.connect(` calls that must survive)
 CASES = [
-    ("rayforge.ui_gtk.machine", "jog_widget.py", 20),
-    ("rayforge.ui_gtk.machine", "cut_scale_dialog.py", 1),
-    ("rayforge.ui_gtk.doceditor", "bottom_panel.py", 28),
-    ("rayforge.ui_gtk", "toolbar.py", 5),
+    ("swiftcut.ui_gtk.machine", "jog_widget.py", 20),
+    ("swiftcut.ui_gtk.machine", "cut_scale_dialog.py", 1),
+    ("swiftcut.ui_gtk.doceditor", "bottom_panel.py", 28),
+    ("swiftcut.ui_gtk", "toolbar.py", 5),
 ]
 
 

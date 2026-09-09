@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge.core.material import Material, MaterialAppearance
+from swiftcut.core.material import Material, MaterialAppearance
 
 
 class TestMaterial:

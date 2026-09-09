@@ -20,7 +20,7 @@ from unittest.mock import MagicMock
 import pytest
 from gi.repository import Gdk
 
-from rayforge.ui_gtk.canvas.worldsurface import (
+from swiftcut.ui_gtk.canvas.worldsurface import (
     DISCRETE_ZOOM_FACTOR,
     _decay_pan_velocity,
 )

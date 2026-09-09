@@ -6,14 +6,14 @@ import cairo
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.base_importer import ImporterFeature
-from rayforge.image.png.importer import PngImporter
-from rayforge.image.png.renderer import PNG_RENDERER
-from rayforge.image.registry import renderer_registry
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.base_importer import ImporterFeature
+from swiftcut.image.png.importer import PngImporter
+from swiftcut.image.png.renderer import PNG_RENDERER
+from swiftcut.image.registry import renderer_registry
 
 # Assume the test PNGs are in the same directory as this test file
 TEST_DATA_DIR = Path(__file__).parent
@@ -203,7 +203,7 @@ class TestPngImporterContract:
         parse_result = importer.parse()
         assert parse_result is not None
 
-        from rayforge.core.vectorization_spec import PassthroughSpec
+        from swiftcut.core.vectorization_spec import PassthroughSpec
 
         with pytest.raises(TypeError):
             importer.vectorize(parse_result, PassthroughSpec())

@@ -7,13 +7,13 @@ import pytest
 
 gi.require_version("Gtk", "4.0")
 
-from rayforge.machine.driver.driver import DeviceState  # noqa: E402
-from rayforge.machine.models.machine import Machine  # noqa: E402
-from rayforge.machine.transport import TransportStatus  # noqa: E402
+from swiftcut.machine.driver.driver import DeviceState  # noqa: E402
+from swiftcut.machine.models.machine import Machine  # noqa: E402
+from swiftcut.machine.transport import TransportStatus  # noqa: E402
 
 
 def _widget(ui_context_initializer, machine_cmd):
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_axis_extents(200, 200)
@@ -107,8 +107,8 @@ def test_position_readout_names_the_origin_corner(ui_context_initializer):
     The readout is in machine coordinates, so it has to say which
     corner those run from -- and follow the profile when it changes.
     """
-    from rayforge.machine.models.machine import Machine, Origin
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.machine.models.machine import Machine, Origin
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_origin(Origin.TOP_LEFT)

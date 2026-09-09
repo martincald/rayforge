@@ -1,4 +1,4 @@
-from rayforge.machine.sanity import (
+from swiftcut.machine.sanity import (
     CheckMode,
     IssueCategory,
     IssueSeverity,

@@ -104,13 +104,13 @@ jobs:
       - name: Run smoke test
         run: |
           # Verify that the package is listed as installed
-          dpkg -l rayforge
+          dpkg -l swiftcut
           # Verify the main executable is in the PATH and can be run
           # This simple command proves the installation was successful.
-          rayforge --version
+          swiftcut --version
           # Try running the app and immediately exiting again.
           sudo apt-get install -y xvfb
-          xvfb-run rayforge --exit
+          xvfb-run swiftcut --exit
 
       - name: Sign source package
         id: sign_source_package

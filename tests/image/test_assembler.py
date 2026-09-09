@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.layer import Layer
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.assembler import ItemAssembler
-from rayforge.image.structures import LayoutItem
+from swiftcut.core.layer import Layer
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.assembler import ItemAssembler
+from swiftcut.image.structures import LayoutItem
 
 
 @pytest.fixture

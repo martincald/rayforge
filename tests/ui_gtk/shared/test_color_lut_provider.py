@@ -6,9 +6,9 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from rayforge.core.color import ColorSet
-from rayforge.machine.models.laser import LaserHead
-from rayforge.ui_gtk.shared.color_lut_provider import ColorLutProvider
+from swiftcut.core.color import ColorSet
+from swiftcut.machine.models.laser import LaserHead
+from swiftcut.ui_gtk.shared.color_lut_provider import ColorLutProvider
 
 
 def _theme_color_set() -> ColorSet:

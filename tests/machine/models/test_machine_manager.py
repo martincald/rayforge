@@ -14,9 +14,9 @@ import asyncio
 
 import pytest
 
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.manager import MachineManager
-from rayforge.shared.tasker.manager import TaskManager
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.manager import MachineManager
+from swiftcut.shared.tasker.manager import TaskManager
 
 
 @pytest.mark.usefixtures("lite_context")

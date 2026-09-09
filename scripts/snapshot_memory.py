@@ -1,4 +1,4 @@
-"""Memory-ownership snapshot for rayforge.
+"""Memory-ownership snapshot for swiftcut.
 
 Run via::
 
@@ -39,17 +39,17 @@ from raygeo.cnc.execution.specs import AggregateOutput
 from raygeo.compressed_array import CompressedArray
 from raygeo.ops import Ops
 
-from rayforge.pipeline.artifact.job import JobArtifact
-from rayforge.pipeline.artifact.workpiece import WorkPieceArtifact
+from swiftcut.pipeline.artifact.job import JobArtifact
+from swiftcut.pipeline.artifact.workpiece import WorkPieceArtifact
 
 if TYPE_CHECKING:
-    from rayforge.core.doc import Doc
-    from rayforge.doceditor.editor import DocEditor
-    from rayforge.pipeline.artifact.store import ArtifactStore
-    from rayforge.pipeline.encoder.base import EncodedOutput
-    from rayforge.pipeline.pipeline import Pipeline
-    from rayforge.pipeline.view.view_manager import ViewManager
-    from rayforge.ui_gtk.mainwindow import MainWindow
+    from swiftcut.core.doc import Doc
+    from swiftcut.doceditor.editor import DocEditor
+    from swiftcut.pipeline.artifact.store import ArtifactStore
+    from swiftcut.pipeline.encoder.base import EncodedOutput
+    from swiftcut.pipeline.pipeline import Pipeline
+    from swiftcut.pipeline.view.view_manager import ViewManager
+    from swiftcut.ui_gtk.mainwindow import MainWindow
 
 logger = logging.getLogger("memsnapshot")
 
@@ -582,11 +582,11 @@ def run_snapshot(app: AppProtocol, win: MainWindow) -> None:
 
 # ── UI script entry point ──────────────────────────────────────────
 # When run via --uiscript, the globals `app` and `win` are injected
-# by rayforge.uiscript._set_context().
+# by swiftcut.uiscript._set_context().
 _app: AppProtocol | None = None
 _win: MainWindow | None = None
 try:
-    from rayforge import uiscript as _ui
+    from swiftcut import uiscript as _ui
 
     _app = _ui.app
     _win = _ui.win

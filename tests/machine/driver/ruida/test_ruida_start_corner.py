@@ -17,13 +17,13 @@ import pytest_asyncio
 from blinker import Signal
 from raygeo.ops import Ops
 
-from rayforge.core.doc import Doc
-from rayforge.machine.cmd import _cut_scale_ops
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import Machine, Origin, StartCorner
+from swiftcut.core.doc import Doc
+from swiftcut.machine.cmd import _cut_scale_ops
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import Machine, Origin, StartCorner
 
 WIDTH = 50.0
 HEIGHT = 30.0

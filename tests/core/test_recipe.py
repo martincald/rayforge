@@ -4,11 +4,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from rayforge.core.doc import Doc
-from rayforge.core.recipe import Recipe
-from rayforge.core.step import Step
-from rayforge.core.stock import StockItem
-from rayforge.core.stock_asset import StockAsset
+from swiftcut.core.doc import Doc
+from swiftcut.core.recipe import Recipe
+from swiftcut.core.step import Step
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
 
 
 @pytest.fixture

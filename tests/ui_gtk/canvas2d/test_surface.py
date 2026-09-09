@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 from blinker import Signal
 
-from rayforge.machine.models.coordspace import MachineSpace
-from rayforge.machine.models.machine import Machine, Origin
+from swiftcut.machine.models.coordspace import MachineSpace
+from swiftcut.machine.models.machine import Machine, Origin
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def surface(mock_work_origin):
     Creates a WorkSurface instance bypassing the GTK initialization
     (which would require a display connection) and mocking internal elements.
     """
-    from rayforge.ui_gtk.canvas2d.surface import WorkSurface
+    from swiftcut.ui_gtk.canvas2d.surface import WorkSurface
 
     # Bypass GTK __init__ chain
     s = WorkSurface.__new__(WorkSurface)
@@ -145,7 +145,7 @@ def test_wcs_visual_marker_location(surface, scenario):
     machine.get_coordinate_space.return_value = space
 
     # Wire the panel to delegate to the real space
-    from rayforge.machine.models.machine_panel import MachinePanel
+    from swiftcut.machine.models.machine_panel import MachinePanel
 
     machine.panel = MachinePanel(machine)
 

@@ -1,12 +1,12 @@
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.models.axis import (
+from swiftcut.machine.models.axis import (
     AxisConfig,
     AxisDirection,
     AxisSet,
     AxisType,
 )
-from rayforge.machine.models.rotary_module import RotaryModule
+from swiftcut.machine.models.rotary_module import RotaryModule
 
 
 class TestAxisConfig:

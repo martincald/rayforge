@@ -9,7 +9,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Gtk
 
-from rayforge.ui_gtk.doceditor.step_settings.pages import PostProcessingPage
+from swiftcut.ui_gtk.doceditor.step_settings.pages import PostProcessingPage
 
 
 def _find_label(widget):

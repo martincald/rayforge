@@ -6,15 +6,15 @@ import pytest_asyncio
 import yaml
 from raygeo.ops import Ops
 
-from rayforge.config import BUILTIN_DEVICES_DIR
-from rayforge.core.doc import Doc
-from rayforge.machine.device.profile import DeviceProfile
-from rayforge.machine.driver import get_driver_cls
-from rayforge.machine.models.machine import Machine
-from rayforge.shared import tasker
+from swiftcut.config import BUILTIN_DEVICES_DIR
+from swiftcut.core.doc import Doc
+from swiftcut.machine.device.profile import DeviceProfile
+from swiftcut.machine.driver import get_driver_cls
+from swiftcut.machine.models.machine import Machine
+from swiftcut.shared import tasker
 
 if TYPE_CHECKING:
-    from rayforge.context import RayforgeContext
+    from swiftcut.context import RayforgeContext
 
 
 def _encode(ops, machine, doc):
@@ -172,7 +172,7 @@ async def test_inject_wcs_after_preamble_flag(carvera_air_machine: "Machine"):
     Tests that inject_wcs_after_preamble flag controls whether
     WCS is injected after the preamble.
     """
-    from rayforge.machine.models.dialect import GcodeDialect
+    from swiftcut.machine.models.dialect import GcodeDialect
 
     # --- Arrange ---
     machine = carvera_air_machine

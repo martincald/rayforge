@@ -4,14 +4,14 @@ import asyncio
 
 import pytest
 
-from rayforge import config as config_module
-from rayforge import context as context_module
-from rayforge.context import get_context
-from rayforge.core.step import Step
-from rayforge.doceditor.editor import DocEditor
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import Machine
-from rayforge.shared import tasker
+from swiftcut import config as config_module
+from swiftcut import context as context_module
+from swiftcut.context import get_context
+from swiftcut.core.step import Step
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import Machine
+from swiftcut.shared import tasker
 
 
 class FakeStep(Step):

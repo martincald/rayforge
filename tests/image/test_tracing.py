@@ -4,7 +4,7 @@ import cairo
 import numpy as np
 from raygeo.geo import Geometry, Line, Move
 
-from rayforge.image.tracing import (
+from swiftcut.image.tracing import (
     trace_color_image,
     trace_surface,
 )
@@ -106,7 +106,7 @@ def test_trace_surface_hull_fallback_path(monkeypatch):
     Tests the fallback to convex hulls when vector count is too high.
     A checkerboard is perfect for generating many distinct vectors.
     """
-    monkeypatch.setattr("rayforge.image.tracing.MAX_VECTORS_LIMIT", 50)
+    monkeypatch.setattr("swiftcut.image.tracing.MAX_VECTORS_LIMIT", 50)
 
     # Create a white canvas
     img = np.full((100, 100), 255, dtype=np.uint8)
@@ -165,7 +165,7 @@ def test_trace_surface_vtracer_failure_fallback_to_hull(monkeypatch):
     # Mock the hull function to verify it gets called
     mock_get_hull = MagicMock(return_value="mocked_geometry")
     monkeypatch.setattr(
-        "rayforge.image.tracing.get_enclosing_hull", mock_get_hull
+        "swiftcut.image.tracing.get_enclosing_hull", mock_get_hull
     )
 
     # Create a simple image that would normally trace fine
@@ -242,7 +242,7 @@ def test_trace_multiple_colors():
 
 
 def test_trace_large_image_downscaled(monkeypatch):
-    monkeypatch.setattr("rayforge.image.tracing.VTRACER_PIXEL_LIMIT", 10000)
+    monkeypatch.setattr("swiftcut.image.tracing.VTRACER_PIXEL_LIMIT", 10000)
 
     bgr_image = np.zeros((200, 200, 3), dtype=np.uint8)
     bgr_image[50:150, 50:150] = [0, 0, 255]

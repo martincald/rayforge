@@ -4,10 +4,10 @@ import pytest
 from raygeo.geo import Matrix
 from raygeo.ops.state import CoolantMode
 
-from rayforge.core.doc import Doc
-from rayforge.core.step import Step
-from rayforge.machine.models.laser import LaserHead
-from rayforge.machine.models.spindle import SpindleHead
+from swiftcut.core.doc import Doc
+from swiftcut.core.step import Step
+from swiftcut.machine.models.laser import LaserHead
+from swiftcut.machine.models.spindle import SpindleHead
 
 
 @pytest.fixture
@@ -388,7 +388,7 @@ def test_deserialization_with_missing_step_class():
 
 def test_common_recipe_varset_groups_intersects_keys():
     """common_recipe_varset_groups keeps only keys shared by all types."""
-    from rayforge.core.varset import BoolVar, SpeedVar, VarSet
+    from swiftcut.core.varset import BoolVar, SpeedVar, VarSet
 
     class StepA(Step):
         @classmethod

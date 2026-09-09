@@ -12,14 +12,14 @@ import pytest_asyncio
 from blinker import Signal
 from raygeo.ops import Ops
 
-from rayforge.core.doc import Doc
-from rayforge.machine.cmd import MachineCmd, _cut_scale_ops
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import Machine
-from rayforge.pipeline.artifact import JobArtifact
+from swiftcut.core.doc import Doc
+from swiftcut.machine.cmd import MachineCmd, _cut_scale_ops
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import Machine
+from swiftcut.pipeline.artifact import JobArtifact
 
 # Opcodes that cut, and the power commands a layer body emits.
 CUT_OPCODES = (b"\xa8", b"\xa9", b"\xaa", b"\xab")

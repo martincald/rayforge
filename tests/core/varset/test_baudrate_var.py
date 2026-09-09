@@ -1,7 +1,7 @@
 import pytest
 
-from rayforge.core.varset.baudratevar import BaudrateVar, ValidationError
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.baudratevar import BaudrateVar, ValidationError
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestBaudrateVar:

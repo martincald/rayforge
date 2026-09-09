@@ -19,7 +19,7 @@ from utils import (
     wait_for_settled,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 

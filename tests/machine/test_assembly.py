@@ -3,8 +3,8 @@ import math
 import pytest
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.assembly import Assembly, JointType, Link, LinkRole
-from rayforge.machine.machine_state import MachineState
+from swiftcut.machine.assembly import Assembly, JointType, Link, LinkRole
+from swiftcut.machine.machine_state import MachineState
 
 
 def _make_state(x=0.0, y=0.0, z=0.0, a=0.0, b=0.0):

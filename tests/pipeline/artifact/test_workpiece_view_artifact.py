@@ -1,8 +1,8 @@
 import numpy as np
 
-from rayforge.context import get_context
-from rayforge.pipeline.artifact import create_handle_from_dict
-from rayforge.pipeline.artifact.workpiece_view import (
+from swiftcut.context import get_context
+from swiftcut.pipeline.artifact import create_handle_from_dict
+from swiftcut.pipeline.artifact.workpiece_view import (
     RenderContext,
     WorkPieceViewArtifact,
     WorkPieceViewArtifactHandle,

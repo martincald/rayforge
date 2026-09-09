@@ -2,7 +2,7 @@
 
 Run with::
 
-    python -m rayforge.app --uiscript scripts/screenshot/swift_cut_review.py
+    python -m swiftcut.app --uiscript scripts/screenshot/swift_cut_review.py
 
 Two things make this script stand apart from its neighbours here.
 
@@ -28,7 +28,7 @@ from typing import TypeVar
 
 from gi.repository import Adw, GLib, Gtk
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +104,8 @@ def _set_scheme(dark: bool) -> None:
 
 
 def _open_machine_settings(page: str):
-    from rayforge.context import get_context
-    from rayforge.ui_gtk.machine.settings_dialog import (
+    from swiftcut.context import get_context
+    from swiftcut.ui_gtk.machine.settings_dialog import (
         MachineSettingsDialog,
     )
 
@@ -120,7 +120,7 @@ def _open_machine_settings(page: str):
 
 
 def _open_cut_scale_sheet():
-    from rayforge.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
+    from swiftcut.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
 
     dialog = CutScaleDialog(
         default_power_percent=15.0,

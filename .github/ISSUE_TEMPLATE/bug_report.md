@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 IMPORTANT:
 If you are opening an issue related to the connection to your machine, please provide the debug dump!
-See here how to save it: https://rayforge.org/docs/troubleshooting/debug
+See website/docs/troubleshooting/ for how to save it.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -28,7 +28,7 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Versions:**
-You can collect the version info from the Rayforge about dialog.
+You can collect the version info from the SwiftCut about dialog.
 
 **Extra info:**
 Anything else?

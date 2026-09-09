@@ -18,7 +18,7 @@ from utils import (
     wait_for_settled,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +34,11 @@ def main():
         app.quit_idle()
         return
 
-    from rayforge.context import get_context
-    from rayforge.machine.sanity.checker import SanityChecker
-    from rayforge.machine.sanity.result import CheckMode
-    from rayforge.pipeline.artifact.job import JobArtifact
-    from rayforge.ui_gtk.shared.sanity_check_dialog import SanityCheckDialog
+    from swiftcut.context import get_context
+    from swiftcut.machine.sanity.checker import SanityChecker
+    from swiftcut.machine.sanity.result import CheckMode
+    from swiftcut.pipeline.artifact.job import JobArtifact
+    from swiftcut.ui_gtk.shared.sanity_check_dialog import SanityCheckDialog
 
     config = get_context().config
     machine = config.machine

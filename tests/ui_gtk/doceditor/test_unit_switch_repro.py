@@ -13,10 +13,10 @@ gi.require_version("Adw", "1")
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.context import get_context
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.editor import DocEditor
-from rayforge.ui_gtk.doceditor.property_providers.transform import (
+from swiftcut.context import get_context
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.ui_gtk.doceditor.property_providers.transform import (
     TransformPropertyProvider,
 )
 

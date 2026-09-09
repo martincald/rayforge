@@ -10,22 +10,22 @@ from pathlib import Path
 
 import pytest
 
-from rayforge import config
-from rayforge.core.color_preset import (
+from swiftcut import config
+from swiftcut.core.color_preset import (
     ColorPreset,
     get_color_preset_mgr,
     reset_color_preset_mgr,
 )
-from rayforge.core.layer import Layer
-from rayforge.core.vectorization_spec import (
+from swiftcut.core.layer import Layer
+from swiftcut.core.vectorization_spec import (
     LayerImportMode,
     LayerSource,
     PassthroughSpec,
 )
-from rayforge.doceditor.file_cmd import FileCmd
-from rayforge.doceditor.step_cmd import StepCmd
-from rayforge.image.svg.importer import SvgImporter
-from rayforge.image.svg.svg_vector import SvgVectorImporter
+from swiftcut.doceditor.file_cmd import FileCmd
+from swiftcut.doceditor.step_cmd import StepCmd
+from swiftcut.image.svg.importer import SvgImporter
+from swiftcut.image.svg.svg_vector import SvgVectorImporter
 
 SVG_COLORS = b"""
 <svg width="100mm" height="100mm" viewBox="0 0 100 100"

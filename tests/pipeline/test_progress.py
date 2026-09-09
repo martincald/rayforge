@@ -2,7 +2,7 @@
 
 import time
 
-from rayforge.shared.tasker.progress import (
+from swiftcut.shared.tasker.progress import (
     CallbackProgressContext,
     NoOpProgressContext,
 )

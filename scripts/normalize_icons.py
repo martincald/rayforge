@@ -2,7 +2,7 @@
 """
 Normalize SVG icons for GTK compatibility.
 
-This script normalizes all SVG icons in rayforge/resources/icons/ to have:
+This script normalizes all SVG icons in swiftcut/resources/icons/ to have:
 - viewBox="0 0 24 24"
 - Path coordinates transformed to fit within 0-24 range
 - Fill color set to #000000
@@ -427,7 +427,7 @@ def normalize_svg(content, target_size=24):
 
 def main():
     icons_dir = (
-        Path(__file__).parent.parent / "rayforge" / "resources" / "icons"
+        Path(__file__).parent.parent / "swiftcut" / "resources" / "icons"
     )
 
     if not icons_dir.exists():

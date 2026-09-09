@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from rayforge.core.tab import Tab
+from swiftcut.core.tab import Tab
 
 
 class TestTab:

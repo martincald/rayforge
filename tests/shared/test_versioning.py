@@ -1,6 +1,6 @@
 import semver
 
-from rayforge.shared.util.versioning import (
+from swiftcut.shared.util.versioning import (
     check_constraint,
     check_rayforge_compatibility,
     is_newer_version,

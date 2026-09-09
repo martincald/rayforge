@@ -126,16 +126,16 @@ No accent lines and no decorative bars anywhere.
 `assets/icons/` holds 48 icons × 5 tints (`-b` brand blue, `-d` dark
 ink `#1D1D1F`, `-g` grey, `-r` red, `-w` white) = 240 files.
 
-**They are not new artwork.** Each is the *existing Rayforge icon
+**They are not new artwork.** Each is the *existing SwiftCut icon
 geometry*, byte-identical in path data, with only the `fill`
 attribute changed and a C2PA metadata block added. Verified against
 `arrow-north`, `frame` and `home`; the design project also carries a
-copy of `rayforge/resources/icons/*-symbolic.svg` that matches the
+copy of `swiftcut/resources/icons/*-symbolic.svg` that matches the
 repo exactly. The five tints exist because HTML `<img>` cannot
 recolour an SVG — they are a mockup device, not a deliverable.
 
 All 48 names the deck uses already exist in
-`rayforge/resources/icons/` (checked, zero missing).
+`swiftcut/resources/icons/` (checked, zero missing).
 
 ### 2.2 Consequence for GTK
 
@@ -267,12 +267,12 @@ provider and leaves `apply_css()` alone.
 | Commit | Content | Verify |
 | --- | --- | --- |
 | — | This document | committed before any code |
-| **A** | `rayforge/ui_gtk/theme.py`: token blocks + rules, light/dark provider, installed from `MainWindow`. Typography sizes. Canvas background follows theme. | app starts; suite green |
+| **A** | `swiftcut/ui_gtk/theme.py`: token blocks + rules, light/dark provider, installed from `MainWindow`. Typography sizes. Canvas background follows theme. | app starts; suite green |
 | **B** | Icon tint semantics in the theme CSS; `Cut Scale` icon → `laser-on-symbolic`. No asset import (§2.2). | jog/scale/corner tests pass unmodified |
 | **C** | Cut Scale sheet text and styling (same fields, same handler); job-progress in the toolbar driven by the **estimate**; inspector locked while running; Stop red; branding → "Swift Cut". | protected-behaviour tests + handler-count test |
 | **D** *(optional)* | Estimate-driven kerf hairline. **Not built** — see §6. | — |
 
-Branding changes `APP_NAME` in `rayforge/const.py` only. Module and
+Branding changes `APP_NAME` in `swiftcut/const.py` only. Module and
 package names stay `rayforge`; there is no code rename.
 
 The machine settings dialog is already the System-Settings layout the

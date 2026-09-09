@@ -1,6 +1,6 @@
 from raygeo.ops import Ops
 
-from rayforge.pipeline.artifact import StepOpsArtifact
+from swiftcut.pipeline.artifact import StepOpsArtifact
 
 
 def test_artifact_type_property():

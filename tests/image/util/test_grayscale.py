@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from raygeo.image.grayscale import compute_auto_levels, normalize_grayscale
 
-from rayforge.image.util import grayscale
+from swiftcut.image.util import grayscale
 
 
 def test_surface_to_grayscale_black_surface():

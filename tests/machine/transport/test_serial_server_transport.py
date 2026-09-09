@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-from rayforge.machine.transport import SerialServerTransport, TransportStatus
+from swiftcut.machine.transport import SerialServerTransport, TransportStatus
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="SerialServerTransport requires Unix PTY"
@@ -151,7 +151,7 @@ class TestSerialServerTransport:
     async def test_connection_error_handling(self, mocker):
         """Test error handling when PTY creation fails."""
         mocker.patch(
-            "rayforge.machine.transport.serial_server.pty.openpty",
+            "swiftcut.machine.transport.serial_server.pty.openpty",
             side_effect=OSError("PTY creation failed"),
         )
 

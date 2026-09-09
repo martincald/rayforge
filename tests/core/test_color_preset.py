@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge import config
-from rayforge.core.color_preset import (
+from swiftcut import config
+from swiftcut.core.color_preset import (
     ColorPreset,
     ColorPresetManager,
     get_color_preset_mgr,

@@ -21,10 +21,10 @@ import time
 
 from gi.repository import Adw, GLib, Gtk
 
-from rayforge.core.undo import HistoryManager
-from rayforge.core.varset import FloatVar, IntVar, VarSet
-from rayforge.ui_gtk.shared.pref_rows import SpinRow
-from rayforge.ui_gtk.varset.varset_editor import (
+from swiftcut.core.undo import HistoryManager
+from swiftcut.core.varset import FloatVar, IntVar, VarSet
+from swiftcut.ui_gtk.shared.pref_rows import SpinRow
+from swiftcut.ui_gtk.varset.varset_editor import (
     VarDefinitionRowWidget,
     VarSetEditorWidget,
 )

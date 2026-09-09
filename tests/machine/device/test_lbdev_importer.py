@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge.machine.device.lightburn_importer import (
+from swiftcut.machine.device.lightburn_importer import (
     _DEFAULT_GRBL_DIALECT,
     ImportSummary,
     _map_driver,
@@ -12,12 +12,12 @@ from rayforge.machine.device.lightburn_importer import (
     convert_to_profile,
     parse_lbdev,
 )
-from rayforge.machine.device.manager import (
+from swiftcut.machine.device.manager import (
     DIALECT_FILENAME,
     MANIFEST_FILENAME,
     DeviceProfileManager,
 )
-from rayforge.machine.models.machine import Origin
+from swiftcut.machine.models.machine import Origin
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 

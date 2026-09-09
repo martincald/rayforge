@@ -1,0 +1,25 @@
+"""Laser power row widget."""
+
+from gettext import gettext as _
+from typing import Any
+
+from swiftcut.ui_gtk.doceditor.step_settings.rows import SliderRow
+
+
+class PowerRow(SliderRow):
+    """A slider row bound to the ``LaserStep.power`` attribute."""
+
+    def __init__(self, editor: Any, step: Any):
+        super().__init__(
+            editor,
+            step,
+            "power",
+            _("Power"),
+            _("Laser power as a percentage"),
+            0.0,
+            1.0,
+            1.0,
+            1,
+            display_scale=100.0,
+            suffix="%",
+        )

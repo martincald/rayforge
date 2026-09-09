@@ -1,7 +1,7 @@
 from raygeo.ops import Ops
 
-from rayforge.machine.sanity import IssueCategory, IssueSeverity, SanityContext
-from rayforge.machine.sanity.checks.extent_2d import ExtentCheck2D
+from swiftcut.machine.sanity import IssueCategory, IssueSeverity, SanityContext
+from swiftcut.machine.sanity.checks.extent_2d import ExtentCheck2D
 
 
 def _run_check(ops, axis_extents, machine):

@@ -1,4 +1,4 @@
-from rayforge.core.undo.property_cmd import ChangePropertyCommand
+from swiftcut.core.undo.property_cmd import ChangePropertyCommand
 
 
 class MockTarget:

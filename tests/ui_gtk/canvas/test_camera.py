@@ -8,7 +8,7 @@ import random
 
 import pytest
 
-from rayforge.ui_gtk.canvas.camera import Camera
+from swiftcut.ui_gtk.canvas.camera import Camera
 
 
 class TestCameraDefaults:

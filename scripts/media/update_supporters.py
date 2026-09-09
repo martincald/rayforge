@@ -12,7 +12,7 @@ from platformdirs import user_config_dir
 
 logger = logging.getLogger(__name__)
 
-CONFIG_DIR = Path(user_config_dir("rayforge"))
+CONFIG_DIR = Path(user_config_dir("swiftcut"))
 PATREON_CONFIG_FILE = CONFIG_DIR / "patreon.yaml"
 PATREON_API_BASE = "https://www.patreon.com/api/oauth2/v2"
 SUPPORTERS_FILE = Path(__file__).resolve().parent.parent.parent / (

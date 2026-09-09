@@ -1,5 +1,5 @@
 [project]
-name = "rayforge"
+name = "swiftcut"
 dynamic = ["version", "dependencies"]
 authors = [
   { name="Samuel Abels", email="knipknap@gmail.com" },
@@ -20,7 +20,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/ilab/swiftcut/issues"
 
 [project.gui-scripts]
-rayforge = "rayforge.app:main"
+swiftcut = "swiftcut.app:main"
 
 [build-system]
 requires = [
@@ -32,7 +32,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["rayforge*"]
+include = ["swiftcut*"]
 
 [tool.setuptools-git-versioning]
 enabled = true
@@ -49,8 +49,8 @@ extend-select = ["E402"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
-"rayforge/builtin_addons/*/tests/**" = ["S101"]
-"rayforge/private_addons/*/tests/**" = ["S101"]
+"swiftcut/builtin_addons/*/tests/**" = ["S101"]
+"swiftcut/private_addons/*/tests/**" = ["S101"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -59,10 +59,10 @@ quote-style = "double"
 stubPath = "typings"
 reportMissingModuleSource = false
 include = [
-    "rayforge",
+    "swiftcut",
     "tests/**/*.py",
-    "rayforge/builtin_addons/*",
-    "rayforge/private_addons/*",
+    "swiftcut/builtin_addons/*",
+    "swiftcut/private_addons/*",
 ]
 
 [tool.mypy]
@@ -72,7 +72,7 @@ mypy_path = "stubs"
 "share/applications" = ["data/org.ilab.SwiftCut.desktop"]
 "share/metainfo" = ["data/org.ilab.SwiftCut.metainfo.xml"]
 "share/mime/packages" = ["data/org.ilab.SwiftCut.xml"]
-"share/icons/hicolor/scalable/apps" = ["rayforge/resources/icons/org.ilab.SwiftCut.svg"]
+"share/icons/hicolor/scalable/apps" = ["swiftcut/resources/icons/org.ilab.SwiftCut.svg"]
 
 [project.optional-dependencies]
 test = [
@@ -94,8 +94,8 @@ filterwarnings = [
 ]
 testpaths = [
     "tests",
-    "rayforge/builtin_addons/*/tests",
-    "rayforge/private_addons/*/tests",
+    "swiftcut/builtin_addons/*/tests",
+    "swiftcut/private_addons/*/tests",
 ]
 norecursedirs = [
     "builddir",

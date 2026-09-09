@@ -3,11 +3,11 @@
 import sys
 from unittest.mock import MagicMock, patch
 
-from rayforge.addon_mgr.addon_manager import (
+from swiftcut.addon_mgr.addon_manager import (
     AddonManager,
     UpdateStatus,
 )
-from rayforge.context import RayforgeContext
+from swiftcut.context import RayforgeContext
 
 
 class TestAddonRoundTrip:
@@ -34,7 +34,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "addon.py").write_text(
             "import sys\n"
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "sys.modules['integration_test_addon_loaded'] = False\n"
             "\n"
@@ -45,7 +45,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "addon.py").write_text(
             "import sys\n"
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "sys.modules['integration_test_addon_loaded'] = False\n"
             "\n"
@@ -56,7 +56,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "addon.py").write_text(
             "import sys\n"
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "sys.modules['integration_test_addon_loaded'] = False\n"
             "\n"
@@ -104,7 +104,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "addon.py").write_text(
             "import sys\n"
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "sys.modules['multi_hook_rayforge_init'] = False\n"
             "\n"
@@ -115,7 +115,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "addon.py").write_text(
             "import sys\n"
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "sys.modules['multi_hook_rayforge_init'] = False\n"
             "\n"
@@ -183,7 +183,7 @@ class TestAddonRoundTrip:
         addon_dir.mkdir(parents=True)
 
         (addon_dir / "addon.py").write_text(
-            "from rayforge.core.hooks import hookimpl\n"
+            "from swiftcut.core.hooks import hookimpl\n"
             "\n"
             "@hookimpl\n"
             "def rayforge_init(context):\n"

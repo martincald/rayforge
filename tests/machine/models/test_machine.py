@@ -7,31 +7,31 @@ import pytest
 from raygeo.geo import Geometry, Matrix
 from raygeo.ops.axis import Axis
 
-import rayforge.machine.driver as driver_module
-from rayforge.context import get_context
-from rayforge.core.doc import Doc
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.step_registry import step_registry
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.editor import DocEditor
-from rayforge.image import SVG_RENDERER
-from rayforge.machine.cmd import MachineCmd
-from rayforge.machine.driver.driver import DeviceState
-from rayforge.machine.driver.dummy import NoDeviceDriver
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.machine.models.dialect import (
+import swiftcut.machine.driver as driver_module
+from swiftcut.context import get_context
+from swiftcut.core.doc import Doc
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.step_registry import step_registry
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.image import SVG_RENDERER
+from swiftcut.machine.cmd import MachineCmd
+from swiftcut.machine.driver.driver import DeviceState
+from swiftcut.machine.driver.dummy import NoDeviceDriver
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.models.dialect import (
     GRBL_DIALECT,
     SMOOTHIEWARE_DIALECT,
     GcodeDialect,
 )
-from rayforge.machine.models.laser import Laser
-from rayforge.machine.models.machine import JogDirection, Machine, Origin
-from rayforge.machine.models.macro import MacroTrigger
-from rayforge.machine.transport import TransportStatus
-from rayforge.pipeline.encoder.base import EncodedOutput
-from rayforge.shared.tasker.manager import TaskManager
+from swiftcut.machine.models.laser import Laser
+from swiftcut.machine.models.machine import JogDirection, Machine, Origin
+from swiftcut.machine.models.macro import MacroTrigger
+from swiftcut.machine.transport import TransportStatus
+from swiftcut.pipeline.encoder.base import EncodedOutput
+from swiftcut.shared.tasker.manager import TaskManager
 
 
 @pytest.fixture
@@ -567,7 +567,7 @@ class TestMachine:
         # --- Assert ---
         run_spy.assert_called_once()
         encoded, received_doc, _received_ops = run_spy.call_args.args
-        from rayforge.pipeline.encoder.base import EncodedOutput
+        from swiftcut.pipeline.encoder.base import EncodedOutput
 
         assert isinstance(encoded, EncodedOutput)
         assert received_doc is doc
@@ -1535,7 +1535,7 @@ class TestJogDelegation:
         Machine backed by isolated_context but with a real controller
         so that async jog() goes through the actual code path.
         """
-        from rayforge.machine.models.controller import MachineController
+        from swiftcut.machine.models.controller import MachineController
 
         m = Machine(isolated_context)
         isolated_context.machine_mgr.get_controller.return_value = (

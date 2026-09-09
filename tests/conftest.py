@@ -30,10 +30,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from rayforge import context as rayforge_context
-from rayforge.shared.tasker.progress import ProgressContext
-from rayforge.shared.tasker.task import Task
-from rayforge.worker_init import initialize_worker
+from swiftcut import context as rayforge_context
+from swiftcut.shared.tasker.progress import ProgressContext
+from swiftcut.shared.tasker.task import Task
+from swiftcut.worker_init import initialize_worker
 
 
 class PyvipsLogFilter(logging.Filter):
@@ -89,7 +89,7 @@ def pytest_unconfigure(config):
 
 
 if TYPE_CHECKING:
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
 
 def _seed_inert_machine(machine_dir: Path, context) -> None:
@@ -108,7 +108,7 @@ def _seed_inert_machine(machine_dir: Path, context) -> None:
     """
     import yaml
 
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
     machine_dir.mkdir(parents=True, exist_ok=True)
     placeholder = machine_dir / "00000000-0000-0000-0000-000000000000.yaml"
@@ -140,7 +140,7 @@ def _test_worker_initializer(shared_state: dict):
             side_effect=lambda *args, **kwargs: pytest.fail(fail_msg),
         ),
         patch(
-            "rayforge.shared.util.glib.idle_add",
+            "swiftcut.shared.util.glib.idle_add",
             side_effect=lambda *args, **kwargs: pytest.fail(
                 "GLib.idle_add called from within a worker process."
             ),
@@ -183,7 +183,7 @@ def block_glib_event_loop(request):
             side_effect=lambda *args, **kwargs: pytest.fail(fail_msg),
         ),
         patch(
-            "rayforge.shared.util.glib.idle_add",
+            "swiftcut.shared.util.glib.idle_add",
             side_effect=lambda *args, **kwargs: pytest.fail(fail_msg),
         ),
     ):
@@ -243,7 +243,7 @@ async def task_mgr():
     Provides a test-isolated TaskManager for ASYNC tests, configured to
     bridge its callbacks to the asyncio event loop.
     """
-    from rayforge.shared.tasker.manager import TaskManager
+    from swiftcut.shared.tasker.manager import TaskManager
 
     main_loop = asyncio.get_running_loop()
 
@@ -267,10 +267,10 @@ async def context_initializer(tmp_path, task_mgr, monkeypatch):
     """
     A fixture that initializes the application context.
     """
-    from rayforge import config
-    from rayforge import context as context_module
-    from rayforge.context import get_context
-    from rayforge.shared import tasker
+    from swiftcut import config
+    from swiftcut import context as context_module
+    from swiftcut.context import get_context
+    from swiftcut.shared import tasker
 
     # 1. Isolate test configuration files
     temp_config_dir = tmp_path / "config"
@@ -317,7 +317,7 @@ async def context_initializer(tmp_path, task_mgr, monkeypatch):
 @pytest.fixture
 def contour_step_class(context_initializer):
     """Get ContourStep class from registry after addons are loaded."""
-    from rayforge.core.step_registry import step_registry
+    from swiftcut.core.step_registry import step_registry
 
     return step_registry.get("ContourStep")
 
@@ -325,7 +325,7 @@ def contour_step_class(context_initializer):
 @pytest.fixture
 def engrave_step_class(context_initializer):
     """Get EngraveStep class from registry after addons are loaded."""
-    from rayforge.core.step_registry import step_registry
+    from swiftcut.core.step_registry import step_registry
 
     return step_registry.get("EngraveStep")
 
@@ -337,11 +337,11 @@ def lite_context(tmp_path, task_mgr, monkeypatch):
     MachineManager without cameras, materials, recipes, or addons.
     Much faster than the full context_initializer.
     """
-    from rayforge import config
-    from rayforge import context as context_module
-    from rayforge.context import get_context
-    from rayforge.machine.models.dialect_manager import DialectManager
-    from rayforge.shared import tasker
+    from swiftcut import config
+    from swiftcut import context as context_module
+    from swiftcut.context import get_context
+    from swiftcut.machine.models.dialect_manager import DialectManager
+    from swiftcut.shared import tasker
 
     temp_config_dir = tmp_path / "config"
     temp_dialect_dir = temp_config_dir / "dialects"
@@ -368,7 +368,7 @@ async def machine(lite_context) -> AsyncGenerator["Machine", None]:
     Provides a fresh, test-isolated Machine instance with automatic async
     teardown.
     """
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
     m = Machine(lite_context)
     lite_context.machine_mgr.add_machine(m)
@@ -382,7 +382,7 @@ def sync_machine(lite_context):
     Synchronous Machine fixture for pure math tests.
     No async setup/teardown - much faster for simple tests.
     """
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
     m = Machine(lite_context)
     lite_context.machine_mgr.add_machine(m)
@@ -395,7 +395,7 @@ class MockDialectManager:
     def __init__(self):
         from blinker import Signal
 
-        from rayforge.machine.models.dialect import GRBL_DIALECT
+        from swiftcut.machine.models.dialect import GRBL_DIALECT
 
         self.dialects_changed = Signal()
         self._registry = {GRBL_DIALECT.uid.lower(): GRBL_DIALECT}
@@ -437,7 +437,7 @@ def isolated_machine(isolated_context):
     Ultra-fast Machine fixture using isolated_context.
     For pure math tests only - no async, no file system.
     """
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
     m = Machine(isolated_context)
     isolated_context.machine_mgr.add_machine(m)
@@ -450,7 +450,7 @@ def test_machine_and_config(context_initializer):
     Sets up a well-defined test machine and sets it as the active config
     using the real application mechanisms. This replaces manual mocking.
     """
-    from rayforge.machine.models.machine import Laser, Machine
+    from swiftcut.machine.models.machine import Laser, Machine
 
     context = context_initializer
     test_laser = Laser()
@@ -476,8 +476,8 @@ def ui_task_mgr():
     Provides a test-isolated TaskManager for SYNC UI tests. It uses
     the idle_add wrapper to safely communicate with the main GTK thread.
     """
-    from rayforge.shared.tasker.manager import TaskManager
-    from rayforge.shared.util.glib import idle_add
+    from swiftcut.shared.tasker.manager import TaskManager
+    from swiftcut.shared.util.glib import idle_add
 
     tm = TaskManager(main_thread_scheduler=idle_add)
     yield tm
@@ -494,10 +494,10 @@ def ui_context_initializer(tmp_path, monkeypatch, ui_task_mgr):
     A SYNCHRONOUS context initializer for UI tests. It uses the GLib-based
     `ui_task_mgr`.
     """
-    from rayforge import config
-    from rayforge import context as context_module
-    from rayforge.context import get_context
-    from rayforge.shared import tasker
+    from swiftcut import config
+    from swiftcut import context as context_module
+    from swiftcut.context import get_context
+    from swiftcut.shared import tasker
 
     temp_config_dir = tmp_path / "config"
     temp_dialect_dir = temp_config_dir / "dialects"
@@ -529,7 +529,7 @@ def mock_machine():
     """
     Provides a mock Machine instance for tests that don't need a full context.
     """
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.machine.models.machine import Machine
 
     mock_machine = MagicMock(spec=Machine)
     mock_machine.axis_extents = (200, 150)
@@ -543,7 +543,7 @@ def mock_artifact_store():
     """
     Provides a mock ArtifactStore instance for tests.
     """
-    from rayforge.pipeline.artifact.store import ArtifactStore
+    from swiftcut.pipeline.artifact.store import ArtifactStore
 
     mock_store = MagicMock(spec=ArtifactStore)
     return mock_store
@@ -657,7 +657,7 @@ def zero_debounce_delay(monkeypatch):
             pass
     """
     monkeypatch.setattr(
-        "rayforge.pipeline.intent_controller.REBUILD_DEBOUNCE_MS", 0
+        "swiftcut.pipeline.intent_controller.REBUILD_DEBOUNCE_MS", 0
     )
 
 
@@ -666,7 +666,7 @@ async def doc_editor(task_mgr, context_initializer):
     """
     Provides a DocEditor instance with proper cleanup.
     """
-    from rayforge.doceditor.editor import DocEditor
+    from swiftcut.doceditor.editor import DocEditor
 
     editor = DocEditor(task_manager=task_mgr, context=context_initializer)
     yield editor
@@ -1015,7 +1015,7 @@ def get_transformer(context_initializer):
             Smooth = get_transformer("Smooth")
             transformer = Smooth()
     """
-    from rayforge.pipeline.transformer.registry import transformer_registry
+    from swiftcut.pipeline.transformer.registry import transformer_registry
 
     def _get(name: str):
         cls = transformer_registry.get(name)

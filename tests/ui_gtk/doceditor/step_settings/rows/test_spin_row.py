@@ -7,7 +7,7 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from rayforge.ui_gtk.doceditor.step_settings.rows import SpinRow
+from swiftcut.ui_gtk.doceditor.step_settings.rows import SpinRow
 
 
 def _spin_row(editor, step):

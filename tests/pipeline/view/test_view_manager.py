@@ -6,18 +6,18 @@ import numpy as np
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.core.doc import Doc
-from rayforge.pipeline.artifact import (
+from swiftcut.core.doc import Doc
+from swiftcut.pipeline.artifact import (
     RenderContext,
     WorkPieceArtifact,
     WorkPieceArtifactHandle,
     WorkPieceViewArtifactHandle,
 )
-from rayforge.pipeline.pipeline import Pipeline
-from rayforge.pipeline.view.view_compute import (
+from swiftcut.pipeline.pipeline import Pipeline
+from swiftcut.pipeline.view.view_compute import (
     render_workpiece_view_in_process,
 )
-from rayforge.pipeline.view.view_manager import ViewEntry, ViewManager
+from swiftcut.pipeline.view.view_manager import ViewEntry, ViewManager
 
 
 @pytest.fixture

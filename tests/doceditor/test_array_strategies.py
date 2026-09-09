@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from rayforge.doceditor.array import (
+from swiftcut.doceditor.array import (
     ArrayMode,
     ArrayParams,
     CircularArrayParams,

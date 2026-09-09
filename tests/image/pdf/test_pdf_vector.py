@@ -4,8 +4,8 @@ from pathlib import Path
 import cairo
 import pytest
 
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.image.pdf.pdf_vector import PdfVectorImporter
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.image.pdf.pdf_vector import PdfVectorImporter
 
 
 def create_pdf_with_line() -> bytes:

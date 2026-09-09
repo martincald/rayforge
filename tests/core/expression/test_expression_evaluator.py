@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from rayforge.core.expression import evaluator
+from swiftcut.core.expression import evaluator
 
 
 def test_evaluate_simple_arithmetic():

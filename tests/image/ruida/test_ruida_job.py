@@ -1,6 +1,6 @@
 import pytest
 
-from rayforge.image.ruida.job import RuidaGeoCommand, RuidaJob, RuidaLayer
+from swiftcut.image.ruida.job import RuidaGeoCommand, RuidaJob, RuidaLayer
 
 
 def test_ruidajob_creation():

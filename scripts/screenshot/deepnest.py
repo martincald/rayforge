@@ -13,7 +13,7 @@ from utils import (
     wait_for_settled,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ PRODUCT_ID = "A56heLPCXT6uPUpnmpnZYQ=="
 
 
 def _ensure_addon_loaded():
-    from rayforge.context import get_context
+    from swiftcut.context import get_context
 
     ctx = get_context()
     if "deepnest" in ctx.addon_mgr.loaded_addons:

@@ -73,7 +73,7 @@ jobs:
       - name: Test built snap
         run: |
           sudo snap install ${{ steps.build.outputs.snap }} --dangerous
-          rayforge --help
+          swiftcut --help
 
       - name: Determine release channel
         id: release_info

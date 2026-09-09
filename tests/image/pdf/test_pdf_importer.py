@@ -7,12 +7,12 @@ import cairo
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec, TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.pdf.importer import PdfImporter
-from rayforge.image.pdf.renderer import PDF_RENDERER
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.pdf.importer import PdfImporter
+from swiftcut.image.pdf.renderer import PDF_RENDERER
 
 
 def create_pdf_data(width_pt: float, height_pt: float) -> bytes:

@@ -187,7 +187,7 @@ bash scripts/update_translations.sh --compile-only
 
 VERSION=${VERSION_OVERRIDE:-$(git describe --tags --always 2>/dev/null || \
     echo "v0.0.0-local")}
-echo "$VERSION" > rayforge/version.txt
+echo "$VERSION" > swiftcut/version.txt
 
 if (( DO_BUILD == 1 )); then
     echo ""
@@ -228,10 +228,10 @@ PY
     # Compile .icon → Assets.car (macOS 26+ Liquid Glass icon format).
     # Falls back to legacy .icns if swiftcut.icon is not present.
     ICON_SOURCE=""
-    if [ -d "rayforge/resources/icons/swiftcut.icon" ]; then
+    if [ -d "swiftcut/resources/icons/swiftcut.icon" ]; then
         echo "Compiling swiftcut.icon → Assets.car..."
         rm -f "Assets.car"
-        if ! xcrun actool rayforge/resources/icons/swiftcut.icon \
+        if ! xcrun actool swiftcut/resources/icons/swiftcut.icon \
                 --compile "$(pwd)" \
                --app-icon swiftcut \
                 --platform macosx \
@@ -252,7 +252,7 @@ PY
 
     if [ "$ICON_SOURCE" = "icns" ]; then
         if [ ! -f "swiftcut.icns" ] || \
-           [ "rayforge/resources/icons/org.ilab.SwiftCut.svg" -nt "swiftcut.icns" ]; then
+           [ "swiftcut/resources/icons/org.ilab.SwiftCut.svg" -nt "swiftcut.icns" ]; then
             echo "Generating macOS icon..."
             bash scripts/mac/mac_create_icon.sh
         else

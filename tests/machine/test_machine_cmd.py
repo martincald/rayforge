@@ -7,11 +7,11 @@ import pytest_asyncio
 from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 
-from rayforge.core.config import ConfigManager
-from rayforge.machine.cmd import MachineCmd
-from rayforge.machine.models.machine import Machine
-from rayforge.pipeline.artifact import JobArtifact
-from rayforge.shared.tasker.manager import TaskManager
+from swiftcut.core.config import ConfigManager
+from swiftcut.machine.cmd import MachineCmd
+from swiftcut.machine.models.machine import Machine
+from swiftcut.pipeline.artifact import JobArtifact
+from swiftcut.shared.tasker.manager import TaskManager
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -32,7 +32,7 @@ async def task_mgr(monkeypatch):
     tm = TaskManager(main_thread_scheduler=asyncio_scheduler)
 
     # Patch the global singleton where it is imported and used by other modules
-    monkeypatch.setattr("rayforge.machine.models.machine.task_mgr", tm)
+    monkeypatch.setattr("swiftcut.machine.models.machine.task_mgr", tm)
 
     yield tm
 

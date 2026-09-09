@@ -2,18 +2,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rayforge.core.config import Config
-from rayforge.shared.units.definitions import (
+from swiftcut.core.config import Config
+from swiftcut.shared.units.definitions import (
     get_base_unit_for_quantity,
     get_unit,
     get_units_for_quantity,
 )
-from rayforge.shared.units.engine import engine
-from rayforge.shared.units.formatter import (
+from swiftcut.shared.units.engine import engine
+from swiftcut.shared.units.formatter import (
     get_default_grid_step_mm,
     get_preferred_unit_factor,
 )
-from rayforge.shared.units.system import UnitSystem, inches_to_mm
+from swiftcut.shared.units.system import UnitSystem, inches_to_mm
 
 
 def test_length_units():
@@ -283,7 +283,7 @@ def test_get_preferred_unit_factor():
     }
     for unit_name, expected in cases.items():
         with patch(
-            "rayforge.shared.units.formatter.get_context",
+            "swiftcut.shared.units.formatter.get_context",
             return_value=_mock_length_preference(unit_name),
         ):
             factor = get_preferred_unit_factor("length")
@@ -303,7 +303,7 @@ def test_get_default_grid_step_mm():
     }
     for unit_name, expected in cases.items():
         with patch(
-            "rayforge.shared.units.formatter.get_context",
+            "swiftcut.shared.units.formatter.get_context",
             return_value=_mock_length_preference(unit_name),
         ):
             step = get_default_grid_step_mm()

@@ -1,6 +1,6 @@
 from raygeo.ops import Ops
 
-from rayforge.pipeline.artifact.job import JobArtifact
+from swiftcut.pipeline.artifact.job import JobArtifact
 
 
 def _ops_with_line():

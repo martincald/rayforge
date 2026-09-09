@@ -1,10 +1,10 @@
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.core.group import Group
-from rayforge.core.layer import Layer
-from rayforge.core.stock import StockItem
-from rayforge.core.workpiece import WorkPiece
+from swiftcut.core.group import Group
+from swiftcut.core.layer import Layer
+from swiftcut.core.stock import StockItem
+from swiftcut.core.workpiece import WorkPiece
 
 
 @pytest.fixture

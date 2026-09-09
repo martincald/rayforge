@@ -1,7 +1,7 @@
 import pytest
 
-from rayforge.core.varset.serialportvar import SerialPortVar, ValidationError
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.serialportvar import SerialPortVar, ValidationError
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestSerialPortVar:

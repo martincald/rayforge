@@ -1,7 +1,7 @@
 """
-Tests for :mod:`rayforge.pipeline.intent_builder`.
+Tests for :mod:`swiftcut.pipeline.intent_builder`.
 
-These tests build a small :class:`~rayforge.core.doc.Doc` with a
+These tests build a small :class:`~swiftcut.core.doc.Doc` with a
 single step (and two workpieces) and verify the keys, version tokens,
 and the position-sensitive folding rule.
 """
@@ -33,17 +33,17 @@ from raygeo.pipeline.execute import execute_stages
 from raygeo.pipeline.request import NodeRequest
 from raygeo.pipeline.stage import StageSpec
 
-from rayforge.core.doc import Doc
-from rayforge.core.layer import Layer
-from rayforge.core.step import Step
-from rayforge.core.stock import StockItem
-from rayforge.core.stock_asset import StockAsset
-from rayforge.core.workpiece import WorkPiece
-from rayforge.machine.models.dialect.grbl import GRBL_DIALECT
-from rayforge.machine.models.machine import Machine, Origin
-from rayforge.machine.models.rotary_module import RotaryMode, RotaryModule
-from rayforge.pipeline.encoder.rust_helpers import dialect_to_spec
-from rayforge.pipeline.intent_builder import (
+from swiftcut.core.doc import Doc
+from swiftcut.core.layer import Layer
+from swiftcut.core.step import Step
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.machine.models.dialect.grbl import GRBL_DIALECT
+from swiftcut.machine.models.machine import Machine, Origin
+from swiftcut.machine.models.rotary_module import RotaryMode, RotaryModule
+from swiftcut.pipeline.encoder.rust_helpers import dialect_to_spec
+from swiftcut.pipeline.intent_builder import (
     IntentBuilder,
     job_encode_key,
     job_key,

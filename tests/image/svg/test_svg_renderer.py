@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.svg.color import ColorAttr
 
-from rayforge.core.vectorization_spec import (
+from swiftcut.core.vectorization_spec import (
     LayerSource,
     PassthroughSpec,
     TraceSpec,
 )
-from rayforge.image.svg.renderer import SvgRenderer
+from swiftcut.image.svg.renderer import SvgRenderer
 
 
 @pytest.fixture

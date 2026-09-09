@@ -15,14 +15,14 @@ from pathlib import Path
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.doc import Doc
-from rayforge.core.group import Group
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import SVG_RENDERER
-from rayforge.pipeline.pipeline import Pipeline
+from swiftcut.core.doc import Doc
+from swiftcut.core.group import Group
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import SVG_RENDERER
+from swiftcut.pipeline.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 

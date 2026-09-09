@@ -17,9 +17,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from rayforge.ui_gtk.canvas.element import CanvasElement
-from rayforge.ui_gtk.canvas.multiselect import MultiSelectionGroup
-from rayforge.ui_gtk.canvas.region import (
+from swiftcut.ui_gtk.canvas.element import CanvasElement
+from swiftcut.ui_gtk.canvas.multiselect import MultiSelectionGroup
+from swiftcut.ui_gtk.canvas.region import (
     MOVE_HANDLES,
     RESIZE_HANDLES,
     ElementRegion,

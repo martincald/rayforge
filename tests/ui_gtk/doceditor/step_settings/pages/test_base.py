@@ -7,10 +7,10 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.spindle import SpindleHead
-from rayforge.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
-from rayforge.ui_gtk.doceditor.step_settings.rows import CutSpeedRow, SpinRow
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.spindle import SpindleHead
+from swiftcut.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
+from swiftcut.ui_gtk.doceditor.step_settings.rows import CutSpeedRow, SpinRow
 
 
 @pytest.mark.ui

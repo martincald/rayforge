@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from raygeo.geo import Geometry
 
-from rayforge.image.hull import (
+from swiftcut.image.hull import (
     get_concave_hull,
     get_enclosing_hull,
     get_hulls_from_image,

@@ -15,10 +15,10 @@ source .msys2_env
 PYTHON_EXEC="$MSYS2_PATH/mingw64/bin/python"
 
 echo "--- Running flake8 ---"
-$PYTHON_EXEC -m flake8 --ignore=E127,E128,E121,E123,E126,E203,E226,E24,E704,W503,W504 --builtins=_ rayforge tests "$@"
+$PYTHON_EXEC -m flake8 --ignore=E127,E128,E121,E123,E126,E203,E226,E24,E704,W503,W504 --builtins=_ swiftcut tests "$@"
 
 echo "--- Running pyflakes ---"
-PYFLAKES_BUILTINS=_ $PYTHON_EXEC -m pyflakes rayforge tests "$@"
+PYFLAKES_BUILTINS=_ $PYTHON_EXEC -m pyflakes swiftcut tests "$@"
 
 echo "--- Running pyright ---"
 $PYTHON_EXEC -m pyright "$@"

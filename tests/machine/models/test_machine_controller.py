@@ -11,9 +11,9 @@ The MachineController is the logic layer that owns and manages the driver.
 
 import pytest
 
-from rayforge.machine.models.controller import MachineController
-from rayforge.machine.models.machine import Machine
-from rayforge.shared.tasker import task_mgr
+from swiftcut.machine.models.controller import MachineController
+from swiftcut.machine.models.machine import Machine
+from swiftcut.shared.tasker import task_mgr
 
 
 @pytest.mark.usefixtures("lite_context")

@@ -1,0 +1,451 @@
+import pluggy
+
+hookspec = pluggy.HookspecMarker("rayforge")
+hookimpl = pluggy.HookimplMarker("rayforge")
+
+MINIMUM_API_VERSION = 16
+PLUGIN_API_VERSION = 21
+
+
+"""
+API Changelog
+=============
+
+Version 21
+----------
+Renamed ``WorkOriginElement.set_coordinate_space(space)`` to
+``set_axis_direction(x_axis_right, y_axis_down)``. The element no longer
+accepts a MachineSpace; it consumes the two display-facing booleans
+exposed by ``MachinePanel``. Addons that configure the work-origin symbol
+must pass those booleans instead of a coordinate space.
+
+Version 20
+----------
+Removed the ``transformer_settings_loaded`` hook. Transformer settings
+widgets are now registered ahead of time via the new
+``register_transformer_widgets`` hook and the global
+``transformer_widget_registry``
+(``swiftcut.ui_gtk.doceditor.post_processor.registry``); pages look up
+widget classes from the registry when building the post-processing UI
+instead of constructing them through the hook at page-build time.
+
+Removed the ``step_settings_loaded`` hook. Step settings page classes
+are now registered ahead of time via the new
+``register_step_settings_pages`` hook and the global
+``step_settings_page_registry``
+(``swiftcut.ui_gtk.doceditor.step_settings.page_registry``). The step
+settings dialog looks up the page class by the step's assembler name
+and builds extra pages from the page class's ``extra_pages`` producer
+methods instead of constructing them through the hook at dialog-build
+time.
+
+Version 19
+----------
+The ``swiftcut.ui_gtk.shared.unit_spin_row`` module was split into a
+package: ``swiftcut.ui_gtk.shared.pref_rows``, with one module per
+widget (``base``, ``unit_spin_row``, ``length_spin_row``,
+``angle_spin_row``, ``speed_spin_row``, ``acceleration_spin_row``).
+Addons importing the old module path must update their imports. Added
+``LengthChoiceSpinRow``: a length row with a per-row unit dropdown
+(defaulting to the user's preferred unit).
+
+Version 18
+----------
+Added ``register_services`` hook: addons publish services under a
+string key via the global ``service_registry``, and other addons
+resolve them by key (no cross-package import). Added
+``register_settings_pages`` hook so addons can contribute pages to the
+main Settings dialog. Addon ``requires`` is now enforced at load time:
+dependencies are loaded before dependents, and an addon whose
+``requires`` is unsatisfied is skipped.
+
+Version 17
+----------
+Raygeo 0.15: adaptive_entry, generate_helix_spiral, EntryMethod,
+AdaptiveEntryOptions removed (use Workplan). ToroidOptions: renamed
+step_distance -> step_over, z -> target_z. Assembler option structs:
+renamed radius -> tool_radius, cut_z -> target_z.
+
+Version 16
+----------
+Raygeo 0.14: CoolantMode::Air split into AirAssistMode and
+HeadCoolantMode. Module raygeo.ops.assembly.entry moved to
+raygeo.cnc.machining.entry. adaptive_entry/adaptive_wavefronts
+return AssemblyResult. Various geo functions renamed with verb
+prefixes (any_overlap -> does_any_overlap, point_line_distance
+-> get_point_line_distance, etc.).
+
+Version 15
+----------
+Raygeo 0.6 adds tab operations, merge overlapping lines, overscan,
+lead-in/out, concave hull (shrink-wrap), and full-sweep raster scan
+mode. Image processing delegated to raygeo.image.
+
+Version 14
+----------
+New raygeo API replaces old swiftcut.core.ops.
+
+Version 13
+----------
+Ported geometry module from Python to Rust (raygeo). All addons that
+import from ``raygeo`` must update to the new API.
+
+Version 12
+----------
+Renamed ``provides.backend`` key to ``provides.worker`` in addon manifests.
+The old ``backend`` key is still accepted for backward compatibility.
+Corresponding ``backend.py`` files should be renamed to ``worker.py``.
+Removed ``backend_only`` parameter in favor of ``worker_only``.
+
+Version 11
+----------
+(No manifest changes.)
+
+Version 10
+----------
+Added ``register_model_libraries`` hook to allow addons to register
+3D model libraries.  Addons call ``model_manager.add_library`` or
+``model_manager.add_library_from_path`` to contribute directories
+containing ``.glb`` / ``.gltf`` model files.
+
+Version 9
+---------
+Added ``main_window_ready`` hook to allow addons to register UI pages,
+commands, and other components that require access to the main window.
+Added ``register_exporters`` hook to allow addons to register file
+exporters.
+Added ``register_importers`` hook to allow addons to register file
+importers.
+Added ``register_renderers`` hook to allow addons to register custom
+renderers for their asset types.
+
+Version 8
+---------
+Added ``register_asset_types`` hook to allow addons to register custom
+asset types. Assets are registered via the asset_type_registry and can
+be deserialized from document files dynamically.
+
+Version 7
+---------
+Added ``register_material_libraries`` hook to allow addons to register
+material libraries. Addons can return a list of paths to directories
+containing material YAML files.
+
+Version 6
+---------
+Added ``register_transformers`` hook to allow addons to register custom
+OpsTransformer classes for post-processing operations. Transformers are
+now registered via the transformer_registry instead of introspection.
+
+Version 5
+---------
+Replaced ``register_step_widgets`` hook with ``step_settings_loaded``
+and ``transformer_settings_loaded`` hooks. Addons now add their widgets
+directly to the settings dialog when the hook is called, instead of
+registering widget classes in advance. This gives addons full control
+over widget instantiation and lifecycle.
+
+Version 4
+---------
+Consolidated menu and action registration. The ``register_menu_items``
+hook has been removed. Use ``register_actions`` with the action_registry
+to register actions with optional menu and toolbar placement.
+
+The ``register_layout_strategies`` hook now only registers strategy
+classes. Layout actions should be registered via ``register_actions``.
+
+Version 3
+---------
+Added AI provider support to the core API. No changes to hook
+specifications - existing addons remain compatible. The core
+RayforgeContext now includes AI provider management capabilities.
+
+Version 2
+---------
+Added ``register_layout_strategies`` hook to allow addons to register
+custom layout strategies for the UI. This enables addons to define
+how content is arranged and displayed in different contexts.
+
+Version 1
+-------
+Initial plugin API release. Includes core hooks for addon lifecycle,
+resource registration, and UI integration:
+
+- ``rayforge_init``: Called when application context is initialized
+- ``on_unload``: Called when addon is disabled or unloaded
+- ``register_machines``: Register new machine drivers
+- ``register_steps``: Register custom step types
+- ``register_producers``: Register custom ops producers (removed v18)
+- ``register_step_widgets``: Register step settings widgets (removed v5)
+- ``register_menu_items``: Register menu items (removed in v4)
+- ``register_commands``: Register editor commands
+- ``register_actions``: Register window actions
+"""
+
+
+class RayforgeSpecs:
+    """
+    Core hook specifications.
+    Addons implement these methods to extend functionality.
+    """
+
+    @hookspec
+    def rayforge_init(self, context):
+        """
+        Called when the application context is fully initialized.
+        Use this for general setup, logging, or UI injection.
+
+        .. versionadded:: 1
+
+        Args:
+            context: The global RayforgeContext.
+        """
+
+    @hookspec
+    def on_unload(self):
+        """
+        Called when an addon is being disabled or unloaded.
+        Use this to clean up resources, close connections, unregister
+        handlers, etc.
+
+        .. versionadded:: 1
+        """
+
+    @hookspec
+    def register_machines(self, machine_manager):
+        """
+        Called to allow addons to register new machine drivers.
+
+        .. versionadded:: 1
+
+        Args:
+            machine_manager: The application's MachineManager instance.
+        """
+
+    @hookspec
+    def register_steps(self, step_registry):
+        """
+        Called to allow addons to register custom step types.
+
+        .. versionadded:: 1
+
+        Args:
+            step_registry: The global StepRegistry instance.
+        """
+
+    @hookspec
+    def register_transformers(self, transformer_registry):
+        """
+        Called to allow addons to register custom ops transformers.
+
+        .. versionadded:: 6
+
+        Args:
+            transformer_registry: The global TransformerRegistry instance.
+        """
+
+    @hookspec
+    def register_transformer_widgets(self, transformer_widget_registry):
+        """
+        Called to allow addons to register settings widget classes for
+        post-processor transformers.
+
+        .. versionadded:: 20
+
+        Args:
+            transformer_widget_registry: The global
+                TransformerWidgetRegistry instance.
+        """
+
+    @hookspec
+    def register_asset_types(self, asset_type_registry):
+        """
+        Called to allow addons to register custom asset types.
+
+        .. versionadded:: 8
+
+        Args:
+            asset_type_registry: The global AssetTypeRegistry instance.
+        """
+
+    @hookspec
+    def register_step_settings_pages(self, step_settings_page_registry):
+        """
+        Called to allow addons to register step settings page classes.
+
+        Page classes are keyed by the step's assembler name
+        (``step.ASSEMBLER_NAME``). A registered page class may declare
+        extra page producers via its ``extra_pages`` class attribute;
+        the dialog calls each producer method to build additional
+        settings pages.
+
+        .. versionadded:: 20
+
+        Args:
+            step_settings_page_registry: The global
+                StepSettingsPageRegistry instance.
+        """
+
+    @hookspec
+    def register_commands(self, command_registry):
+        """
+        Called to allow addons to register editor commands.
+
+        .. versionadded:: 1
+
+        Args:
+            command_registry: The global CommandRegistry instance.
+        """
+
+    @hookspec
+    def register_actions(self, action_registry):
+        """
+        Called to allow addons to register window actions.
+
+        .. versionadded:: 1
+        .. versionchanged:: 4
+            Now receives action_registry instead of window. Use
+            action_registry.register() with optional menu and toolbar
+            placement parameters.
+
+        Args:
+            action_registry: The global ActionRegistry instance.
+        """
+
+    @hookspec
+    def register_layout_strategies(self, layout_registry):
+        """
+        Called to allow addons to register custom layout strategies.
+
+        .. versionadded:: 2
+        .. versionchanged:: 4
+            Only registers strategy classes. Layout actions should be
+            registered via the ``register_actions`` hook with menu and
+            toolbar placement.
+
+        Args:
+            layout_registry: Registry for layout strategy classes.
+        """
+
+    @hookspec
+    def register_material_libraries(self, library_manager):
+        """
+        Called to allow addons to register material libraries.
+
+        Addons should call ``library_manager.add_library_from_path(path)`` to
+        register directories containing material YAML files. By default,
+        registered libraries are read-only.
+
+        .. versionadded:: 7
+
+        Args:
+            library_manager: The global LibraryManager instance.
+        """
+
+    @hookspec
+    def register_model_libraries(self, model_manager):
+        """
+        Called to allow addons to register 3D model libraries.
+
+        Addons should call ``model_manager.add_library_from_path(path)`` or
+        ``model_manager.add_library(library)`` to register directories
+        containing ``.glb`` / ``.gltf`` model files.  By default,
+        registered libraries are read-only.
+
+        .. versionadded:: 10
+
+        Args:
+            model_manager: The global ModelManager instance.
+        """
+
+    @hookspec
+    def register_exporters(self, exporter_registry):
+        """
+        Called to allow addons to register file exporters.
+
+        Addons should call ``exporter_registry.register(exporter_cls)`` to
+        register exporter classes for their supported file formats.
+
+        .. versionadded:: 9
+
+        Args:
+            exporter_registry: The global ExporterRegistry instance.
+        """
+
+    @hookspec
+    def register_importers(self, importer_registry):
+        """
+        Called to allow addons to register file importers.
+
+        Addons should call ``importer_registry.register(importer_cls)`` to
+        register importer classes for their supported file formats.
+
+        .. versionadded:: 10
+
+        Args:
+            importer_registry: The global ImporterRegistry instance.
+        """
+
+    @hookspec
+    def register_renderers(self, renderer_registry):
+        """
+        Called to allow addons to register custom renderers.
+
+        Addons should call ``renderer_registry.register(renderer)`` to
+        register renderer instances. The renderer's class name is used as
+        the registry key.
+
+        .. versionadded:: 9
+
+        Args:
+            renderer_registry: The global RendererRegistry instance.
+        """
+
+    @hookspec
+    def register_settings_pages(self, settings_page_registry):
+        """
+        Called to allow addons to contribute pages to the Settings dialog.
+
+        Addons call
+        ``settings_page_registry.register(PageClass, addon_name=...)`` for
+        each page. A page class is a no-arg widget constructor exposing
+        ``get_title()`` and ``get_icon_name()`` (e.g. a
+        ``TrackedPreferencesPage`` subclass).
+
+        .. versionadded:: 18
+
+        Args:
+            settings_page_registry: The global SettingsPageRegistry
+              instance.
+        """
+
+    @hookspec
+    def register_services(self, service_registry):
+        """
+        Called to allow addons to publish services for cross-addon use.
+
+        Addons call
+        ``service_registry.register(key, service, addon_name=...)``.
+        Consumers resolve them via the global ``service_registry``
+        (``service_registry.get(key)``), avoiding a direct cross-package
+        import.
+
+        .. versionadded:: 18
+
+        Args:
+            service_registry: The global ServiceRegistry instance.
+        """
+
+    @hookspec
+    def main_window_ready(self, main_window):
+        """
+        Called when the main window is fully initialized.
+
+        Addons can use this hook to register custom UI pages, commands,
+        or other components that require access to the main window.
+
+        .. versionadded:: 9
+
+        Args:
+            main_window: The MainWindow instance.
+        """

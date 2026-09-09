@@ -10,7 +10,7 @@ from utils import (
     target_to_filename,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 PAGE = "nogo-zones"

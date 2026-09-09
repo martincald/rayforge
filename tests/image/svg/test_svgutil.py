@@ -3,12 +3,12 @@ from xml.etree import ElementTree as ET
 import pytest
 
 # Assuming the file structure allows this import
-from rayforge.image.svg.svgutil import (
+from swiftcut.image.svg.svgutil import (
     MM_PER_PX,
     get_natural_size,
     trim_svg,
 )
-from rayforge.image.util import parse_length
+from swiftcut.image.util import parse_length
 
 # --- Test Data Fixtures ---
 

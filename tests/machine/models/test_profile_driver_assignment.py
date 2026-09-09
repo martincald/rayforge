@@ -3,15 +3,15 @@ from typing import TYPE_CHECKING
 import pytest
 import pytest_asyncio
 
-from rayforge.config import BUILTIN_DEVICES_DIR
-from rayforge.machine.device.profile import DeviceProfile
-from rayforge.machine.driver.dummy import NoDeviceDriver
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.shared import tasker
+from swiftcut.config import BUILTIN_DEVICES_DIR
+from swiftcut.machine.device.profile import DeviceProfile
+from swiftcut.machine.driver.dummy import NoDeviceDriver
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.shared import tasker
 
 if TYPE_CHECKING:
-    from rayforge.context import RayforgeContext
-    from rayforge.machine.models.machine import Machine
+    from swiftcut.context import RayforgeContext
+    from swiftcut.machine.models.machine import Machine
 
 
 @pytest_asyncio.fixture

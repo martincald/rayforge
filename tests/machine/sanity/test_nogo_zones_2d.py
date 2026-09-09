@@ -1,12 +1,12 @@
 from raygeo.ops import Ops
 
-from rayforge.machine.models.zone import Zone, ZoneShape
-from rayforge.machine.sanity import (
+from swiftcut.machine.models.zone import Zone, ZoneShape
+from swiftcut.machine.sanity import (
     IssueCategory,
     IssueSeverity,
     SanityContext,
 )
-from rayforge.machine.sanity.checks.nogo_zones_2d import NoGoZoneCheck2D
+from swiftcut.machine.sanity.checks.nogo_zones_2d import NoGoZoneCheck2D
 
 
 def _run_check(ops, machine, zones):

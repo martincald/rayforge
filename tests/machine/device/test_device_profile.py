@@ -5,18 +5,18 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge.machine.device.manager import DeviceProfileManager
-from rayforge.machine.device.profile import (
+from swiftcut.machine.device.manager import DeviceProfileManager
+from swiftcut.machine.device.profile import (
     CURRENT_API_VERSION,
     DIALECT_FILENAME,
     MANIFEST_FILENAME,
     DeviceProfile,
     export_machine_to_dir,
 )
-from rayforge.machine.models.laser import LaserHead, LaserType
-from rayforge.machine.models.machine import Origin
-from rayforge.shared.tasker.manager import TaskManager
-from rayforge.shared.units.system import UnitSystem
+from swiftcut.machine.models.laser import LaserHead, LaserType
+from swiftcut.machine.models.machine import Origin
+from swiftcut.shared.tasker.manager import TaskManager
+from swiftcut.shared.units.system import UnitSystem
 
 
 async def _wait_for_tasks(task_mgr: TaskManager):
@@ -565,7 +565,7 @@ class TestExportToZip:
             assert DIALECT_FILENAME in names
 
     def test_export_no_source_dir_raises(self, tmp_path):
-        from rayforge.machine.device.profile import (
+        from swiftcut.machine.device.profile import (
             DeviceMeta,
             MachineConfig,
         )
@@ -606,7 +606,7 @@ class TestExportMachine:
     def _make_mock_machine(self, name, **overrides):
         from unittest.mock import MagicMock
 
-        from rayforge.machine.models.dialect import GcodeDialect
+        from swiftcut.machine.models.dialect import GcodeDialect
 
         machine = MagicMock()
         machine.name = name

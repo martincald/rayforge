@@ -3,7 +3,7 @@ import threading
 from http.server import HTTPServer
 from unittest.mock import MagicMock, patch
 
-from rayforge.shared.oauth.flow import (
+from swiftcut.shared.oauth.flow import (
     OAuthFlow,
     OAuthFlowConfig,
     OAuthResult,
@@ -93,8 +93,8 @@ class TestOAuthFlowStart:
         finally:
             blocker.server_close()
 
-    @patch("rayforge.shared.oauth.flow.webbrowser.open")
-    @patch("rayforge.shared.oauth.flow.urllib.request.urlopen")
+    @patch("swiftcut.shared.oauth.flow.webbrowser.open")
+    @patch("swiftcut.shared.oauth.flow.urllib.request.urlopen")
     def test_successful_flow(self, mock_urlopen, mock_webbrowser):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps(

@@ -3,8 +3,8 @@ import pytest
 from numpy.testing import assert_array_equal
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.rotary_module import (
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.rotary_module import (
     RotaryMode,
     RotaryModule,
     RotaryType,

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from rayforge.core.expression import ExpressionMap
+from swiftcut.core.expression import ExpressionMap
 
 
 def _fmt(template, values=None):

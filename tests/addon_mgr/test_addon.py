@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import yaml
 
-from rayforge.addon_mgr.addon import (
+from swiftcut.addon_mgr.addon import (
     Addon,
     AddonAuthor,
     AddonMaturity,
@@ -16,7 +16,7 @@ from rayforge.addon_mgr.addon import (
     AddonValidationError,
     parse_maturity,
 )
-from rayforge.shared.util.versioning import UnknownVersion, get_git_tag_version
+from swiftcut.shared.util.versioning import UnknownVersion, get_git_tag_version
 
 TEST_VERSION = "1.0.0"
 
@@ -426,7 +426,7 @@ class TestGetGitTagVersion:
             with (
                 patch.dict(sys.modules, {"git": None, "git.Repo": None}),
                 patch(
-                    "rayforge.shared.util.versioning.importlib.import_module",
+                    "swiftcut.shared.util.versioning.importlib.import_module",
                     side_effect=ImportError,
                 ),
                 pytest.raises(RuntimeError, match="GitPython"),

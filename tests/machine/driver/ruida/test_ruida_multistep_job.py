@@ -14,15 +14,15 @@ import pytest
 from raygeo.geo import Geometry
 from raygeo.pipeline.execute import execute_stages
 
-from rayforge.core.doc import Doc
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import SVG_RENDERER
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import decode35, encode14
-from rayforge.pipeline.intent_builder import (
+from swiftcut.core.doc import Doc
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import SVG_RENDERER
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import decode35, encode14
+from swiftcut.pipeline.intent_builder import (
     IntentBuilder,
     job_machinexform_key,
 )

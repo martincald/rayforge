@@ -12,8 +12,8 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Gtk
 
-from rayforge import const
-from rayforge.ui_gtk.about import AboutDialog
+from swiftcut import const
+from swiftcut.ui_gtk.about import AboutDialog
 
 
 def _iter_widgets(widget):

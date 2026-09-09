@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from rayforge.core.expression import context
+from swiftcut.core.expression import context
 
 
 def sample_function():

@@ -33,7 +33,7 @@ real `pixi.toml`/`pixi.lock` are never permanently modified.
 
 ```bash
 ln -s /path/to/raygeo external/raygeo    # one-time symlink (external/ is gitignored)
-scripts/pixi-raygeo.sh run rayforge      # run against local raygeo
+scripts/pixi-raygeo.sh run swiftcut      # run against local raygeo
 scripts/pixi-raygeo.sh run test          # test against local raygeo
 scripts/pixi-raygeo.sh shell             # activate a shell with local raygeo
 ```
@@ -44,7 +44,7 @@ After editing raygeo Rust or Python source, rebuild it with:
 scripts/rebuild-raygeo.sh                # clear uv cache + rebuild raygeo
 ```
 
-To go back to the PyPI raygeo, just use `pixi run rayforge` without the
+To go back to the PyPI raygeo, just use `pixi run swiftcut` without the
 wrapper (or any other pixi command).
 
 ## Other rules

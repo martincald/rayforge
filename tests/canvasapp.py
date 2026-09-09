@@ -12,7 +12,7 @@ from gi.repository import Gdk, Gtk
 from raygeo.geo import Matrix
 from raygeo.geo.types import Point
 
-from rayforge.ui_gtk.canvas import Canvas, CanvasElement, ShrinkWrapGroup
+from swiftcut.ui_gtk.canvas import Canvas, CanvasElement, ShrinkWrapGroup
 
 base_path = Path(__file__).parent
 logging.basicConfig(level=logging.DEBUG)

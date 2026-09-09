@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.license import LicenseResult, LicenseStatus, LicenseValidator
+from swiftcut.license import LicenseResult, LicenseStatus, LicenseValidator
 
 
 class TestLicenseValidator:

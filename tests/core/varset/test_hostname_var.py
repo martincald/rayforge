@@ -1,7 +1,7 @@
 import pytest
 
-from rayforge.core.varset.hostnamevar import HostnameVar, ValidationError
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.hostnamevar import HostnameVar, ValidationError
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestHostnameVar:

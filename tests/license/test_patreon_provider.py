@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from rayforge.license import LicenseStatus, PatreonProvider
+from swiftcut.license import LicenseStatus, PatreonProvider
 
 
 class TestPatreonProvider:

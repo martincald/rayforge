@@ -8,12 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from rayforge.machine.driver.ruida.ruida_transport import (
+from swiftcut.machine.driver.ruida.ruida_transport import (
     RuidaCodec,
     RuidaServerTransport,
     RuidaTransport,
 )
-from rayforge.machine.driver.ruida.ruida_util import frame_packet
+from swiftcut.machine.driver.ruida.ruida_util import frame_packet
 
 
 class TestRuidaCodec:

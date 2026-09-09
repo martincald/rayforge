@@ -1,4 +1,4 @@
-from rayforge.core.undo.setter_cmd import SetterCommand
+from swiftcut.core.undo.setter_cmd import SetterCommand
 
 
 class MockTarget:

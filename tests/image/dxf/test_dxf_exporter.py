@@ -5,13 +5,13 @@ import ezdxf
 import pytest
 from raygeo.geo import Geometry
 
-from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.dxf.exporter import (
+from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.dxf.exporter import (
     GeometryDxfExporter,
     MultiGeometryDxfExporter,
 )
-from rayforge.image.dxf.importer import DxfImporter
+from swiftcut.image.dxf.importer import DxfImporter
 
 
 @pytest.fixture

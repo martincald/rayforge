@@ -1,12 +1,12 @@
 import numpy as np
 from raygeo.ops import Ops
 
-from rayforge.core.color import ColorSet
-from rayforge.pipeline.artifact import (
+from swiftcut.core.color import ColorSet
+from swiftcut.pipeline.artifact import (
     RenderContext,
     WorkPieceArtifact,
 )
-from rayforge.pipeline.view.view_compute import (
+from swiftcut.pipeline.view.view_compute import (
     _get_content_bbox,
     calculate_render_dimensions,
     render_workpiece_view_in_process,

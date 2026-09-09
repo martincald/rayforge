@@ -16,14 +16,14 @@ import logging
 import pytest
 from raygeo.ops.axis import Axis
 
-from rayforge import config
-from rayforge import context as context_module
-from rayforge.context import get_context
-from rayforge.core.doc import Doc
-from rayforge.machine.models.dialect_manager import DialectManager
-from rayforge.machine.models.machine import Machine, Origin
-from rayforge.machine.models.rotary_module import RotaryModule
-from rayforge.machine.transport import TransportStatus
+from swiftcut import config
+from swiftcut import context as context_module
+from swiftcut.context import get_context
+from swiftcut.core.doc import Doc
+from swiftcut.machine.models.dialect_manager import DialectManager
+from swiftcut.machine.models.machine import Machine, Origin
+from swiftcut.machine.models.rotary_module import RotaryModule
+from swiftcut.machine.transport import TransportStatus
 
 
 @pytest.fixture(autouse=True)
@@ -758,7 +758,7 @@ class TestHydratedDialectCache:
         assert machine._hydrated_dialect is not None
 
     def test_dialect_returns_fresh_after_uid_change(self, lite_context):
-        from rayforge.machine.models.dialect import (
+        from swiftcut.machine.models.dialect import (
             GRBL_DIALECT,
             SMOOTHIEWARE_DIALECT,
         )
@@ -783,7 +783,7 @@ class TestSetDriverEmitsChanged:
             signals.append(sender)
 
         machine.changed.connect(handler)
-        from rayforge.machine.driver.dummy import NoDeviceDriver
+        from swiftcut.machine.driver.dummy import NoDeviceDriver
 
         class TestDriver(NoDeviceDriver):
             pass
@@ -794,7 +794,7 @@ class TestSetDriverEmitsChanged:
     def test_set_driver_args_emits_changed_signal(self, lite_context):
         machine = Machine(lite_context)
         lite_context.machine_mgr.add_machine(machine)
-        from rayforge.machine.driver.dummy import NoDeviceDriver
+        from swiftcut.machine.driver.dummy import NoDeviceDriver
 
         class TestDriver2(NoDeviceDriver):
             pass
@@ -812,7 +812,7 @@ class TestSetDriverEmitsChanged:
     def test_set_driver_no_signal_on_same(self, lite_context):
         machine = Machine(lite_context)
         lite_context.machine_mgr.add_machine(machine)
-        from rayforge.machine.driver.dummy import NoDeviceDriver
+        from swiftcut.machine.driver.dummy import NoDeviceDriver
 
         class TestDriver3(NoDeviceDriver):
             pass

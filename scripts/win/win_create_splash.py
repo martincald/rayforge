@@ -26,7 +26,7 @@ gi.require_version("Rsvg", "2.0")
 from gi.repository import Rsvg  # noqa: E402
 
 here = Path(__file__).parent.parent.parent
-source_path = here / "rayforge/resources/icons/org.ilab.SwiftCut.svg"
+source_path = here / "swiftcut/resources/icons/org.ilab.SwiftCut.svg"
 splash_path = here / "swiftcut_splash.png"
 
 WIDTH, HEIGHT = 480, 320

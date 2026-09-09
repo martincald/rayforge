@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from rayforge.core.varset.var import ValidationError, Var
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.var import ValidationError, Var
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestVar:

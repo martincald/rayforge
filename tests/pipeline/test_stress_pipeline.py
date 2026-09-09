@@ -21,19 +21,19 @@ from typing import TYPE_CHECKING, Optional
 import pytest
 from raygeo.geo import Geometry
 
-from rayforge.core.doc import Doc
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import SVG_RENDERER
-from rayforge.pipeline.pipeline import Pipeline
-from rayforge.pipeline.view.view_manager import ViewManager
+from swiftcut.core.doc import Doc
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import SVG_RENDERER
+from swiftcut.pipeline.pipeline import Pipeline
+from swiftcut.pipeline.view.view_manager import ViewManager
 
 if TYPE_CHECKING:
-    from rayforge.context import RayforgeContext
-    from rayforge.pipeline.artifact.store import ArtifactStore
-    from rayforge.shared.tasker.manager import TaskManager
+    from swiftcut.context import RayforgeContext
+    from swiftcut.pipeline.artifact.store import ArtifactStore
+    from swiftcut.shared.tasker.manager import TaskManager
 
 
 logger = logging.getLogger(__name__)

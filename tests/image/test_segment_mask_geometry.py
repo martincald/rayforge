@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.core.vectorization_spec import (
+from swiftcut.core.vectorization_spec import (
     LayerImportMode,
     PassthroughSpec,
     TraceSpec,
 )
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import import_file
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import import_file
 
 
 @pytest.fixture

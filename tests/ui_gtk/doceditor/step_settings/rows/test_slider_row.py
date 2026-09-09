@@ -7,7 +7,7 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from rayforge.ui_gtk.doceditor.step_settings.rows import SliderRow
+from swiftcut.ui_gtk.doceditor.step_settings.rows import SliderRow
 
 
 def _slider_row(editor, step):

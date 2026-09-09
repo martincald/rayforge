@@ -1,9 +1,9 @@
-from rayforge.machine.sanity import (
+from swiftcut.machine.sanity import (
     IssueCategory,
     IssueSeverity,
     SanityContext,
 )
-from rayforge.machine.sanity.checks.workarea_2d import WorkareaCheck2D
+from swiftcut.machine.sanity.checks.workarea_2d import WorkareaCheck2D
 
 
 def _run_check(ops, machine):

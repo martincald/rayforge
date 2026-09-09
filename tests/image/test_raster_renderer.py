@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from rayforge.core.vectorization_spec import PassthroughSpec, TraceSpec
-from rayforge.image.base_renderer import RasterRenderer, RenderSpecification
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.image.base_renderer import RasterRenderer, RenderSpecification
 
 
 class ConcreteRasterRenderer(RasterRenderer):

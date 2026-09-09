@@ -11,10 +11,10 @@ import pytest
 import pytest_asyncio
 from blinker import Signal
 
-from rayforge.machine.driver.driver import Axis
-from rayforge.machine.driver.ruida.ruida_driver import RuidaDriver
-from rayforge.machine.driver.ruida.ruida_util import decode35, encode35
-from rayforge.machine.models.machine import JogDirection, Machine, Origin
+from swiftcut.machine.driver.driver import Axis
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
+from swiftcut.machine.models.machine import JogDirection, Machine, Origin
 
 STOP = b"\xd8\x01"
 
@@ -504,7 +504,7 @@ class TestInteractiveBytes:
 
     def test_key_up_matches_the_key_down_it_releases(self):
         """MOT-41: the map always emitted the negative-direction byte."""
-        from rayforge.machine.driver.ruida.ruida_client import RuidaClient
+        from swiftcut.machine.driver.ruida.ruida_client import RuidaClient
 
         client = RuidaClient.__new__(RuidaClient)
         for axis, direction, down in (

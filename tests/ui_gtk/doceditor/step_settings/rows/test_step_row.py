@@ -9,7 +9,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw
 
-from rayforge.ui_gtk.doceditor.step_settings.rows import StepRow
+from swiftcut.ui_gtk.doceditor.step_settings.rows import StepRow
 
 
 class CountRow(StepRow):

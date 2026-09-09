@@ -1,8 +1,8 @@
 import pytest
 
-from rayforge.core.varset.choicevar import ChoiceVar
-from rayforge.core.varset.var import ValidationError
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.choicevar import ChoiceVar
+from swiftcut.core.varset.var import ValidationError
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestChoiceVar:

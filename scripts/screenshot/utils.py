@@ -24,22 +24,22 @@ import numpy as np
 from gi.repository import Adw, GLib
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
-from rayforge.ui_gtk.doceditor.edit_recipe_dialog import (
+from swiftcut.ui_gtk.doceditor.edit_recipe_dialog import (
     AddEditRecipeDialog,
 )
 
-from rayforge.core.recipe import Recipe
-from rayforge.core.step_registry import step_registry
-from rayforge.ui_gtk.doceditor.step_settings.dialog import (
+from swiftcut.core.recipe import Recipe
+from swiftcut.core.step_registry import step_registry
+from swiftcut.ui_gtk.doceditor.step_settings.dialog import (
     StepSettingsDialog,
 )
 
 if TYPE_CHECKING:
-    from rayforge.core.step import Step
-    from rayforge.ui_gtk.array_dialog import _BaseArrayDialog
-    from rayforge.ui_gtk.machine.settings_dialog import MachineSettingsDialog
-    from rayforge.ui_gtk.mainwindow import MainWindow
-    from rayforge.ui_gtk.settings.settings_dialog import SettingsWindow
+    from swiftcut.core.step import Step
+    from swiftcut.ui_gtk.array_dialog import _BaseArrayDialog
+    from swiftcut.ui_gtk.machine.settings_dialog import MachineSettingsDialog
+    from swiftcut.ui_gtk.mainwindow import MainWindow
+    from swiftcut.ui_gtk.settings.settings_dialog import SettingsWindow
 
 logger = logging.getLogger(__name__)
 
@@ -493,8 +493,8 @@ def open_machine_settings(
     win: "MainWindow", page: str = "general"
 ) -> "MachineSettingsDialog":
     """Open machine settings dialog on the specified page."""
-    from rayforge.context import get_context
-    from rayforge.ui_gtk.machine.settings_dialog import MachineSettingsDialog
+    from swiftcut.context import get_context
+    from swiftcut.ui_gtk.machine.settings_dialog import MachineSettingsDialog
 
     def _open() -> "MachineSettingsDialog":
         config = get_context().config
@@ -518,7 +518,7 @@ def open_app_settings(
     win: "MainWindow", page: str = "general"
 ) -> "SettingsWindow":
     """Open app settings dialog on the specified page."""
-    from rayforge.ui_gtk.settings.settings_dialog import SettingsWindow
+    from swiftcut.ui_gtk.settings.settings_dialog import SettingsWindow
 
     def _open() -> "SettingsWindow":
         dialog = SettingsWindow(initial_page=page)
@@ -535,7 +535,7 @@ def open_step_settings(
     win: "MainWindow", step_index: int = 0, page: str = "step-settings"
 ) -> "StepSettingsDialog":
     """Open step settings dialog for the step at the given index."""
-    from rayforge.ui_gtk.doceditor.step_settings.dialog import (
+    from swiftcut.ui_gtk.doceditor.step_settings.dialog import (
         StepSettingsDialog,
     )
 
@@ -695,8 +695,8 @@ def open_array_dialog(
     win: "MainWindow", mode: str = "grid"
 ) -> "_BaseArrayDialog":
     """Open an array dialog for the current selection."""
-    from rayforge.doceditor.array import ArrayMode
-    from rayforge.ui_gtk.array_dialog import (
+    from swiftcut.doceditor.array import ArrayMode
+    from swiftcut.ui_gtk.array_dialog import (
         CircularArrayDialog,
         GridArrayDialog,
         PointRotationArrayDialog,

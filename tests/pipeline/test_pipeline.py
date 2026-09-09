@@ -6,14 +6,14 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.geo import Geometry
 
-from rayforge.core.doc import Doc
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import SVG_RENDERER
-from rayforge.pipeline.artifact import WorkPieceArtifactHandle
-from rayforge.pipeline.pipeline import Pipeline
+from swiftcut.core.doc import Doc
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import SVG_RENDERER
+from swiftcut.pipeline.artifact import WorkPieceArtifactHandle
+from swiftcut.pipeline.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
 

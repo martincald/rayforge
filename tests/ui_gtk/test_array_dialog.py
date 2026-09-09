@@ -7,20 +7,20 @@ gi.require_version("Adw", "1")
 
 from gi.repository import GLib, Gtk
 
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.array import (
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.array import (
     ArrayMode,
     ArrayParams,
     CircularArrayParams,
 )
-from rayforge.doceditor.editor import DocEditor
-from rayforge.machine.models.machine import Machine
-from rayforge.ui_gtk.array_dialog import (
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.machine.models.machine import Machine
+from swiftcut.ui_gtk.array_dialog import (
     CircularArrayDialog,
     GridArrayDialog,
 )
-from rayforge.ui_gtk.canvas2d.elements.outline import OutlineElement
-from rayforge.ui_gtk.canvas2d.surface import WorkSurface
+from swiftcut.ui_gtk.canvas2d.elements.outline import OutlineElement
+from swiftcut.ui_gtk.canvas2d.surface import WorkSurface
 
 
 def _process_events():

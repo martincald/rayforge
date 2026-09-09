@@ -4,9 +4,9 @@ from pathlib import Path
 import cairo
 import pytest
 
-from rayforge.core.vectorization_spec import PassthroughSpec, TraceSpec
-from rayforge.image.base_importer import ImporterFeature
-from rayforge.image.pdf.pdf_trace import PdfTraceImporter
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.image.base_importer import ImporterFeature
+from swiftcut.image.pdf.pdf_trace import PdfTraceImporter
 
 
 def create_pdf_with_shapes() -> bytes:

@@ -3,13 +3,13 @@
 
 These tests call the migration function directly with tmp_path-backed
 directories - they never touch the real OS config dir, and they never
-import rayforge.config (which has import-time side effects driven by
+import swiftcut.config (which has import-time side effects driven by
 the RAYFORGE_CONFIG_DIR env var that tests/conftest.py already sets).
 """
 
 from pathlib import Path
 
-from rayforge.config import _migrate_legacy_config_dir
+from swiftcut.config import _migrate_legacy_config_dir
 
 
 def test_migrates_when_old_dir_exists_and_new_dir_does_not(tmp_path):

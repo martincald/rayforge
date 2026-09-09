@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import trimesh
 
-from rayforge.ui_gtk.shared.model_preview.mesh_loader import (
+from swiftcut.ui_gtk.shared.model_preview.mesh_loader import (
     _load_mesh_data,
     _model_cache,
 )

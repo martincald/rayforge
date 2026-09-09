@@ -1,6 +1,6 @@
 from raygeo.ops import Ops
 
-from rayforge.machine.models.zone import (
+from swiftcut.machine.models.zone import (
     Zone,
     ZoneShape,
     check_ops_collides_with_zones,

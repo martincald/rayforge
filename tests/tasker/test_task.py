@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from rayforge.shared.tasker.context import ExecutionContext
-from rayforge.shared.tasker.task import Task
+from swiftcut.shared.tasker.context import ExecutionContext
+from swiftcut.shared.tasker.task import Task
 
 
 class ControllableTimer:
@@ -45,7 +45,7 @@ def mock_timer_factory(mocker):
         timers.append(timer)
         return timer
 
-    mocker.patch("rayforge.shared.tasker.context.threading.Timer", factory)
+    mocker.patch("swiftcut.shared.tasker.context.threading.Timer", factory)
     return timers
 
 

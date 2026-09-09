@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from rayforge.core.addon_config import (
+from swiftcut.core.addon_config import (
     AddonConfig,
     AddonConfigEntry,
     AddonState,

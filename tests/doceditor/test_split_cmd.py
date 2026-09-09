@@ -3,10 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.split_cmd import SplitCmd, SplitStrategy
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.split_cmd import SplitCmd, SplitStrategy
 
 
 class MockSplitStrategy(SplitStrategy):

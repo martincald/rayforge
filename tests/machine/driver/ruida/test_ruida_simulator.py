@@ -2,8 +2,8 @@
 Tests for the Ruida simulator.
 """
 
-from rayforge.machine.driver.ruida.ruida_simulator import RuidaSimulator
-from rayforge.machine.driver.ruida.ruida_util import (
+from swiftcut.machine.driver.ruida.ruida_simulator import RuidaSimulator
+from swiftcut.machine.driver.ruida.ruida_util import (
     build_swizzle_lut,
     decode14,
     decode35,

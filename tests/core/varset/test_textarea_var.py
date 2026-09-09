@@ -1,5 +1,5 @@
-from rayforge.core.varset.textareavar import TextAreaVar
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.textareavar import TextAreaVar
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestTextAreaVar:

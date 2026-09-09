@@ -1,6 +1,6 @@
 from raygeo.ops.axis import Axis
 
-from rayforge.ui_gtk.canvas2d.projection import CanvasProjection
+from swiftcut.ui_gtk.canvas2d.projection import CanvasProjection
 
 
 def test_default_projection():

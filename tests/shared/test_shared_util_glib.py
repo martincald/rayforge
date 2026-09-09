@@ -1,4 +1,4 @@
-from rayforge.shared.util.glib import DebounceMixin, falsify
+from swiftcut.shared.util.glib import DebounceMixin, falsify
 
 
 class TestFalsify:

@@ -2,11 +2,11 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 import pytest
 
-from rayforge.machine.models.macro import Macro
-from rayforge.shared.util.template import TemplateFormatter
+from swiftcut.machine.models.macro import Macro
+from swiftcut.shared.util.template import TemplateFormatter
 
 if TYPE_CHECKING:
-    from rayforge.pipeline.encoder.context import GcodeContext
+    from swiftcut.pipeline.encoder.context import GcodeContext
 
 
 class TestTemplateFormatter:

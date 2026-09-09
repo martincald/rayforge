@@ -5,15 +5,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.core.doc import Doc
-from rayforge.core.layer import Layer
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.step import Step
-from rayforge.core.step_registry import step_registry
-from rayforge.core.stock import StockItem
-from rayforge.core.stock_asset import StockAsset
-from rayforge.image.registry import renderer_registry
-from rayforge.image.svg.renderer import SvgRenderer
+from swiftcut.core.doc import Doc
+from swiftcut.core.layer import Layer
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.step import Step
+from swiftcut.core.step_registry import step_registry
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
+from swiftcut.image.registry import renderer_registry
+from swiftcut.image.svg.renderer import SvgRenderer
 
 
 @pytest.fixture
@@ -390,7 +390,7 @@ def test_doc_from_dict_deserialization(doc):
         "assets": [],
     }
 
-    with patch("rayforge.core.layer.Layer.from_dict") as mock_layer_from_dict:
+    with patch("swiftcut.core.layer.Layer.from_dict") as mock_layer_from_dict:
         mock_layer = MagicMock()
         mock_layer.get_local_bbox.return_value = None
         mock_layer_from_dict.return_value = mock_layer
@@ -499,7 +499,7 @@ def test_doc_deserialization_with_sketches():
 
     # Since we don't need to test StockAsset.from_dict here, we can mock it
     with patch(
-        "rayforge.core.stock_asset.StockAsset.from_dict"
+        "swiftcut.core.stock_asset.StockAsset.from_dict"
     ) as mock_stock_from_dict:
         mock_stock = MagicMock(spec=StockAsset)
         mock_stock.uid = "stock-123"
@@ -567,7 +567,7 @@ def test_doc_from_dict_with_default_active_layer_index():
         "stock_assets": {},
     }
 
-    with patch("rayforge.core.layer.Layer.from_dict") as mock_layer_from_dict:
+    with patch("swiftcut.core.layer.Layer.from_dict") as mock_layer_from_dict:
         mock_layer = MagicMock()
         mock_layer.get_local_bbox.return_value = None
         mock_layer_from_dict.return_value = mock_layer

@@ -4,14 +4,14 @@ from pathlib import Path
 import pytest
 from raygeo.geo import Geometry
 
-from rayforge.core.asset_registry import asset_type_registry
-from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.svg.exporter import (
+from swiftcut.core.asset_registry import asset_type_registry
+from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.svg.exporter import (
     GeometrySvgExporter,
     MultiGeometrySvgExporter,
 )
-from rayforge.image.svg.importer import SvgImporter
+from swiftcut.image.svg.importer import SvgImporter
 
 
 @pytest.fixture
@@ -129,7 +129,7 @@ class TestGeometrySvgExporterRealWorld:
     def test_export_mouse_sketch(self, Sketch):
         mouse_file = (
             Path(__file__).parent.parent.parent.parent
-            / "rayforge"
+            / "swiftcut"
             / "builtin_addons"
             / "rayforge-addon-sketcher"
             / "tests"

@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.vectorization_spec import TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.structures import ParsingResult
-from rayforge.image.svg.svg_trace import SvgTraceImporter
+from swiftcut.core.vectorization_spec import TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.structures import ParsingResult
+from swiftcut.image.svg.svg_trace import SvgTraceImporter
 
 SVG_CONTENT = b"""
 <svg width="100mm" height="100mm" viewBox="0 0 100 100"
@@ -57,9 +57,9 @@ def test_vectorize_enforces_tracespec(trace_importer):
         trace_importer.vectorize(dummy_parse, None)  # type: ignore
 
 
-@patch("rayforge.image.svg.svg_trace.trace_surface")
-@patch("rayforge.image.svg.svg_trace.util")
-@patch("rayforge.image.svg.svg_trace.SVG_RENDERER")
+@patch("swiftcut.image.svg.svg_trace.trace_surface")
+@patch("swiftcut.image.svg.svg_trace.util")
+@patch("swiftcut.image.svg.svg_trace.SVG_RENDERER")
 def test_trace_pipeline_integration(
     mock_renderer, mock_util, mock_trace, trace_importer
 ):
@@ -112,7 +112,7 @@ def test_trace_pipeline_integration(
 
 def test_trace_render_failure_handling(trace_importer):
     """If rendering fails, should return valid payload with no items."""
-    with patch("rayforge.image.svg.svg_trace.SVG_RENDERER") as mock_renderer:
+    with patch("swiftcut.image.svg.svg_trace.SVG_RENDERER") as mock_renderer:
         mock_renderer.render_base_image.return_value = None
 
         import_result = trace_importer.get_doc_items(

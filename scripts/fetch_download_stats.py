@@ -392,7 +392,7 @@ def main():
     parser.add_argument("--github-owner", default="barebaric")
     parser.add_argument("--github-repo", default="rayforge")
     parser.add_argument("--snap-name", default="rayforge")
-    parser.add_argument("--flathub-id", default="org.rayforge.rayforge")
+    parser.add_argument("--flathub-id", default="org.swiftcut.rayforge")
     parser.add_argument("--pypi-package", default="rayforge")
     parser.add_argument("--ppa-owner", default="knipknap")
     parser.add_argument("--ppa-name", default="rayforge")

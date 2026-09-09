@@ -16,12 +16,12 @@ from typing import Any
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge import context as context_module
-from rayforge.context import get_context
-from rayforge.core.doc import Doc
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.editor import DocEditor
-from rayforge.shared.tasker.manager import TaskManager
+from swiftcut import context as context_module
+from swiftcut.context import get_context
+from swiftcut.core.doc import Doc
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.editor import DocEditor
+from swiftcut.shared.tasker.manager import TaskManager
 
 
 def _direct_scheduler(callback: Callable, *args: Any, **kwargs: Any):
@@ -37,8 +37,8 @@ def task_mgr():
 
 @pytest.fixture
 def headless_context(tmp_path, task_mgr, monkeypatch):
-    from rayforge import config
-    from rayforge.shared import tasker
+    from swiftcut import config
+    from swiftcut.shared import tasker
 
     temp_config_dir = tmp_path / "config"
     temp_machine_dir = temp_config_dir / "machines"

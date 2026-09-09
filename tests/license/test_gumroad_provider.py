@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import yaml
 
-from rayforge.license import (
+from swiftcut.license import (
     GumroadProvider,
     LicenseResult,
     LicenseStatus,

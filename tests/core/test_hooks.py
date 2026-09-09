@@ -1,7 +1,7 @@
 """Tests for the hook system using synthetic plugins."""
 
-from rayforge.context import RayforgeContext
-from rayforge.core.hooks import hookimpl
+from swiftcut.context import RayforgeContext
+from swiftcut.core.hooks import hookimpl
 
 
 class MockPlugin:
@@ -140,7 +140,7 @@ class TestRegistryHooks:
         plugin = StepRegistryPlugin()
         context.plugin_mgr.register(plugin)
 
-        from rayforge.core.step_registry import step_registry
+        from swiftcut.core.step_registry import step_registry
 
         context.plugin_mgr.hook.register_steps(step_registry=step_registry)
 
@@ -162,7 +162,7 @@ class TestRegistryHooks:
         plugin = TransformerWidgetPlugin()
         context.plugin_mgr.register(plugin)
 
-        from rayforge.ui_gtk.doceditor.post_processor.registry import (
+        from swiftcut.ui_gtk.doceditor.post_processor.registry import (
             transformer_widget_registry,
         )
 
@@ -188,7 +188,7 @@ class TestRegistryHooks:
         plugin = StepSettingsPagePlugin()
         context.plugin_mgr.register(plugin)
 
-        from rayforge.ui_gtk.doceditor.step_settings.page_registry import (
+        from swiftcut.ui_gtk.doceditor.step_settings.page_registry import (
             step_settings_page_registry,
         )
 

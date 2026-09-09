@@ -1,15 +1,15 @@
 """
-Tests for :mod:`rayforge.pipeline.status_messages`.
+Tests for :mod:`swiftcut.pipeline.status_messages`.
 """
 
 import pytest
 
-from rayforge.core.step import Step
-from rayforge.core.step_registry import step_registry
-from rayforge.core.workpiece import WorkPiece
-from rayforge.pipeline.status_messages import status_message_for_key
-from rayforge.pipeline.transformer.base import OpsTransformer
-from rayforge.pipeline.transformer.registry import transformer_registry
+from swiftcut.core.step import Step
+from swiftcut.core.step_registry import step_registry
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.pipeline.status_messages import status_message_for_key
+from swiftcut.pipeline.transformer.base import OpsTransformer
+from swiftcut.pipeline.transformer.registry import transformer_registry
 
 TEST_ADDON = "test_status_messages"
 

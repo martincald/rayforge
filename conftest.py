@@ -2,8 +2,8 @@ import sys
 from pathlib import Path
 
 _root_dir = Path(__file__).parent
-_builtin_addons = _root_dir / "rayforge" / "builtin_addons"
-_private_addons = _root_dir / "rayforge" / "private_addons"
+_builtin_addons = _root_dir / "swiftcut" / "builtin_addons"
+_private_addons = _root_dir / "swiftcut" / "private_addons"
 
 for _addon_dir in [_builtin_addons, _private_addons]:
     if not _addon_dir.exists():

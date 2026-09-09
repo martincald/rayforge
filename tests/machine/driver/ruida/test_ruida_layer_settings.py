@@ -11,14 +11,14 @@ import logging
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import (
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import (
     decode35,
     encode14,
     encode35,
 )
-from rayforge.machine.models.laser import Laser
+from swiftcut.machine.models.laser import Laser
 
 # 10 and 40 mm/s, in the mm/min the model stores.
 SLOW_MM_MIN = 600

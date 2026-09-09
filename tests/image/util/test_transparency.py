@@ -2,7 +2,7 @@ import cairo
 import numpy as np
 import pytest
 
-from rayforge.image.util import transparency
+from swiftcut.image.util import transparency
 
 
 def test_make_surface_transparent_makes_white_pixels_transparent():

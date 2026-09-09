@@ -5,8 +5,8 @@ from pathlib import Path
 
 import yaml
 
-from rayforge.core.library_manager import LibraryManager
-from rayforge.core.material import Material
+from swiftcut.core.library_manager import LibraryManager
+from swiftcut.core.material import Material
 
 
 class TestLibraryManager:
@@ -392,7 +392,7 @@ class TestLibraryManager:
             manager.load_all_libraries()
 
             # Create and add a library
-            from rayforge.core.material_library import MaterialLibrary
+            from swiftcut.core.material_library import MaterialLibrary
 
             library = MaterialLibrary(library_dir, read_only=True)
             library.load_materials()
@@ -415,7 +415,7 @@ class TestLibraryManager:
 
             manager = LibraryManager(user_dir)
 
-            from rayforge.core.material_library import MaterialLibrary
+            from swiftcut.core.material_library import MaterialLibrary
 
             library = MaterialLibrary(library_dir, read_only=True)
             library.load_materials()

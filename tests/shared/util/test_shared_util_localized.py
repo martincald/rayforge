@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.shared.util.localized import register_addon_domain
-from rayforge.shared.util.po_compiler import write_mo_file
+from swiftcut.shared.util.localized import register_addon_domain
+from swiftcut.shared.util.po_compiler import write_mo_file
 
 _HEADER = "Content-Type: text/plain; charset=UTF-8\n"
 
@@ -41,7 +41,7 @@ def isolated_gettext():
     already mutated that state, so each test here starts from a clean
     slate and restores whatever was there before on exit.
     """
-    import rayforge.shared.util.localized as mod
+    import swiftcut.shared.util.localized as mod
 
     saved_gettext = gettext_module.gettext
     saved_translators = list(mod._chain._translators)

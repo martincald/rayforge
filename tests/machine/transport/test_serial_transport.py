@@ -3,8 +3,8 @@ import queue
 
 import pytest
 
-from rayforge.machine.transport import TransportStatus
-from rayforge.machine.transport.serial import (
+from swiftcut.machine.transport import TransportStatus
+from swiftcut.machine.transport.serial import (
     SerialPort,
     SerialPortPermissionError,
     SerialTransport,
@@ -103,7 +103,7 @@ def test_safe_list_ports_linux(monkeypatch):
         return []
 
     monkeypatch.setattr(
-        "rayforge.machine.transport.serial.glob.glob", mock_glob
+        "swiftcut.machine.transport.serial.glob.glob", mock_glob
     )
     ports = safe_list_ports_linux()
     expected_ports = [
@@ -134,7 +134,7 @@ def test_safe_list_ports_linux_symlinks_only(monkeypatch):
         return []
 
     monkeypatch.setattr(
-        "rayforge.machine.transport.serial.glob.glob", mock_glob
+        "swiftcut.machine.transport.serial.glob.glob", mock_glob
     )
     ports = safe_list_ports_linux()
     expected_ports = [
@@ -230,7 +230,7 @@ def mock_serial(mocker):
     """Mocks serial.Serial and returns the mock instance for inspection."""
     mock_instance = MockSerial()
     mock_cls = mocker.patch(
-        "rayforge.machine.transport.serial.serial.Serial",
+        "swiftcut.machine.transport.serial.serial.Serial",
         return_value=mock_instance,
     )
     return mock_cls, mock_instance
@@ -276,7 +276,7 @@ class TestSerialTransportIntegration:
     async def test_connection_failure(self, mocker):
         """Test that connection failures are handled gracefully."""
         mocker.patch(
-            "rayforge.machine.transport.serial.serial.Serial",
+            "swiftcut.machine.transport.serial.serial.Serial",
             side_effect=OSError("Connection failed"),
         )
         transport = SerialTransport(port="/dev/fail", baudrate=9600)

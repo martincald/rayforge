@@ -11,13 +11,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from OpenGL import GL
 
-from rayforge.ui_gtk.shared.model_preview.gl_state import (
+from swiftcut.ui_gtk.shared.model_preview.gl_state import (
     gl_state,
     render_pass,
 )
-from rayforge.ui_gtk.shared.model_preview.shader.base import Shader
+from swiftcut.ui_gtk.shared.model_preview.shader.base import Shader
 
-MOD = "rayforge.ui_gtk.shared.model_preview.gl_state"
+MOD = "swiftcut.ui_gtk.shared.model_preview.gl_state"
 
 
 def test_gl_state_restores_depth_test_on_exit():

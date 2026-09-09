@@ -15,9 +15,9 @@ import pytest
 import yaml
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.models.default_profile import ILAB_614_PROFILE
-from rayforge.machine.models.machine import Origin, StartCorner
-from rayforge.machine.models.manager import MachineManager
+from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
+from swiftcut.machine.models.machine import Origin, StartCorner
+from swiftcut.machine.models.manager import MachineManager
 
 SOURCE_YAML = (
     Path(__file__).resolve().parents[3]

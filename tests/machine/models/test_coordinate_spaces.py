@@ -17,11 +17,11 @@ from typing import ClassVar
 
 import pytest
 
-from rayforge import config
-from rayforge import context as context_module
-from rayforge.context import get_context
-from rayforge.machine.models.dialect_manager import DialectManager
-from rayforge.machine.models.machine import Machine, Origin
+from swiftcut import config
+from swiftcut import context as context_module
+from swiftcut.context import get_context
+from swiftcut.machine.models.dialect_manager import DialectManager
+from swiftcut.machine.models.machine import Machine, Origin
 
 
 @pytest.fixture(autouse=True)

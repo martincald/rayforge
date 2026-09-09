@@ -2,7 +2,7 @@
 
 import pytest
 
-from rayforge.ui_gtk.canvas.region import (
+from swiftcut.ui_gtk.canvas.region import (
     MOVE_HANDLES,
     ElementRegion,
     check_region_hit,
@@ -148,7 +148,7 @@ class TestMoveGizmoHitTest:
         )
         center_x = gx + gw / 2
         center_y = gy + gh / 2
-        from rayforge.ui_gtk.canvas.region import RESIZE_HANDLES
+        from swiftcut.ui_gtk.canvas.region import RESIZE_HANDLES
 
         candidates = RESIZE_HANDLES | MOVE_HANDLES
         result = check_region_hit(

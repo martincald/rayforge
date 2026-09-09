@@ -4,8 +4,8 @@ import asyncudp
 import pytest
 import pytest_asyncio
 
-from rayforge.machine.transport import TransportStatus
-from rayforge.machine.transport.udp import UdpTransport
+from swiftcut.machine.transport import TransportStatus
+from swiftcut.machine.transport.udp import UdpTransport
 
 
 class SignalTracker:
@@ -251,7 +251,7 @@ class TestUdpTransportIntegration:
         # Patch socket.gethostbyname to simulate failure, as some environments
         # (like CI or custom DNS) might not fail on garbage hostnames.
         mocker.patch(
-            "rayforge.machine.transport.udp.socket.gethostbyname",
+            "swiftcut.machine.transport.udp.socket.gethostbyname",
             side_effect=OSError("Resolution failed"),
         )
 

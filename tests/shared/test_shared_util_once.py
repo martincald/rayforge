@@ -1,4 +1,4 @@
-from rayforge.shared.util.once import once_per_object
+from swiftcut.shared.util.once import once_per_object
 
 
 class TestOncePerObject:

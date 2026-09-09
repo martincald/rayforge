@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from rayforge.image.base_renderer import Renderer, RenderSpecification
+from swiftcut.image.base_renderer import Renderer, RenderSpecification
 
 
 # --- Test Fixtures and Helpers ---

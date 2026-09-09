@@ -15,7 +15,7 @@ from importlib.resources import files
 
 import pytest
 
-from rayforge.resources import icons as icon_resources
+from swiftcut.resources import icons as icon_resources
 
 # The 4x4 jog grid, whose geometry the reskin must not disturb.
 JOG_ICONS = [
@@ -116,9 +116,9 @@ def test_go_scale_and_cut_scale_do_not_share_a_glyph():
     with the laser glyph. They used to be the same icon, which left
     the two actions indistinguishable in the grid.
     """
-    from rayforge.ui_gtk.machine import jog_widget
+    from swiftcut.ui_gtk.machine import jog_widget
 
-    source = files("rayforge.ui_gtk.machine").joinpath("jog_widget.py")
+    source = files("swiftcut.ui_gtk.machine").joinpath("jog_widget.py")
     text = source.read_text(encoding="utf-8")
     assert jog_widget is not None
     go_at = text.index("self.go_scale_btn = create_button(")

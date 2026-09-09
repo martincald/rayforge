@@ -46,10 +46,10 @@ def get_app_logo():
     """Get path to app logo."""
     logo_path = (
         Path(__file__).parent.parent
-        / "rayforge"
+        / "swiftcut"
         / "resources"
         / "icons"
-        / "org.rayforge.rayforge.svg"
+        / "org.swiftcut.swiftcut.svg"
     )
     if not logo_path.exists():
         logo_path = Path(__file__).parent.parent / "media" / "fiber-laser.png"

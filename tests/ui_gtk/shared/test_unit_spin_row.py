@@ -9,7 +9,7 @@ gi.require_version("Adw", "1")
 import pytest
 from gi.repository import Adw
 
-from rayforge.ui_gtk.shared.pref_rows import (
+from swiftcut.ui_gtk.shared.pref_rows import (
     AccelerationSpinRow,
     AngleSpinRow,
     LengthChoiceSpinRow,

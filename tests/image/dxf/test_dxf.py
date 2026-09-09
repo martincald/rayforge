@@ -7,12 +7,12 @@ import ezdxf
 import pytest
 from raygeo.geo import Bezier, Geometry, Matrix
 
-from rayforge.core.layer import Layer
-from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.base_importer import ImporterFeature
-from rayforge.image.dxf.importer import DxfImporter
-from rayforge.image.structures import ImportPayload
+from swiftcut.core.layer import Layer
+from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.base_importer import ImporterFeature
+from swiftcut.image.dxf.importer import DxfImporter
+from swiftcut.image.structures import ImportPayload
 
 
 # Fixtures

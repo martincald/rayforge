@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rayforge.core.layer import Layer
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.transform_cmd import TransformCmd
+from swiftcut.core.layer import Layer
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.transform_cmd import TransformCmd
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_set_position(transform_cmd, sample_items):
     """Per-item position set: each item's top-left goes to the same
     machine target independently."""
     with patch(
-        "rayforge.doceditor.transform_cmd.get_context"
+        "swiftcut.doceditor.transform_cmd.get_context"
     ) as mock_get_context:
         mock_get_context.return_value.machine = None
         hm = transform_cmd._editor.history_manager
@@ -53,7 +53,7 @@ def test_set_position(transform_cmd, sample_items):
 def test_set_position_with_y_axis_down(transform_cmd, sample_items):
     """Test setting position when Y-axis is down."""
     with patch(
-        "rayforge.doceditor.transform_cmd.get_context"
+        "swiftcut.doceditor.transform_cmd.get_context"
     ) as mock_get_context:
         mock_machine = MagicMock()
         mock_machine.x_axis_right = False
@@ -94,7 +94,7 @@ def test_set_position_no_items(transform_cmd):
 
 def test_set_position_with_x_axis_right(transform_cmd, sample_items):
     with patch(
-        "rayforge.doceditor.transform_cmd.get_context"
+        "swiftcut.doceditor.transform_cmd.get_context"
     ) as mock_get_context:
         mock_machine = MagicMock()
         mock_machine.x_axis_right = True
@@ -192,7 +192,7 @@ def test_set_position_group_all_machine_origins(doc_editor):
         mock_machine.get_coordinate_space.return_value = mock_space
         mock_machine.panel.machine_item_to_world.side_effect = m2w
         mock_machine.panel.world_item_to_machine.side_effect = w2m
-        with patch("rayforge.doceditor.transform_cmd.get_context") as m:
+        with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
             m.return_value.machine = mock_machine
             TransformCmd(doc_editor).set_position_group([a, b], 0.0, 0.0)
             reported = TransformCmd.get_position_group([a, b])
@@ -587,7 +587,7 @@ def test_set_shear_group_reset_converges(doc_editor):
 
 
 def test_reset_position(transform_cmd, sample_items):
-    with patch("rayforge.doceditor.transform_cmd.get_context") as m:
+    with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
         m.return_value.machine = None
         transform_cmd.reset_position(sample_items)
         assert sample_items[0].pos == (0.0, 0.0)
@@ -607,7 +607,7 @@ def test_reset_position_group(doc_editor):
     layer.add_child(a)
     layer.add_child(b)
 
-    with patch("rayforge.doceditor.transform_cmd.get_context") as m:
+    with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
         m.return_value.machine = None
         tc.reset_position_group([a, b])
 

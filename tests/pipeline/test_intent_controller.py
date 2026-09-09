@@ -1,7 +1,7 @@
 """
-Tests for :mod:`rayforge.pipeline.intent_controller`.
+Tests for :mod:`swiftcut.pipeline.intent_controller`.
 
-These tests use the existing :class:`~rayforge.core.doc.Doc` /
+These tests use the existing :class:`~swiftcut.core.doc.Doc` /
 :class:`Step` / :class:`WorkPiece` classes (real signal wiring) and a
 fake :class:`TaskManager` so they do not require a running GTK event
 loop.
@@ -10,17 +10,17 @@ loop.
 from collections.abc import Callable
 from typing import Any, ClassVar, Optional
 
-from rayforge.core.doc import Doc
-from rayforge.core.step import Step
-from rayforge.core.workpiece import WorkPiece
-from rayforge.machine.models.machine import Machine
-from rayforge.pipeline.intent_builder import (
+from swiftcut.core.doc import Doc
+from swiftcut.core.step import Step
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.machine.models.machine import Machine
+from swiftcut.pipeline.intent_builder import (
     job_encode_key,
     job_key,
     step_key,
     workpiece_key,
 )
-from rayforge.pipeline.intent_controller import (
+from swiftcut.pipeline.intent_controller import (
     REBUILD_DEBOUNCE_MS,
     IntentController,
 )
@@ -264,7 +264,7 @@ def test_run_intent_called(monkeypatch, isolated_machine):
         run_calls.append((intent, on_completed, pipeline))
 
     monkeypatch.setattr(
-        "rayforge.pipeline.intent_controller.run_intent", _capture_run
+        "swiftcut.pipeline.intent_controller.run_intent", _capture_run
     )
     wp.updated.send(wp)
     tm.fire_latest()
@@ -302,7 +302,7 @@ def _make_controller_for_completed_test(
 
     # Build once so the key map is populated.
     monkeypatch.setattr(
-        "rayforge.pipeline.intent_controller.run_intent",
+        "swiftcut.pipeline.intent_controller.run_intent",
         lambda *a, **kw: None,
     )
     wp.updated.send(wp)

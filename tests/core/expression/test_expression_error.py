@@ -1,6 +1,6 @@
 import pytest
 
-from rayforge.core.expression import errors
+from swiftcut.core.expression import errors
 
 
 def test_error_info_base_class():

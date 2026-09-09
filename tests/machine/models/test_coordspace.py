@@ -5,7 +5,7 @@ Unit tests for coordinate space classes.
 import numpy as np
 import pytest
 
-from rayforge.machine.models.coordspace import (
+from swiftcut.machine.models.coordspace import (
     AxisDirection,
     MachineSpace,
     OriginCorner,

@@ -4,10 +4,10 @@ import pytest
 from blinker import Signal
 from raygeo.geo import Matrix
 
-from rayforge.core.doc import Doc
-from rayforge.core.group import Group
-from rayforge.core.item import DocItem
-from rayforge.core.workpiece import WorkPiece
+from swiftcut.core.doc import Doc
+from swiftcut.core.group import Group
+from swiftcut.core.item import DocItem
+from swiftcut.core.workpiece import WorkPiece
 
 
 class GroupItem(Group):

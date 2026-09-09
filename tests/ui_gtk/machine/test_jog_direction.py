@@ -3,10 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.driver.driver import DeviceState
-from rayforge.machine.models.machine import Machine, Origin
-from rayforge.machine.models.machine_panel import PanelOrientation
-from rayforge.machine.transport import TransportStatus
+from swiftcut.machine.driver.driver import DeviceState
+from swiftcut.machine.models.machine import Machine, Origin
+from swiftcut.machine.models.machine_panel import PanelOrientation
+from swiftcut.machine.transport import TransportStatus
 
 # Jog distance and speed for testing (speed in mm/s; the widget
 # converts to mm/min when calling machine_cmd.jog)
@@ -104,7 +104,7 @@ def test_jog_button_direction(
     - Z axis: Depends on reverse_z_axis setting.
     """
     # Import JogWidget here to avoid GTK import during test collection
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     # 1. Configure the Machine
     machine = Machine(ui_context_initializer)
@@ -169,7 +169,7 @@ def test_jog_button_direction_with_rotated_workspace(
     the workspace is presented rotated. A visual cardinal jog maps to
     the orthogonal native axis.
     """
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     # 1. Configure the Machine
     machine = Machine(ui_context_initializer)
@@ -297,7 +297,7 @@ def test_jog_button_limit_warning(
     Verifies that jog buttons show a 'warning' CSS class if the jog would
     exceed soft limits, considering machine origin and axis reversal.
     """
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     # 1. Configure the Machine
     machine = Machine(ui_context_initializer)
@@ -357,7 +357,7 @@ def test_x_mapping_follows_the_origin_corner_setting(ui_context_initializer):
     origin corner, not baked in: moving the origin across the bed
     inverts X on a widget that is already live.
     """
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_axis_extents(200, 200)

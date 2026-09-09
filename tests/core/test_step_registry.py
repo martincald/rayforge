@@ -1,8 +1,8 @@
 from raygeo.geo import Matrix
 
-from rayforge.core.capability import MachineCapability
-from rayforge.core.step import Step
-from rayforge.core.step_registry import StepRegistry, step_registry
+from swiftcut.core.capability import MachineCapability
+from swiftcut.core.step import Step
+from swiftcut.core.step_registry import StepRegistry, step_registry
 
 
 class MockStep(Step):

@@ -5,10 +5,10 @@ import pytest
 from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.dummy import NoDeviceDriver
-from rayforge.machine.models.machine import Machine
-from rayforge.pipeline.encoder.gcode import GcodeEncoder
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.dummy import NoDeviceDriver
+from swiftcut.machine.models.machine import Machine
+from swiftcut.pipeline.encoder.gcode import GcodeEncoder
 
 
 class TestDummyDriverCallback:
@@ -210,7 +210,7 @@ class TestDummyDriverCallback:
     @pytest.mark.asyncio
     async def test_set_power_with_head(self, driver):
         """Test that set_power method accepts head parameter."""
-        from rayforge.machine.models.laser import Laser
+        from swiftcut.machine.models.laser import Laser
 
         # Create a test laser head
         test_head = Laser()

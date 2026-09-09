@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from raygeo.geo import Matrix
 
-from rayforge.ui_gtk.canvas.axis import AxisRenderer
+from swiftcut.ui_gtk.canvas.axis import AxisRenderer
 
 # A known widget size for consistent testing
 WIDGET_W, WIDGET_H = 800, 600

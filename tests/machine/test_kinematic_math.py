@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from rayforge.machine.kinematic_math import KinematicMath
+from swiftcut.machine.kinematic_math import KinematicMath
 
 
 class TestEffectiveDiameter:

@@ -1,7 +1,7 @@
 """Tests for the core PWM settings varset."""
 
-from rayforge.core.varset import IntVar, VarSet
-from rayforge.machine.driver.driver import PWMParams, pwm_varset
+from swiftcut.core.varset import IntVar, VarSet
+from swiftcut.machine.driver.driver import PWMParams, pwm_varset
 
 
 def test_construction():

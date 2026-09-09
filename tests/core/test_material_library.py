@@ -5,8 +5,8 @@ from pathlib import Path
 
 import yaml
 
-from rayforge.core.material import Material
-from rayforge.core.material_library import MaterialLibrary
+from swiftcut.core.material import Material
+from swiftcut.core.material_library import MaterialLibrary
 
 
 class TestMaterialLibrary:

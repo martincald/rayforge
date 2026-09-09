@@ -1,6 +1,6 @@
 from raygeo.ops import Ops
 
-from rayforge.pipeline.artifact import JobArtifact, WorkPieceArtifact
+from swiftcut.pipeline.artifact import JobArtifact, WorkPieceArtifact
 
 
 def test_artifact_type_property():

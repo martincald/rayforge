@@ -8,11 +8,11 @@ carries. A speed set in mm/s must arrive on the controller unchanged.
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.core.doc import Doc
-from rayforge.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from rayforge.machine.driver.ruida.ruida_util import decode35
-from rayforge.machine.models.laser import Laser
-from rayforge.shared.units.definitions import get_unit
+from swiftcut.core.doc import Doc
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
+from swiftcut.machine.driver.ruida.ruida_util import decode35
+from swiftcut.machine.models.laser import Laser
+from swiftcut.shared.units.definitions import get_unit
 
 
 @pytest.fixture

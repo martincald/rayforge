@@ -4,9 +4,9 @@ from raygeo.ops import Ops
 from raygeo.ops.convert import GcodeDialectSpec
 from raygeo.ops.state import AirAssistMode
 
-from rayforge.machine.models.dialect.grbl import GRBL_DIALECT
-from rayforge.pipeline.encoder.gcode import GcodeEncoder
-from rayforge.shared.units.system import UnitSystem
+from swiftcut.machine.models.dialect.grbl import GRBL_DIALECT
+from swiftcut.pipeline.encoder.gcode import GcodeEncoder
+from swiftcut.shared.units.system import UnitSystem
 
 
 def _make_machine_mock(dialect=GRBL_DIALECT):

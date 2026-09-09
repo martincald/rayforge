@@ -3,9 +3,9 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from rayforge.core.vectorization_spec import VectorizationSpec
-from rayforge.image.structures import ParsingResult, VectorizationResult
-from rayforge.image.svg.svg_base import SvgImporterBase
+from swiftcut.core.vectorization_spec import VectorizationSpec
+from swiftcut.image.structures import ParsingResult, VectorizationResult
+from swiftcut.image.svg.svg_base import SvgImporterBase
 
 # --- Test Data ---
 

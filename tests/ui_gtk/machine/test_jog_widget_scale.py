@@ -15,12 +15,12 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gtk  # noqa: E402
 
-from rayforge.machine.models.machine import Machine  # noqa: E402
-from rayforge.machine.transport import TransportStatus  # noqa: E402
+from swiftcut.machine.models.machine import Machine  # noqa: E402
+from swiftcut.machine.transport import TransportStatus  # noqa: E402
 
 
 def _widget(ui_context_initializer, machine_cmd):
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_axis_extents(200, 200)
@@ -215,7 +215,7 @@ def test_settled_document_refreshes_the_buttons(ui_context_initializer):
 def test_cut_scale_dialog_defaults_to_the_first_layer_power(
     ui_context_initializer,
 ):
-    from rayforge.ui_gtk.machine.cut_scale_dialog import (
+    from swiftcut.ui_gtk.machine.cut_scale_dialog import (
         DEFAULT_SPEED_MM_MIN,
         CutScaleDialog,
     )
@@ -241,7 +241,7 @@ def test_cut_scale_dialog_prefills_the_saved_settings(
     machine.set_cut_scale_settings(35.0, 30.0)
 
     with patch(
-        "rayforge.ui_gtk.machine.jog_widget.CutScaleDialog"
+        "swiftcut.ui_gtk.machine.jog_widget.CutScaleDialog"
     ) as dialog_cls:
         widget._on_cut_scale_clicked(widget.cut_scale_btn)
 
@@ -256,7 +256,7 @@ def test_running_a_cut_scale_saves_the_settings(ui_context_initializer):
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
     with patch(
-        "rayforge.ui_gtk.machine.jog_widget.CutScaleDialog"
+        "swiftcut.ui_gtk.machine.jog_widget.CutScaleDialog"
     ) as dialog_cls:
         widget._on_cut_scale_clicked(widget.cut_scale_btn)
     confirm = dialog_cls.call_args.args[1]
@@ -271,7 +271,7 @@ def test_running_a_cut_scale_saves_the_settings(ui_context_initializer):
 
 @pytest.mark.ui
 def test_cut_scale_dialog_cancel_runs_nothing(ui_context_initializer):
-    from rayforge.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
+    from swiftcut.ui_gtk.machine.cut_scale_dialog import CutScaleDialog
 
     confirmed = []
     dialog = CutScaleDialog(80.0, lambda s, p: confirmed.append((s, p)))

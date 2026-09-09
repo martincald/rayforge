@@ -44,7 +44,7 @@ are captured.
        import os, sys
        with open("/tmp/opencode/app.pid", "w") as f:
            f.write(str(os.getpid()))
-       from rayforge.app import main
+       from swiftcut.app import main
        sys.exit(main())
 
 2. Run the app under xvfb + memray --native, time-bounded (the build is
@@ -81,11 +81,11 @@ Caveats / lessons learned (this session)
   override marker in pixi.toml (which then blocks the wrapper). For
   long-running, timeout-killed app runs, prefer the manual override above.
 
-* **rayforge is single-instance.** If an instance is already running, a
+* **swiftcut is single-instance.** If an instance is already running, a
   second launch exits immediately and memray captures only imports (tiny
   bin, ~160 MB). Close the running instance first.
 
-* **Never ``pkill -f rayforge``** — it matches the shell running the pkill
+* **Never ``pkill -f swiftcut``** — it matches the shell running the pkill
   and the command never finishes. Kill by PID via the launcher's
   ``/tmp/opencode/app.pid``.
 
@@ -140,11 +140,11 @@ from raygeo.pipeline.execute import Pipeline
 from raygeo.pipeline.request import NodeRequest
 from raygeo.pipeline.stage import StageSpec
 
-from rayforge.image.util.vips import (
+from swiftcut.image.util.vips import (
     normalize_to_rgba,
     vips_rgba_to_cairo_surface,
 )
-from rayforge.pipeline.stage.assembler_helpers import (
+from swiftcut.pipeline.stage.assembler_helpers import (
     DepthMode,
     preprocess_raster_image,
 )

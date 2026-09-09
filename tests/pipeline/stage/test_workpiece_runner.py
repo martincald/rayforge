@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import SVG_RENDERER
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import SVG_RENDERER
 
 
 @pytest.fixture

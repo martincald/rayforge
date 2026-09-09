@@ -9,7 +9,7 @@ through. These tests pin both halves of that.
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.machine.models.machine import Machine
+from swiftcut.machine.models.machine import Machine
 
 # Fast enough that the trapezoidal ramps cost nothing measurable, so
 # the remaining time is pure distance over speed.

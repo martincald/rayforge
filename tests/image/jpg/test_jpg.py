@@ -6,14 +6,14 @@ import cairo
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec, TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image.base_importer import ImporterFeature
-from rayforge.image.jpg.importer import JpgImporter
-from rayforge.image.jpg.renderer import JPG_RENDERER
-from rayforge.image.registry import renderer_registry
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.base_importer import ImporterFeature
+from swiftcut.image.jpg.importer import JpgImporter
+from swiftcut.image.jpg.renderer import JPG_RENDERER
+from swiftcut.image.registry import renderer_registry
 
 # Assume the test JPGs are in the same directory as this test file
 TEST_DATA_DIR = Path(__file__).parent

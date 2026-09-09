@@ -17,7 +17,7 @@ from utils import (
     wait_for_settled,
 )
 
-from rayforge.uiscript import app, win
+from swiftcut.uiscript import app, win
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ TEST_IMAGE = (
     / "tests"
     / "image"
     / "svg"
-    / "rayforge.svg"
+    / "swiftcut.svg"
 )
 
 
@@ -40,7 +40,7 @@ def main():
         app.quit_idle()
         return
 
-    from rayforge.ui_gtk.doceditor.import_dialog import ImportDialog
+    from swiftcut.ui_gtk.doceditor.import_dialog import ImportDialog
 
     def open_import_dialog():
         _, features = win.doc_editor.file.get_importer_info(

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs SwiftCut from source in the configured MSYS2 environment.
-# Usage: win_run.sh [args passed to rayforge]
+# Usage: win_run.sh [args passed to swiftcut]
 set -e
 
 if [ ! -f .msys2_env ]; then
@@ -10,4 +10,4 @@ fi
 
 source .msys2_env
 
-exec python -m rayforge.app "$@"
+exec python -m swiftcut.app "$@"

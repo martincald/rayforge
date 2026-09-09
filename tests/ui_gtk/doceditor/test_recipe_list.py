@@ -2,8 +2,8 @@
 
 import pytest
 
-from rayforge.core.recipe import Recipe
-from rayforge.ui_gtk.doceditor.recipes.recipe_list import RecipeRow
+from swiftcut.core.recipe import Recipe
+from swiftcut.ui_gtk.doceditor.recipes.recipe_list import RecipeRow
 
 pytestmark = pytest.mark.ui
 

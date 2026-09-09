@@ -1,9 +1,9 @@
 import pytest
 
-from rayforge.core.layer import Layer
-from rayforge.core.tab import Tab
-from rayforge.core.workpiece import WorkPiece
-from rayforge.doceditor.tab_cmd import TabCmd
+from swiftcut.core.layer import Layer
+from swiftcut.core.tab import Tab
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.tab_cmd import TabCmd
 
 
 @pytest.fixture

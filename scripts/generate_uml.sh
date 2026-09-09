@@ -8,5 +8,5 @@ if [ "$0" != 'scripts/generate_uml.sh' ]; then
     exit 1
 fi
 
-pyreverse -m y --output png rayforge/ops* rayforge/modifier/ rayforge/models rayforge/render/ \
+pyreverse -m y --output png swiftcut/ops* swiftcut/modifier/ swiftcut/models swiftcut/render/ \
     && echo Built classes.png and packages.png

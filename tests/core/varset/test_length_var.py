@@ -1,9 +1,9 @@
 import pytest
 
-from rayforge.core.varset.floatvar import FloatVar
-from rayforge.core.varset.lengthvar import LengthVar
-from rayforge.core.varset.var import ValidationError
-from rayforge.core.varset.varset import VarSet
+from swiftcut.core.varset.floatvar import FloatVar
+from swiftcut.core.varset.lengthvar import LengthVar
+from swiftcut.core.varset.var import ValidationError
+from swiftcut.core.varset.varset import VarSet
 
 
 class TestLengthVar:

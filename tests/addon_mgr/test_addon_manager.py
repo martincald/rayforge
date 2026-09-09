@@ -9,23 +9,23 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import yaml
 
-from rayforge.addon_mgr.addon import (
+from swiftcut.addon_mgr.addon import (
     Addon,
     AddonMetadata,
     AddonValidationError,
 )
-from rayforge.addon_mgr.addon_manager import (
+from swiftcut.addon_mgr.addon_manager import (
     AddonManager,
     AddonState,
     UpdateStatus,
 )
-from rayforge.core.addon_config import (
+from swiftcut.core.addon_config import (
     AddonConfig,
 )
-from rayforge.core.addon_config import (
+from swiftcut.core.addon_config import (
     AddonState as ConfigAddonState,
 )
-from rayforge.shared.util.versioning import UnknownVersion, parse_requirement
+from swiftcut.shared.util.versioning import UnknownVersion, parse_requirement
 
 
 def create_addon_files(
@@ -173,7 +173,7 @@ class TestAddonManagerLoading:
         assert not manager.loaded_addons
         manager.plugin_mgr.register.assert_not_called()
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_load_addon_success(self, mock_load, manager):
         addon_dir = manager.install_dir / "test_pkg"
 
@@ -181,7 +181,7 @@ class TestAddonManagerLoading:
         mock_load.return_value = mock_addon
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager,
                 "_check_version_compatibility",
@@ -194,14 +194,14 @@ class TestAddonManagerLoading:
         assert "test_plugin" in manager.loaded_addons
         manager.plugin_mgr.register.assert_called_once()
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_load_addon_validation_error(self, mock_load, manager):
         mock_load.side_effect = AddonValidationError("Bad format")
         manager.load_addon(Path("any/path"))
         assert not manager.loaded_addons
         manager.plugin_mgr.register.assert_not_called()
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_load_addon_incompatible_version(self, mock_load, manager):
         mock_addon = create_mock_addon(
             name="test_plugin",
@@ -211,7 +211,7 @@ class TestAddonManagerLoading:
         mock_load.return_value = mock_addon
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager,
                 "_check_version_compatibility",
@@ -245,13 +245,13 @@ provides:
         (addon_dir / "backend.py").write_text("")
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager,
                 "_check_version_compatibility",
                 return_value=UpdateStatus.UP_TO_DATE,
             ),
-            patch("rayforge.addon_mgr.addon_manager.call_registration_hooks"),
+            patch("swiftcut.addon_mgr.addon_manager.call_registration_hooks"),
         ):
             result = manager.load_addon_by_name("test_plugin")
 
@@ -277,13 +277,13 @@ provides:
         (addon_dir / "frontend.py").write_text("")
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager,
                 "_check_version_compatibility",
                 return_value=UpdateStatus.UP_TO_DATE,
             ),
-            patch("rayforge.addon_mgr.addon_manager.call_registration_hooks"),
+            patch("swiftcut.addon_mgr.addon_manager.call_registration_hooks"),
         ):
             result = manager.load_addon_by_name(
                 "test_plugin", worker_only=True
@@ -308,7 +308,7 @@ class TestAddonManagerInstallation:
         with (
             patch.object(manager, "_fetch_addon_source", return_value=True),
             patch(
-                "rayforge.addon_mgr.addon_manager.Addon.load_from_directory",
+                "swiftcut.addon_mgr.addon_manager.Addon.load_from_directory",
                 return_value=mock_addon,
             ),
         ):
@@ -331,11 +331,11 @@ class TestAddonManagerInstallation:
         with (
             patch.object(manager, "_fetch_addon_source", return_value=True),
             patch(
-                "rayforge.addon_mgr.addon_manager.get_git_tag_version",
+                "swiftcut.addon_mgr.addon_manager.get_git_tag_version",
                 return_value="1.0.0",
             ),
             patch(
-                "rayforge.addon_mgr.addon_manager.Addon.load_from_directory",
+                "swiftcut.addon_mgr.addon_manager.Addon.load_from_directory",
                 return_value=mock_addon_for_validation,
             ),
             patch("shutil.copytree"),
@@ -359,11 +359,11 @@ class TestAddonManagerInstallation:
         with (
             patch.object(manager, "_fetch_addon_source", return_value=True),
             patch(
-                "rayforge.addon_mgr.addon_manager.get_git_tag_version",
+                "swiftcut.addon_mgr.addon_manager.get_git_tag_version",
                 return_value="1.0.0",
             ),
             patch(
-                "rayforge.addon_mgr.addon_manager.Addon.load_from_directory",
+                "swiftcut.addon_mgr.addon_manager.Addon.load_from_directory",
                 return_value=mock_addon_for_validation,
             ),
             patch("shutil.copytree"),
@@ -459,7 +459,7 @@ class TestAddonManagerInstallation:
                 manager, "_fetch_addon_source", return_value=True
             ) as mock_fetch,
             patch(
-                "rayforge.addon_mgr.addon_manager.get_git_tag_version",
+                "swiftcut.addon_mgr.addon_manager.get_git_tag_version",
                 return_value="1.0.0",
             ),
             patch.object(
@@ -468,7 +468,7 @@ class TestAddonManagerInstallation:
                 return_value=True,
             ) as mock_zip,
             patch(
-                "rayforge.addon_mgr.addon_manager.Addon.load_from_directory",
+                "swiftcut.addon_mgr.addon_manager.Addon.load_from_directory",
                 return_value=mock_addon_for_validation,
             ),
             patch("shutil.copytree"),
@@ -916,7 +916,7 @@ class TestAddonManagerDisabledAddons:
             )
             yield manager
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_load_addon_skips_disabled_addon(
         self, mock_load, manager_with_config
     ):
@@ -940,7 +940,7 @@ class TestAddonManagerDisabledAddons:
         assert "disabled_plugin" in manager_with_config.disabled_addons
         manager_with_config.plugin_mgr.register.assert_not_called()
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_load_addon_loads_enabled_addon(
         self, mock_load, manager_with_config
     ):
@@ -950,7 +950,7 @@ class TestAddonManagerDisabledAddons:
         mock_load.return_value = mock_addon
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager_with_config,
                 "_check_version_compatibility",
@@ -962,7 +962,7 @@ class TestAddonManagerDisabledAddons:
         assert "enabled_plugin" in manager_with_config.loaded_addons
         manager_with_config.plugin_mgr.register.assert_called_once()
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_disable_addon(self, mock_load, manager_with_config):
         """Test disabling a loaded addon."""
         addon_dir = manager_with_config.install_dir / "test_pkg"
@@ -970,7 +970,7 @@ class TestAddonManagerDisabledAddons:
         mock_load.return_value = mock_addon
 
         with (
-            patch("rayforge.addon_mgr.addon_manager.importlib.util"),
+            patch("swiftcut.addon_mgr.addon_manager.importlib.util"),
             patch.object(
                 manager_with_config,
                 "_check_version_compatibility",
@@ -996,7 +996,7 @@ class TestAddonManagerDisabledAddons:
 
         sys.modules.pop(module_name, None)
 
-    @patch("rayforge.addon_mgr.addon_manager.Addon.load_from_directory")
+    @patch("swiftcut.addon_mgr.addon_manager.Addon.load_from_directory")
     def test_enable_addon(self, mock_load, manager_with_config):
         """Test enabling a disabled addon."""
         addon_dir = manager_with_config.install_dir / "test_pkg"

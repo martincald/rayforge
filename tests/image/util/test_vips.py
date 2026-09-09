@@ -10,7 +10,7 @@ with warnings.catch_warnings():
     import pyvips
     from pyvips import GValue
 
-from rayforge.image.util import vips
+from swiftcut.image.util import vips
 
 TEST_DATA_DIR = Path(__file__).parent.parent / "png"
 

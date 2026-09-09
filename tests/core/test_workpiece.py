@@ -8,15 +8,15 @@ from blinker import Signal
 from raygeo.geo import Geometry, Matrix
 from raygeo.geo.shape.polygon import get_polygon_area
 
-from rayforge.core.doc import Doc
-from rayforge.core.item import DocItem
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.tab import Tab
-from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import import_file
-from rayforge.image.svg.renderer import SvgRenderer
+from swiftcut.core.doc import Doc
+from swiftcut.core.item import DocItem
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.tab import Tab
+from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import import_file
+from swiftcut.image.svg.renderer import SvgRenderer
 
 
 @pytest.fixture

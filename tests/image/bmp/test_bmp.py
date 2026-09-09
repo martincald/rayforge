@@ -7,21 +7,21 @@ import cairo
 import pytest
 from raygeo.geo import Geometry, Matrix
 
-from rayforge.core.source_asset import SourceAsset
-from rayforge.core.source_asset_segment import SourceAssetSegment
-from rayforge.core.vectorization_spec import PassthroughSpec, TraceSpec
-from rayforge.core.workpiece import WorkPiece
-from rayforge.image import import_file
-from rayforge.image.base_importer import ImporterFeature
-from rayforge.image.bmp.importer import BmpImporter
-from rayforge.image.bmp.parser import (
+from swiftcut.core.source_asset import SourceAsset
+from swiftcut.core.source_asset_segment import SourceAssetSegment
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image import import_file
+from swiftcut.image.base_importer import ImporterFeature
+from swiftcut.image.bmp.importer import BmpImporter
+from swiftcut.image.bmp.parser import (
     _get_row_offset,
     _validate_format,
     parse_bmp,
     parse_dib_header,
 )
-from rayforge.image.bmp.renderer import BMP_RENDERER
-from rayforge.image.structures import ImportPayload
+from swiftcut.image.bmp.renderer import BMP_RENDERER
+from swiftcut.image.structures import ImportPayload
 
 TEST_DATA_DIR = Path(__file__).parent
 

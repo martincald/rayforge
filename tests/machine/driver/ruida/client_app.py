@@ -17,11 +17,11 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import GLib, Gtk
 
-from rayforge.machine.driver.ruida.ruida_client import RuidaClient
-from rayforge.machine.driver.ruida.ruida_maps import REF_POINT_COMMANDS
-from rayforge.machine.driver.ruida.ruida_transport import RuidaTransport
-from rayforge.machine.driver.ruida.ruida_util import UM_PER_MM
-from rayforge.machine.transport.udp import UdpTransport
+from swiftcut.machine.driver.ruida.ruida_client import RuidaClient
+from swiftcut.machine.driver.ruida.ruida_maps import REF_POINT_COMMANDS
+from swiftcut.machine.driver.ruida.ruida_transport import RuidaTransport
+from swiftcut.machine.driver.ruida.ruida_util import UM_PER_MM
+from swiftcut.machine.transport.udp import UdpTransport
 
 logger = logging.getLogger(__name__)
 
@@ -420,7 +420,7 @@ class ClientWindow(Gtk.ApplicationWindow):
 
 class ClientApp(Gtk.Application):
     def __init__(self, host: str, port: int, magic: int):
-        super().__init__(application_id="com.rayforge.RuidaClient")
+        super().__init__(application_id="com.swiftcut.RuidaClient")
         self.client = RuidaUdpClient(host, port, magic)
         self._window: ClientWindow | None = None
 

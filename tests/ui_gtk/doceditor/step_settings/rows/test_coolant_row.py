@@ -9,9 +9,9 @@ gi.require_version("Adw", "1")
 
 from raygeo.ops.state import CoolantMode
 
-from rayforge.machine.models.machine import Machine
-from rayforge.machine.models.spindle import SpindleHead
-from rayforge.ui_gtk.doceditor.step_settings.rows import CoolantRow
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.models.spindle import SpindleHead
+from swiftcut.ui_gtk.doceditor.step_settings.rows import CoolantRow
 
 
 @pytest.fixture

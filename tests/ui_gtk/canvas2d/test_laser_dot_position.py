@@ -2,9 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from rayforge.machine.driver.driver import DeviceState
-from rayforge.machine.models.machine import Machine, Origin
-from rayforge.ui_gtk.canvas2d.surface import WorkSurface
+from swiftcut.machine.driver.driver import DeviceState
+from swiftcut.machine.models.machine import Machine, Origin
+from swiftcut.ui_gtk.canvas2d.surface import WorkSurface
 
 # Machine dimensions for testing
 WIDTH, HEIGHT = 200, 200

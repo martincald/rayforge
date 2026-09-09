@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from raygeo.ops import Ops
 
-from rayforge.machine.job_monitor import JobMonitor
+from swiftcut.machine.job_monitor import JobMonitor
 
 
 class TestJobMonitor:

@@ -14,15 +14,15 @@ gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gtk  # noqa: E402
 
-from rayforge.machine.models.machine import (  # noqa: E402
+from swiftcut.machine.models.machine import (  # noqa: E402
     JogDirection,
     Machine,
 )
-from rayforge.machine.transport import TransportStatus  # noqa: E402
+from swiftcut.machine.transport import TransportStatus  # noqa: E402
 
 
 def _widget(ui_context_initializer, machine_cmd):
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine = Machine(ui_context_initializer)
     machine.set_axis_extents(200, 200)
@@ -66,7 +66,7 @@ def _hold(widget, *directions):
 def _start_cut_scale(widget):
     """Run the Cut Scale click through to its confirm callback."""
     with patch(
-        "rayforge.ui_gtk.machine.jog_widget.CutScaleDialog"
+        "swiftcut.ui_gtk.machine.jog_widget.CutScaleDialog"
     ) as dialog_cls:
         widget._on_cut_scale_clicked(widget.cut_scale_btn)
         confirm = dialog_cls.call_args.args[1]
@@ -147,7 +147,7 @@ def test_moving_inside_a_held_button_keeps_it_held(ui_context_initializer):
 @pytest.mark.ui
 def test_every_jog_button_tracks_drag_off(ui_context_initializer):
     """MOT-15: the abort is wired on every arrow, not just one."""
-    from rayforge.ui_gtk.machine.jog_widget import JogWidget
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 
     machine_cmd = MagicMock()
     widget, _machine = _widget(ui_context_initializer, machine_cmd)

@@ -1,6 +1,6 @@
 import logging
 
-from rayforge.shared.util.debug import get_caller_stack, safe_caller_stack
+from swiftcut.shared.util.debug import get_caller_stack, safe_caller_stack
 
 
 def inner_function():

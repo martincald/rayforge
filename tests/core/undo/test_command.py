@@ -1,4 +1,4 @@
-from rayforge.core.undo.command import Command
+from swiftcut.core.undo.command import Command
 
 
 class MockCommand(Command):

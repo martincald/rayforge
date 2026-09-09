@@ -33,7 +33,7 @@ fi
 
 # Get list of supported languages from main app
 SUPPORTED_LANGUAGES=()
-for lang_dir in rayforge/locale/*/; do
+for lang_dir in swiftcut/locale/*/; do
   lang=$(basename "$lang_dir")
   if [ "$lang" != "rayforge.pot" ] && [ -d "$lang_dir/LC_MESSAGES" ]; then
     SUPPORTED_LANGUAGES+=("$lang")
@@ -140,8 +140,8 @@ if [ "$COMPILE_ONLY" = false ]; then
   echo "Updating translation files..."
 
   # 1. Extract new strings to .pot file for main app
-  echo "Extracting strings to rayforge/locale/rayforge.pot..."
-  POT_FILE="rayforge/locale/rayforge.pot"
+  echo "Extracting strings to swiftcut/locale/rayforge.pot..."
+  POT_FILE="swiftcut/locale/rayforge.pot"
   POT_TMP="${POT_FILE}.tmp"
 
   # Save old .pot if it exists
@@ -150,7 +150,7 @@ if [ "$COMPILE_ONLY" = false ]; then
   fi
 
   # Extract strings to temp file
-  find rayforge/ -name "*.py" \
+  find swiftcut/ -name "*.py" \
     -not -path "*/builtin_addons/*" \
     -not -path "*/private_addons/*" | \
     xgettext --from-code=UTF-8 --add-location=file -o "$POT_TMP" -f -
@@ -173,12 +173,12 @@ if [ "$COMPILE_ONLY" = false ]; then
 
   # 2. Update existing .po files with msgmerge for main app
   echo "Merging .pot with .po files..."
-  for lang_dir in rayforge/locale/*/; do
+  for lang_dir in swiftcut/locale/*/; do
     lang=$(basename "$lang_dir")
     if [ -d "$lang_dir/LC_MESSAGES" ]; then
       echo "  Updating $lang_dir/LC_MESSAGES/rayforge.po"
       msguniq "$lang_dir/LC_MESSAGES/rayforge.po" -o "$lang_dir/LC_MESSAGES/rayforge.po" 2>/dev/null || true
-      msgmerge --update -N "$lang_dir/LC_MESSAGES/rayforge.po" rayforge/locale/rayforge.pot
+      msgmerge --update -N "$lang_dir/LC_MESSAGES/rayforge.po" swiftcut/locale/rayforge.pot
       msguniq "$lang_dir/LC_MESSAGES/rayforge.po" -o "$lang_dir/LC_MESSAGES/rayforge.po" 2>/dev/null || true
       msgattrib --no-obsolete --output-file="$lang_dir/LC_MESSAGES/rayforge.po" "$lang_dir/LC_MESSAGES/rayforge.po" 2>/dev/null || true
       # Ensure charset is UTF-8 instead of ASCII
@@ -191,7 +191,7 @@ fi
 
 # 3. Compile .po files to .mo files for main app
 echo "Compiling .mo files..."
-for lang_dir in rayforge/locale/*/; do
+for lang_dir in swiftcut/locale/*/; do
   lang=$(basename "$lang_dir")
   if [ -d "$lang_dir/LC_MESSAGES" ]; then
     echo "  Compiling $lang_dir/LC_MESSAGES/rayforge.mo"
@@ -203,8 +203,8 @@ done
 echo ""
 echo "Processing addons..."
 for addon_type in builtin_addons private_addons; do
-  if [ -d "rayforge/$addon_type" ]; then
-    for addon_dir in rayforge/$addon_type/*/; do
+  if [ -d "swiftcut/$addon_type" ]; then
+    for addon_dir in swiftcut/$addon_type/*/; do
       yaml_file="$addon_dir/rayforge-addon.yaml"
       
       if [ ! -f "$yaml_file" ]; then

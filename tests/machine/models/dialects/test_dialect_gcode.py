@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.machine.models.dialect import BUILTIN_DIALECTS, MACH4_M67_DIALECT
+from swiftcut.machine.models.dialect import BUILTIN_DIALECTS, MACH4_M67_DIALECT
 
 logger = logging.getLogger(__name__)
 

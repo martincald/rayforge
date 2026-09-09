@@ -10,17 +10,17 @@ from blinker import Signal
 from raygeo.geo.types import Point3D
 from raygeo.ops.axis import Axis
 
-from rayforge.machine.models.coordspace import (
+from swiftcut.machine.models.coordspace import (
     AxisDirection,
     MachineSpace,
     OriginCorner,
 )
-from rayforge.machine.models.machine import JogDirection, Machine
-from rayforge.machine.models.machine_panel import (
+from swiftcut.machine.models.machine import JogDirection, Machine
+from swiftcut.machine.models.machine_panel import (
     MachinePanel,
     PanelOrientation,
 )
-from rayforge.machine.models.zone import Zone, ZoneShape
+from swiftcut.machine.models.zone import Zone, ZoneShape
 
 
 class _StubMachine:
@@ -607,7 +607,7 @@ class TestMachinePanelOrientationState:
             data["machine"]["panel_orientation"]
             == PanelOrientation.ROTATED_RIGHT.value
         )
-        from rayforge.context import get_context
+        from swiftcut.context import get_context
 
         restored = Machine.from_dict(data, get_context())
         assert restored.panel_orientation is PanelOrientation.ROTATED_RIGHT

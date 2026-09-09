@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from rayforge.core.color import ColorSet, normalize_color
+from swiftcut.core.color import ColorSet, normalize_color
 
 
 class TestColorSetGetLut:

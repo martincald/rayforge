@@ -2,7 +2,7 @@ import ast
 
 import pytest
 
-from rayforge.core.expression import parser
+from swiftcut.core.expression import parser
 
 
 @pytest.fixture

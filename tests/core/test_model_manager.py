@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from rayforge.context import RayforgeContext
-from rayforge.core.model import Model, ModelLibrary
-from rayforge.core.model_manager import ModelManager
+from swiftcut.context import RayforgeContext
+from swiftcut.core.model import Model, ModelLibrary
+from swiftcut.core.model_manager import ModelManager
 
 
 @pytest.fixture
@@ -412,8 +412,8 @@ class TestModelManagerDeviceProfileRegistration:
     def test_device_profile_models_registered_as_library(
         self, model_mgr, tmp_path
     ):
-        from rayforge.machine.device.manager import DeviceProfileManager
-        from rayforge.machine.device.profile import DIALECT_FILENAME
+        from swiftcut.machine.device.manager import DeviceProfileManager
+        from swiftcut.machine.device.profile import DIALECT_FILENAME
 
         device_dir = tmp_path / "devices" / "test-device"
         device_dir.mkdir(parents=True)
@@ -441,8 +441,8 @@ class TestModelManagerDeviceProfileRegistration:
     def test_device_without_models_dir_not_registered(
         self, model_mgr, tmp_path
     ):
-        from rayforge.machine.device.manager import DeviceProfileManager
-        from rayforge.machine.device.profile import DIALECT_FILENAME
+        from swiftcut.machine.device.manager import DeviceProfileManager
+        from swiftcut.machine.device.profile import DIALECT_FILENAME
 
         device_dir = tmp_path / "devices" / "bare-device"
         device_dir.mkdir(parents=True)
@@ -458,8 +458,8 @@ class TestModelManagerDeviceProfileRegistration:
         assert "device:Bare Device" not in lib_ids
 
     def test_discover_without_context(self, tmp_path):
-        from rayforge.machine.device.manager import DeviceProfileManager
-        from rayforge.machine.device.profile import DIALECT_FILENAME
+        from swiftcut.machine.device.manager import DeviceProfileManager
+        from swiftcut.machine.device.profile import DIALECT_FILENAME
 
         device_dir = tmp_path / "devices" / "test-device"
         device_dir.mkdir(parents=True)

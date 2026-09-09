@@ -1,6 +1,6 @@
 import pytest
 
-from rayforge.shared.util.time_format import (
+from swiftcut.shared.util.time_format import (
     format_clock,
     format_hours_to_hm,
 )
