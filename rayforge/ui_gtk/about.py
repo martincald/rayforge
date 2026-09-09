@@ -274,31 +274,6 @@ class AboutDialog(PatchedDialogWindow):
         copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
         hero_box.append(copyright_label)
 
-        links_box = Gtk.Box(halign=Gtk.Align.CENTER, margin_top=SPACE_GROUP)
-        links_box.add_css_class("linked")
-        hero_box.append(links_box)
-
-        website_button = Gtk.Button.new_with_label(_("Website"))
-        website_button.connect(
-            "clicked",
-            lambda _: webbrowser.open(const.GITHUB_URL),
-        )
-        links_box.append(website_button)
-
-        issues_button = Gtk.Button.new_with_label(_("Report an Issue"))
-        issues_button.connect(
-            "clicked",
-            lambda _: webbrowser.open(const.ISSUES_URL),
-        )
-        links_box.append(issues_button)
-
-        donate_button = Gtk.Button.new_with_label(_("Donate"))
-        donate_button.connect(
-            "clicked",
-            lambda _: webbrowser.open("https://www.patreon.com/c/knipknap"),
-        )
-        links_box.append(donate_button)
-
         prefgroup = Adw.PreferencesGroup()
         content_box.append(prefgroup)
 

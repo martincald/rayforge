@@ -1,9 +1,7 @@
-import webbrowser
 from gettext import gettext as _
 
-from gi.repository import Adw, Gdk, Gtk
+from gi.repository import Adw, Gtk
 
-from ... import const
 from ...machine.driver import (
     DRIVER_MATURITY_LABELS,
     DriverMaturity,
@@ -29,9 +27,6 @@ apply_css("""
 .maturity-warning {
     background-color: alpha(@warning_color, 0.15);
     padding: 12px 24px;
-}
-.maturity-link {
-    text-decoration: underline;
 }
 """)
 
@@ -85,36 +80,8 @@ class MachineSettingsDialog(PatchedDialogWindow):
         self._maturity_label = Gtk.Label(wrap=True, xalign=0, hexpand=True)
         self._maturity_label.add_css_class("warning-label")
 
-        self._maturity_link = Gtk.Label(
-            label=_("Report an issue"),
-            wrap=False,
-            xalign=0,
-            hexpand=False,
-        )
-        self._maturity_link.add_css_class("warning-label")
-        self._maturity_link.add_css_class("maturity-link")
-        link_click = Gtk.GestureClick.new()
-        link_click.connect(
-            "pressed",
-            lambda *_: webbrowser.open(const.ISSUES_URL),
-        )
-        self._maturity_link.add_controller(link_click)
-        link_motion = Gtk.EventControllerMotion()
-        link_motion.connect(
-            "enter",
-            lambda *_: self._maturity_link.set_cursor(
-                Gdk.Cursor.new_from_name("pointer")
-            ),
-        )
-        link_motion.connect(
-            "leave",
-            lambda *_: self._maturity_link.set_cursor(None),
-        )
-        self._maturity_link.add_controller(link_motion)
-
         self.maturity_banner.append(self._maturity_icon)
         self.maturity_banner.append(self._maturity_label)
-        self.maturity_banner.append(self._maturity_link)
         self.maturity_banner.set_visible(False)
         main_box.append(self.maturity_banner)
 
