@@ -252,7 +252,7 @@ PY
 
     if [ "$ICON_SOURCE" = "icns" ]; then
         if [ ! -f "swiftcut.icns" ] || \
-           [ "website/static/images/icon-app.svg" -nt "swiftcut.icns" ]; then
+           [ "rayforge/resources/icons/org.ilab.SwiftCut.svg" -nt "swiftcut.icns" ]; then
             echo "Generating macOS icon..."
             bash scripts/mac/mac_create_icon.sh
         else

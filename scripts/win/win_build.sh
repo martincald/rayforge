@@ -26,7 +26,7 @@ echo "${APP_VERSION}" > rayforge/version.txt
 
 
 # ----------------------------------------------------
-# STEP 1: Generate .ico file and splash image from PNG
+# STEP 1: Generate .ico file and splash image from SVG
 # ----------------------------------------------------
 echo "Creating application icon..."
 python3 scripts/win/win_create_icon.py
