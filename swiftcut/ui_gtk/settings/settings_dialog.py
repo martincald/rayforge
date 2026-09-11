@@ -1,3 +1,4 @@
+import logging
 from gettext import gettext as _
 from typing import ClassVar
 
@@ -12,6 +13,8 @@ from .general_preferences_page import GeneralPreferencesPage
 from .license_settings_page import LicenseSettingsPage
 from .material_manager_page import MaterialManagerPage
 from .recipe_manager_page import RecipeManagerPage
+
+logger = logging.getLogger(__name__)
 from .registry import settings_page_registry
 
 
@@ -99,6 +102,13 @@ class SettingsWindow(PatchedDialogWindow):
         # Populate
         self.sidebar_list.connect("row-selected", self._on_row_selected)
         # Select the initial page
+        if self._initial_page not in self.PAGE_INDICES:
+            logger.warning(
+                "Unknown settings page %r; showing the first page. "
+                "Known pages: %s",
+                self._initial_page,
+                ", ".join(sorted(self.PAGE_INDICES)),
+            )
         initial_index = self.PAGE_INDICES.get(self._initial_page, 0)
         initial_row = self.sidebar_list.get_row_at_index(initial_index)
         self.sidebar_list.select_row(initial_row)

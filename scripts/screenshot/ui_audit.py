@@ -65,11 +65,15 @@ DIALOG_SIZES = {1280: (900, 760), 1920: (1300, 900)}
 # Every dock item the bottom panel registers, captured one at a time.
 DOCK_TABS = ("controls", "laser", "layers", "assets", "gcode", "console")
 
+# These must match the dialogs' own page registries. A page id that no
+# longer exists does NOT fail: both dialogs fall back to index 0, so a
+# stale id silently captures the General page under the missing page's
+# name. "gcode" here, and "machines"/"ai" below, did exactly that - 12
+# of the 124 pass-2 PNGs were md5-identical duplicates of other pages.
 MACHINE_PAGES = (
     "general",
     "hardware",
     "advanced",
-    "gcode",
     "hooks-macros",
     "device",
     "heads",
@@ -81,11 +85,9 @@ MACHINE_PAGES = (
 
 APP_PAGES = (
     "general",
-    "machines",
     "materials",
     "recipes",
     "color_presets",
-    "ai",
     "addons",
     "licenses",
 )

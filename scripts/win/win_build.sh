@@ -3,8 +3,17 @@
 set -e
 
 # The application version string can be passed as the first argument.
-# Defaults to the git tag or a local build identifier.
-APP_VERSION=${1:-$(git describe --tags --always || echo "v0.0.0-local")}
+# Defaults to the git tag, or an honest dev version when there is none.
+#
+# `git describe --tags --always` falls back to a bare commit SHA when the
+# repository has no tags, and --always means it always succeeds, so the
+# `|| echo` arm never fires. With no tags in this repo that shipped a
+# raw SHA as the product version: the title bar, the About dialog and
+# the installer filename all read "be6b03d3a". A SHA is build metadata,
+# not a version, so it is kept as metadata on an explicit dev version.
+APP_VERSION=${1:-$(git describe --tags --exact-match 2>/dev/null \
+    || git describe --tags 2>/dev/null \
+    || echo "0.0.0+g$(git rev-parse --short HEAD 2>/dev/null || echo unknown)")}
 
 # Ensure the MSYS2 environment is configured.
 if [ ! -f .msys2_env ]; then

@@ -1136,6 +1136,11 @@ class MainWindow(Adw.ApplicationWindow):
         will be added to the toast that triggers the callback.
         """
         toast = Adw.Toast.new(message)
+        # Adw.Toast defaults use-markup to True, and these messages
+        # interpolate filenames and raw exception text. A project called
+        # "Cut & Engrave.ryp" produces markup Pango cannot parse, and
+        # the toast renders empty. No sender passes markup.
+        toast.set_use_markup(False)
         if persistent:
             toast.set_timeout(0)  # 0 = persistent
             toast.set_priority(Adw.ToastPriority.HIGH)
@@ -1682,6 +1687,7 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_dialog_notification(self, sender, message: str = ""):
         """Shows a toast when requested by a child dialog."""
         toast = Adw.Toast.new(message)
+        toast.set_use_markup(False)
         self._add_toast(toast)
 
     def on_quit_action(self, action, parameter):

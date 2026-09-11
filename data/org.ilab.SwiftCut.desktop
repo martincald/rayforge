@@ -9,5 +9,5 @@ StartupNotify=true
 MimeType=application/x-rayforge-project;application/x-rayforge-sketch;application/x-ruida;image/png;image/bmp;image/jpeg;image/svg+xml;image/vnd.dxf;
 
 Icon=org.ilab.SwiftCut
-Exec=rayforge
+Exec=swiftcut
 Terminal=false

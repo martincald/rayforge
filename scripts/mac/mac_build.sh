@@ -185,8 +185,13 @@ fi
 
 bash scripts/update_translations.sh --compile-only
 
-VERSION=${VERSION_OVERRIDE:-$(git describe --tags --always 2>/dev/null || \
-    echo "v0.0.0-local")}
+# --always falls back to a bare commit SHA when the repo has no tags,
+# and it always succeeds, so the `||` arm never fires - that shipped a
+# raw SHA as the product version. Keep the SHA as build metadata on an
+# explicit dev version instead.
+VERSION=${VERSION_OVERRIDE:-$(git describe --tags --exact-match 2>/dev/null \
+    || git describe --tags 2>/dev/null \
+    || echo "0.0.0+g$(git rev-parse --short HEAD 2>/dev/null || echo unknown)")}
 echo "$VERSION" > swiftcut/version.txt
 
 if (( DO_BUILD == 1 )); then

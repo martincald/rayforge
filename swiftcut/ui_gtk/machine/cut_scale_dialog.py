@@ -35,7 +35,9 @@ class CutScaleDialog(Adw.MessageDialog):
         self.add_response("cancel", _("Cancel"))
         self.add_response("cut", _("Cut"))
         self.set_response_appearance("cut", Adw.ResponseAppearance.DESTRUCTIVE)
-        self.set_default_response("cut")
+        # Cancel, not cut: this fires the laser at the stock, which no
+        # undo reverses, so Enter must not commit it.
+        self.set_default_response("cancel")
         self.set_close_response("cancel")
 
         group = Adw.PreferencesGroup()

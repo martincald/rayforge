@@ -53,7 +53,7 @@
     <display_length compare="ge">768</display_length>
   </recommends>
 
-  <icon type="remote">https://raw.githubusercontent.com/ilab/swiftcut/refs/heads/main/rayforge/resources/icons/org.ilab.SwiftCut.svg</icon>
+  <icon type="remote">https://raw.githubusercontent.com/ilab/swiftcut/refs/heads/main/swiftcut/resources/icons/org.ilab.SwiftCut.svg</icon>
 
   <branding>
     <color type="primary" scheme_preference="light">#efb0a1</color>
