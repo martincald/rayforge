@@ -10,7 +10,7 @@ from ...context import get_context
 from ...core.model import Model
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
-from .model_preview import initialized as canvas3d_initialized
+from .model_preview import is_available as canvas3d_available
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class ModelSelectionDialog(Adw.MessageDialog):
 
         self._selected_model_path = model_path
 
-        if not canvas3d_initialized:
+        if not canvas3d_available():
             return
 
         model_mgr = get_context().model_mgr

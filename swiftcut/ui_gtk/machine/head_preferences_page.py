@@ -14,7 +14,6 @@ from ...machine.models.spindle import SpindleHead
 from ...shared.util.glib import DebounceMixin
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP, icon_button
-from ..shared.model_preview.mesh_loader import get_model_extent
 from ..shared.model_selection_dialog import ModelSelectionDialog
 from ..shared.pref_rows.angle_spin_row import AngleSpinRow
 from ..shared.pref_rows.base import SpinRow
@@ -368,6 +367,13 @@ class HeadModelGroup(Adw.PreferencesGroup):
         )
         if resolved is None:
             return
+        # Deferred: this module is reached from mainwindow's
+        # module-scope import of the machine-settings dialog, and
+        # mesh_loader pulls trimesh (~107 ms) before first paint.
+        from ..shared.model_preview.mesh_loader import (
+            get_model_extent,
+        )
+
         extent = get_model_extent(resolved)
         if extent and extent > 1e-6:
             head.set_scale(40.0 / extent)

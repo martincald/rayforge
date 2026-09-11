@@ -15,7 +15,6 @@ from ...machine.models.rotary_module import (
 )
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
-from ..shared.model_preview.mesh_loader import get_model_extent
 from ..shared.model_selection_dialog import ModelSelectionDialog
 from ..shared.pref_rows.angle_spin_row import AngleSpinRow
 from ..shared.pref_rows.base import SpinRow
@@ -744,6 +743,13 @@ class RotaryModulePage(TrackedPreferencesPage):
         )
         if resolved is None:
             return
+        # Deferred: this module is reached from mainwindow's
+        # module-scope import of the machine-settings dialog, and
+        # mesh_loader pulls trimesh (~107 ms) before first paint.
+        from ..shared.model_preview.mesh_loader import (
+            get_model_extent,
+        )
+
         extent = get_model_extent(resolved)
         if extent and extent > 1e-6:
             module.set_scale(module.default_diameter / extent)

@@ -79,3 +79,19 @@ def initialize():
             "The model preview will be disabled."
         )
         initialized = False
+
+
+def is_available() -> bool:
+    """Whether the OpenGL model preview can be used, initializing once.
+
+    Call this instead of reading ``initialized`` directly. A
+    ``from . import initialized`` binds the value at the importer's
+    import time, so any caller that is imported before ``initialize()``
+    runs would capture False for the life of the process. Going through
+    a function also lets the PyOpenGL import stay off the startup path:
+    it costs ~132 ms and nothing paints a model preview until the user
+    opens machine settings.
+    """
+    if not initialized and initialization_error is None:
+        initialize()
+    return initialized

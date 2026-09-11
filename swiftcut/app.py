@@ -618,14 +618,14 @@ def main():
     gi.require_version("Gtk", "4.0")
     gi.require_version("GdkPixbuf", "2.0")
 
-    # Initialize the model-preview module to check for OpenGL
-    # availability. This must be done after setting the platform env var
-    # and after making Gtk available in gi, as the preview uses Gtk.
-    # The rest of the app can now check
-    # `swiftcut.ui_gtk.shared.model_preview.initialized`.
-    from swiftcut.ui_gtk.shared.model_preview import initialize
-
-    initialize()
+    # The model-preview module is NOT initialized here any more. Its
+    # only job is to import PyOpenGL and set an availability flag, which
+    # costs ~132 ms before the first frame for something no first-paint
+    # widget uses. Callers ask
+    # `swiftcut.ui_gtk.shared.model_preview.is_available()` instead,
+    # which initializes on first use - still after the platform env var
+    # is set above and after Gtk is available in gi, which are the two
+    # ordering constraints that mattered.
 
     # Import modules that depend on GTK or manage global state
     import swiftcut.shared.tasker
