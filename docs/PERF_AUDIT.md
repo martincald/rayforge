@@ -232,3 +232,81 @@ Recorded as gaps rather than quietly dropped:
 | RSS growth ≤ 5 % over 10 min idle | not measured | pending |
 | `large.dxf` encode < 1.5 s | **0.077 s** | **MET** (19x headroom) |
 | bundle smaller than before | 889.8 MB baseline | n/a at baseline |
+
+---
+
+# P4 — after
+
+Re-measured identically: same harness, same committed assets, same
+median-of-3-fresh-processes protocol, same machine.
+
+## Before / after
+
+| metric | before | after | change |
+| --- | --- | --- | --- |
+| **cold start** | **3.16 s** | **2.30 s** | **-27 %** |
+| `small.svg` import | 0.033 s | 0.034 s | ~ |
+| `large.dxf` import | 0.355 s | 0.356 s | ~ |
+| `raster.png` decode | 0.117 s | 0.114 s | ~ |
+| `raster.png` trace | 0.629 s | 0.625 s | ~ |
+| `small.svg` ops (cold) | 225.4 ms | 228.2 ms | ~ |
+| `large.dxf` ops (cold) | 607.4 ms | 508.6 ms | -16 % |
+| `raster.png` ops (cold) | 240.5 ms | 216.1 ms | -10 % |
+| `small.svg` encode | 0.87 ms | 0.96 ms | ~ |
+| `large.dxf` encode | 77.4 ms | 75.2 ms | -3 % |
+| `raster.png` encode | 0.21 ms | 0.18 ms | ~ |
+| RSS after `large.dxf` | 180.6 MB | 180.3 MB | ~ |
+| bundle | 889.8 MB / 4994 | 889.8 MB / 4994 | unchanged |
+
+No metric regressed. The ops-generation improvements are a side effect
+of the same deferrals - less imported means less resident and fewer
+page faults during the build - and are small enough to be near noise;
+they are reported because P4 requires every metric re-measured, not
+because they were targeted.
+
+Cold-start samples, after: 2.49 / 2.29 / 2.30 s. One earlier run
+recorded a 20.6 s first sample; that is the interpreter rewriting .pyc
+bytecode for every module the fixes touched, a one-off after an edit,
+and it is excluded rather than reported as a measurement.
+
+## What changed, and what did not
+
+Two commits, each citing its own before/after:
+
+1. `perf(startup): keep scipy off the pre-first-paint import path`
+   3.16 -> 2.76 s. `doceditor/layout/auto.py` pulled `scipy.signal`
+   (571 ms) and `scipy.ndimage` (279 ms) at module scope for two
+   functions that only run on an auto layout.
+2. `perf(startup): stop loading PyOpenGL and trimesh before first paint`
+   2.76 -> 2.30 s. `OpenGL.GL` (132 ms) via an eager
+   `model_preview.initialize()` in `main()`, and `trimesh` (107 ms) via
+   the machine-settings pages that `mainwindow` imports at module scope.
+
+**Nothing else was optimised.** P2's rule is that only the measured
+top-5 may be touched, and several plausible candidates were left alone
+because measurement did not support them:
+
+- the import-time `shutil.copytree` in `config.py` is guarded by
+  `new_dir.exists()`, so it runs at most once ever, not per startup;
+- the addon-registry network fetch runs via `asyncio.to_thread` and so
+  never blocked first paint;
+- `cv2` is imported before first paint through the `swiftcut/image`
+  barrel, and `gi.repository.Adw` costs 426 ms, but neither was reached
+  before the two above and the target may now be close enough that
+  they are not worth the risk. They stay on the candidate list.
+
+## Acceptance targets, after
+
+| target | before | after | verdict |
+| --- | --- | --- | --- |
+| cold start p50 ≤ 2.0 s | 3.16 s | 2.30 s | **still NOT MET**, 15 % over |
+| `large.dxf` encode < 1.5 s | 0.077 s | 0.075 s | **MET** |
+| `large.dxf` pan/zoom p95 < 16 ms | not measured | not measured | **NOT MEASURED** |
+| idle CPU < 2 % | not measured | not measured | **NOT MEASURED** |
+| RSS growth ≤ 5 % over 10 min idle | not measured | not measured | **NOT MEASURED** |
+| bundle smaller than before | 889.8 MB | 889.8 MB | **NOT MET** - no bundle work was done |
+
+Cold start is closer but short. The remaining candidates above are the
+honest next step, and the largest single item left on the profile is
+`swiftcut.ui_gtk.mainwindow` itself, which is the window being built -
+that one is real work, not a deferrable import.
