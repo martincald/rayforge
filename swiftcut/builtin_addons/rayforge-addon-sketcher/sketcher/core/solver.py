@@ -1,8 +1,6 @@
 from collections.abc import Sequence
 
 import numpy as np
-import scipy.linalg
-from scipy.optimize import least_squares
 
 from .constraints import Constraint
 from .entities import Point
@@ -142,6 +140,13 @@ class Solver:
             return np.vstack(rows)
 
         # 5. Solve
+        # Imported here, not at module scope: this module is reached by
+        # addon discovery during startup, and scipy.optimize costs ~780
+        # ms of import before the first frame is painted. Nothing paints
+        # a sketch until the user opens one, so the cost moves to the
+        # first solve.
+        from scipy.optimize import least_squares
+
         # 'trf' is robust for under-constrained problems (m < n)
         # We pass the analytical jacobian
         result = least_squares(
@@ -186,6 +191,8 @@ class Solver:
         # Get the null space basis ( orthonormal columns )
         # Using a tighter tolerance (1e-9) prevents false positives for DOF
         # when the system is actually rigid but has scaling differences.
+        import scipy.linalg
+
         null_space = scipy.linalg.null_space(jacobian, rcond=1e-9)
 
         # null_space shape is (n_vars, n_dof)

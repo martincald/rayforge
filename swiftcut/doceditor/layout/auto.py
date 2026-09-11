@@ -17,9 +17,6 @@ import cairo
 import numpy as np
 from raygeo.geo import Matrix
 from raygeo.geo.types import Point, Rect
-from scipy.ndimage import binary_dilation
-from scipy.signal import fftconvolve
-
 from ...context import get_context
 from ...core.group import Group
 from ...core.item import DocItem
@@ -364,9 +361,17 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
                         mode="constant",
                         constant_values=False,
                     )
-                    # Dilate the padded mask. Using iterations is an efficient
-                    # way to expand the shape by `margin_px` pixels.
-                    # The default 3x3 cross-shaped structure is used.
+                    # Imported here rather than at module scope: this
+                    # module is pulled in by the doceditor.layout barrel
+                    # during startup, and scipy.ndimage + scipy.signal
+                    # cost ~850 ms of import before the first frame.
+                    # Nothing auto-lays-out until the user asks for it.
+                    from scipy.ndimage import binary_dilation
+
+                    # Dilate the padded mask. Using iterations is an
+                    # efficient way to expand the shape by `margin_px`
+                    # pixels. The default 3x3 cross-shaped structure is
+                    # used.
                     dilated_mask = binary_dilation(
                         padded_mask, iterations=margin_px
                     )
@@ -844,6 +849,10 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
             A tuple (y, x) of the top-left corner for placement, or None
             if no fit is found.
         """
+        # Deferred for the same reason as binary_dilation above: keeping
+        # scipy.signal off the startup import path.
+        from scipy.signal import fftconvolve
+
         canvas_h, canvas_w = canvas.shape
         item_h, item_w = item_mask.shape
 
