@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "scripts/mac/mac_build.sh": {
-    "mtime": 1788984075.3230443,
-    "seen": 1788985773.7327108,
-    "ast_hash": "eb0558a6cd6105a6993798191ed005df",
+    "mtime": 1789133253.9289262,
+    "seen": 1789134728.5006034,
+    "ast_hash": "b938bfe2c959f4cc5444dda6f7ea7266",
     "semantic_hash": ""
   },
   "scripts/mac/mac_create_icon.sh": {
@@ -414,9 +414,9 @@
     "semantic_hash": ""
   },
   "scripts/win/win_build.sh": {
-    "mtime": 1788984075.3205247,
-    "seen": 1788985773.7327557,
-    "ast_hash": "2f0b90fa94a01c3a906cfb8295883553",
+    "mtime": 1789133245.8668764,
+    "seen": 1789134728.5006583,
+    "ast_hash": "d5289eb71051e9778e425823bf09ff1f",
     "semantic_hash": ""
   },
   "scripts/win/win_create_icon.py": {
@@ -2580,8 +2580,8 @@
     "semantic_hash": ""
   },
   "tests/config/config.yaml": {
-    "mtime": 1786648506.199457,
-    "seen": 1788205080.9117463,
+    "mtime": 1789133938.5739534,
+    "seen": 1789134728.501833,
     "ast_hash": "01a2dc52bd0b03ff029dfbc86cf09e92",
     "semantic_hash": ""
   },
@@ -2598,14 +2598,14 @@
     "semantic_hash": ""
   },
   "tests/config/machines/2f8f7281-9982-4473-a9b0-d72ff48630c2.yaml": {
-    "mtime": 1786648506.2014627,
-    "seen": 1788205080.9117484,
+    "mtime": 1789133938.5778656,
+    "seen": 1789134728.5018353,
     "ast_hash": "97a758374c2d320adc4b63d129b840ec",
     "semantic_hash": ""
   },
   "tests/config/machines/a2c84b52-eaed-40d5-91ba-3b54370e5c3c.yaml": {
-    "mtime": 1786648506.2014627,
-    "seen": 1788205080.9117491,
+    "mtime": 1789133938.5778656,
+    "seen": 1789134728.501836,
     "ast_hash": "f42948d2e4d2e5fced40f8d743ff0871",
     "semantic_hash": ""
   },
@@ -6972,9 +6972,9 @@
     "semantic_hash": ""
   },
   "scripts/screenshot/ui_audit.py": {
-    "mtime": 1788985251.8883274,
-    "seen": 1788985773.7327483,
-    "ast_hash": "b9d64ff6ead1b942f9072333ecde93a5",
+    "mtime": 1789133393.3710966,
+    "seen": 1789134728.5006504,
+    "ast_hash": "13e3c812d7e944393de1c64a68d75e12",
     "semantic_hash": ""
   },
   "scripts/screenshot/ui_min_width.py": {
@@ -6984,9 +6984,9 @@
     "semantic_hash": ""
   },
   "docs/design/audit/AUDIT.md": {
-    "mtime": 1788465022.6531582,
-    "seen": 1788527522.0198712,
-    "ast_hash": "a390cd0c09ee69245420be12ded3e710",
+    "mtime": 1789133774.7950258,
+    "seen": 1789134728.5017538,
+    "ast_hash": "07b572d72f3cec309898b0d819476633",
     "semantic_hash": ""
   },
   "docs/design/swift-cut-layout.md": {
@@ -8988,9 +8988,9 @@
     "semantic_hash": ""
   },
   "swiftcut/app.py": {
-    "mtime": 1788985251.6158655,
-    "seen": 1788985773.7327793,
-    "ast_hash": "710189d56e2836393e04675b17ebd73e",
+    "mtime": 1789134276.0883665,
+    "seen": 1789134728.5006807,
+    "ast_hash": "442b20696279ecfdee13023171a42333",
     "semantic_hash": ""
   },
   "swiftcut/builtin_addons/rayforge-addon-laser/laser_essentials/__init__.py": {
@@ -9918,9 +9918,9 @@
     "semantic_hash": ""
   },
   "swiftcut/builtin_addons/rayforge-addon-sketcher/sketcher/core/solver.py": {
-    "mtime": 1786648505.536328,
-    "seen": 1788985773.7328963,
-    "ast_hash": "36cb3515d12527190fe4d8609d30a4aa",
+    "mtime": 1789133880.210591,
+    "seen": 1789134728.5008297,
+    "ast_hash": "26b5795e05e0fc754ed238569af8862b",
     "semantic_hash": ""
   },
   "swiftcut/builtin_addons/rayforge-addon-sketcher/sketcher/core/types.py": {
@@ -11316,9 +11316,9 @@
     "semantic_hash": ""
   },
   "swiftcut/doceditor/layout/auto.py": {
-    "mtime": 1786648505.6699886,
-    "seen": 1788985773.733062,
-    "ast_hash": "c1e988a4e374d85d2e321b4c4ed4d269",
+    "mtime": 1789134015.7558403,
+    "seen": 1789134728.501036,
+    "ast_hash": "aec56e6d07cc9fac53ac4345954b8b91",
     "semantic_hash": ""
   },
   "swiftcut/doceditor/layout/base.py": {
@@ -13212,9 +13212,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/cut_scale_dialog.py": {
-    "mtime": 1788895463.1284366,
-    "seen": 1788985773.7332838,
-    "ast_hash": "c770f06c35fb36fb19f30d2d3405f161",
+    "mtime": 1789133327.697289,
+    "seen": 1789134728.5013144,
+    "ast_hash": "5ed197d61a88e263797cacce55019def",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/device_settings_page.py": {
@@ -13242,9 +13242,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/head_preferences_page.py": {
-    "mtime": 1788551971.2755508,
-    "seen": 1788985773.733287,
-    "ast_hash": "70495691a343b6fe8810b5efd2da3b01",
+    "mtime": 1789134236.302616,
+    "seen": 1789134728.5013187,
+    "ast_hash": "0cb01f657ccac2913ffce7f804558bd1",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/hook_list.py": {
@@ -13290,9 +13290,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/rotary_module_page.py": {
-    "mtime": 1788551976.2275684,
-    "seen": 1788985773.7332928,
-    "ast_hash": "ac4ad24870973cfb27dec174a25f32a7",
+    "mtime": 1789134236.3579223,
+    "seen": 1789134728.5013254,
+    "ast_hash": "981065e64027ec77b8cfa909575275f5",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/machine/settings_dialog.py": {
@@ -13320,9 +13320,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/mainwindow.py": {
-    "mtime": 1788564229.5232508,
-    "seen": 1788985773.7332962,
-    "ast_hash": "ac0b16e9158135f7ae947b5669826704",
+    "mtime": 1789133362.6956942,
+    "seen": 1789134728.5013301,
+    "ast_hash": "125eee7d539243165e040614f60edde1",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/project_cmd.py": {
@@ -13386,9 +13386,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/settings/settings_dialog.py": {
-    "mtime": 1788550540.0216959,
-    "seen": 1788985773.7333033,
-    "ast_hash": "84652aca5d4a193b3404a2e8472ae86e",
+    "mtime": 1789133441.226519,
+    "seen": 1789134728.50134,
+    "ast_hash": "8bfd8071a1d7e08cc5fafff952b783b9",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/shared/__init__.py": {
@@ -13488,9 +13488,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/shared/model_preview/__init__.py": {
-    "mtime": 1788551902.06337,
-    "seen": 1788985773.7333148,
-    "ast_hash": "704cc59279ef1f5428874e585c361783",
+    "mtime": 1789134251.6885867,
+    "seen": 1789134728.501355,
+    "ast_hash": "e08e3ef2ca60352589ef606b64a8f000",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/shared/model_preview/camera.py": {
@@ -13536,9 +13536,9 @@
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/shared/model_selection_dialog.py": {
-    "mtime": 1788551983.9472227,
-    "seen": 1788985773.7333205,
-    "ast_hash": "9684bbdc1364d177673b90b36f4e96a2",
+    "mtime": 1789134266.3530686,
+    "seen": 1789134728.5013618,
+    "ast_hash": "50581778445f0a29dee630fc2d2701ec",
     "semantic_hash": ""
   },
   "swiftcut/ui_gtk/shared/number_badge.py": {
@@ -15561,6 +15561,726 @@
     "mtime": 1786648505.9457366,
     "seen": 1788985773.734682,
     "ast_hash": "2e563f17913be2ecef67ecf78e728285",
+    "semantic_hash": ""
+  },
+  "scripts/perf/mark_mapped.py": {
+    "mtime": 1789068277.623312,
+    "seen": 1789134728.5006151,
+    "ast_hash": "1f5a472b2a7765a53d3d42814c0bd449",
+    "semantic_hash": ""
+  },
+  "scripts/perf/measure.py": {
+    "mtime": 1789130560.8279934,
+    "seen": 1789134728.5006175,
+    "ast_hash": "af5b781525e0d43626c783ec9d6908e5",
+    "semantic_hash": ""
+  },
+  "tests/perf/make_assets.py": {
+    "mtime": 1789132973.289451,
+    "seen": 1789134728.5015516,
+    "ast_hash": "01b1b314b790ac1a0968f564156b5021",
+    "semantic_hash": ""
+  },
+  "tests/perf/perf_dxf_scaling.py": {
+    "mtime": 1789132549.3226035,
+    "seen": 1789134728.5015523,
+    "ast_hash": "3750371deffbb1913282b1d0f7951435",
+    "semantic_hash": ""
+  },
+  "tests/perf/perf_encode.py": {
+    "mtime": 1789130299.186827,
+    "seen": 1789134728.501553,
+    "ast_hash": "ed24545e65f8c0c27e3d2e79c40a7463",
+    "semantic_hash": ""
+  },
+  "docs/PERF_AUDIT.md": {
+    "mtime": 1789134592.8922906,
+    "seen": 1789134728.5017526,
+    "ast_hash": "45377a1fe5ad15ef751f0ee0f55ae970",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-addons-dark-1280.png": {
+    "mtime": 1789067457.1055815,
+    "seen": 1789134728.502606,
+    "ast_hash": "1d1b876b023bc1a34f33cf56551d2fd4",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-addons-dark-1920.png": {
+    "mtime": 1789067535.7028308,
+    "seen": 1789134728.5026066,
+    "ast_hash": "5e2e2cbc1c9eba004e2e8503b17a46c0",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-addons-light-1280.png": {
+    "mtime": 1789067420.6669312,
+    "seen": 1789134728.5026073,
+    "ast_hash": "04f73da02e65d5485cdc52e379360dfb",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-addons-light-1920.png": {
+    "mtime": 1789067495.6947234,
+    "seen": 1789134728.502608,
+    "ast_hash": "f1caad9442cab8fb4b6412756aca3351",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-color-presets-dark-1280.png": {
+    "mtime": 1789067454.479843,
+    "seen": 1789134728.502609,
+    "ast_hash": "978e0ab26cb72366126529013072eb57",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-color-presets-dark-1920.png": {
+    "mtime": 1789067532.32679,
+    "seen": 1789134728.50261,
+    "ast_hash": "720766cef72e3cfd0f2368b808d9d8d9",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-color-presets-light-1280.png": {
+    "mtime": 1789067418.0847907,
+    "seen": 1789134728.5026104,
+    "ast_hash": "9d08730af119b87fe4b8353d1fa6a997",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-color-presets-light-1920.png": {
+    "mtime": 1789067492.898895,
+    "seen": 1789134728.5026112,
+    "ast_hash": "66733893e7758672d637a4544c9508ed",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-general-dark-1280.png": {
+    "mtime": 1789067449.263128,
+    "seen": 1789134728.5026119,
+    "ast_hash": "7a2b8e98b3099c8132aee3f49924da67",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-general-dark-1920.png": {
+    "mtime": 1789067526.2023258,
+    "seen": 1789134728.5026128,
+    "ast_hash": "36dc2ff9811e69750a2c1ac6bd547b4e",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-general-light-1280.png": {
+    "mtime": 1789067413.0268967,
+    "seen": 1789134728.5026135,
+    "ast_hash": "2c07e84967cfbe5c4a9dd0467887285f",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-general-light-1920.png": {
+    "mtime": 1789067487.3925252,
+    "seen": 1789134728.5026145,
+    "ast_hash": "9f74e2289be504d906b9084c09f4f7fc",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-licenses-dark-1280.png": {
+    "mtime": 1789067458.433177,
+    "seen": 1789134728.5026152,
+    "ast_hash": "8995e897b32c907ee413390dbae4fa3e",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-licenses-dark-1920.png": {
+    "mtime": 1789067537.7746892,
+    "seen": 1789134728.5026162,
+    "ast_hash": "0755a7e027916cbc77d1159c8efd4a6a",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-licenses-light-1280.png": {
+    "mtime": 1789067421.982654,
+    "seen": 1789134728.5026166,
+    "ast_hash": "7464f61094caf3165db0eebac1eb5ec9",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-licenses-light-1920.png": {
+    "mtime": 1789067497.0931416,
+    "seen": 1789134728.5026176,
+    "ast_hash": "34d4c5733bcdfb1ac263da8dad1b26c6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-materials-dark-1280.png": {
+    "mtime": 1789067451.8623092,
+    "seen": 1789134728.502618,
+    "ast_hash": "380b3e56b74e9555b4f646e18b520365",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-materials-dark-1920.png": {
+    "mtime": 1789067529.1548553,
+    "seen": 1789134728.502619,
+    "ast_hash": "9957cca8039e561f18521c5e8f99189f",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-materials-light-1280.png": {
+    "mtime": 1789067415.5354936,
+    "seen": 1789134728.5026202,
+    "ast_hash": "804e617987c43c7c4d687e4deb4697f3",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-materials-light-1920.png": {
+    "mtime": 1789067490.127266,
+    "seen": 1789134728.502621,
+    "ast_hash": "280a321f2066b53ea68a352ed143b1cf",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-recipes-dark-1280.png": {
+    "mtime": 1789067453.1696396,
+    "seen": 1789134728.5026217,
+    "ast_hash": "91337354540fa3a9204de861eacf49b3",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-recipes-dark-1920.png": {
+    "mtime": 1789067530.762993,
+    "seen": 1789134728.5026221,
+    "ast_hash": "0b3f137349d137ce50eea7f58b72235a",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-recipes-light-1280.png": {
+    "mtime": 1789067416.7973163,
+    "seen": 1789134728.502623,
+    "ast_hash": "96f8b7382f0f20ff7fa099552b28391b",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/app-settings-recipes-light-1920.png": {
+    "mtime": 1789067491.5066264,
+    "seen": 1789134728.5026238,
+    "ast_hash": "26bf8c726b178049cf54d166c243c3af",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/cut-scale-sheet-dark-1280.png": {
+    "mtime": 1789067459.559782,
+    "seen": 1789134728.5026245,
+    "ast_hash": "60f5d65a24b872ae85e07123c1597f17",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/cut-scale-sheet-dark-1920.png": {
+    "mtime": 1789067538.9775176,
+    "seen": 1789134728.5026252,
+    "ast_hash": "2943f242f5c2624c963b8cdc2b138264",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/cut-scale-sheet-light-1280.png": {
+    "mtime": 1789067423.156154,
+    "seen": 1789134728.5026264,
+    "ast_hash": "26c4eb0fd211dd4c73699cd1e6343129",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/cut-scale-sheet-light-1920.png": {
+    "mtime": 1789067498.2401977,
+    "seen": 1789134728.5026271,
+    "ast_hash": "ea473b07e95e6e7674483ed6ccf89e1d",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-assets-dark-1280.png": {
+    "mtime": 1789067431.6292272,
+    "seen": 1789134728.5026278,
+    "ast_hash": "9d77ad3a75fef90c4f5e2163022b68da",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-assets-dark-1920.png": {
+    "mtime": 1789067507.1115146,
+    "seen": 1789134728.5026286,
+    "ast_hash": "c6e064466248d1304a38a8369fda47d6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-assets-light-1280.png": {
+    "mtime": 1789067395.4223084,
+    "seen": 1789134728.5026293,
+    "ast_hash": "2493aa072e8020236e4d02b9140488b9",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-assets-light-1920.png": {
+    "mtime": 1789067469.0928006,
+    "seen": 1789134728.5026305,
+    "ast_hash": "23bbccf187d339d8164782b33f73ed62",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-console-dark-1280.png": {
+    "mtime": 1789067433.1634674,
+    "seen": 1789134728.502631,
+    "ast_hash": "672c1d0ad8438dcbd9007a7c1923cb53",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-console-dark-1920.png": {
+    "mtime": 1789067508.8524814,
+    "seen": 1789134728.5026317,
+    "ast_hash": "578a82cf308cf15fbfb3b8f4acd3c168",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-console-light-1280.png": {
+    "mtime": 1789067396.869348,
+    "seen": 1789134728.5026324,
+    "ast_hash": "84bb6b55340be015994cab623def42b9",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-console-light-1920.png": {
+    "mtime": 1789067470.7331553,
+    "seen": 1789134728.5026333,
+    "ast_hash": "a03466867ac86fe0cacddda3aad014b4",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-controls-dark-1280.png": {
+    "mtime": 1789067429.2847478,
+    "seen": 1789134728.5026338,
+    "ast_hash": "91c04ff192f490296f578033a50668fc",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-controls-dark-1920.png": {
+    "mtime": 1789067504.5068893,
+    "seen": 1789134728.5026345,
+    "ast_hash": "a7573d2e9388c1665b7f1c2b96a522c1",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-controls-light-1280.png": {
+    "mtime": 1789067393.247851,
+    "seen": 1789134728.5026352,
+    "ast_hash": "815865088656358174bd48759b63d2a6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-controls-light-1920.png": {
+    "mtime": 1789067466.6342034,
+    "seen": 1789134728.502636,
+    "ast_hash": "d14615e501d4f1be45e704cb67aa414c",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-gcode-dark-1280.png": {
+    "mtime": 1789067432.398882,
+    "seen": 1789134728.502637,
+    "ast_hash": "cf645c3e3a8725100e4e91b0ed8e74ac",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-gcode-dark-1920.png": {
+    "mtime": 1789067507.9821644,
+    "seen": 1789134728.5026374,
+    "ast_hash": "65712cbf9124129cb54ed196fcd5d184",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-gcode-light-1280.png": {
+    "mtime": 1789067396.146881,
+    "seen": 1789134728.502638,
+    "ast_hash": "07d5d1e31d78f54086d14b74e059fe32",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-gcode-light-1920.png": {
+    "mtime": 1789067469.9088364,
+    "seen": 1789134728.502639,
+    "ast_hash": "293ac74e616d7e781457a212c0f6fe72",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-laser-dark-1280.png": {
+    "mtime": 1789067430.0536823,
+    "seen": 1789134728.5026398,
+    "ast_hash": "672c1d0ad8438dcbd9007a7c1923cb53",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-laser-dark-1920.png": {
+    "mtime": 1789067505.3724034,
+    "seen": 1789134728.5026405,
+    "ast_hash": "578a82cf308cf15fbfb3b8f4acd3c168",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-laser-light-1280.png": {
+    "mtime": 1789067393.974128,
+    "seen": 1789134728.5026412,
+    "ast_hash": "07d5d1e31d78f54086d14b74e059fe32",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-laser-light-1920.png": {
+    "mtime": 1789067467.4438632,
+    "seen": 1789134728.502642,
+    "ast_hash": "a03466867ac86fe0cacddda3aad014b4",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-layers-dark-1280.png": {
+    "mtime": 1789067430.841131,
+    "seen": 1789134728.5026426,
+    "ast_hash": "52fda2eb52b9266a106c55587f7a5b0b",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-layers-dark-1920.png": {
+    "mtime": 1789067506.236201,
+    "seen": 1789134728.502643,
+    "ast_hash": "a825364ed14773978837946583d8fdc7",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-layers-light-1280.png": {
+    "mtime": 1789067394.6892521,
+    "seen": 1789134728.502644,
+    "ast_hash": "3868e04f68403bd3fe5a2222aa49e070",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/dock-layers-light-1920.png": {
+    "mtime": 1789067468.2711954,
+    "seen": 1789134728.5026448,
+    "ast_hash": "fa26325ebbcc9139fad8c1daae625c9d",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-advanced-dark-1280.png": {
+    "mtime": 1789067437.1510978,
+    "seen": 1789134728.5026455,
+    "ast_hash": "199efa762572785499468cecb8a57792",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-advanced-dark-1920.png": {
+    "mtime": 1789067513.1881938,
+    "seen": 1789134728.5026462,
+    "ast_hash": "a6f9fa664988f038e06dc241a322edcd",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-advanced-light-1280.png": {
+    "mtime": 1789067400.5876663,
+    "seen": 1789134728.5026474,
+    "ast_hash": "c02e7f6d92776daf0d3d79105ff0306f",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-advanced-light-1920.png": {
+    "mtime": 1789067474.8746903,
+    "seen": 1789134728.5026479,
+    "ast_hash": "ae4355f71e4b1ef5f36ec6abe85c0f24",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-capabilities-dark-1280.png": {
+    "mtime": 1789067447.9769292,
+    "seen": 1789134728.5026486,
+    "ast_hash": "da1e2afa005e200280c3b119b82a0bf6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-capabilities-dark-1920.png": {
+    "mtime": 1789067524.6916547,
+    "seen": 1789134728.5026495,
+    "ast_hash": "37ceeccdd1b798b6e0dae46fd30f499d",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-capabilities-light-1280.png": {
+    "mtime": 1789067411.3862064,
+    "seen": 1789134728.5026503,
+    "ast_hash": "e637bb3c1c8dc01dc8ccaffa64a97515",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-capabilities-light-1920.png": {
+    "mtime": 1789067486.0134158,
+    "seen": 1789134728.502651,
+    "ast_hash": "8af4970b6d97e0e41a2b329131b70c69",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-device-dark-1280.png": {
+    "mtime": 1789067441.2005472,
+    "seen": 1789134728.502652,
+    "ast_hash": "ab2ad5105575c6f70a2db8357fdf4af6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-device-dark-1920.png": {
+    "mtime": 1789067517.4473636,
+    "seen": 1789134728.5026524,
+    "ast_hash": "7f70c1de3979bacb60fc383090a94890",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-device-light-1280.png": {
+    "mtime": 1789067404.640006,
+    "seen": 1789134728.5026531,
+    "ast_hash": "a9af12fa4e4a2b4d01432887927c0131",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-device-light-1920.png": {
+    "mtime": 1789067479.053277,
+    "seen": 1789134728.5026536,
+    "ast_hash": "b005625aaa7ee1c1fe4a62a5f89d1ad8",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-general-dark-1280.png": {
+    "mtime": 1789067434.4343584,
+    "seen": 1789134728.5026546,
+    "ast_hash": "d623a7ceddcf0fd9d5d46b82b0aebad4",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-general-dark-1920.png": {
+    "mtime": 1789067510.3124547,
+    "seen": 1789134728.502655,
+    "ast_hash": "f411b96b46f31c5e86cf0a34d5c4dc72",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-general-light-1280.png": {
+    "mtime": 1789067397.916973,
+    "seen": 1789134728.502656,
+    "ast_hash": "dfc90d094c1b6b8314f15beedeb936b4",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-general-light-1920.png": {
+    "mtime": 1789067472.0792868,
+    "seen": 1789134728.5026565,
+    "ast_hash": "2d038c697f03cd157508fac8e94c0537",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hardware-dark-1280.png": {
+    "mtime": 1789067435.7977035,
+    "seen": 1789134728.5026572,
+    "ast_hash": "7c1df7d7e064f5eb62f3db464ef1fd36",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hardware-dark-1920.png": {
+    "mtime": 1789067511.7636566,
+    "seen": 1789134728.502658,
+    "ast_hash": "e8f18ee913fd8570f31a8ddfae001766",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hardware-light-1280.png": {
+    "mtime": 1789067399.256129,
+    "seen": 1789134728.5026586,
+    "ast_hash": "cf093d300bb786b6dc5b8b01476d9b9b",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hardware-light-1920.png": {
+    "mtime": 1789067473.46999,
+    "seen": 1789134728.502659,
+    "ast_hash": "0bb47db72a71c57cd7bf328f68e8f499",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-heads-dark-1280.png": {
+    "mtime": 1789067442.5511603,
+    "seen": 1789134728.50266,
+    "ast_hash": "ff7d223afcdd963df6a9753b781683e9",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-heads-dark-1920.png": {
+    "mtime": 1789067518.899068,
+    "seen": 1789134728.5026608,
+    "ast_hash": "2eaab7491aaa5d84d2048c0d84bbd266",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-heads-light-1280.png": {
+    "mtime": 1789067405.9936306,
+    "seen": 1789134728.5026615,
+    "ast_hash": "5138380ce926868188839f64ac900a14",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-heads-light-1920.png": {
+    "mtime": 1789067480.451136,
+    "seen": 1789134728.5026622,
+    "ast_hash": "65b762ea4b301b8854f74d679778d8cd",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hooks-macros-dark-1280.png": {
+    "mtime": 1789067439.8522236,
+    "seen": 1789134728.502663,
+    "ast_hash": "a00014bf643a8d4cd3d85b69f11161f6",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hooks-macros-dark-1920.png": {
+    "mtime": 1789067516.0427673,
+    "seen": 1789134728.5026636,
+    "ast_hash": "e6d219501c7752e980b29466f2588517",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hooks-macros-light-1280.png": {
+    "mtime": 1789067403.3063228,
+    "seen": 1789134728.502664,
+    "ast_hash": "71b5b791332b312b758f75113fbe3266",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-hooks-macros-light-1920.png": {
+    "mtime": 1789067477.6661804,
+    "seen": 1789134728.5026653,
+    "ast_hash": "8e0509996eed71409a82d2abe2c92eca",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-maintenance-dark-1280.png": {
+    "mtime": 1789067446.6189337,
+    "seen": 1789134728.5026658,
+    "ast_hash": "e39ecc22f8d7a2131cd416d76b8567ba",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-maintenance-dark-1920.png": {
+    "mtime": 1789067523.1863964,
+    "seen": 1789134728.5026665,
+    "ast_hash": "6ea0c4539064458d00b34ea2e31fdbcd",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-maintenance-light-1280.png": {
+    "mtime": 1789067410.023647,
+    "seen": 1789134728.5026672,
+    "ast_hash": "711992a24bc6c8e4a7b1b186be8ad7ec",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-maintenance-light-1920.png": {
+    "mtime": 1789067484.6367726,
+    "seen": 1789134728.5026681,
+    "ast_hash": "884b2783a19b378a07b8237e4b553e1c",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-nogo-zones-dark-1280.png": {
+    "mtime": 1789067445.2594607,
+    "seen": 1789134728.5026689,
+    "ast_hash": "6ebaf0aeb487634d4a0840f9c6625253",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-nogo-zones-dark-1920.png": {
+    "mtime": 1789067521.7681503,
+    "seen": 1789134728.5026698,
+    "ast_hash": "a3001ccc08a07ebd6045bea8e1f96dec",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-nogo-zones-light-1280.png": {
+    "mtime": 1789067408.690895,
+    "seen": 1789134728.5026705,
+    "ast_hash": "5d3584004d380090a5d2d8840a68ce5e",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-nogo-zones-light-1920.png": {
+    "mtime": 1789067483.2425919,
+    "seen": 1789134728.5026712,
+    "ast_hash": "a110fe478d556a3e8b533fb6773e343e",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-rotary-module-dark-1280.png": {
+    "mtime": 1789067443.9098651,
+    "seen": 1789134728.5026724,
+    "ast_hash": "67461a51d699814dfb9e1fb52c622245",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-rotary-module-dark-1920.png": {
+    "mtime": 1789067520.3227265,
+    "seen": 1789134728.5026731,
+    "ast_hash": "b088bd5073ac3c18b4b67ca3a50155ef",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-rotary-module-light-1280.png": {
+    "mtime": 1789067407.3467078,
+    "seen": 1789134728.5026739,
+    "ast_hash": "15f97fa15b03c0e00a949e60e2f49faf",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/machine-settings-rotary-module-light-1920.png": {
+    "mtime": 1789067481.8582377,
+    "seen": 1789134728.5026746,
+    "ast_hash": "cd34bf1d10fe672262987d519f6e584c",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/main-window-dark-1280.png": {
+    "mtime": 1789067428.564016,
+    "seen": 1789134728.5026753,
+    "ast_hash": "853a020d2eb0639e99fd469565c2e4fa",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/main-window-dark-1920.png": {
+    "mtime": 1789067503.780885,
+    "seen": 1789134728.502676,
+    "ast_hash": "b4c6c052278ee07644daf5486d3c9948",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/main-window-light-1280.png": {
+    "mtime": 1789067392.525233,
+    "seen": 1789134728.5026765,
+    "ast_hash": "616abdd33f722e8e53bab237339d7a83",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/main-window-light-1920.png": {
+    "mtime": 1789067465.9041395,
+    "seen": 1789134728.5026772,
+    "ast_hash": "11d0911de0d2e743c2678476978c615a",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-settings-dark-1280.png": {
+    "mtime": 1789067461.9187381,
+    "seen": 1789134728.502678,
+    "ast_hash": "eac2fd1a863a5655dff29c74c3f7f421",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-settings-dark-1920.png": {
+    "mtime": 1789067541.512598,
+    "seen": 1789134728.5026786,
+    "ast_hash": "c0bd869108d16ea915f7e58955b2d5ae",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-settings-light-1280.png": {
+    "mtime": 1789067425.5299144,
+    "seen": 1789134728.5026793,
+    "ast_hash": "0c52b3326bbcb69ca0b9b6a9bcb67e35",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-settings-light-1920.png": {
+    "mtime": 1789067500.6320357,
+    "seen": 1789134728.5026798,
+    "ast_hash": "db2b5f6963de13f11e51d7ac2adcd867",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-type-sheet-dark-1280.png": {
+    "mtime": 1789067463.0559635,
+    "seen": 1789134728.5026808,
+    "ast_hash": "98b45318f1a8598e2ae9a3ae86289c34",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-type-sheet-dark-1920.png": {
+    "mtime": 1789067542.6958973,
+    "seen": 1789134728.502682,
+    "ast_hash": "dcd16800cd12fe348db4ee728a9828e0",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-type-sheet-light-1280.png": {
+    "mtime": 1789067426.6811774,
+    "seen": 1789134728.5026827,
+    "ast_hash": "dc13a887314a6248523462abab0695c3",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/step-type-sheet-light-1920.png": {
+    "mtime": 1789067501.7763927,
+    "seen": 1789134728.5026834,
+    "ast_hash": "5031f19bafb9c542f4ce8cfc7ad710c5",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/toolbar-dark-1280.png": {
+    "mtime": 1789067428.5675185,
+    "seen": 1789134728.502684,
+    "ast_hash": "6b1350a75e88a374206c2a65f564e2a3",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/toolbar-dark-1920.png": {
+    "mtime": 1789067503.785778,
+    "seen": 1789134728.5026846,
+    "ast_hash": "6b1350a75e88a374206c2a65f564e2a3",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/toolbar-light-1280.png": {
+    "mtime": 1789067392.5309055,
+    "seen": 1789134728.5026858,
+    "ast_hash": "74d4615f71b0f928d4a6e168acbb10c0",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/toolbar-light-1920.png": {
+    "mtime": 1789067465.9041395,
+    "seen": 1789134728.5026865,
+    "ast_hash": "74d4615f71b0f928d4a6e168acbb10c0",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/wcs-sheet-dark-1280.png": {
+    "mtime": 1789067460.7000904,
+    "seen": 1789134728.502687,
+    "ast_hash": "ae0a06c91c867b6a5668224c5833a18c",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/wcs-sheet-dark-1920.png": {
+    "mtime": 1789067540.1984735,
+    "seen": 1789134728.5026877,
+    "ast_hash": "552e73b0bd7a29b8ff9cd1e531fa3931",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/wcs-sheet-light-1280.png": {
+    "mtime": 1789067424.3025408,
+    "seen": 1789134728.5026884,
+    "ast_hash": "e1e0345cea868de8b289a75194b506a1",
+    "semantic_hash": ""
+  },
+  "docs/design/audit/pass2/wcs-sheet-light-1920.png": {
+    "mtime": 1789067499.3938918,
+    "seen": 1789134728.5026894,
+    "ast_hash": "76006d3ac82cf593d13df0612a1f6cc3",
+    "semantic_hash": ""
+  },
+  "tests/perf/raster.png": {
+    "mtime": 1789132981.704297,
+    "seen": 1789134728.502912,
+    "ast_hash": "1c994502ac9affa42ff13a4a5bc802ce",
+    "semantic_hash": ""
+  },
+  "tests/perf/small.svg": {
+    "mtime": 1789132981.1192684,
+    "seen": 1789134728.502913,
+    "ast_hash": "c897736da95c928af2d28688d9e78579",
     "semantic_hash": ""
   }
 }
