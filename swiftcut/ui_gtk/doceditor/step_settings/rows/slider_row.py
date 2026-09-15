@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from gi.repository import Adw, Gtk
 
+from swiftcut.ui_gtk.shared.gtk import install_scroll_guard
 from swiftcut.ui_gtk.shared.slider import create_slider
 
 from .step_row import DebouncedMixin, StepRow
@@ -64,6 +65,11 @@ class SliderRow(DebouncedMixin, StepRow):
         self._spin = Gtk.SpinButton(adjustment=self._adj, digits=self._digits)
         self._spin.set_valign(Gtk.Align.CENTER)
         self._spin.set_width_chars(6)
+        # This spin button shares ``_adj`` with the slider below,
+        # so an unguarded wheel event over it edits the value -
+        # and commits it - exactly as scrolling the (guarded)
+        # slider would. See install_scroll_guard.
+        install_scroll_guard(self._spin)
         self._scale = create_slider(
             adjustment=self._adj,
             digits=self._digits,

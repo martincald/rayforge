@@ -5,6 +5,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from ...layout import suffix_box
 from ..adwfix import ensure_spinrow_min_width
+from ..gtk import SPINROW_SCROLL_GUARD_NAME, install_scroll_guard
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,18 @@ class SpinRow(Adw.ActionRow):
         self._spin_button.set_width_chars(_SPINROW_WIDTH_CHARS)
         if numeric:
             self._spin_button.set_numeric(True)
+        # A SpinButton on a scrollable preferences page otherwise
+        # consumes wheel events and silently edits its own value. That
+        # is how a machine's Ruida port was changed from 50200 to
+        # 50201 -- by nothing more than scrolling past the row -- and,
+        # because the Driver Settings group applies immediately, the
+        # bad value was written to the profile before anyone saw it.
+        # The shared guard only lets a scroll through while the field
+        # has keyboard focus; otherwise it forwards the scroll to the
+        # enclosing ScrolledWindow itself, so the page still scrolls
+        # normally underneath it. See install_scroll_guard for why
+        # that forwarding is necessary rather than automatic.
+        install_scroll_guard(self._spin_button)
         self._spin_button.connect("value-changed", self._on_value_changed)
         # Mirror the historical Adw.SpinRow wiring: value-changed alone does
         # not fire on every keystroke, so also observe notify::text to keep

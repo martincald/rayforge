@@ -4,7 +4,7 @@ import logging
 import tempfile
 from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from gettext import gettext as _
 from pathlib import Path
 from typing import (
@@ -17,6 +17,7 @@ from ....core.varset import HostnameVar, PortVar, VarSet
 from ....core.varset.hostnamevar import is_valid_hostname_or_ip
 from ....pipeline.encoder.base import EncodedOutput, OpsEncoder
 from ...models.coordinate_system import CoordinateSystem
+from ...models.default_profile import ILAB_614_PROFILE
 from ...models.laser import LaserHead, LaserType
 from ...transport import TransportStatus
 from ...transport.udp import UdpTransport
@@ -44,6 +45,26 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RuidaDiagnostics:
+    """
+    A snapshot of connection-level facts about a RuidaDriver, for the
+    Device settings diagnostics UI. Answers exactly the questions the
+    silent-timeout investigation needed: which ports, did the response
+    port bind, and did anything ever come back.
+    """
+
+    driver_class: str
+    host: str | None
+    port: int | None
+    jog_port: int | None
+    response_port: int
+    response_port_bound: bool | None
+    response_port_error: str | None
+    last_enq_sent_at: float | None
+    last_ack_received_at: float | None
 
 
 class RuidaDriver(Driver):
@@ -107,6 +128,7 @@ class RuidaDriver(Driver):
         self.host = None
         self.port = None
         self.jog_port = None
+        self.response_port = self.RESPONSE_PORT
         self._udp_transport = None
         self._ruida_transport = None
         self._jog_udp_transport = None
@@ -198,6 +220,68 @@ class RuidaDriver(Driver):
             return f"udp://{self.host}:{self.port} (jog: {self.jog_port})"
         return None
 
+    def get_diagnostics(self) -> RuidaDiagnostics:
+        """A snapshot for the Device settings diagnostics UI."""
+        response_port_bound = None
+        response_port_error = None
+        if self._udp_transport is not None:
+            response_port_bound = self._udp_transport.is_connected
+            response_port_error = self._udp_transport.last_bind_error
+
+        last_enq_sent_at = None
+        last_ack_received_at = None
+        if self._client is not None:
+            last_enq_sent_at = self._client.last_enq_sent_at
+            last_ack_received_at = self._client.last_ack_received_at
+
+        return RuidaDiagnostics(
+            driver_class=type(self).__name__,
+            host=self.host,
+            port=self.port,
+            jog_port=self.jog_port,
+            response_port=self.response_port,
+            response_port_bound=response_port_bound,
+            response_port_error=response_port_error,
+            last_enq_sent_at=last_enq_sent_at,
+            last_ack_received_at=last_ack_received_at,
+        )
+
+    @classmethod
+    def expected_ports(cls) -> dict[str, int]:
+        """
+        The canonical ilab-614 ports: the values a fresh install
+        seeds (``default_profile.ILAB_614_PROFILE``) plus this
+        class's own response-port default. Read from those two
+        sources of truth rather than repeated here -- they are
+        exactly the numbers a drifted profile needs restored (see
+        ``port_mismatches``).
+        """
+        default_args = ILAB_614_PROFILE["machine"]["driver_args"]
+        return {
+            "port": default_args["port"],
+            "jog_port": default_args["jog_port"],
+            "response_port": cls.RESPONSE_PORT,
+        }
+
+    @classmethod
+    def port_mismatches(
+        cls, driver_args: dict[str, Any]
+    ) -> dict[str, tuple[Any, int]]:
+        """
+        Compares a saved profile's ports against ``expected_ports``.
+
+        A key missing from ``driver_args`` is not a mismatch:
+        ``_setup_implementation`` falls back to the same canonical
+        default, so the effective port is already correct. Returns
+        ``{field: (actual, expected)}`` for each port that differs.
+        """
+        mismatches: dict[str, tuple[Any, int]] = {}
+        for key, expected in cls.expected_ports().items():
+            actual = driver_args.get(key, expected)
+            if actual != expected:
+                mismatches[key] = (actual, expected)
+        return mismatches
+
     @classmethod
     def precheck(cls, **kwargs: Any) -> None:
         host = kwargs.get("host", "")
@@ -267,6 +351,7 @@ class RuidaDriver(Driver):
         self.host = host
         self.port = port
         self.jog_port = jog_port
+        self.response_port = response_port
 
         self._udp_transport = UdpTransport(
             host, port, local_port=response_port

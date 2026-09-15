@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from gi.repository import Adw, Gtk
 
-from .gtk import apply_css
+from .gtk import apply_css, install_scroll_guard
 
 SLIDER_TRACK_WIDTH = 200
 VALUE_LABEL_WIDTH = 60
@@ -23,6 +23,9 @@ def create_slider(
     )
     scale.set_size_request(SLIDER_TRACK_WIDTH, 60 if draw_value else -1)
     scale.set_valign(Gtk.Align.CENTER)
+    # See install_scroll_guard: a Scale on a scrollable page otherwise
+    # consumes wheel events meant for the page.
+    install_scroll_guard(scale)
 
     if on_value_changed:
         scale.connect("value-changed", on_value_changed)

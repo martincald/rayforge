@@ -2,7 +2,20 @@
 Tests for the Ruida simulator.
 """
 
-from swiftcut.machine.driver.ruida.ruida_simulator import RuidaSimulator
+import asyncio
+from pathlib import Path
+
+import pytest
+
+from swiftcut.machine.driver.ruida.ruida_client import RuidaClient
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_simulator import (
+    RuidaSimulator,
+    run_udp_simulator,
+)
+from swiftcut.machine.driver.ruida.ruida_transport import RuidaTransport
+from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.transport.udp import UdpTransport
 from swiftcut.machine.driver.ruida.ruida_util import (
     build_swizzle_lut,
     decode14,
@@ -825,3 +838,145 @@ class TestE7BYTest:
         response, length = sim._process_single_command(cmd)
         assert response == b""
         assert length == 7
+
+
+class TestUdpSimulatorWiring:
+    """
+    The simulator's UDP entry point, not just its command processing.
+
+    run_udp_simulator connects its handlers as bare lambdas; blinker
+    holds receivers weakly by default, so without weak=False they are
+    collected immediately and the simulator binds its ports and then
+    silently discards every datagram. Every other test in this file
+    calls the simulator's process methods directly and so cannot see
+    that. This one drives it over a real loopback socket.
+    """
+
+    @pytest.mark.asyncio
+    async def test_simulator_answers_over_loopback(self):
+        sim = RuidaSimulator()
+        sim.x, sim.y = 12345000, 6789000
+        server = asyncio.create_task(
+            run_udp_simulator(
+                sim, host="127.0.0.1", port=51311, jog_port=51317
+            )
+        )
+        try:
+            await asyncio.sleep(0.5)
+            udp = UdpTransport("127.0.0.1", 51311, local_port=40311)
+            client = RuidaClient(
+                RuidaTransport(udp), UdpTransport("127.0.0.1", 51317)
+            )
+            await client.connect()
+            try:
+                position = await asyncio.wait_for(
+                    client.read_position(), timeout=5
+                )
+            finally:
+                await client.disconnect()
+            assert position == (12345000, 6789000)
+        finally:
+            server.cancel()
+
+
+class TestUdpSimulatorE2ESession:
+    """
+    A full operator-shaped session over loopback: connect, poll
+    position, jog, and send a real job. Package A3's acceptance
+    criterion is "simulator e2e session green" -- this is that
+    session.
+
+    Driven through RuidaDriver, the real app path, for
+    connect/poll/jog. send_job goes through the driver's own
+    RuidaClient directly rather than RuidaDriver.run(): run() expects
+    an Ops/Doc pair to encode into a blob, but the fixture is already
+    a final swizzled .rd blob -- exactly what RuidaClient.send_job
+    takes -- so fabricating Ops to re-derive the same bytes would add
+    encoder-path testing this file is not about (see
+    test_ruida_encoder.py for that).
+
+    Loopback ports are distinct from TestUdpSimulatorWiring above
+    (51311/51317/40311): 51411/51417, with an ephemeral (0) local
+    response port -- never local port 40200, which the owner's own
+    SwiftCut instance may hold.
+    """
+
+    @pytest.mark.asyncio
+    async def test_full_session_connect_poll_jog_and_send_job(
+        self, lite_context
+    ):
+        sim = RuidaSimulator()
+        sim.x, sim.y = 100000, 50000
+        server = asyncio.create_task(
+            run_udp_simulator(
+                sim, host="127.0.0.1", port=51411, jog_port=51417
+            )
+        )
+        await asyncio.sleep(0.5)
+
+        machine = Machine(lite_context)
+        lite_context.machine_mgr.add_machine(machine)
+        driver = RuidaDriver(lite_context, machine)
+        driver._setup_implementation(
+            host="127.0.0.1",
+            port=51411,
+            jog_port=51417,
+            response_port=0,
+        )
+
+        try:
+            # Connect: the real connection loop, including its
+            # keepalive/handshake wait.
+            await driver.connect()
+            deadline = asyncio.get_event_loop().time() + 5
+            while (
+                not driver.is_connected
+                and asyncio.get_event_loop().time() < deadline
+            ):
+                await asyncio.sleep(0.05)
+            assert driver.is_connected, "driver never connected to simulator"
+
+            # Poll position: the connection loop's own background
+            # poll, not a manual read, must pick up the seeded
+            # position.
+            deadline = asyncio.get_event_loop().time() + 5
+            pos = driver.state.machine_pos
+            while asyncio.get_event_loop().time() < deadline:
+                pos = driver.state.machine_pos
+                if pos[0] == pytest.approx(100.0) and pos[1] == pytest.approx(
+                    50.0
+                ):
+                    break
+                await asyncio.sleep(0.05)
+            assert pos[0] == pytest.approx(100.0)
+            assert pos[1] == pytest.approx(50.0)
+
+            # Jog: one relative step, waited out by the driver itself.
+            await driver.jog(6000, x=5.0)
+            assert sim.x == 105000
+            assert sim.y == 50000
+
+            # send_job: the real RDWorks reference fixture.
+            fixture = (
+                Path(__file__).parent / "fixtures" / "rdworks_reference.rd"
+            ).read_bytes()
+            acked_chunks: list[int] = []
+            await driver._client.send_job(
+                fixture,
+                on_chunk=(
+                    lambda index, count, size, attempts: acked_chunks.append(
+                        index
+                    )
+                ),
+            )
+            assert acked_chunks, "no job chunk was acknowledged"
+            assert acked_chunks == list(range(1, len(acked_chunks) + 1))
+            # The fixture's own E5 05 command sets this from the
+            # accumulated checksum of everything before it, so a
+            # nonzero value is proof the simulator actually parsed
+            # the uploaded command stream, not just ACKed raw bytes.
+            assert sim.file_checksum != 0
+        finally:
+            await driver.cleanup()
+            await machine.shutdown()
+            server.cancel()

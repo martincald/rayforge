@@ -190,6 +190,11 @@ class MachineController:
         else:
             driver_cls = NoDeviceDriver
 
+        logger.info(
+            f"Driver resolved: {driver_cls.__name__} for profile "
+            f"{self.machine.name}"
+        )
+
         try:
             driver_cls.precheck(**self.machine.driver_args)
         except DriverPrecheckError as e:

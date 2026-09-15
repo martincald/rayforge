@@ -1,12 +1,20 @@
 import asyncio
+import errno
 import logging
 import socket
+from gettext import gettext as _
 
 import asyncudp
 
 from .transport import Transport, TransportStatus
 
 logger = logging.getLogger(__name__)
+
+# WSAEADDRINUSE only exists on Windows; EADDRINUSE covers the rest.
+_ADDR_IN_USE = {
+    errno.EADDRINUSE,
+    getattr(errno, "WSAEADDRINUSE", errno.EADDRINUSE),
+}
 
 
 class UdpTransport(Transport):
@@ -21,6 +29,10 @@ class UdpTransport(Transport):
         self._running = False
         self._reconnect_interval = 5
         self._connection_task: asyncio.Task | None = None
+        # Set when a bind to a fixed local port fails; cleared on the
+        # next successful connect. Lets diagnostics UI show *why* a
+        # response-port channel never came up, after the fact.
+        self.last_bind_error: str | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -47,6 +59,7 @@ class UdpTransport(Transport):
                 reuse_port=reuse_port,
             )
             self.writer = self.reader
+            self.last_bind_error = None
 
             self.status_changed.send(self, status=TransportStatus.CONNECTED)
             logger.info(f"Successfully connected to {self.host}:{self.port}.")
@@ -57,9 +70,23 @@ class UdpTransport(Transport):
         except OSError as e:
             # Failed to connect, report error and re-raise so caller knows.
             logger.error(f"Failed to connect to {self.host}:{self.port}: {e}")
+            message = str(e)
+            in_use = self.local_port is not None and e.errno in _ADDR_IN_USE
+            if in_use:
+                # A bind to a fixed local port (e.g. the Ruida response
+                # port) fails this way when something else already
+                # holds it -- most likely another SwiftCut instance.
+                # Only EADDRINUSE means that; every other OSError keeps
+                # its own text so it is not misreported as a conflict.
+                message = _("port in use (another SwiftCut instance?)")
+                self.last_bind_error = message
             self.status_changed.send(
-                self, status=TransportStatus.ERROR, message=str(e)
+                self, status=TransportStatus.ERROR, message=message
             )
+            if in_use:
+                # Re-raise with the operator-facing text, preserving
+                # errno so callers can still branch on it.
+                raise OSError(e.errno, message) from e
             raise
 
     async def _manage_connection(self) -> None:

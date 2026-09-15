@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import asyncudp
 import pytest
@@ -257,6 +258,40 @@ class TestUdpTransportIntegration:
 
         with pytest.raises(OSError, match="Resolution failed"):
             UdpTransport(host="invalid.hostname", port=1234)
+
+    async def test_bind_failure_on_a_fixed_local_port_is_visible(
+        self, mocker, caplog
+    ):
+        """
+        A local-port bind conflict (e.g. another SwiftCut instance
+        already holding the Ruida response port) must not vanish into
+        a silent reconnect: the raw OSError is logged, and the
+        user-facing status message is a clear, stable string.
+        """
+        mocker.patch(
+            "swiftcut.machine.transport.udp.asyncudp.create_socket",
+            side_effect=OSError(10048, "Only one usage of each socket"),
+        )
+        transport = UdpTransport(
+            host="127.0.0.1", port=1234, local_port=40200
+        )
+        status_tracker = SignalTracker(transport.status_changed)
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(OSError, match="port in use"):
+                await transport.connect()
+
+        assert "Only one usage of each socket" in caplog.text
+
+        error_calls = [
+            call["kwargs"]
+            for call in status_tracker.calls
+            if call["kwargs"]["status"] == TransportStatus.ERROR
+        ]
+        assert error_calls
+        assert error_calls[-1]["message"] == (
+            "port in use (another SwiftCut instance?)"
+        )
 
     async def test_purge_on_connected_transport(self, udp_server):
         """Test that purge clears buffered data from the reader."""

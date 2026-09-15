@@ -4,6 +4,7 @@ from gi.repository import Adw, Gtk
 from ...context import get_context
 from ...shared.units.definitions import get_unit
 from ..layout import suffix_box
+from .gtk import install_scroll_guard
 
 
 class OptionalSpinRowController:
@@ -35,6 +36,7 @@ class OptionalSpinRowController:
             adjustment=adj, digits=self.unit.precision
         )
         self.spin_button.set_valign(Gtk.Align.CENTER)
+        install_scroll_guard(self.spin_button)
 
         self.switch = Gtk.Switch(valign=Gtk.Align.CENTER)
 

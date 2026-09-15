@@ -11,6 +11,7 @@ from .config import LOG_DIR
 
 _ui_formatter_instance: logging.Formatter | None = None
 _ui_log_records: list[logging.LogRecord] = []
+_current_log_file: Path | None = None
 
 LOG_FILES_TO_KEEP = 5
 
@@ -180,6 +181,16 @@ def get_ui_formatter() -> logging.Formatter | None:
     return _ui_formatter_instance
 
 
+def get_current_log_file() -> Path | None:
+    """
+    Returns the path of the current session's log file, or None if
+    setup_logging() has not run yet. Used by the Device settings
+    diagnostics UI so the user can find the file without hunting
+    through the config directory.
+    """
+    return _current_log_file
+
+
 def setup_logging(loglevel_str: str):
     """
     Configures the root logger with console, file, and in-memory handlers.
@@ -189,7 +200,7 @@ def setup_logging(loglevel_str: str):
         loglevel_str: The desired logging level for the console as a string
                       (e.g., "INFO", "DEBUG").
     """
-    global _ui_formatter_instance
+    global _ui_formatter_instance, _current_log_file
 
     log_level = getattr(logging, loglevel_str.upper(), logging.INFO)
     root_logger = logging.getLogger()
@@ -226,6 +237,7 @@ def setup_logging(loglevel_str: str):
     # basicConfig, adding a dead StreamHandler back.
     timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     log_file = LOG_DIR / f"session-{timestamp}.log"
+    _current_log_file = log_file
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(

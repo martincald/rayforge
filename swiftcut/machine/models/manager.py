@@ -8,6 +8,7 @@ from blinker import Signal
 
 from ...context import get_context
 from ...shared.tasker import task_mgr
+from ..driver import RuidaDriver
 from ..driver.driver import ResourceBusyError
 from .controller import MachineController
 from .default_profile import ILAB_614_PROFILE
@@ -237,6 +238,24 @@ class MachineManager:
         machine.id = machine_id
         self.machines[machine.id] = machine
         machine.changed.connect(self.on_machine_changed)
+        logger.info(f"Loaded machine '{machine.name}' from {machine_file}")
+
+        # Profile sanity check: flags a Ruida profile whose ports
+        # drifted from the ilab-614 defaults (see the silent-timeout
+        # investigation this closes). Logging only -- the file is
+        # never rewritten here; only the Diagnostics "Reset ports to
+        # defaults" button does that, on an explicit click.
+        if machine.driver_name == "RuidaDriver":
+            port_mismatches = RuidaDriver.port_mismatches(
+                machine.driver_args
+            )
+            if port_mismatches:
+                logger.warning(
+                    "Machine '%s' has non-default Ruida ports: %s "
+                    "(Device > Diagnostics can reset them)",
+                    machine.name,
+                    port_mismatches,
+                )
 
         if machine.dialect_migrated:
             logger.info(
@@ -257,3 +276,28 @@ class MachineManager:
                 self.load_machine(file.stem)
             except (OSError, ValueError, TypeError, yaml.YAMLError) as e:
                 logger.error(f"Failed to load machine from {file}: {e}")
+
+    def load_new_machines(self) -> list["Machine"]:
+        """
+        Loads machine profile files present in `base_dir` that are not
+        yet tracked in `self.machines`, e.g. after an out-of-band copy
+        into `base_dir` such as the "Import settings from Rayforge"
+        action. Unlike `load()`, machines already tracked are left
+        untouched (not reloaded/replaced), so an already-connected or
+        active machine is never disturbed. Fires `machine_added` for
+        each newly loaded machine, since - unlike at startup - the UI
+        may already be listening.
+        """
+        added: list["Machine"] = []
+        for file in self.base_dir.glob("*.yaml"):
+            if file.stem in self.machines:
+                continue
+            try:
+                machine = self.load_machine(file.stem)
+            except (OSError, ValueError, TypeError, yaml.YAMLError) as e:
+                logger.error(f"Failed to load machine from {file}: {e}")
+                continue
+            if machine is not None:
+                added.append(machine)
+                self.machine_added.send(self, machine_id=machine.id)
+        return added

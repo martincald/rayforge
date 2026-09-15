@@ -9,6 +9,8 @@ This module tests the MachineController which handles:
 The MachineController is the logic layer that owns and manages the driver.
 """
 
+import logging
+
 import pytest
 
 from swiftcut.machine.models.controller import MachineController
@@ -49,3 +51,31 @@ class TestMachineController:
         assert hasattr(controller, "job_finished")
         assert hasattr(controller, "command_status_changed")
         assert hasattr(controller, "wcs_updated")
+
+    @pytest.mark.asyncio
+    async def test_rebuild_driver_logs_the_resolved_driver_and_profile(
+        self, lite_context, caplog
+    ):
+        """
+        Driver resolution has to be provable from the log alone: a
+        future triage on a misbehaving profile needs to see which
+        driver class a machine's driver_name actually resolved to.
+        """
+        machine = Machine(lite_context)
+        lite_context.machine_mgr.add_machine(machine)
+        controller = MachineController(
+            machine, lite_context, task_mgr.schedule_on_main_thread
+        )
+
+        machine.name = "ilab-614"
+        machine.driver_name = "RuidaDriver"
+        # Never let a test dial out to a real machine.
+        machine.auto_connect = False
+
+        with caplog.at_level(logging.INFO):
+            await controller.rebuild_driver()
+
+        assert (
+            "Driver resolved: RuidaDriver for profile ilab-614"
+            in caplog.text
+        )

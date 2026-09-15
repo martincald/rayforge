@@ -15,6 +15,8 @@ import pytest
 import yaml
 from raygeo.ops.axis import Axis
 
+from swiftcut.machine.driver import get_driver_cls
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
 from swiftcut.machine.models.machine import Origin, StartCorner
 from swiftcut.machine.models.manager import MachineManager
@@ -61,6 +63,37 @@ class TestIlab614DefaultProfile:
         # Laser head power is stored 0-100 in YAML but 0-1 in memory.
         head = machine.heads[0]
         assert head.focus_power_percent == 0.2
+
+    def test_ilab_614_driver_name_resolves_to_ruida_driver(
+        self, lite_context
+    ):
+        """
+        The profile's declared driver must actually resolve to
+        RuidaDriver via the driver registry, not silently fall back
+        to the no-device driver.
+        """
+        machine = list(lite_context.machine_mgr.machines.values())[0]
+
+        assert get_driver_cls(machine.driver_name) is RuidaDriver
+
+    def test_bundled_default_matches_the_live_ilab_614_endpoints(self):
+        """
+        The bundled default's host/ports must equal the live ilab-614
+        values: 192.168.1.100 / 50200 / 50207 / 40200. Read directly
+        from ILAB_614_PROFILE (not through the manager), and tied to
+        RuidaDriver.RESPONSE_PORT, since the response port is a driver
+        constant rather than a driver_args entry -- so the profile
+        must not override it.
+        """
+        driver_args = ILAB_614_PROFILE["machine"]["driver_args"]
+
+        assert driver_args == {
+            "host": "192.168.1.100",
+            "port": 50200,
+            "jog_port": 50207,
+        }
+        assert "response_port" not in driver_args
+        assert RuidaDriver.RESPONSE_PORT == 40200
 
     def test_preexisting_profile_dir_is_untouched(self, tmp_path):
         """

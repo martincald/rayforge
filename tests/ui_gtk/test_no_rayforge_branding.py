@@ -23,9 +23,11 @@ anywhere in the app by design and would be exempted here via
     it never trips this gate;
   - the MIT copyright/attribution notice, which names the original
     author "Samuel Abels" (see swiftcut/ui_gtk/about.py) rather than
-    the word "Rayforge" itself, so it also never trips this gate.
-Neither currently needs an entry, but the mechanism must remain
-available for future additions.
+    the word "Rayforge" itself, so it also never trips this gate;
+  - the one-time "Import settings from Rayforge" action in Device
+    Settings (see swiftcut/ui_gtk/machine/device_settings_page.py,
+    `import_legacy_banner`), which must name "Rayforge" so the user
+    knows what it is offering to import from.
 """
 
 import ast
@@ -72,7 +74,11 @@ UI_TEXT_CALLS = {
 
 # Exact user-visible strings that are allowed to contain "rayforge" or
 # "Rayforge". See the module docstring for why each entry is here.
-ALLOWLIST: set[str] = set()
+ALLOWLIST: set[str] = {
+    "A Rayforge configuration from before the rename was found. Import"
+    " its device settings?",
+    "Import settings from Rayforge",
+}
 
 
 def _call_name(node: ast.Call) -> str | None:

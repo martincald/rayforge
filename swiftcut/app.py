@@ -359,6 +359,31 @@ def main():
             if context.machine_mgr:
                 context.machine_mgr.initialize_connections()
 
+            self._ensure_firewall_rule()
+
+        def _ensure_firewall_rule(self):
+            """
+            Best-effort: add the Ruida response port's inbound UDP
+            firewall rule, off the UI thread so this never delays
+            first paint. Does nothing (and never prompts for
+            elevation) if the process is not already elevated -- see
+            swiftcut.machine.transport.firewall.
+            """
+            from swiftcut.machine.driver.ruida.ruida_driver import (
+                RuidaDriver,
+            )
+            from swiftcut.machine.transport.firewall import (
+                ensure_udp_inbound_rule,
+            )
+            from swiftcut.shared.tasker import task_mgr
+
+            async def _run(ctx):
+                await task_mgr.run_in_executor(
+                    ensure_udp_inbound_rule, RuidaDriver.RESPONSE_PORT
+                )
+
+            task_mgr.add_coroutine(_run)
+
         def _on_window_mapped(self, widget):
             """Runs once, when the main window is first mapped on screen."""
             widget.disconnect_by_func(self._on_window_mapped)
@@ -648,8 +673,28 @@ def main():
         main_thread_scheduler=idle_add,
     )
 
+    # Single-instance guard: GApplication's own D-Bus-based uniqueness
+    # does not work on this Windows build (probed separately -- see
+    # swiftcut.single_instance), so a second launch is detected here
+    # instead, before any GTK app or window is created.
+    from swiftcut.single_instance import SingleInstanceGuard
+
+    instance_guard = SingleInstanceGuard()
+    if not instance_guard.acquire():
+        logger.info(
+            "Another SwiftCut instance is already running; asking it "
+            "to come to the front and exiting."
+        )
+        instance_guard.notify_primary()
+        return 0
+
     # Run application
     app = App(args)
+    instance_guard.listen(
+        lambda: GLib.idle_add(
+            lambda: app.win.present() if app.win is not None else None
+        )
+    )
     exit_code = app.run(None)
     logger.info("app.run() returned with exit_code=%s", exit_code)
     if app.win is None:

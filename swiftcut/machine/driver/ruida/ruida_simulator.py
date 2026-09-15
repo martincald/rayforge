@@ -258,15 +258,21 @@ async def run_udp_simulator(
         if response:
             await jog_transport.send_to(response, addr)
 
+    # weak=False is required: blinker holds receivers weakly by
+    # default, and these lambdas have no other referent, so they would
+    # be collected immediately and the simulator would bind its ports
+    # and then silently discard every datagram.
     main_transport.decoded_received.connect(
         lambda self, data, addr: asyncio.create_task(
             handle_main_decoded(self, data, addr)
-        )
+        ),
+        weak=False,
     )
     jog_transport.received.connect(
         lambda self, data, addr: asyncio.create_task(
             handle_jog(self, data, addr)
-        )
+        ),
+        weak=False,
     )
 
     await main_transport.connect()

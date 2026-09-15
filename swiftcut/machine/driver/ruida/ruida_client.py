@@ -7,6 +7,7 @@ sending them via transport, and parsing of responses.
 
 import asyncio
 import logging
+import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Optional
 
@@ -135,6 +136,12 @@ class RuidaClient:
         self._ref_point_mode: str | None = "MACHINE"
         self.position_updated = Signal()
         self.state_changed = Signal()
+        # Diagnostics only: when the last keep-alive (ENQ, 0xce) was
+        # sent, and when a response was last decoded from the
+        # controller. Surfaced in the Device settings diagnostics UI
+        # so a silent timeout is visible without reading log files.
+        self.last_enq_sent_at: float | None = None
+        self.last_ack_received_at: float | None = None
 
         self._transport.decoded_received.connect(self._handle_response)
 
@@ -153,6 +160,7 @@ class RuidaClient:
             sender: The signal sender (unused)
             data: The decoded response data
         """
+        self.last_ack_received_at = time.time()
         pending = sorted(self._pending_mem_reads)
         logger.debug(f"handle_response: {data.hex()} (pending: {pending})")
         if len(data) == 1 and self._pending_job_acks:
@@ -657,6 +665,7 @@ class RuidaClient:
     async def keep_alive(self) -> None:
         """Send keep-alive packet to maintain connection."""
         await self.send_command(self._build_keep_alive())
+        self.last_enq_sent_at = time.time()
 
     def _build_move_abs(self, x: int, y: int) -> bytes:
         return b"\x88" + encode35(x) + encode35(y)

@@ -7,8 +7,11 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 import pytest
-from gi.repository import Adw
+from gi.repository import Adw, Gtk
 
+from swiftcut.ui_gtk.shared.pref_rows.base import (
+    SPINROW_SCROLL_GUARD_NAME,
+)
 from swiftcut.ui_gtk.shared.pref_rows import (
     AccelerationSpinRow,
     AngleSpinRow,
@@ -18,6 +21,7 @@ from swiftcut.ui_gtk.shared.pref_rows import (
     SpinRow,
     UnitSpinRow,
 )
+from swiftcut.ui_gtk.shared.slider import create_slider
 
 
 @pytest.mark.ui
@@ -356,3 +360,143 @@ def test_length_choice_dropdown_is_attached_suffix(ui_context_initializer):
     assert model.get_n_items() == len(row._units)
     # the dropdown sits immediately to the right of the spin button
     assert spin.get_next_sibling() is dd
+
+
+@pytest.mark.ui
+class TestSpinRowScrollGuard:
+    """
+    A SpinButton (or Scale) on a scrollable preferences page otherwise
+    consumes wheel events and edits its own value. On the Driver
+    Settings page, which applies immediately, that silently rewrote a
+    machine's Ruida port from 50200 to 50201 and broke the UDP
+    connection.
+
+    The guard is focus-gated: a scroll edits the value only while the
+    widget has keyboard focus, and is swallowed otherwise.
+
+    These tests use REAL focus, not a monkeypatched ``has_focus``. That
+    matters: ``Gtk.SpinButton`` is not itself focusable (focus lands on
+    its internal ``Gtk.Text``), so ``has_focus()`` is permanently False
+    on one and an earlier version of these tests passed only because it
+    faked that call. ``FOCUS_WITHIN`` does track real focus on both
+    widget types, and ``grab_focus()`` on a presented toplevel moves it
+    here. Only the final delivery of a wheel event is simulated, by
+    emitting the controller's "scroll" signal.
+    """
+
+    def _guard(self, widget):
+        for c in widget.observe_controllers():
+            if c.get_name() == SPINROW_SCROLL_GUARD_NAME:
+                return c
+        return None
+
+    def _in_window(self, widget):
+        """Put widget in a presented toplevel beside a focus sink."""
+        sink = Gtk.Button(label="sink")
+        box = Gtk.Box()
+        box.append(widget)
+        box.append(sink)
+        win = Gtk.Window()
+        win.set_child(box)
+        win.present()
+        return win, sink
+
+    def test_scroll_guard_is_installed(self):
+        row = SpinRow("Main Port", lower=1, upper=65535, value=50200)
+        guard = self._guard(row._spin_button)
+
+        assert guard is not None, (
+            "SpinRow has no scroll guard: a wheel event over the row "
+            "can silently edit the value and corrupt the profile"
+        )
+        assert isinstance(guard, Gtk.EventControllerScroll)
+        assert guard.get_propagation_phase() == Gtk.PropagationPhase.CAPTURE
+
+    def test_unfocused_scroll_is_swallowed(self):
+        row = SpinRow("Main Port", lower=1, upper=65535, value=50200)
+        spin = row._spin_button
+        win, sink = self._in_window(row)
+        try:
+            sink.grab_focus()
+            assert not (
+                spin.get_state_flags() & Gtk.StateFlags.FOCUS_WITHIN
+            ), "precondition: the spin button must be unfocused here"
+            # True stops the SpinButton ever seeing the scroll.
+            assert self._guard(spin).emit("scroll", 0.0, -1.0) is True
+            assert row.get_int_value() == 50200
+        finally:
+            win.destroy()
+
+    def test_focused_scroll_is_not_swallowed(self):
+        row = SpinRow("Main Port", lower=1, upper=65535, value=50200)
+        spin = row._spin_button
+        win, _sink = self._in_window(row)
+        try:
+            spin.grab_focus()
+            assert spin.get_state_flags() & Gtk.StateFlags.FOCUS_WITHIN, (
+                "precondition: grab_focus() must focus the spin button; "
+                "if this fails the test environment changed, not the app"
+            )
+            # False lets the event continue on to the SpinButton, which
+            # is what actually edits the value on a real wheel event.
+            assert self._guard(spin).emit("scroll", 0.0, -1.0) is False
+        finally:
+            win.destroy()
+
+    def test_unfocused_scroll_forwards_to_the_scrolled_window(self):
+        """
+        A swallowed scroll must still move the page. GtkScrolledWindow's
+        own capture-phase handler is a passthrough for the first event
+        of any scroll (it only takes over an already-started
+        touchpad sequence); the real page-scrolling happens in its
+        bubble-phase handler, which this guard's CAPTURE-phase "stop"
+        would otherwise prevent the event from ever reaching. See
+        install_scroll_guard.
+        """
+        row = SpinRow("Main Port", lower=1, upper=65535, value=50200)
+        spin = row._spin_button
+        sink = Gtk.Button(label="sink")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.append(row)
+        box.append(sink)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_child(box)
+        scrolled.set_size_request(200, 100)
+        win = Gtk.Window()
+        win.set_child(scrolled)
+        win.present()
+        try:
+            sink.grab_focus()
+            assert not (spin.get_state_flags() & Gtk.StateFlags.FOCUS_WITHIN)
+            vadj = scrolled.get_vadjustment()
+            vadj.set_upper(1000)
+            vadj.set_page_size(100)
+            vadj.set_value(0)
+            assert self._guard(spin).emit("scroll", 0.0, 3.0) is True
+            assert vadj.get_value() > 0, (
+                "unfocused scroll over a guarded field did not move the "
+                "enclosing ScrolledWindow: the page has a dead zone"
+            )
+            assert row.get_int_value() == 50200
+        finally:
+            win.destroy()
+
+    def test_scale_scroll_guard_is_focus_gated(self):
+        # Sliders (e.g. power/threshold rows) build on create_slider,
+        # a different shared base than SpinRow; cover it separately.
+        adj = Gtk.Adjustment(lower=0, upper=100, step_increment=1, value=50)
+        scale = create_slider(adj)
+        guard = self._guard(scale)
+
+        assert guard is not None, (
+            "create_slider's Scale has no scroll guard: a wheel event "
+            "over the row can silently edit the value"
+        )
+        win, sink = self._in_window(scale)
+        try:
+            sink.grab_focus()
+            assert guard.emit("scroll", 0.0, -1.0) is True
+            scale.grab_focus()
+            assert guard.emit("scroll", 0.0, -1.0) is False
+        finally:
+            win.destroy()
