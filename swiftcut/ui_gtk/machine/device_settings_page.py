@@ -189,6 +189,15 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         )
         self.diag_enq_row = Adw.ActionRow(title=_("Last ENQ Sent"))
         self.diag_ack_row = Adw.ActionRow(title=_("Last ACK Received"))
+        # USB fields (package U3): shown instead of the UDP endpoint
+        # rows above when the driver's connection is "usb". ENQ/ACK
+        # above are transport-agnostic and stay shown for USB too.
+        self.diag_usb_backend_row = Adw.ActionRow(title=_("USB Backend"))
+        self.diag_usb_device_row = Adw.ActionRow(title=_("USB Device"))
+        self.diag_usb_bytes_sent_row = Adw.ActionRow(title=_("Bytes Sent"))
+        self.diag_usb_bytes_received_row = Adw.ActionRow(
+            title=_("Bytes Received")
+        )
         self.diag_log_row = Adw.ActionRow(title=_("Log File"))
 
         # Profile sanity: flags a Ruida profile whose ports drifted
@@ -209,7 +218,11 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         )
         self.diag_port_warning_row.add_suffix(reset_ports_button)
 
-        # Shown only for a driver that offers get_diagnostics().
+        # Kept as its own list (rather than folded into the udp/usb
+        # split below) because it is the exact set an earlier package
+        # already wrote tests against, asserting it is shown as a
+        # whole for a UDP driver and hidden as a whole for a driver
+        # with no get_diagnostics().
         self._driver_specific_diag_rows = [
             self.diag_host_row,
             self.diag_port_row,
@@ -219,8 +232,27 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             self.diag_enq_row,
             self.diag_ack_row,
         ]
-        self.diag_group.add(self.diag_driver_row)
-        for row in self._driver_specific_diag_rows:
+        self._udp_only_diag_rows = [
+            self.diag_host_row,
+            self.diag_port_row,
+            self.diag_jog_port_row,
+            self.diag_response_port_row,
+            self.diag_response_bound_row,
+        ]
+        self._usb_diag_rows = [
+            self.diag_usb_backend_row,
+            self.diag_usb_device_row,
+            self.diag_usb_bytes_sent_row,
+            self.diag_usb_bytes_received_row,
+        ]
+        all_rows = [
+            self.diag_driver_row,
+            *self._udp_only_diag_rows,
+            *self._usb_diag_rows,
+            self.diag_enq_row,
+            self.diag_ack_row,
+        ]
+        for row in all_rows:
             self.diag_group.add(row)
         self.diag_group.add(self.diag_port_warning_row)
         self.diag_group.add(self.diag_log_row)
@@ -415,7 +447,17 @@ class DeviceSettingsPage(TrackedPreferencesPage):
 
         get_diagnostics = getattr(driver, "get_diagnostics", None)
         diagnostics = get_diagnostics() if callable(get_diagnostics) else None
-        for row in self._driver_specific_diag_rows:
+        is_usb = (
+            diagnostics is not None
+            and getattr(diagnostics, "connection", "udp") == "usb"
+        )
+        is_udp = diagnostics is not None and not is_usb
+
+        for row in self._udp_only_diag_rows:
+            row.set_visible(is_udp)
+        for row in self._usb_diag_rows:
+            row.set_visible(is_usb)
+        for row in (self.diag_enq_row, self.diag_ack_row):
             row.set_visible(diagnostics is not None)
 
         if diagnostics is not None:
@@ -447,10 +489,26 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             self.diag_ack_row.set_subtitle(
                 self._format_timestamp(diagnostics.last_ack_received_at)
             )
+            self.diag_usb_backend_row.set_subtitle(
+                getattr(diagnostics, "usb_backend", None) or na
+            )
+            self.diag_usb_device_row.set_subtitle(
+                getattr(diagnostics, "usb_device", None) or na
+            )
+            self.diag_usb_bytes_sent_row.set_subtitle(
+                str(getattr(diagnostics, "usb_bytes_sent", 0))
+            )
+            self.diag_usb_bytes_received_row.set_subtitle(
+                str(getattr(diagnostics, "usb_bytes_received", 0))
+            )
 
+        # No UDP ports are in play over USB, so the ilab-614 port
+        # sanity notice would have nothing meaningful to compare.
+        is_usb_profile = self.machine.driver_args.get("connection") == "usb"
         port_mismatches = (
             RuidaDriver.port_mismatches(self.machine.driver_args)
             if self.machine.driver_name == "RuidaDriver"
+            and not is_usb_profile
             else {}
         )
         self.diag_port_warning_row.set_visible(bool(port_mismatches))

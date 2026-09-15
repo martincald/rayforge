@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import sys
 import tempfile
 from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
@@ -13,7 +14,7 @@ from typing import (
 )
 
 from ....context import RayforgeContext
-from ....core.varset import HostnameVar, PortVar, VarSet
+from ....core.varset import ChoiceVar, HostnameVar, PortVar, Var, VarSet
 from ....core.varset.hostnamevar import is_valid_hostname_or_ip
 from ....pipeline.encoder.base import EncodedOutput, OpsEncoder
 from ...models.coordinate_system import CoordinateSystem
@@ -34,6 +35,7 @@ from ..driver import (
 from .ruida_client import RuidaClient
 from .ruida_encoder import RuidaEncoder, build_rd_bytes
 from .ruida_transport import RuidaTransport
+from .ruida_usb_transport import RuidaUsbTransport
 
 if TYPE_CHECKING:
     from raygeo.ops import Ops
@@ -47,6 +49,53 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class _UsbTrafficCounter:
+    """
+    Wraps a RuidaUsbTransport to tally bytes sent/received for the
+    Diagnostics UI (RuidaDiagnostics.usb_bytes_sent/received).
+
+    RuidaUsbTransport (ruida_usb_transport.py) is owned by a different
+    package and exposes no byte counters of its own; rather than add
+    that surface there, this thin duck-typed wrapper -- built entirely
+    in this file -- forwards every call RuidaClient and RuidaDriver
+    make on a transport (decoded_received, status_changed,
+    is_connected, connect, disconnect, send_command, send) and counts
+    bytes on the way through. decoded_received/status_changed are the
+    SAME Signal objects the wrapped transport uses, so connecting to
+    them here behaves identically to connecting to the transport
+    directly.
+    """
+
+    def __init__(self, transport: RuidaUsbTransport) -> None:
+        self._transport = transport
+        self.decoded_received = transport.decoded_received
+        self.status_changed = transport.status_changed
+        self.bytes_sent = 0
+        self.bytes_received = 0
+        self.decoded_received.connect(self._on_received)
+
+    def _on_received(self, sender, data: bytes) -> None:
+        self.bytes_received += len(data)
+
+    @property
+    def is_connected(self) -> bool:
+        return self._transport.is_connected
+
+    async def connect(self) -> None:
+        await self._transport.connect()
+
+    async def disconnect(self) -> None:
+        await self._transport.disconnect()
+
+    async def send_command(self, command: bytes) -> None:
+        self.bytes_sent += len(command)
+        await self._transport.send_command(command)
+
+    async def send(self, data: bytes) -> None:
+        self.bytes_sent += len(data)
+        await self._transport.send(data)
+
+
 @dataclass
 class RuidaDiagnostics:
     """
@@ -54,6 +103,11 @@ class RuidaDiagnostics:
     Device settings diagnostics UI. Answers exactly the questions the
     silent-timeout investigation needed: which ports, did the response
     port bind, and did anything ever come back.
+
+    The usb_* fields are new for the USB transport (package U3) and
+    default to values that describe "not on USB", so every pre-U3
+    caller that builds this dataclass without naming them (the UDP
+    diagnostics tests) keeps working unchanged.
     """
 
     driver_class: str
@@ -65,6 +119,11 @@ class RuidaDiagnostics:
     response_port_error: str | None
     last_enq_sent_at: float | None
     last_ack_received_at: float | None
+    connection: str = "udp"
+    usb_backend: str | None = None
+    usb_device: str | None = None
+    usb_bytes_sent: int = 0
+    usb_bytes_received: int = 0
 
 
 class RuidaDriver(Driver):
@@ -133,6 +192,13 @@ class RuidaDriver(Driver):
         self._ruida_transport = None
         self._jog_udp_transport = None
         self._client = None
+        # USB connection (package U3): which backend was resolved,
+        # the configured device pin, and the byte-counting wrapper
+        # around the transport, for the Diagnostics UI.
+        self._connection = "udp"
+        self._usb_backend_resolved: str | None = None
+        self._usb_serial: str | None = None
+        self._usb_traffic: _UsbTrafficCounter | None = None
         self._response_received = asyncio.Event()
         self._connection_task: asyncio.Task | None = None
         self._card_info_task: asyncio.Task | None = None
@@ -234,6 +300,14 @@ class RuidaDriver(Driver):
             last_enq_sent_at = self._client.last_enq_sent_at
             last_ack_received_at = self._client.last_ack_received_at
 
+        usb_device = None
+        if self._connection == "usb":
+            # The transport (owned elsewhere) does not expose the
+            # live-resolved FTDI description/serial, so this reports
+            # the configured selection instead: the pin if one was
+            # set, or a note that the first device found is used.
+            usb_device = self._usb_serial or _("auto (first device found)")
+
         return RuidaDiagnostics(
             driver_class=type(self).__name__,
             host=self.host,
@@ -244,6 +318,15 @@ class RuidaDriver(Driver):
             response_port_error=response_port_error,
             last_enq_sent_at=last_enq_sent_at,
             last_ack_received_at=last_ack_received_at,
+            connection=self._connection,
+            usb_backend=self._usb_backend_resolved,
+            usb_device=usb_device,
+            usb_bytes_sent=(
+                self._usb_traffic.bytes_sent if self._usb_traffic else 0
+            ),
+            usb_bytes_received=(
+                self._usb_traffic.bytes_received if self._usb_traffic else 0
+            ),
         )
 
     @classmethod
@@ -284,6 +367,10 @@ class RuidaDriver(Driver):
 
     @classmethod
     def precheck(cls, **kwargs: Any) -> None:
+        if kwargs.get("connection", "udp") == "usb":
+            # No UDP endpoint is in play over USB, so there is no
+            # hostname to validate.
+            return
         host = kwargs.get("host", "")
         if not is_valid_hostname_or_ip(host):
             raise DriverPrecheckError(
@@ -317,6 +404,40 @@ class RuidaDriver(Driver):
                     ),
                     default=50207,
                 ),
+                ChoiceVar(
+                    key="connection",
+                    label=_("Connection"),
+                    choices=["udp", "usb"],
+                    description=_(
+                        "How to reach the controller: over the network "
+                        "(UDP) or a direct USB cable."
+                    ),
+                    default="udp",
+                    allow_none=False,
+                ),
+                ChoiceVar(
+                    key="usb_backend",
+                    label=_("USB Backend"),
+                    choices=["auto", "d2xx", "vcp"],
+                    description=_(
+                        "Which USB driver to use. 'auto' picks d2xx on "
+                        "Windows and vcp elsewhere."
+                    ),
+                    default="auto",
+                    allow_none=False,
+                ),
+                Var(
+                    key="usb_serial",
+                    label=_("USB Serial / Port"),
+                    var_type=str,
+                    description=_(
+                        "Optional: the FTDI serial number to pin (d2xx "
+                        "backend), or the serial port to use, e.g. COM5 "
+                        "(vcp backend). Leave empty to use the first "
+                        "device found."
+                    ),
+                    default="",
+                ),
             ]
         )
 
@@ -341,6 +462,13 @@ class RuidaDriver(Driver):
         return RuidaEncoder()
 
     def _setup_implementation(self, **kwargs: Any) -> None:
+        self._connection = kwargs.get("connection", "udp")
+        if self._connection == "usb":
+            self._setup_usb(**kwargs)
+        else:
+            self._setup_udp(**kwargs)
+
+    def _setup_udp(self, **kwargs: Any) -> None:
         host = kwargs.get("host", "")
         port = kwargs.get("port", 50200)
         jog_port = kwargs.get("jog_port", 50207)
@@ -369,6 +497,55 @@ class RuidaDriver(Driver):
         self._client.position_updated.connect(self._on_position_updated)
 
         self._init_coordinate_systems()
+
+    def _setup_usb(self, **kwargs: Any) -> None:
+        """
+        Wire up a direct-USB connection via RuidaUsbTransport.
+
+        There is no jog port over USB (it is a single stream), so the
+        client is built with no jog_transport; RuidaClient already
+        falls back to the main transport for every command in that
+        case (only connect/disconnect special-case a jog transport).
+        """
+        usb_backend_setting = kwargs.get("usb_backend", "auto")
+        usb_serial = kwargs.get("usb_serial") or None
+        backend = self._resolve_usb_backend(usb_backend_setting)
+        self._usb_backend_resolved = backend
+        self._usb_serial = usb_serial
+
+        if backend == "vcp":
+            if not usb_serial:
+                raise DriverSetupError(
+                    _(
+                        "USB Serial / Port must be set to a serial port "
+                        "(e.g. COM5) for the vcp backend."
+                    )
+                )
+            raw_transport = RuidaUsbTransport(backend="vcp", port=usb_serial)
+        else:
+            raw_transport = RuidaUsbTransport(
+                backend="d2xx", usb_serial=usb_serial
+            )
+
+        self._usb_traffic = _UsbTrafficCounter(raw_transport)
+        self._ruida_transport = self._usb_traffic
+        self._udp_transport = None
+        self._jog_udp_transport = None
+        self._jog_ruida_transport = None
+        self._client = RuidaClient(self._ruida_transport)
+
+        self._client.state_changed.connect(self._on_state_changed)
+        self._ruida_transport.status_changed.connect(self._on_status_changed)
+        self._client.position_updated.connect(self._on_position_updated)
+
+        self._init_coordinate_systems()
+
+    @staticmethod
+    def _resolve_usb_backend(setting: str) -> str:
+        """'auto' means d2xx on Windows, vcp elsewhere."""
+        if setting == "auto":
+            return "d2xx" if sys.platform == "win32" else "vcp"
+        return setting
 
     def _init_coordinate_systems(self) -> None:
         """

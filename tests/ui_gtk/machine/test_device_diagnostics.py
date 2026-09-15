@@ -314,3 +314,88 @@ def test_reset_ports_button_writes_defaults_and_clears_notice(
     assert saved["machine"]["driver_args"]["port"] == 50200
     assert saved["machine"]["driver_args"]["jog_port"] == 50207
     assert saved["machine"]["driver_args"]["response_port"] == 40200
+
+
+def _usb_diagnostics(
+    backend="d2xx", device="ABC123", bytes_sent=10, bytes_received=20
+):
+    return RuidaDiagnostics(
+        driver_class="RuidaDriver",
+        host=None,
+        port=None,
+        jog_port=None,
+        response_port=40200,
+        response_port_bound=None,
+        response_port_error=None,
+        last_enq_sent_at=None,
+        last_ack_received_at=None,
+        connection="usb",
+        usb_backend=backend,
+        usb_device=device,
+        usb_bytes_sent=bytes_sent,
+        usb_bytes_received=bytes_received,
+    )
+
+
+@pytest.mark.ui
+def test_diagnostics_group_shows_usb_fields_when_on_usb(
+    ui_context_initializer, monkeypatch
+):
+    page, _machine = _page(
+        ui_context_initializer,
+        monkeypatch,
+        _FakeRuidaDriver(_usb_diagnostics()),
+    )
+
+    assert page.diag_usb_backend_row.get_subtitle() == "d2xx"
+    assert page.diag_usb_device_row.get_subtitle() == "ABC123"
+    assert page.diag_usb_bytes_sent_row.get_subtitle() == "10"
+    assert page.diag_usb_bytes_received_row.get_subtitle() == "20"
+    for row in page._usb_diag_rows:
+        assert row.get_visible()
+    for row in page._udp_only_diag_rows:
+        assert not row.get_visible()
+    # ENQ/ACK are transport-agnostic (RuidaClient-level), so they stay
+    # shown for USB too, not just for UDP.
+    assert page.diag_enq_row.get_visible()
+    assert page.diag_ack_row.get_visible()
+
+
+@pytest.mark.ui
+def test_diagnostics_group_hides_usb_fields_when_on_udp(
+    ui_context_initializer, monkeypatch
+):
+    page, _machine = _page(
+        ui_context_initializer,
+        monkeypatch,
+        _FakeRuidaDriver(_ruida_diagnostics()),
+    )
+
+    for row in page._usb_diag_rows:
+        assert not row.get_visible()
+    for row in page._udp_only_diag_rows:
+        assert row.get_visible()
+
+
+@pytest.mark.ui
+def test_ruida_port_warning_hidden_for_usb_connection(
+    ui_context_initializer, monkeypatch
+):
+    """The A2.3 port sanity notice must not fire on connection=usb:
+    there are no UDP ports in play, so a leftover/mismatched "port"
+    key in driver_args must not raise a false alarm."""
+    page, machine = _page(
+        ui_context_initializer,
+        monkeypatch,
+        _FakeRuidaDriver(_usb_diagnostics()),
+    )
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {
+        "connection": "usb",
+        "usb_backend": "d2xx",
+        "usb_serial": "",
+        "port": 12345,
+    }
+    page._update_ui_state()
+
+    assert not page.diag_port_warning_row.get_visible()
