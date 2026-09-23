@@ -29,6 +29,7 @@ from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder import MachineCodeOpMap
 from ..shared.tasker import task_mgr
 from ..shared.util.time_format import format_hours_to_hm
+from . import window_geometry
 from .about import AboutDialog
 from .action_registry import action_registry
 from .actions import (
@@ -53,7 +54,7 @@ from .machine.settings_dialog import MachineSettingsDialog
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
 from .settings.settings_dialog import SettingsWindow
-from .shared.gtk import get_monitor_geometry
+from .shared.gtk import get_active_monitor
 from .shared.progress_bar import ProgressBar
 from .shared.sanity_check_dialog import SanityCheckDialog
 from .shared.time_estimate_overlay import TimeEstimateOverlay
@@ -62,6 +63,11 @@ from .theme import install as install_theme
 from .toolbar import MainToolbar
 
 logger = logging.getLogger(__name__)
+
+# Canvas width, in px, at and below which the right sidebar collapses:
+# the 430px sidebar would leave the canvas less than two thirds. Not
+# sp: libadwaita scales sp by dpi/96, which is 0.75 on macOS.
+_NARROW_WIDTH = 1100
 
 
 css = """
@@ -161,13 +167,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Instantiate UI-specific command handlers
         self.project_cmd = ProjectCmd(self, self.doc_editor)
 
-        geometry = get_monitor_geometry()
-        if geometry:
-            self.set_default_size(
-                int(geometry.width * 0.8), int(geometry.height * 0.8)
-            )
-        else:
-            self.set_default_size(1100, 800)
+        self._restore_geometry()
 
         # HeaderBar with left-aligned menu and centered title
         self.header_bar = Adw.HeaderBar()
@@ -233,8 +233,14 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Create an overlay so the right panel can float above the canvas.
         self._canvas_overlay = Gtk.Overlay()
-        self._canvas_overlay.set_vexpand(True)
-        main_ui_box.append(self._canvas_overlay)
+        # The canvas area measures its own width for the narrow
+        # breakpoint below. A window-level breakpoint would drop the
+        # window's minimum size to libadwaita's 360x200 and let the
+        # dock clip under it.
+        self._canvas_bin = Adw.BreakpointBin(child=self._canvas_overlay)
+        self._canvas_bin.set_size_request(1, 1)
+        self._canvas_bin.set_vexpand(True)
+        main_ui_box.append(self._canvas_bin)
 
         # Apply styles
         display = Gdk.Display.get_default()
@@ -394,6 +400,17 @@ class MainWindow(Adw.ApplicationWindow):
             Gtk.RevealerTransitionType.SLIDE_UP
         )
         right_pane_box.append(self.item_revealer)
+
+        # Below this width the sidebar would cover most of the canvas,
+        # so it collapses. The overlay it kept clear of moves back to
+        # the edge, and the View menu can still bring the sidebar back.
+        narrow = Adw.Breakpoint.new(
+            Adw.BreakpointCondition.parse(f"max-width: {_NARROW_WIDTH}px")
+        )
+        narrow.add_setter(self._surface_vis_overlay, "margin-end", SPACE_GROUP)
+        narrow.connect("apply", self._on_narrow_changed, True)
+        narrow.connect("unapply", self._on_narrow_changed, False)
+        self._canvas_bin.add_breakpoint(narrow)
 
         # Connect signals for item selection and actions
         self.surface.selection_changed.connect(self._on_selection_changed)
@@ -1676,6 +1693,19 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._save_bottom_panel()
 
+    def _on_narrow_changed(self, _breakpoint, narrow: bool):
+        """
+        Collapse the sidebar on a narrow window and restore it after.
+
+        Only the view changes: widening again shows the sidebar if,
+        and only if, the user had it shown.
+        """
+        visible = not narrow and get_context().config.right_panel_visible
+        self._right_pane.set_visible(visible)
+        action = self.lookup_action("toggle_right_panel")
+        if isinstance(action, Gio.SimpleAction):
+            action.set_state(GLib.Variant.new_boolean(visible))
+
     def on_toggle_right_panel_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
@@ -1693,12 +1723,52 @@ class MainWindow(Adw.ApplicationWindow):
     def on_quit_action(self, action, parameter):
         self.close()
 
+    def _restore_geometry(self):
+        """
+        Open at the size this monitor last had, or at the default one.
+
+        The position can only be put back once there is a native
+        window to move, so it waits for the first map.
+        """
+        monitor = get_active_monitor()
+        if monitor is None:
+            self.set_default_size(1100, 800)
+            return
+        config = get_context().config
+        saved = config.window_geometry.get(
+            window_geometry.monitor_key(monitor)
+        )
+        self.set_default_size(
+            *window_geometry.restore_size(
+                saved, window_geometry.monitor_workarea(monitor)
+            )
+        )
+        if not saved:
+            return
+        if saved.get("maximized"):
+            self.maximize()
+        if "x" in saved and "y" in saved:
+            handler_id = 0
+
+            def on_map(_window):
+                self.disconnect(handler_id)
+                window_geometry.move_window(self, saved["x"], saved["y"])
+
+            handler_id = self.connect("map", on_map)
+
+    def _save_geometry(self):
+        """Remember this window's geometry on the monitor it is on."""
+        captured = window_geometry.capture(self)
+        if captured:
+            get_context().config.set_window_geometry(*captured)
+
     def do_close_request(self):
         """
         Handles the 'close-request' signal to check for unsaved changes.
         For GTK signals, returning True PREVENTS the default handler from
         running (i.e., stops the close). Returning False allows it.
         """
+        self._save_geometry()
         if self.doc_editor.is_saved:
             return False  # Allow the window to close
 

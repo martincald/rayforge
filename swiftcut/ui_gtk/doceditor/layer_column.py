@@ -181,6 +181,10 @@ class LayerColumn(Gtk.Box):
         name_label.set_text(self.layer.name)
         name_label.set_halign(Gtk.Align.START)
         name_label.set_ellipsize(Pango.EllipsizeMode.END)
+        # The layers scroller squeezes columns to their minimum before
+        # it scrolls, and an ellipsized label's minimum is "...": keep
+        # a short name readable and scroll on a narrow window instead.
+        name_label.set_width_chars(7)
         self.name_label = name_label
         self.name_box.append(name_label)
 

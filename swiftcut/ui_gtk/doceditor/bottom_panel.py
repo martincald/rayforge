@@ -173,6 +173,14 @@ class BottomPanel(Gtk.Box):
                 tightening_threshold=PANEL_MAX_WIDTH,
                 child=self.wcs_group,
             )
+            # In pixels: the token already follows the system font,
+            # and libadwaita's default sp unit is pixels times dpi/96,
+            # which cut it by a quarter at macOS's 72 dpi.
+            clamp.set_unit(Adw.LengthUnit.PX)
+            # And never narrower: the controls area is sized from its
+            # height, and a group asked how narrow it can be at that
+            # height wraps every row title to a letter per line.
+            clamp.set_size_request(PANEL_MAX_WIDTH, -1)
             self._controls_widget.set_children(clamp, self._jog_laser_box)
         else:
             self._controls_widget.set_children(self._jog_laser_box)
@@ -480,9 +488,7 @@ class BottomPanel(Gtk.Box):
         # Short enough to stay on one line at the panel's width; the
         # long form wrapped to three and made this the tallest row in
         # the group. Each button's tooltip says the rest.
-        self.start_corner_row.set_subtitle(
-            _("Head starts here, cut grows away")
-        )
+        self.start_corner_row.set_subtitle(_("Head starts here"))
         self.wcs_group.add(self.start_corner_row)
 
         self._start_corner_buttons: dict[StartCorner, Gtk.ToggleButton] = {}

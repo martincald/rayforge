@@ -10,12 +10,18 @@ not go through ``shared.gtk.apply_css`` (that helper is
 reload).
 
 The token values come from ``docs/design/swift-cut-tokens.md``, which
-reads them out of the design's light and dark artboards.
+reads them out of the design's light and dark artboards. Type sizes and
+control sizes are given there in pixels at the design's 13px type and
+are written here in ``rem``, so they follow the system font rather than
+fixing the design's pixels on every display.
 """
 
 import logging
+from string import Template
 
 from gi.repository import Adw, Gdk, Gtk
+
+from .layout import rem
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +126,7 @@ _SHARED_TOKENS = """
 # Rules are scoped to the surfaces the reskin actually covers. A bare
 # `button` rule would reach into every dialog and preference row in
 # the app, which is a layout risk this direction does not take.
-_RULES = """
+_RULES = Template("""
 /* --- Canvas ---------------------------------------------------- */
 .sc-canvas {
     background-color: @sc_canvas_bg;
@@ -229,11 +235,11 @@ _RULES = """
 }
 
 .sc-panel {
-    font-size: 11.5px;
+    font-size: $panel_font;
 }
 
 .sc-jog .sc-caption {
-    font-size: 9px;
+    font-size: $jog_caption_font;
 }
 
 /* Readouts hold their column when the digits change. */
@@ -296,14 +302,14 @@ _RULES = """
     border-color: @sc_spark_bottom;
     color: #1D1D1F;
 }
-"""
+""").substitute(panel_font=rem(11.5), jog_caption_font=rem(9))
 
 # The layout layer, from docs/design/swift-cut-layout.md. Kept apart
 # from _RULES because it answers a different question: _RULES says
 # what a surface is made of, this says how big it is and where it
 # sits. The Python half of the same map - margins, box spacing, size
 # requests - is in rayforge/ui_gtk/layout.py.
-_LAYOUT = """
+_LAYOUT = Template("""
 /* --- Control sizes: two density contexts ------------------------ */
 /* Compact is pointer work. Touch is the jog grid, and only the jog
    grid: the one surface an operator hits while watching the machine
@@ -317,14 +323,14 @@ _LAYOUT = """
 .sc-split > button,
 .sc-rail button,
 .sc-icon-button {
-    min-width: 32px;
-    min-height: 32px;
+    min-width: $control_size;
+    min-height: $control_size;
     padding: 0;
 }
 
 .sc-jog button {
-    min-width: 60px;
-    min-height: 60px;
+    min-width: $jog_cell;
+    min-height: $jog_cell;
     padding: 0;
 }
 
@@ -335,12 +341,12 @@ _LAYOUT = """
 .sc-rail image,
 .sc-overlay image,
 .sc-icon-button image {
-    -gtk-icon-size: 16px;
+    -gtk-icon-size: $icon_glyph;
 }
 
 /* --- Row rhythm -------------------------------------------------- */
 .sc-panel row {
-    min-height: 40px;
+    min-height: $row_compact;
 }
 
 /* --- Radii ------------------------------------------------------- */
@@ -367,10 +373,16 @@ list.boxed-list,
 }
 
 .sc-caption {
-    font-size: 11px;
+    font-size: $caption_font;
     color: @sc_fg_dim;
 }
-"""
+""").substitute(
+    control_size=rem(32),
+    jog_cell=rem(60),
+    icon_glyph=rem(16),
+    row_compact=rem(40),
+    caption_font=rem(11),
+)
 
 _provider: Gtk.CssProvider | None = None
 

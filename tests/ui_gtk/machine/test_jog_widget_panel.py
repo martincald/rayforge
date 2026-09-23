@@ -7,6 +7,8 @@ import pytest
 
 gi.require_version("Gtk", "4.0")
 
+from gi.repository import Gtk  # noqa: E402
+
 from swiftcut.machine.driver.driver import DeviceState  # noqa: E402
 from swiftcut.machine.models.machine import Machine  # noqa: E402
 from swiftcut.machine.transport import TransportStatus  # noqa: E402
@@ -120,3 +122,25 @@ def test_position_readout_names_the_origin_corner(ui_context_initializer):
 
     machine.set_origin(Origin.BOTTOM_RIGHT)
     assert "bottom-right" in (widget.position_label.get_tooltip_text() or "")
+
+
+@pytest.mark.ui
+def test_natural_height_is_never_below_the_minimum(ui_context_initializer):
+    """The button borders put the grid above the bare-cell cap.
+
+    GTK warns on every layout pass when natural < minimum and then
+    corrects it, so the widget's own answer is what is checked, not
+    the corrected one measure() hands back.
+    """
+    from swiftcut.ui_gtk import theme
+    from swiftcut.ui_gtk.machine.jog_widget import JogWidget
+
+    theme.install()
+    widget = JogWidget()
+    window = Gtk.Window(child=widget)
+    window.present()
+
+    minimum, natural, _, _ = widget.do_measure(Gtk.Orientation.VERTICAL, -1)
+
+    assert natural >= minimum
+    window.destroy()

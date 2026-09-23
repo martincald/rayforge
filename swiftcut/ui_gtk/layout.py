@@ -9,30 +9,74 @@ Python can set (margins, box spacing, size requests) plus the few
 helpers that keep row suffixes, icon buttons and position readouts
 identical wherever they are built.
 
-The values come from ``docs/design/swift-cut-layout.md``.
+The values come from ``docs/design/swift-cut-layout.md``, which gives
+them in pixels at the design's 13px type. They are not used as pixels:
+each one scales with the system UI font, so the layout keeps its
+proportions at whatever type size the platform and the user chose. A
+12pt macOS system font gets a slightly tighter layout than the design,
+an 11pt GNOME one at 96 dpi a slightly looser one.
 """
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Pango
 
 from .icons import get_icon
+
+#: The type size the tokens below were drawn at: the design's 13px
+#: window base (``docs/design/swift-cut-tokens.md`` 1.5).
+DESIGN_FONT_PX = 13.0
+
+
+def system_font_px() -> float:
+    """
+    The system UI font size in logical pixels.
+
+    Falls back to the design base when there is no display to ask,
+    which is how the tokens keep their design values headless.
+    """
+    settings = Gtk.Settings.get_default()
+    if settings is None:
+        return DESIGN_FONT_PX
+    font = Pango.FontDescription.from_string(settings.props.gtk_font_name)
+    size = font.get_size() / Pango.SCALE
+    if size <= 0:
+        return DESIGN_FONT_PX
+    if font.get_size_is_absolute():
+        return size
+    xft_dpi = settings.props.gtk_xft_dpi
+    dpi = xft_dpi / 1024 if xft_dpi > 0 else 96.0
+    return size * dpi / 72.0
+
+
+_FONT_SCALE = system_font_px() / DESIGN_FONT_PX
+
+
+def scaled(design_px: float) -> int:
+    """A design pixel size at the system font's scale."""
+    return max(1, round(design_px * _FONT_SCALE))
+
+
+def rem(design_px: float) -> str:
+    """A design pixel size as CSS relative to the system font."""
+    return f"{design_px / DESIGN_FONT_PX:.4f}rem"
+
 
 # --- Spacing: a 4px scale, by role -----------------------------------
 # Five steps, nothing between them and nothing outside them.
 
 #: Inside one control: an icon and its caption, a chip's padding.
-SPACE_TIGHT = 4
+SPACE_TIGHT = scaled(4)
 
 #: Between sibling controls: buttons in a row, cells in the jog grid.
-SPACE_CONTROL = 8
+SPACE_CONTROL = scaled(8)
 
 #: Between groups, and a panel's own padding.
-SPACE_GROUP = 12
+SPACE_GROUP = scaled(12)
 
 #: Between sections of a page.
-SPACE_SECTION = 16
+SPACE_SECTION = scaled(16)
 
 #: A page's outer margin.
-SPACE_PAGE = 24
+SPACE_PAGE = scaled(24)
 
 
 # --- Control sizes: two density contexts -----------------------------
@@ -41,27 +85,27 @@ SPACE_PAGE = 24
 # hits while watching the machine instead of the screen.
 
 #: Every icon button, toggle and stepper in a compact context.
-CONTROL_SIZE = 32
+CONTROL_SIZE = scaled(32)
 
 #: A jog grid cell. The only non-compact control in the app.
-JOG_CELL = 60
+JOG_CELL = scaled(60)
 
 #: Every icon glyph, in both contexts. A jog button is a bigger
 #: target, not a bigger picture.
-ICON_GLYPH = 16
+ICON_GLYPH = scaled(16)
 
 
 # --- Row rhythm ------------------------------------------------------
 
 #: Dialog and page rows.
-ROW_MIN_HEIGHT = 48
+ROW_MIN_HEIGHT = scaled(48)
 
 #: Rows in a dock panel, where vertical space is scarce.
-ROW_MIN_HEIGHT_COMPACT = 40
+ROW_MIN_HEIGHT_COMPACT = scaled(40)
 
 #: A settings group inside a dock panel stops here instead of
 #: stretching to the panel edge and leaving a hole in the middle.
-PANEL_MAX_WIDTH = 340
+PANEL_MAX_WIDTH = scaled(340)
 
 
 # --- Placeholders ----------------------------------------------------

@@ -312,7 +312,9 @@ class JogWidget(Gtk.Widget):
                 total += _GAP + int(act_w)
             return (total, total, -1, -1)
         m = self._jog_grid.measure(orientation, for_size)
-        return (m[0], min(m[1], _MAX_HEIGHT), -1, -1)
+        # The cap counts bare cells; the buttons' borders can put the
+        # grid's own minimum above it, and natural may not go below it.
+        return (m[0], max(m[0], min(m[1], _MAX_HEIGHT)), -1, -1)
 
     def do_size_allocate(self, width, height, baseline):
         jog_w, act_w = self._calc_grid_widths(height)

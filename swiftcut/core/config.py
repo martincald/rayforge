@@ -72,6 +72,9 @@ class Config:
         # UI visibility states
         self.bottom_panel: dict[str, Any] | None = None
         self.right_panel_visible: bool = True
+        # Main window size, maximized state and position, per monitor
+        # key (see ui_gtk.window_geometry.monitor_key).
+        self.window_geometry: dict[str, dict[str, Any]] = {}
         self.canvas_view: CanvasViewState = CanvasViewState()
         self.auto_pipeline: bool = True
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
@@ -142,6 +145,14 @@ class Config:
         self.right_panel_visible = visible
         self.changed.send(self)
 
+    def set_window_geometry(self, monitor: str, state: dict[str, Any]):
+        """Remembers the main window's geometry on one monitor."""
+        merged = {**self.window_geometry.get(monitor, {}), **state}
+        if self.window_geometry.get(monitor) == merged:
+            return
+        self.window_geometry = {**self.window_geometry, monitor: merged}
+        self.changed.send(self)
+
     def set_import_dpi(self, dpi: float):
         """Sets the default DPI for unitless SVG imports."""
         if self.import_dpi == dpi:
@@ -199,6 +210,7 @@ class Config:
             ),
             "bottom_panel": self.bottom_panel,
             "right_panel_visible": self.right_panel_visible,
+            "window_geometry": self.window_geometry,
             "canvas_view": self.canvas_view.to_dict(),
             "auto_pipeline": self.auto_pipeline,
             "ops_color_mode": self.ops_color_mode.value,
@@ -256,6 +268,13 @@ class Config:
         # Load UI visibility states
         config.bottom_panel = data.get("bottom_panel", None)
         config.right_panel_visible = data.get("right_panel_visible", True)
+        window_geometry = data.get("window_geometry")
+        if isinstance(window_geometry, dict):
+            config.window_geometry = {
+                key: dict(state)
+                for key, state in window_geometry.items()
+                if isinstance(state, dict)
+            }
         config.canvas_view = CanvasViewState.from_dict(
             data.get("canvas_view", {})
         )

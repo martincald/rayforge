@@ -93,10 +93,9 @@ def _forward_scroll_to_ancestor(
         adj.set_value(max(lower, min(adj.get_value() + delta * step, upper)))
 
 
-def get_monitor_geometry() -> Gdk.Rectangle | None:
+def get_active_monitor() -> Gdk.Monitor | None:
     """
-    Returns a rectangle for the current monitor dimensions. If not found,
-    may return None.
+    Returns the current monitor, or None if there is none.
     """
     display = Gdk.Display.get_default()
     if not display:
@@ -113,21 +112,26 @@ def get_monitor_geometry() -> Gdk.Rectangle | None:
     # Fallback to the first monitor if no monitor is found under the cursor
     seat = display.get_default_seat()
     if not seat:
-        return monitor.get_geometry()
+        return monitor
 
     pointer = seat.get_pointer()
     if not pointer:
-        return monitor.get_geometry()
+        return monitor
 
     surface, _x, _y = pointer.get_surface_at_position()
     if not surface:
-        return monitor.get_geometry()
+        return monitor
 
-    monitor_under_mouse = display.get_monitor_at_surface(surface)
-    if not monitor_under_mouse:
-        return monitor.get_geometry()
+    return display.get_monitor_at_surface(surface) or monitor
 
-    return monitor_under_mouse.get_geometry()
+
+def get_monitor_geometry() -> Gdk.Rectangle | None:
+    """
+    Returns a rectangle for the current monitor dimensions. If not found,
+    may return None.
+    """
+    monitor = get_active_monitor()
+    return monitor.get_geometry() if monitor else None
 
 
 def get_screen_size() -> tuple[int, int] | None:

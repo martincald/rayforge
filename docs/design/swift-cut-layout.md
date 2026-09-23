@@ -11,6 +11,15 @@ role has one value. Where GTK CSS can express the rule it lives in
 `swiftcut/ui_gtk/theme.py`; where only Python can (margins, box
 spacing, size requests) it lives in `swiftcut/ui_gtk/layout.py`.
 
+**Units.** Every px value below is a size *at the design's 13px type*,
+not a pixel count. `layout.scaled()` multiplies it by the system UI
+font over 13px, and `theme.py` writes it as `rem` (`layout.rem()`), so
+the layout follows the platform's type size: 12px on macOS (the
+tokens run at 12/13), 14.7px for GNOME's 11pt at 96 dpi. libadwaita
+lengths in `sp` are pixels × dpi/96, which is 0.75 on macOS, so a
+token handed to libadwaita (`Adw.Clamp`, `Adw.Breakpoint`) is given in
+`px`. Captures at 13" and 27" sizes are in `screens/macos-fit/`.
+
 ---
 
 ## 1. Spacing — a 4px scale, by role
