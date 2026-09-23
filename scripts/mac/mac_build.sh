@@ -5,8 +5,11 @@ DO_BUILD=0
 DO_BUNDLE=0
 DO_DMG=0
 DO_RUN_APP=0
+USE_PIXI=0
+NON_INTERACTIVE=0
 VERSION_OVERRIDE=""
 MACOS_MIN_VERSION="12.0"
+PYINSTALLER_VERSION="6.22.3"
 MACOS_NUMPY_VERSION="1.26.4"
 MACOS_SCIPY_VERSION="1.11.4"
 GREEN="\033[0;32m"
@@ -25,6 +28,18 @@ while (($#)); do
             VERSION_OVERRIDE="$2"
             shift
             ;;
+        --pixi)
+            # Build from the active pixi environment, which already
+            # carries GTK 4, libadwaita and every Python dependency,
+            # instead of the Homebrew + venv one mac_setup.sh prepares.
+            USE_PIXI=1
+            ;;
+        --all)
+            # Bundle and DMG without the menu, for `pixi run build-mac`.
+            NON_INTERACTIVE=1
+            DO_BUNDLE=1
+            DO_DMG=1
+            ;;
         *)
             echo "Unknown option: $1" >&2
             exit 1
@@ -38,6 +53,7 @@ print_info "======================================"
 print_info "    SwiftCut macOS Build Script"
 print_info "======================================"
 echo ""
+if (( NON_INTERACTIVE == 0 )); then
 echo "Select build option:"
 echo "    1) Build"
 echo "    2) Bundle (.app)"
@@ -72,6 +88,7 @@ case "$BUILD_CHOICE" in
         exit 0
         ;;
 esac
+fi
 
 if (( DO_RUN_APP == 1 )); then
     APP_BIN="./dist/SwiftCut.app/Contents/MacOS/SwiftCut"
@@ -84,6 +101,32 @@ if (( DO_RUN_APP == 1 )); then
     exit 0
 fi
 
+if (( USE_PIXI == 1 )); then
+    if [ -z "${CONDA_PREFIX:-}" ]; then
+        echo "--pixi needs the pixi environment: run 'pixi run build-mac'." >&2
+        exit 1
+    fi
+    echo ""
+    echo ""
+    print_info "  Environment Setup (pixi)"
+    print_info "--------------------------------------"
+    echo ""
+    # PyInstaller is the one build tool the pixi environment lacks. A
+    # throwaway venv only supplies pip; PyInstaller lands in its own
+    # directory and runs on the environment's interpreter, so it sees
+    # conda-meta and analyses exactly what the app runs on.
+    PIP_VENV=build/mac-pip-venv
+    PYINSTALLER_DIR=build/mac-pyinstaller-$PYINSTALLER_VERSION
+    if [ ! -d "$PYINSTALLER_DIR/PyInstaller" ]; then
+        [ -x "$PIP_VENV/bin/python" ] || python -m venv "$PIP_VENV"
+        "$PIP_VENV/bin/python" -m pip install --quiet \
+            --disable-pip-version-check --target "$PYINSTALLER_DIR" \
+            "pyinstaller==$PYINSTALLER_VERSION"
+    fi
+    export PYTHONPATH="$(pwd)/$PYINSTALLER_DIR${PYTHONPATH:+:$PYTHONPATH}"
+    VENV_PY=python
+    export GI_TYPELIB_PATH="$CONDA_PREFIX/lib/girepository-1.0"
+else
 if [ ! -f .mac_env ]; then
     echo ".mac_env not found. Run scripts/mac/mac_setup.sh first." >&2
     exit 1
@@ -182,6 +225,7 @@ assert all((null_space, binary_dilation, least_squares, fftconvolve))
 print("Verified SciPy modules used by SwiftCut.")
 PY
 fi
+fi
 
 bash scripts/update_translations.sh --compile-only
 
@@ -233,7 +277,12 @@ PY
     # Compile .icon → Assets.car (macOS 26+ Liquid Glass icon format).
     # Falls back to legacy .icns if swiftcut.icon is not present.
     ICON_SOURCE=""
-    if [ -d "swiftcut/resources/icons/swiftcut.icon" ]; then
+    if (( USE_PIXI == 1 )); then
+        # Always the .icns, rebuilt from the SVG with iconutil; a stale
+        # Assets.car would make the spec pick the .icon instead.
+        rm -f "Assets.car" "swiftcut.icns"
+        ICON_SOURCE="icns"
+    elif [ -d "swiftcut/resources/icons/swiftcut.icon" ]; then
         echo "Compiling swiftcut.icon → Assets.car..."
         rm -f "Assets.car"
         if ! xcrun actool swiftcut/resources/icons/swiftcut.icon \
@@ -287,6 +336,10 @@ PY
             "$APP_ROOT/Info.plist" 2>/dev/null || true
     fi
 
+    # Everything from here to the re-sign repairs a Homebrew build:
+    # PyInstaller already collects the pixi environment's libraries
+    # and rewrites their references into the bundle.
+    if (( USE_PIXI == 0 )); then
     # Remove conflicting libiconv bundled by cv2.
     rm -f "$FW_DIR/libiconv.2.dylib"
 
@@ -569,6 +622,58 @@ SH
         popd >/dev/null
     fi
 
+    fi
+
+    if (( USE_PIXI == 1 )); then
+        # The opencv-python and Pillow wheels ship their own older
+        # copies of libraries the pixi environment also provides (glib,
+        # harfbuzz, ...), and PyInstaller keeps one file per name - the
+        # wheel's. GTK then dies on symbols its own glib has and cv2's
+        # lacks (g_string_copy). Put the environment's copy back at the
+        # top of Frameworks, where every @rpath reference resolves, and
+        # point the wheel's copy at it, as the Homebrew path does below.
+        for top in "$FW_DIR"/*.dylib; do
+            [ -L "$top" ] || continue
+            case "$(readlink "$top")" in
+                */.dylibs/*) ;;
+                *) continue ;;
+            esac
+            name=$(basename "$top")
+            [ -f "$CONDA_PREFIX/lib/$name" ] || continue
+            wheel_copy="$FW_DIR/$(readlink "$top")"
+            rm -f "$top"
+            cp "$CONDA_PREFIX/lib/$name" "$top"
+            chmod u+w "$top"
+            rm -f "$wheel_copy"
+            ln -s "$(python -c 'import os,sys; print(os.path.relpath(*sys.argv[1:]))' \
+                "$top" "$(dirname "$wheel_copy")")" "$wheel_copy"
+            echo "Using the environment's $name"
+        done
+        # A swapped-in library can need libraries the wheel's copy did
+        # not (the environment's libX11 wants libxcb.1.dylib), so pull
+        # in whatever the bundle now references and still lacks.
+        for _ in 1 2 3 4 5; do
+            missing=$(find "$FW_DIR" -name "*.dylib" -type f -print0 | \
+                xargs -0 otool -L 2>/dev/null | \
+                awk '$1 ~ /^@rpath\// {sub("@rpath/", "", $1); print $1}' | \
+                sort -u | while read -r dep; do
+                    [ -e "$FW_DIR/$dep" ] || \
+                        { [ -f "$CONDA_PREFIX/lib/$dep" ] && echo "$dep"; }
+                done)
+            [ -n "$missing" ] || break
+            for dep in $missing; do
+                cp "$CONDA_PREFIX/lib/$dep" "$FW_DIR/$dep"
+                chmod u+w "$FW_DIR/$dep"
+                echo "Adding the environment's $dep"
+            done
+        done
+    fi
+
+    # The addon manager recompiles any .mo not newer than its .po, and
+    # PyInstaller's copy leaves them level - so the first launch wrote
+    # into the signed bundle and broke its seal. Make every .mo newer.
+    find "$APP_ROOT" -name "*.mo" -exec touch {} +
+
     # Note: GTK4 typelibs are automatically bundled by PyInstaller to Resources/gi_typelibs
 
     # Re-sign after install_name_tool and dylib rewrites to keep
@@ -618,10 +723,16 @@ if (( DO_DMG == 1 )); then
         echo "dist/SwiftCut.app not found.\nBuild the app bundle first." >&2
         exit 1
     fi
-    DMG_PATH="dist/SwiftCut_${VERSION}.dmg"
-    rm -f "$DMG_PATH"
-    hdiutil create -volname "SwiftCut" -srcfolder "dist/SwiftCut.app" \
+    # The app beside an Applications link, so installing is one drag.
+    DMG_PATH="dist/SwiftCut.dmg"
+    DMG_STAGING="build/dmg"
+    rm -rf "$DMG_STAGING" "$DMG_PATH"
+    mkdir -p "$DMG_STAGING"
+    ditto "dist/SwiftCut.app" "$DMG_STAGING/SwiftCut.app"
+    ln -s /Applications "$DMG_STAGING/Applications"
+    hdiutil create -volname "SwiftCut" -srcfolder "$DMG_STAGING" \
         -ov -format UDZO "$DMG_PATH"
+    rm -rf "$DMG_STAGING"
 fi
 
 if (( DO_BUILD == 1 )) && (( DO_BUNDLE == 1 )) && (( DO_DMG == 1 )); then

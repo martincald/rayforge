@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -188,8 +189,11 @@ PRIVATE_ADDONS_DIR = Path(__file__).parent / "private_addons"
 USER_DEVICES_DIR = CONFIG_DIR / "devices"
 BUILTIN_DEVICES_DIR = Path(__file__).parent / "resources" / "devices"
 
-# State files (like logs)
-LOG_DIR = Path(user_log_dir("swiftcut"))
+# State files (like logs). macOS lists ~/Library/Logs by app name, so
+# the logs sit under the name the Dock and Finder show.
+LOG_DIR = Path(
+    user_log_dir("SwiftCut" if sys.platform == "darwin" else "swiftcut")
+)
 logger.info(f"Log dir is {LOG_DIR}")
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 

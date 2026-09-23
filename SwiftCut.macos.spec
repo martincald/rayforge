@@ -1,6 +1,32 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import sys
+
 from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import gi as _gi_hooks
+
+# conda-forge (pixi) typelibs name their libraries bare, e.g.
+# "libgio-2.0.0.dylib", and PyInstaller resolves a bare name only
+# through DYLD_LIBRARY_PATH - which, exported, would also hand every
+# library the build's helper processes load the environment's copy
+# (cv2 then fails on iconv). Instead the environment's lib/ goes on
+# pathex, which PyInstaller adds to that search for the typelibs'
+# libraries only, and the GI hooks' own lookup is pointed at it.
+_pathex = ['.']
+_binaries = []
+if os.path.isdir(os.path.join(sys.prefix, 'conda-meta')):
+    _pathex.append(os.path.join(sys.prefix, 'lib'))
+    # pyvips loads libvips by name at runtime, so nothing points
+    # PyInstaller at it; the Windows build adds its DLL the same way.
+    _libvips = os.path.join(sys.prefix, 'lib', 'libvips.42.dylib')
+    _binaries.append((_libvips, '.'))
+    _find_library = _gi_hooks.findSystemLibrary
+
+    def _find_in_env(name):
+        path = os.path.join(sys.prefix, 'lib', name)
+        return path if os.path.isfile(path) else _find_library(name)
+
+    _gi_hooks.findSystemLibrary = _find_in_env
 
 hiddenimports = ['gi._gi_cairo', 'cairosvg']
 hiddenimports += collect_submodules('swiftcut.ui_gtk.canvas2d')
@@ -25,8 +51,8 @@ if _use_car:
 
 a = Analysis(
     ['swiftcut/app.py'],
-    pathex=['.'],
-    binaries=[],
+    pathex=_pathex,
+    binaries=_binaries,
     datas=_datas,
     hiddenimports=hiddenimports,
     hookspath=['hooks'],
@@ -38,7 +64,7 @@ a = Analysis(
             },
         },
     },
-    runtime_hooks=[],
+    runtime_hooks=['scripts/mac/pyi_rth_cffi_bundle.py'],
     excludes=[],
     noarchive=False,
     optimize=0,
@@ -78,6 +104,14 @@ app = BUNDLE(
     bundle_identifier='org.ilab.SwiftCut',
     info_plist={
         **({'CFBundleIconName': 'swiftcut'} if _use_car else {}),
+        'CFBundleName': 'SwiftCut',
+        'CFBundleDisplayName': 'SwiftCut',
+        'NSHighResolutionCapable': True,
+        # Asked the first time the app reaches the cutter over UDP;
+        # without it macOS 15+ silently blocks local-network traffic.
+        'NSLocalNetworkUsageDescription': (
+            'SwiftCut talks to the laser cutter on the local network'
+        ),
         'LSMinimumSystemVersion': '12.0',
     },
 )

@@ -166,6 +166,10 @@ depends-on = ["compile-translations"]
 cmd = "bash scripts/build-deb.sh"
 depends-on = ["compile-translations"]
 
+[tasks.build-mac]
+# Builds dist/SwiftCut.app and dist/SwiftCut.dmg from this environment.
+cmd = "bash scripts/mac/mac_build.sh --pixi --all"
+
 [tasks.build-deb-source]
 # Builds a source package, ready for upload to a PPA.
 cmd = "bash scripts/build-deb.sh --source"

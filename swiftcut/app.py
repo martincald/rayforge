@@ -180,6 +180,10 @@ def _close_splash():
     children to inherit it.
     """
     os.environ["PYINSTALLER_SUPPRESS_SPLASH_SCREEN"] = "1"
+    # PyInstaller has no splash screen on macOS, and importing
+    # pyi_splash in a bundle without one logs a traceback.
+    if sys.platform == "darwin":
+        return
     try:
         import pyi_splash
 
