@@ -11,10 +11,18 @@ import pytest
 import pytest_asyncio
 from blinker import Signal
 
+from swiftcut.core.doc import Doc
+from swiftcut.machine.cmd import _go_scale_ops
 from swiftcut.machine.driver.driver import Axis
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
-from swiftcut.machine.models.machine import JogDirection, Machine, Origin
+from swiftcut.machine.models.machine import (
+    JogDirection,
+    Machine,
+    Origin,
+    StartCorner,
+)
 
 STOP = b"\xd8\x01"
 
@@ -28,6 +36,7 @@ class MotionClientSpy:
 
     def __init__(self, position=(0, 0)):
         self.commands: list[bytes] = []
+        self.blobs: list[bytes] = []
         self.position: tuple[int, int] | None = position
         self.reads = 0
         self.freeze_position = False
@@ -56,6 +65,9 @@ class MotionClientSpy:
         await self.read_gate.wait()
         return self.position
 
+    async def send_job(self, blob, on_start=None, on_chunk=None):
+        self.blobs.append(blob)
+
 
 def moves(commands: list[bytes]) -> list[bytes]:
     """The D9 motion commands out of a recorded stream."""
@@ -71,6 +83,15 @@ def moves_after_stop(commands: list[bytes]) -> list[bytes]:
     if STOP not in commands:
         return []
     return moves(commands[commands.index(STOP) :])
+
+
+async def run_go_scale(driver) -> None:
+    """Run a Go Scale job whose start corner needs a pre-move."""
+    machine = driver._machine
+    machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+    doc = Doc()
+    ops = _go_scale_ops(machine, 100.0, 50.0, 2400)
+    await driver.run(RuidaEncoder().encode(ops, machine, doc), doc, ops)
 
 
 @pytest_asyncio.fixture
@@ -94,8 +115,13 @@ class TestStopReachesEveryMotion:
 
     @pytest.mark.asyncio
     async def test_cancel_aborts_a_running_go_scale(self, driver):
-        """MOT-01: STOP must halt a Go Scale, not pause it."""
-        spy = MotionClientSpy(position=(0, 0))
+        """MOT-01: STOP during Go Scale's pre-move must end the run.
+
+        Go Scale is a job; the only motion before its upload is the
+        start-corner pre-move, and a job sent after a halted pre-move
+        would traverse from wherever the stop caught the head.
+        """
+        spy = MotionClientSpy(position=(200000, 150000))
         driver._client = spy
         driver.FRAME_CORNER_TIMEOUT = 0.05
         driver.FRAME_POLL_INTERVAL = 0.01
@@ -103,31 +129,18 @@ class TestStopReachesEveryMotion:
 
         async def move_then_stop(x_um, y_um, light=False):
             await plain_move(x_um, y_um, light=light)
-            if len(moves(spy.commands)) == 2:
-                # The head is halted mid-edge and stops reporting
-                # progress, exactly as an emergency stop leaves it.
-                spy.freeze_position = True
-                await driver.cancel()
+            # The head is halted mid-move and stops reporting
+            # progress, exactly as an emergency stop leaves it.
+            spy.freeze_position = True
+            await driver.cancel()
 
         spy.rapid_move_xy = move_then_stop
 
-        await driver.trace_frame(100.0, 50.0)
+        await run_go_scale(driver)
 
-        assert len(moves(spy.commands)) == 2
+        assert len(moves(spy.commands)) == 1
         assert moves_after_stop(spy.commands) == []
-
-    @pytest.mark.asyncio
-    async def test_cancel_before_a_trace_is_not_erased(self, driver):
-        """MOT-02: a Stop pressed while the pipeline runs must hold."""
-        spy = MotionClientSpy(position=(0, 0))
-        driver._client = spy
-        driver.FRAME_CORNER_TIMEOUT = 0.05
-        driver.FRAME_POLL_INTERVAL = 0.01
-
-        await driver.cancel_frame()
-        await driver.trace_frame(100.0, 50.0)
-
-        assert moves(spy.commands) == []
+        assert spy.blobs == []
 
     @pytest.mark.asyncio
     async def test_cancel_does_not_let_a_diagonal_restart(self, driver):
@@ -149,7 +162,7 @@ class TestStopReachesEveryMotion:
     @pytest.mark.asyncio
     async def test_release_all_keys_aborts_a_running_go_scale(self, driver):
         """MOT-04: focus loss during Go Scale must not resume it."""
-        spy = MotionClientSpy(position=(0, 0))
+        spy = MotionClientSpy(position=(200000, 150000))
         driver._client = spy
         driver.FRAME_CORNER_TIMEOUT = 0.05
         driver.FRAME_POLL_INTERVAL = 0.01
@@ -157,15 +170,15 @@ class TestStopReachesEveryMotion:
 
         async def move_then_release(x_um, y_um, light=False):
             await plain_move(x_um, y_um, light=light)
-            if len(moves(spy.commands)) == 2:
-                spy.freeze_position = True
-                await driver.release_all_jog_keys()
+            spy.freeze_position = True
+            await driver.release_all_jog_keys()
 
         spy.rapid_move_xy = move_then_release
 
-        await driver.trace_frame(100.0, 50.0)
+        await run_go_scale(driver)
 
         assert moves_after_stop(spy.commands) == []
+        assert spy.blobs == []
 
     @pytest.mark.asyncio
     async def test_key_up_cannot_be_overtaken_by_its_key_down(self, driver):
@@ -276,25 +289,6 @@ class TestOneSpeedUnitPath:
             != driver._machine.max_travel_speed
         )
 
-    @pytest.mark.asyncio
-    async def test_go_scale_runs_at_the_panel_speed(self, driver):
-        """MOT-26: the trace speed is the panel's, not a fixed one.
-
-        Nor the profile's: max travel speed bounds the moves the
-        application plans for itself, and a trace is the speed the
-        operator dialled in while watching the head.
-        """
-        spy = MotionClientSpy(position=(0, 0))
-        driver._client = spy
-        driver._machine.set_max_travel_speed(600)
-        driver.FRAME_CORNER_TIMEOUT = 0.05
-        driver.FRAME_POLL_INTERVAL = 0.01
-        await driver.set_jog_speed(12000)
-
-        await driver.trace_frame(10.0, 10.0)
-
-        assert spy.commands[0] == b"\xc9\x02" + encode35(200000)
-
 
 class TestOriginIsNeverInvented:
     """An absolute rapid needs a real origin or no command at all."""
@@ -325,16 +319,15 @@ class TestOriginIsNeverInvented:
 
     @pytest.mark.asyncio
     async def test_go_scale_refuses_an_unknown_position(self, driver):
-        """MOT-08: a trace from a fabricated origin is not the job."""
+        """MOT-08: a pre-move from a fabricated origin is not the job."""
         spy = MotionClientSpy(position=None)
         driver._client = spy
         driver._last_known_pos = None
-        driver.FRAME_CORNER_TIMEOUT = 0.05
-        driver.FRAME_POLL_INTERVAL = 0.01
 
-        await driver.trace_frame(100.0, 50.0)
+        await run_go_scale(driver)
 
         assert moves(spy.commands) == []
+        assert spy.blobs == []
 
     @pytest.mark.asyncio
     async def test_partial_position_update_does_not_invent_the_other(

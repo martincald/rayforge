@@ -41,6 +41,10 @@ class MachineCmd:
         self.job_started = Signal()
         self._current_monitor: JobMonitor | None = None
         self._on_progress_callback: Callable[[dict], None] | None = None
+        # A Stop pressed while a scale is still measuring its outline
+        # has no job on the driver to stop yet, so it is latched here
+        # and the scale refuses to start.
+        self._scale_cancelled = False
 
     @property
     def is_job_running(self) -> bool:
@@ -407,6 +411,7 @@ class MachineCmd:
 
     def cancel_job(self, machine: Machine):
         """Adds a task to cancel the currently running job on the machine."""
+        self._scale_cancelled = True
         driver = machine.driver
         self._editor.task_manager.add_coroutine(
             lambda ctx: driver.cancel(), key="cancel-job"
@@ -441,51 +446,6 @@ class MachineCmd:
         """Signal UI can watch to re-evaluate document-driven actions."""
         return self._editor.document_settled
 
-    def trace_frame(
-        self,
-        machine: Machine,
-        on_done: Callable[[], None] | None = None,
-    ):
-        """
-        Adds a task to traverse the job outline with the laser off.
-
-        Args:
-            machine: The machine to trace on.
-            on_done: Optional callback, run on the main thread once the
-                trace finishes, is cancelled, or fails.
-        """
-
-        def when_done(task):
-            if on_done is not None:
-                self._scheduler(on_done)
-
-        self._editor.task_manager.add_coroutine(
-            lambda ctx: self._trace_frame(machine),
-            key="trace-frame",
-            when_done=when_done,
-        )
-
-    async def _trace_frame(self, machine: Machine):
-        """Measure the job outline, then hand it to the driver."""
-        driver = machine.driver
-        if not driver:
-            return
-
-        handle = await self._editor.pipeline.generate_job_artifact_async()
-        if not handle:
-            logger.warning("Frame job has no operations.")
-            return
-
-        artifact_store = self._editor.pipeline.artifact_store
-        with artifact_store.checkout_handle(handle) as artifact:
-            if not isinstance(artifact, JobArtifact):
-                raise TypeError("Frame job did not produce a JobArtifact")
-            min_x, min_y, max_x, max_y = artifact.ops.rect()
-
-        refusal = await driver.trace_frame(max_x - min_x, max_y - min_y)
-        if refusal:
-            self._editor.notification_requested.send(self, message=refusal)
-
     def first_layer_power(self) -> float:
         """
         The power of the first step that has one, normalized 0-1.
@@ -506,16 +466,28 @@ class MachineCmd:
     def run_go_scale(
         self,
         machine: Machine,
+        speed: int,
         on_done: Callable[[], None] | None = None,
     ):
         """
         Adds a task to traverse the job's bounding box, laser off.
 
-        The rectangle goes out as plain rapids rather than a job: no
-        process is started and no power is ever set, so the laser
-        cannot fire and a machine whose door is open still traces.
+        The rectangle goes out as a normal job, so the controller
+        anchors it exactly where the real job would start and the
+        head is pre-moved to the start corner exactly as Cut Scale's
+        is. Being a job, it is subject to the door interlock.
+
+        Args:
+            machine: The machine to traverse on.
+            speed: Travel speed in mm/min, the jog panel's.
+            on_done: Optional callback, run on the main thread once the
+                traverse finishes, is cancelled, or fails.
         """
-        self.trace_frame(machine, on_done=on_done)
+
+        def build(width: float, height: float) -> Ops:
+            return _go_scale_ops(machine, width, height, speed)
+
+        self._run_scale_job(machine, build, "go scale", on_done)
 
     def run_cut_scale(
         self,
@@ -553,6 +525,7 @@ class MachineCmd:
             if on_done is not None:
                 self._scheduler(on_done)
 
+        self._scale_cancelled = False
         self._editor.task_manager.add_coroutine(
             lambda ctx: self._scale_job(machine, build_ops, job_name),
             key=job_name.replace(" ", "-"),
@@ -577,18 +550,14 @@ class MachineCmd:
                 raise TypeError(f"{job_name} did not produce a JobArtifact")
             min_x, min_y, max_x, max_y = artifact.ops.rect()
 
+        if self._scale_cancelled:
+            logger.info(f"{job_name.capitalize()} cancelled before it started")
+            return
+
         ops = build_ops(max_x - min_x, max_y - min_y)
         encoder = _create_driver_encoder(machine)
         encoded = encoder.encode(ops, machine, self._editor.doc)
         await self._execute_monitored_job(ops, machine, encoded=encoded)
-
-    def cancel_frame(self, machine: Machine):
-        """Adds a task to stop a running outline trace."""
-        driver = machine.driver
-        if driver:
-            self._editor.task_manager.add_coroutine(
-                lambda ctx: driver.cancel_frame(), key="cancel-frame"
-            )
 
     def jog_key_down(self, machine: Machine, axis: str, direction: int):
         """
@@ -722,6 +691,32 @@ def _rect_corners(width: float, height: float) -> list[tuple[float, float]]:
         (0.0, height),
         (0.0, 0.0),
     ]
+
+
+def _go_scale_ops(
+    machine: Machine, width: float, height: float, speed: int
+) -> Ops:
+    """
+    Build a one-layer job that only travels around the bounding box.
+
+    The layer's power is 0 and every corner is a travel move, so the
+    stream carries no cut command and the laser cannot fire. Both the
+    layer speed and its rapids are the given speed.
+    """
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("go-scale")
+    head = machine.get_default_laser_head()
+    if head is not None:
+        ops.set_head(head.uid)
+    ops.set_power(0.0)
+    ops.set_feed_rate(speed)
+    ops.set_rapid_rate(speed)
+    for x, y in _rect_corners(width, height):
+        ops.move_to(x, y, 0.0)
+    ops.layer_end("go-scale")
+    ops.job_end()
+    return ops
 
 
 def _cut_scale_ops(

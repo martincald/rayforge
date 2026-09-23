@@ -4593,3 +4593,44 @@ survive adversarial review or duplicate a finding above.
   window focus loss, dropped connection and machine swap at the
   widget; key-up, release-all, transport teardown, cancel and
   cleanup at the driver.
+
+## After Phase 3: Go Scale is a job again (2026-09-23)
+
+`716b53cbd` rewrote Go Scale as direct `D9 10` rapids so that the
+door interlock could not block it; from then on the button did
+nothing on the machine. Go Scale is back to the `81d9644e6` design,
+on top of the current code:
+
+- **It is a job.** `MachineCmd.run_go_scale` builds
+  `_go_scale_ops`: one layer, power 0, five travel moves around the
+  job's bounding box and no cut opcode, at the jog panel's speed
+  (`C9 02`, `C9 03` and the part's `C9 04`). It goes through
+  `build_rd_bytes` and `send_job` like any job, and the driver
+  pre-moves the head to the start corner with the same
+  `_move_to_start_corner` a job and Cut Scale use. A travel-only
+  job has no cut extent, so `_job_size_mm` measures it by its
+  travel instead.
+- **The door interlock now applies to Go Scale.** Being a job, it
+  sends `D8 00`; a controller whose door is open refuses it like
+  any job. The owner accepted this on 2026-09-23.
+- **Stop.** Go Scale, Cut Scale and a job share one Stop:
+  `cancel_job` -> `driver.cancel()`. A Stop pressed while a scale is
+  still measuring its outline is latched in `MachineCmd` and the
+  scale does not start (MOT-02). A stop, a key release or focus loss
+  during the start-corner pre-move, or a pre-move that times out,
+  now refuses the job; before this, the job was sent from wherever
+  the head had stopped (MOT-01, MOT-04).
+
+Effect on earlier findings:
+
+| Finding | Now |
+| --- | --- |
+| MOT-01, MOT-04 | Tests rewritten against Go Scale's pre-move (`test_motion_audit.py`) |
+| MOT-02 | Test moved to `test_ruida_scale_jobs.py::TestGoScaleRunsAsAJob` |
+| MOT-24 | Resolved: Go Scale is anchored by the controller exactly like the job |
+| MOT-26 | Jog-panel speed is carried by the job; test moved to `TestGoScaleBlob` |
+| MOT-29, MOT-30 | Superseded: `trace_frame`, `cancel_frame`, `_off_bed_refusal` and `_frame_cancel_pending` are deleted |
+| MOT-52 | Still TODO, and now applies to Go Scale too: its off-bed refusal went with the trace, so an off-bed outline is pre-moved to a clamped target exactly as a job's is |
+
+The Phase 3 invariant "the busy interlock covers jog, step jog and
+trace alike" now reads: jog, step jog and the start-corner pre-move.

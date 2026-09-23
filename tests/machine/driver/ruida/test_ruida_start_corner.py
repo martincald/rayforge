@@ -18,7 +18,7 @@ from blinker import Signal
 from raygeo.ops import Ops
 
 from swiftcut.core.doc import Doc
-from swiftcut.machine.cmd import _cut_scale_ops
+from swiftcut.machine.cmd import _cut_scale_ops, _go_scale_ops
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
@@ -329,40 +329,27 @@ class TestCutScaleIsPlacedLikeAJob:
 
 
 class TestGoScaleUsesTheSamePlacement:
-    """The traced outline is the outline the job would cut."""
+    """The traversed outline is the outline the job would cut."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("corner", list(StartCorner))
-    async def test_go_scale_starts_where_the_job_starts(
+    async def test_go_scale_pre_moves_like_cut_scale(
         self, ruida_driver, machine, corner
     ):
         """Same corner, same offset, measured from the same head."""
         machine.set_start_corner(corner)
-        spy = _ClientSpy()
-        ruida_driver._client = spy
+        cut = await _run_job(
+            ruida_driver, _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8)
+        )
 
-        await ruida_driver.trace_frame(WIDTH, HEIGHT)
+        go = await _run_job(
+            ruida_driver, _go_scale_ops(machine, WIDTH, HEIGHT, 2400)
+        )
 
-        origin = EXPECTED_PREMOVE[corner] or HEAD
-        assert _moves(spy.commands) == [
-            origin,
-            (origin[0] + WIDTH_UM, origin[1]),
-            (origin[0] + WIDTH_UM, origin[1] + HEIGHT_UM),
-            (origin[0], origin[1] + HEIGHT_UM),
-            origin,
-        ]
-
-    @pytest.mark.asyncio
-    async def test_top_left_still_traces_away_from_the_head(
-        self, ruida_driver
-    ):
-        """The default is unchanged: the head is the box's corner."""
-        spy = _ClientSpy()
-        ruida_driver._client = spy
-
-        await ruida_driver.trace_frame(WIDTH, HEIGHT)
-
-        assert _moves(spy.commands)[0] == HEAD
+        expected = EXPECTED_PREMOVE[corner]
+        assert _moves(go.commands) == _moves(cut.commands)
+        assert _moves(go.commands) == ([] if expected is None else [expected])
+        assert len(go.blobs) == 1
 
 
 class TestStartCornerPersists:

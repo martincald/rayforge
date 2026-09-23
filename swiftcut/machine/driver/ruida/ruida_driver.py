@@ -49,6 +49,21 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _job_size_mm(ops: "Ops") -> tuple[float, float]:
+    """
+    The width and height of the box a job anchors at the head.
+
+    That is its cut geometry, which the encoder normalizes to the
+    head. A job that cuts nothing -- Go Scale's travel-only outline --
+    is measured by its travel instead, or it would have no size and
+    its start corner would never move the head.
+    """
+    min_x, min_y, max_x, max_y = ops.rect()
+    if min_x == max_x and min_y == max_y:
+        min_x, min_y, max_x, max_y = ops.rect(include_travel=True)
+    return max_x - min_x, max_y - min_y
+
+
 class _UsbTrafficCounter:
     """
     Wraps a RuidaUsbTransport to tally bytes sent/received for the
@@ -213,23 +228,20 @@ class RuidaDriver(Driver):
         self._last_y_um: int | None = None
         self._jog_keys_down: set[tuple[str, int]] = set()
         # True while any interactive motion is in flight -- a jog, a
-        # single step, or a scale trace. It is the ignore interlock:
-        # input that arrives while it is set is dropped, never queued.
+        # single step, or a start-corner move. It is the ignore
+        # interlock: input that arrives while it is set is dropped,
+        # never queued.
         self._jog_busy = False
         self._jog_speed_mm_min = self.DEFAULT_JOG_SPEED
         # A job owns the wire while it uploads and runs: interactive
         # motion is refused for the duration rather than interleaved
         # into a stream whose acks are matched positionally.
         self._job_running = False
-        # Every halt bumps this. A trace captures it on entry and
-        # abandons itself the moment it changes, so a stop that came
-        # from anywhere -- Stop button, key release, focus loss,
-        # disconnect -- ends the trace too.
+        # Every halt bumps this. A start-corner move captures it on
+        # entry and abandons itself the moment it changes, so a stop
+        # that came from anywhere -- Stop button, key release, focus
+        # loss, disconnect -- ends the move, and its job, too.
         self._frame_epoch = 0
-        # A Stop pressed while the outline is still being measured has
-        # no trace to bump the epoch on, so it is latched here and
-        # consumed by the run it was aimed at.
-        self._frame_cancel_pending = False
 
     @property
     def _last_known_pos(self) -> tuple[int, int] | None:
@@ -256,8 +268,8 @@ class RuidaDriver(Driver):
         """
         Hold off background polling for the duration of a block.
 
-        A counter rather than a flag: a job upload and a scale trace
-        can overlap, and the inner one's exit must not hand the poller
+        A counter rather than a flag: a job upload and an interactive
+        move can overlap, and the inner one's exit must not hand the poller
         back to the outer one mid-send.
         """
         self._polling_suspensions += 1
@@ -836,11 +848,6 @@ class RuidaDriver(Driver):
         self._dump_job_blob(blob)
 
         if not await self._move_to_start_corner(ops):
-            logger.warning(
-                "Job not sent: the head position is unknown, so the "
-                "start corner cannot be honoured",
-                extra=self._log_extra("USER_COMMAND"),
-            )
             await self._report_ops_done(on_command_done, 0, num_ops)
             self.job_finished.send(self)
             return
@@ -971,11 +978,11 @@ class RuidaDriver(Driver):
 
     async def cancel(self) -> None:
         """
-        Stop whatever this driver started: job, trace, or jog.
+        Stop whatever this driver started: job, start-corner move, or jog.
 
         The red Stop button is the one control the user reaches for
         when anything is moving, so it cannot be a job-only command.
-        Bumping the frame epoch aborts a running trace, dropping the
+        Bumping the frame epoch aborts a start-corner move, dropping the
         held keys stops a release from restarting a hold, and
         _stop_jog_motion sends the same D8 01 a job cancel used to.
         """
@@ -1095,100 +1102,6 @@ class RuidaDriver(Driver):
             return high - margin_um
         return low + margin_um
 
-    def can_trace_frame(self) -> bool:
-        return True
-
-    async def trace_frame(
-        self, width_mm: float, height_mm: float
-    ) -> str | None:
-        """
-        Traverse the job's bounding box as plain interactive rapids.
-
-        This is an alignment aid, not a job: it never starts a process
-        (no D8 00, no prologue) and never sends a power command, so the
-        laser cannot fire and the controller's door interlock has
-        nothing to gate. The corners are absolute targets built from
-        the head position the trace starts at, driven by the same
-        D9 10 primitive a jog uses.
-
-        Returns:
-            The reason the trace was refused, for the caller to show
-            the operator, or None when it ran.
-        """
-        assert self._client
-        width_um = int(width_mm * 1000)
-        height_um = int(height_mm * 1000)
-        # The same offset the job's own pre-move uses, on the same
-        # width and height, so the outline traced here is the outline
-        # the job cuts.
-        off_x_um, off_y_um = self._start_corner_offset_um(width_mm, height_mm)
-        logger.info(
-            f"Go Scale: tracing {width_mm:.1f} x {height_mm:.1f} mm "
-            f"from the current position, which is the "
-            f"{self._machine.start_corner.value} corner",
-            extra=self._log_extra("USER_COMMAND"),
-        )
-
-        # Captured before anything is sent. A cancel that arrived
-        # while the caller was still measuring the outline has already
-        # bumped the epoch, so the trace refuses to start rather than
-        # wiping the user's Stop.
-        epoch = self._frame_epoch
-        if self._frame_cancel_pending:
-            self._frame_cancel_pending = False
-            logger.info(
-                "Go Scale cancelled before it started",
-                extra=self._log_extra("USER_COMMAND"),
-            )
-            return
-        if self._jog_busy or self._job_running:
-            logger.info(
-                "Go Scale ignored: the head is already moving",
-                extra=self._log_extra("USER_COMMAND"),
-            )
-            return
-
-        start = await self._jog_origin()
-        if start is None:
-            logger.warning(
-                "Go Scale not started: the head position is unknown",
-                extra=self._log_extra("USER_COMMAND"),
-            )
-            return
-        self._log_start_corner_premove(
-            start[0] + off_x_um, start[1] + off_y_um
-        )
-        corners = [
-            (start[0] + off_x_um + dx, start[1] + off_y_um + dy)
-            for dx, dy in (
-                (0, 0),
-                (width_um, 0),
-                (width_um, height_um),
-                (0, height_um),
-                (0, 0),
-            )
-        ]
-        refusal = self._off_bed_refusal(corners)
-        if refusal:
-            return refusal
-
-        self._jog_busy = True
-        try:
-            with self._polling_suspended():
-                await self._set_travel_speed(self._jog_speed_mm_min)
-                for x_um, y_um in corners:
-                    if self._frame_epoch != epoch:
-                        logger.info(
-                            "Go Scale cancelled",
-                            extra=self._log_extra("USER_COMMAND"),
-                        )
-                        return
-                    target = await self._jog_move_to(x_um, y_um)
-                    await self._wait_for_frame_corner(*target, epoch=epoch)
-        finally:
-            self._jog_busy = False
-            self._frame_cancel_pending = False
-
     def _start_corner_offset_um(
         self, width_mm: float, height_mm: float
     ) -> tuple[int, int]:
@@ -1249,13 +1162,11 @@ class RuidaDriver(Driver):
         needed and the position cannot be established, the job is
         refused rather than run in the wrong place -- every D9 10 is
         an absolute target, so a guessed origin is a full-bed
-        traverse.
+        traverse. A move that was stopped, or never arrived, refuses
+        the job too: the head is not on the corner.
         """
         assert self._client
-        rect = ops.rect()
-        dx_um, dy_um = self._start_corner_offset_um(
-            rect[2] - rect[0], rect[3] - rect[1]
-        )
+        dx_um, dy_um = self._start_corner_offset_um(*_job_size_mm(ops))
         if not (dx_um or dy_um):
             return True
 
@@ -1265,6 +1176,11 @@ class RuidaDriver(Driver):
             with self._polling_suspended():
                 origin = await self._jog_origin()
                 if origin is None:
+                    logger.warning(
+                        "Job not sent: the head position is unknown, so "
+                        "the start corner cannot be honoured",
+                        extra=self._log_extra("USER_COMMAND"),
+                    )
                     return False
                 target_x = origin[0] + dx_um
                 target_y = origin[1] + dy_um
@@ -1274,55 +1190,13 @@ class RuidaDriver(Driver):
                 await self._wait_for_frame_corner(*target, epoch=epoch)
         finally:
             self._jog_busy = False
+        if self._frame_epoch != epoch:
+            logger.info(
+                "Job not sent: the start-corner move was stopped",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return False
         return True
-
-    def _off_bed_refusal(
-        self, corners: list[tuple[int, int]]
-    ) -> str | None:
-        """
-        Why the outline cannot be traced, or None if every corner is
-        reachable.
-
-        A clamped corner would trace a rectangle that is not the job's,
-        which is worse than tracing nothing: the user reads it as
-        proof the job fits. Refusing silently reads as a dead button,
-        so the reason goes back to the caller as well as to the log.
-        """
-        (x_lo, x_hi), (y_lo, y_hi) = (
-            self._axis_range("x"),
-            self._axis_range("y"),
-        )
-        outside = [
-            c
-            for c in corners
-            if not (x_lo <= c[0] <= x_hi and y_lo <= c[1] <= y_hi)
-        ]
-        if not outside:
-            return None
-        x_mm, y_mm = outside[0][0] / 1000, outside[0][1] / 1000
-        logger.warning(
-            f"Go Scale not started: the outline runs off the bed at "
-            f"{x_mm:.1f}, {y_mm:.1f} mm",
-            extra=self._log_extra("USER_COMMAND"),
-        )
-        return _(
-            "Go Scale did not run: the outline runs off the bed at "
-            "{x:.1f}, {y:.1f} mm."
-        ).format(x=x_mm, y=y_mm)
-
-    async def cancel_frame(self) -> None:
-        """
-        Stop a running scale trace and resync the cached position.
-
-        The head parks wherever the stop caught it; no further corners
-        are sent. Bumping the epoch also cancels a trace that has not
-        started yet, so a Stop pressed while the outline is still
-        being measured is not forgotten.
-        """
-        self._frame_epoch += 1
-        self._frame_cancel_pending = True
-        if self._jog_busy:
-            await self._stop_jog_motion()
 
     async def _wait_for_frame_corner(
         self,
@@ -1336,7 +1210,7 @@ class RuidaDriver(Driver):
         Args:
             target_x: Corner X in micrometers, absolute.
             target_y: Corner Y in micrometers, absolute.
-            epoch: The frame epoch this trace was started under.
+            epoch: The frame epoch this move was started under.
         """
         assert self._client
         deadline = asyncio.get_event_loop().time() + self.FRAME_CORNER_TIMEOUT
@@ -1355,8 +1229,8 @@ class RuidaDriver(Driver):
             await asyncio.sleep(self.FRAME_POLL_INTERVAL)
 
         logger.warning(
-            f"Go Scale: corner ({target_x}, {target_y}) um not reached "
-            f"within {self.FRAME_CORNER_TIMEOUT}s, abandoning the trace",
+            f"Start corner ({target_x}, {target_y}) um not reached "
+            f"within {self.FRAME_CORNER_TIMEOUT}s, abandoning the move",
             extra=self._log_extra("USER_COMMAND"),
         )
         self._frame_epoch += 1
@@ -1447,11 +1321,11 @@ class RuidaDriver(Driver):
         """
         Start a continuous jog: one long move toward the bed limit.
 
-        Ignored while a single-step jog or a trace is still running. A
-        key that joins a hold already running -- the two halves of a
-        diagonal button arrive as separate presses -- stops the move
-        in flight and re-issues it for the combined direction, so
-        exactly one move is ever outstanding and nothing queues up
+        Ignored while a single-step jog or a start-corner move is
+        running. A key that joins a hold already running -- the two
+        halves of a diagonal button arrive as separate presses -- stops
+        the move in flight and re-issues it for the combined direction,
+        so exactly one move is ever outstanding and nothing queues up
         behind the finger.
         """
         assert self._client
@@ -1530,8 +1404,8 @@ class RuidaDriver(Driver):
         confident wrong one is not.
 
         Bumping the frame epoch makes this the single halt for every
-        kind of interactive motion: a trace running concurrently sees
-        the change at its next corner and abandons itself.
+        kind of interactive motion: a start-corner move running concurrently
+        sees the change and abandons itself.
 
         HARDWARE NOTE: this assumes D8 01 halts an interactive rapid.
         See MOTION_AUDIT.md MOT-05 -- nothing in this repository
@@ -1682,8 +1556,8 @@ class RuidaDriver(Driver):
         """
         Move one step of the step-size control and wait for it to land.
 
-        Ignored while another jog or a trace is in flight, so clicks
-        cannot queue up behind a hold or behind each other.
+        Ignored while another jog or a start-corner move is in flight,
+        so clicks cannot queue up behind a hold or behind each other.
         """
         assert self._client
         if self._jog_busy or self._job_running:

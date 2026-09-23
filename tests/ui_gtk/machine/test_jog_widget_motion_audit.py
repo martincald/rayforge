@@ -85,12 +85,11 @@ def test_stop_during_a_cut_scale_cancels_the_job(ui_context_initializer):
         widget._on_go_scale_clicked(widget.go_scale_btn)
 
     machine_cmd.cancel_job.assert_called_once_with(machine)
-    machine_cmd.cancel_frame.assert_not_called()
 
 
 @pytest.mark.ui
-def test_stop_during_a_go_scale_cancels_the_trace(ui_context_initializer):
-    """MOT-09: Go Scale is rapids, so its Stop must stop the trace."""
+def test_stop_during_a_go_scale_cancels_the_job(ui_context_initializer):
+    """MOT-09: Go Scale is a job too, so its Stop must stop a job."""
     machine_cmd = _scale_cmd()
     widget, machine = _widget(ui_context_initializer, machine_cmd)
 
@@ -98,8 +97,7 @@ def test_stop_during_a_go_scale_cancels_the_trace(ui_context_initializer):
         widget._on_go_scale_clicked(widget.go_scale_btn)
         widget._on_go_scale_clicked(widget.go_scale_btn)
 
-    machine_cmd.cancel_frame.assert_called_once_with(machine)
-    machine_cmd.cancel_job.assert_not_called()
+    machine_cmd.cancel_job.assert_called_once_with(machine)
 
 
 @pytest.mark.ui

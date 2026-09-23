@@ -1,29 +1,46 @@
 """What the Go Scale and Cut Scale actions put on the wire.
 
-Go Scale is plain interactive rapids: a speed and five moves, nothing
-else, so no process starts and the laser cannot fire. Cut Scale is an
-ordinary one-layer job around the same rectangle, and stays one.
+Both are ordinary one-layer jobs around the job's bounding box, sent
+through build_rd_bytes and send_job like any other. Go Scale's layer
+has power 0 and nothing in it cuts: every corner is a travel move, at
+the jog panel's speed, so the laser cannot fire. Cut Scale burns the
+same rectangle.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
-from blinker import Signal
 from raygeo.ops import Ops
 
 from swiftcut.core.doc import Doc
-from swiftcut.machine.cmd import MachineCmd, _cut_scale_ops
-from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.cmd import MachineCmd, _cut_scale_ops, _go_scale_ops
 from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
-from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
+from swiftcut.machine.driver.ruida.ruida_util import (
+    decode35,
+    encode14,
+    encode35,
+)
 from swiftcut.machine.models.laser import Laser
-from swiftcut.machine.models.machine import Machine
 from swiftcut.pipeline.artifact import JobArtifact
 
-# Opcodes that cut, and the power commands a layer body emits.
+# Opcodes that cut, and every command that carries a power.
 CUT_OPCODES = (b"\xa8", b"\xa9", b"\xaa", b"\xab")
-BODY_POWER = (b"\xc6\x01", b"\xc6\x02")
+POWER_COMMANDS = (
+    b"\xc6\x01",
+    b"\xc6\x02",
+    b"\xc6\x21",
+    b"\xc6\x22",
+)
+PART_POWER_COMMANDS = (
+    b"\xc6\x31",
+    b"\xc6\x32",
+    b"\xc6\x41",
+    b"\xc6\x42",
+)
+TRAVEL_OPCODES = (b"\x88", b"\x89", b"\x8a", b"\x8b")
+
+# 40 mm/s on the jog panel, in the mm/min base unit it hands over.
+JOG_SPEED = 40 * 60
 
 
 @pytest.fixture
@@ -40,196 +57,153 @@ def _commands(ops, machine):
     return RuidaEncoder().encode(ops, machine, Doc()).driver_data["commands"]
 
 
-class _ScaleClientSpy:
-    """Records everything a Go Scale run sends."""
-
-    def __init__(self, position=(0, 0)):
-        self.commands: list[bytes] = []
-        self.position = position
-        self.state_changed = Signal()
-        self.position_updated = Signal()
-
-    async def disconnect(self):
-        pass
-
-    async def set_travel_speed(self, um_per_s: int):
-        self.commands.append(b"\xc9\x02" + encode35(um_per_s))
-
-    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
-        self.commands.append(b"\xd9\x10\x00" + encode35(x_um) + encode35(y_um))
-        self.position = (x_um, y_um)
-
-    async def stop_process(self):
-        self.commands.append(b"\xd8\x01")
-
-    async def read_position(self, timeout: float = 2.0):
-        return self.position
+def _go_scale(machine):
+    return _commands(_go_scale_ops(machine, 100.0, 50.0, JOG_SPEED), machine)
 
 
-def _corners(commands: list[bytes]) -> list[tuple[int, int]]:
-    return [
-        (decode35(c[3:8]), decode35(c[8:13]))
-        for c in commands
-        if c[:2] == b"\xd9\x10"
-    ]
+class TestGoScaleBlob:
+    """Go Scale is a valid job that only travels."""
 
+    def test_is_a_complete_job(self, machine):
+        commands = _go_scale(machine)
 
-@pytest_asyncio.fixture
-async def ruida_driver(lite_context):
-    """A RuidaDriver with no transports; tests inject a client spy."""
-    machine = Machine(lite_context)
-    machine.driver_name = "RuidaDriver"
-    lite_context.machine_mgr.add_machine(machine)
-    driver = RuidaDriver(lite_context, machine)
+        assert commands[0] == b"\xd8\x12"
+        assert b"\xd8\x00" in commands
+        assert b"\xeb" in commands
+        assert commands[-2].startswith(b"\xe5\x05")
+        assert commands[-1] == b"\xd7"
 
-    yield driver
+    def test_has_one_part(self, machine):
+        commands = _go_scale(machine)
 
-    driver._client = None
-    await driver.cleanup()
-    await machine.shutdown()
+        assert b"\xca\x22\x00" in commands
 
+    def test_has_no_cut_opcode(self, machine):
+        commands = _go_scale(machine)
 
-class TestGoScale:
-    """Go Scale traverses the outline with interactive rapids."""
+        cuts = [c for c in commands if c[:1] in CUT_OPCODES]
+        assert cuts == []
 
-    @pytest.mark.asyncio
-    async def test_emits_one_speed_and_five_moves_only(self, ruida_driver):
-        spy = _ScaleClientSpy(position=(0, 0))
-        ruida_driver._client = spy
+    def test_every_power_is_zero(self, machine):
+        commands = _go_scale(machine)
 
-        await ruida_driver.trace_frame(100.0, 50.0)
+        body = [c[2:] for c in commands if c[:2] in POWER_COMMANDS]
+        part = [c[3:] for c in commands if c[:2] in PART_POWER_COMMANDS]
+        assert len(body) == 4 and len(part) == 4
+        assert set(body) == set(part) == {encode14(0)}
 
-        # The trace runs at the jog panel's speed, whatever it is.
-        assert spy.commands[0] == b"\xc9\x02" + encode35(
-            int(ruida_driver._jog_speed_mm_min * 1000 / 60)
-        )
-        assert len(_corners(spy.commands)) == 5
-        # A speed and five moves: nothing starts a process, and no
-        # power command is ever sent.
-        assert len(spy.commands) == 6
-        assert b"\xd8\x00" not in spy.commands
+    def test_travels_at_the_jog_panel_speed(self, machine):
+        """The layer speed and its rapids are both the panel's."""
+        commands = _go_scale(machine)
 
-    @pytest.mark.asyncio
-    async def test_traces_at_the_jog_panel_speed(self, ruida_driver):
-        """The panel's jog speed drives the trace, not a fixed one."""
-        spy = _ScaleClientSpy(position=(0, 0))
-        ruida_driver._client = spy
-        # 40 mm/s, in the mm/min base units the jog panel pushes.
-        await ruida_driver.set_jog_speed(40 * 60)
+        um_per_s = encode35(40000)
+        assert b"\xc9\x02" + um_per_s in commands
+        assert b"\xc9\x03" + um_per_s in commands
+        assert b"\xc9\x04\x00" + um_per_s in commands
 
-        await ruida_driver.trace_frame(100.0, 50.0)
+    def test_traverses_the_four_corners(self, machine):
+        commands = _go_scale(machine)
 
-        assert spy.commands[0] == b"\xc9\x02" + encode35(40000)
-
-    @pytest.mark.asyncio
-    async def test_the_panel_speed_is_not_capped_by_the_profile(
-        self, ruida_driver
-    ):
-        """200 mm/s on the panel is 200 mm/s on the wire.
-
-        The profile's max travel speed bounds the moves the
-        application plans for itself. A trace is not one of those: it
-        is the speed the operator dialled in, watching the head.
-        """
-        spy = _ScaleClientSpy(position=(0, 0))
-        ruida_driver._client = spy
-        assert ruida_driver._machine.max_travel_speed < 12000
-        await ruida_driver.set_jog_speed(12000)  # 200 mm/s
-
-        await ruida_driver.trace_frame(100.0, 50.0)
-
-        assert spy.commands[0] == b"\xc9\x02" + encode35(200000)
-
-    @pytest.mark.asyncio
-    async def test_corners_are_offset_from_the_start_position(
-        self, ruida_driver
-    ):
-        spy = _ScaleClientSpy(position=(60000, 40000))
-        ruida_driver._client = spy
-
-        await ruida_driver.trace_frame(100.0, 50.0)
-
-        assert _corners(spy.commands) == [
-            (60000, 40000),
-            (160000, 40000),
-            (160000, 90000),
-            (60000, 90000),
-            (60000, 40000),
+        moves = [
+            (decode35(c[1:6]), decode35(c[6:11]))
+            for c in commands
+            if c[:1] in TRAVEL_OPCODES
+        ]
+        assert moves == [
+            (0, 0),
+            (100000, 0),
+            (100000, 50000),
+            (0, 50000),
+            (0, 0),
         ]
 
-    @pytest.mark.asyncio
-    async def test_cancel_stops_the_motion_and_resyncs(self, ruida_driver):
-        spy = _ScaleClientSpy(position=(0, 0))
-        ruida_driver._client = spy
-        original = spy.rapid_move_xy
+    def test_declares_the_outline_as_its_bounds(self, machine):
+        """Travel counts: the controller checks the head's real path."""
+        commands = _go_scale(machine)
 
-        async def cancel_after_second(x_um, y_um, light=False):
-            await original(x_um, y_um, light=light)
-            if len(_corners(spy.commands)) == 2:
-                await ruida_driver.cancel_frame()
-
-        spy.rapid_move_xy = cancel_after_second
-
-        await ruida_driver.trace_frame(100.0, 50.0)
-
-        assert _corners(spy.commands) == [(0, 0), (100000, 0)]
-        assert b"\xd8\x01" in spy.commands
-        assert ruida_driver._jog_busy is False
+        high = next(c for c in commands if c.startswith(b"\xe7\x07"))
+        assert (decode35(high[2:7]), decode35(high[7:12])) == (100000, 50000)
 
 
-class TestGoScaleRefusesAnOffBedOutline:
-    """Refusing is right; being silent about it is the defect.
+def _editor_with_outline(width: float, height: float):
+    """An editor whose job artifact is a width x height rectangle."""
+    ops = Ops()
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.line_to(width, height, 0.0)
+    artifact = JobArtifact(ops=ops, distance=ops.distance(), generation_id=1)
+    editor = MagicMock()
+    editor.pipeline.generate_job_artifact_async = AsyncMock(
+        return_value=MagicMock()
+    )
+    store = editor.pipeline.artifact_store
+    store.checkout_handle.return_value.__enter__.return_value = artifact
+    return editor
 
-    A clamped rectangle is not the job's outline, so an outline that
-    leaves the bed is not traced at all. The only feedback used to be
-    a line in the machine log, which reads as a dead button.
-    """
 
-    @pytest.mark.asyncio
-    async def test_nothing_is_sent_and_the_reason_names_the_corner(
-        self, ruida_driver
-    ):
-        ruida_driver._machine.set_axis_extents(400.0, 300.0)
-        # 100 x 50 mm from here runs 50 mm past the far edge of X.
-        spy = _ScaleClientSpy(position=(350000, 250000))
-        ruida_driver._client = spy
+async def _run_scheduled(editor):
+    """Await the coroutine the last add_coroutine call scheduled."""
+    factory = editor.task_manager.add_coroutine.call_args.args[0]
+    await factory(None)
 
-        refusal = await ruida_driver.trace_frame(100.0, 50.0)
 
-        assert spy.commands == []
-        assert refusal is not None
-        assert "450.0" in refusal and "250.0" in refusal
+class TestGoScaleRunsAsAJob:
+    """MachineCmd sends Go Scale down the ordinary job path."""
 
     @pytest.mark.asyncio
-    async def test_the_reason_reaches_the_operator_notification(self):
-        """MachineCmd turns the driver's reason into a notification."""
-        ops = Ops()
-        ops.move_to(0.0, 0.0, 0.0)
-        ops.line_to(100.0, 50.0, 0.0)
-        artifact = JobArtifact(
-            ops=ops, distance=ops.distance(), generation_id=1
-        )
-        editor = MagicMock()
-        editor.notification_requested = Signal()
-        editor.pipeline.generate_job_artifact_async = AsyncMock(
-            return_value=MagicMock()
-        )
-        store = editor.pipeline.artifact_store
-        store.checkout_handle.return_value.__enter__.return_value = artifact
-        machine = MagicMock()
-        machine.driver.trace_frame = AsyncMock(
-            return_value="the outline runs off the bed at 450.0, 250.0 mm"
-        )
-        seen: list[str] = []
+    async def test_the_outline_goes_out_as_a_travel_only_job(self, machine):
+        machine.driver_name = "RuidaDriver"
+        editor = _editor_with_outline(100.0, 50.0)
+        cmd = MachineCmd(editor)
 
-        def receiver(sender, message="", **kwargs):
-            seen.append(message)
+        with patch.object(
+            MachineCmd, "_execute_monitored_job", new=AsyncMock()
+        ) as execute:
+            cmd.run_go_scale(machine, JOG_SPEED)
+            await _run_scheduled(editor)
 
-        editor.notification_requested.connect(receiver)
+        assert execute.await_args is not None
+        ops = execute.await_args.args[0]
+        assert ops.rect(include_travel=True) == (0.0, 0.0, 100.0, 50.0)
+        commands = _commands(ops, machine)
+        assert [c for c in commands if c[:1] in CUT_OPCODES] == []
 
-        await MachineCmd(editor)._trace_frame(machine)
+    @pytest.mark.asyncio
+    async def test_a_stop_while_measuring_cancels_it(self, machine):
+        """MOT-02: a Stop pressed before the job exists must hold."""
+        machine.driver_name = "RuidaDriver"
+        editor = _editor_with_outline(100.0, 50.0)
+        cmd = MachineCmd(editor)
+        measure = editor.pipeline.generate_job_artifact_async
 
-        assert seen == ["the outline runs off the bed at 450.0, 250.0 mm"]
+        async def stop_mid_measure():
+            cmd.cancel_job(machine)
+            return MagicMock()
+
+        measure.side_effect = stop_mid_measure
+
+        with patch.object(
+            MachineCmd, "_execute_monitored_job", new=AsyncMock()
+        ) as execute:
+            cmd.run_go_scale(machine, JOG_SPEED)
+            await _run_scheduled(editor)
+
+        execute.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_an_earlier_stop_does_not_block_the_next(self, machine):
+        """Only a Stop aimed at this scale cancels it."""
+        machine.driver_name = "RuidaDriver"
+        editor = _editor_with_outline(100.0, 50.0)
+        cmd = MachineCmd(editor)
+        cmd.cancel_job(machine)
+
+        with patch.object(
+            MachineCmd, "_execute_monitored_job", new=AsyncMock()
+        ) as execute:
+            cmd.run_go_scale(machine, JOG_SPEED)
+            await _run_scheduled(editor)
+
+        execute.assert_awaited_once()
 
 
 def test_cut_scale_cuts_four_segments(machine):
