@@ -52,17 +52,28 @@ class Origin(Enum):
 
 
 class StartCorner(Enum):
-    """Which corner of the job the head is standing on.
+    """Where the head is when the job starts.
 
-    The operator parks the head on a corner of the stock and says
-    which one it is; the job is then placed so that corner of its
-    bounding box lands where the head already is.
+    The selected corner of the job's bounding box lands where the head
+    already is, and the job extends toward the opposite corner: with
+    TOP_LEFT the cut starts at the head and grows down and to the
+    right.
     """
 
     TOP_LEFT = "top_left"
     TOP_RIGHT = "top_right"
     BOTTOM_LEFT = "bottom_left"
     BOTTOM_RIGHT = "bottom_right"
+
+    @property
+    def toward_opposite(self) -> tuple["JogDirection", "JogDirection"]:
+        """The visual directions the job grows in from this corner."""
+        left = self in (StartCorner.TOP_LEFT, StartCorner.BOTTOM_LEFT)
+        top = self in (StartCorner.TOP_LEFT, StartCorner.TOP_RIGHT)
+        return (
+            JogDirection.EAST if left else JogDirection.WEST,
+            JogDirection.SOUTH if top else JogDirection.NORTH,
+        )
 
 
 class JogDirection(Enum):
@@ -800,7 +811,7 @@ class Machine:
         self.changed.send(self)
 
     def set_start_corner(self, corner: StartCorner):
-        """Say which corner of the job the head is standing on."""
+        """Say which corner of the job the head is at when it starts."""
         if self.start_corner == corner:
             return
         self.start_corner = corner

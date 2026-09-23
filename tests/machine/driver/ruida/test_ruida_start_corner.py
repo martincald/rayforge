@@ -1,8 +1,8 @@
-"""Which corner of the job the head is standing on.
+"""Where the head is when the job starts.
 
 The operator parks the head on a corner of the stock and names it;
 the job is placed so that corner of its bounding box lands where the
-head already is.
+head already is, and it grows toward the opposite corner.
 
 Translating the geometry cannot do that. The encoder normalizes a job
 to its own bounding box minimum and declares those bounds alongside
@@ -16,6 +16,7 @@ import pytest
 import pytest_asyncio
 from blinker import Signal
 from raygeo.ops import Ops
+from raygeo.ops.axis import Axis
 
 from swiftcut.core.doc import Doc
 from swiftcut.machine.cmd import _cut_scale_ops, _go_scale_ops
@@ -33,19 +34,21 @@ HEIGHT_UM = 30000
 # Where the head stands before the job, in machine micrometres.
 HEAD = (500000, 400000)
 
-# Where the pre-move puts it, per corner. The head has to end up on
-# the corner the job starts at -- its bounding box minimum -- so a
-# head standing on the right edge jogs west by the job's width, and
-# one standing on the bottom edge jogs north by its height. Which
-# axis delta a west or a north is, is the jog panel's convention:
+# Where the pre-move puts it, per corner. The controller anchors the
+# job at its bounding box minimum and grows it toward +X and +Y, so
+# the head has to end up on the corner that is the minimum. Which
+# visual way +X and +Y run is the jog panel's convention --
 # MachinePanel.calculate_jog is what the arrow keys move, and it is
-# the calibrated one. None means the head is already there and
-# nothing is sent.
+# the calibrated one. On this profile the panel's west is +X and its
+# south is +Y, so the minimum is the job's top-right corner: a head on
+# a left corner jogs east (-X) by the width, and one on a bottom
+# corner jogs north (-Y) by the height. None means the head is already
+# there and nothing is sent.
 EXPECTED_PREMOVE = {
-    StartCorner.TOP_LEFT: None,
-    StartCorner.TOP_RIGHT: (HEAD[0] + WIDTH_UM, HEAD[1]),
-    StartCorner.BOTTOM_LEFT: (HEAD[0], HEAD[1] - HEIGHT_UM),
-    StartCorner.BOTTOM_RIGHT: (HEAD[0] + WIDTH_UM, HEAD[1] - HEIGHT_UM),
+    StartCorner.TOP_LEFT: (HEAD[0] - WIDTH_UM, HEAD[1]),
+    StartCorner.TOP_RIGHT: None,
+    StartCorner.BOTTOM_LEFT: (HEAD[0] - WIDTH_UM, HEAD[1] - HEIGHT_UM),
+    StartCorner.BOTTOM_RIGHT: (HEAD[0], HEAD[1] - HEIGHT_UM),
 }
 
 
@@ -232,13 +235,13 @@ class TestJobPreMove:
     @pytest.mark.parametrize(
         "corner, expected",
         [
-            (StartCorner.TOP_LEFT, None),
-            (StartCorner.TOP_RIGHT, (HEAD[0] + WIDTH_UM, HEAD[1])),
-            (StartCorner.BOTTOM_LEFT, (HEAD[0], HEAD[1] - HEIGHT_UM)),
+            (StartCorner.TOP_LEFT, (HEAD[0] - WIDTH_UM, HEAD[1])),
+            (StartCorner.TOP_RIGHT, None),
             (
-                StartCorner.BOTTOM_RIGHT,
-                (HEAD[0] + WIDTH_UM, HEAD[1] - HEIGHT_UM),
+                StartCorner.BOTTOM_LEFT,
+                (HEAD[0] - WIDTH_UM, HEAD[1] - HEIGHT_UM),
             ),
+            (StartCorner.BOTTOM_RIGHT, (HEAD[0], HEAD[1] - HEIGHT_UM)),
         ],
     )
     async def test_the_corner_jogs_the_way_the_panel_does(
@@ -246,9 +249,10 @@ class TestJobPreMove:
     ):
         """The arrow keys are the calibrated convention.
 
-        A head on a right corner jogs west, and on this profile the
-        panel's west is +X; north stays -Y. Spelled out in absolute
-        micrometres so the direction cannot quietly flip again.
+        A head on a left corner jogs east, and on this profile the
+        panel's east is -X; a head on a bottom corner jogs north, -Y.
+        Spelled out in absolute micrometres so the direction cannot
+        quietly flip again.
         """
         machine.set_start_corner(corner)
 
@@ -257,11 +261,11 @@ class TestJobPreMove:
         assert _moves(spy.commands) == ([] if expected is None else [expected])
 
     @pytest.mark.asyncio
-    async def test_the_default_corner_never_reads_a_position(
+    async def test_the_anchor_corner_never_reads_a_position(
         self, ruida_driver, machine
     ):
-        """A profile that never touched the setting sends nothing extra."""
-        machine.set_start_corner(StartCorner.TOP_LEFT)
+        """The corner the job is anchored at needs nothing extra."""
+        machine.set_start_corner(StartCorner.TOP_RIGHT)
 
         spy = await _run_job(ruida_driver, _rect_job())
 
@@ -350,6 +354,58 @@ class TestGoScaleUsesTheSamePlacement:
         assert _moves(go.commands) == _moves(cut.commands)
         assert _moves(go.commands) == ([] if expected is None else [expected])
         assert len(go.blobs) == 1
+
+
+class TestOneCornerForEveryAction:
+    """Start, Go Scale and Cut Scale all place the head the same way."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_job_go_scale_and_cut_scale_pre_move_alike(
+        self, ruida_driver, machine, corner
+    ):
+        machine.set_start_corner(corner)
+        actions = {
+            "job": _rect_job(),
+            "go scale": _go_scale_ops(machine, WIDTH, HEIGHT, 2400),
+            "cut scale": _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8),
+        }
+
+        premoves = {
+            name: _moves((await _run_job(ruida_driver, ops)).commands)
+            for name, ops in actions.items()
+        }
+
+        expected = EXPECTED_PREMOVE[corner]
+        assert premoves == {
+            name: [] if expected is None else [expected] for name in actions
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_the_job_grows_from_the_head_to_the_opposite_corner(
+        self, ruida_driver, machine, corner
+    ):
+        """Judged by the arrow keys' own mapping, not the helper's."""
+        machine.set_start_corner(corner)
+
+        spy = await _run_job(ruida_driver, _rect_job())
+
+        # The controller anchors the job's minimum where the head is
+        # when it is sent, and the job runs toward +X and +Y from it.
+        anchor = (_moves(spy.commands) or [HEAD])[-1]
+        xs = {anchor[0], anchor[0] + WIDTH_UM}
+        ys = {anchor[1], anchor[1] + HEIGHT_UM}
+        assert HEAD[0] in xs and HEAD[1] in ys
+        extents = {Axis.X: WIDTH_UM, Axis.Y: HEIGHT_UM}
+        far: list[int] = list(HEAD)
+        for direction in corner.toward_opposite:
+            for axis, delta in machine.panel.calculate_jog(
+                direction, 1.0
+            ).items():
+                far[0 if axis is Axis.X else 1] += int(delta) * extents[axis]
+        assert far[0] in xs and far[0] != HEAD[0]
+        assert far[1] in ys and far[1] != HEAD[1]
 
 
 class TestStartCornerPersists:

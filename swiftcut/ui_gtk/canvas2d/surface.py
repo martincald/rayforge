@@ -14,6 +14,7 @@ from ...core.layer import Layer
 from ...core.stock import StockItem
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
+from ...doceditor.transform_cmd import TransformCmd
 from ...machine.models.machine import Machine
 from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
@@ -29,6 +30,7 @@ from .elements.dot import DotElement
 from .elements.group import GroupElement
 from .elements.layer import LayerElement
 from .elements.nogo_zone import NogoZoneElement
+from .elements.start_corner import StartCornerElement
 from .elements.stock import StockElement
 from .elements.tab_handle import TabHandleElement
 from .elements.work_origin import WorkOriginElement
@@ -131,6 +133,10 @@ class WorkSurface(WorldSurface):
         # Add the Work Origin visual element
         self._work_origin_element = WorkOriginElement()
         self.root.add(self._work_origin_element)
+
+        # Where the head is when the job starts, on the job's outline
+        self._start_corner_element = StartCornerElement()
+        self.root.add(self._start_corner_element)
 
         # Add the Workarea Background element (gray background for workarea)
         self._workarea_bg_element = WorkareaBackgroundElement()
@@ -441,8 +447,14 @@ class WorkSurface(WorldSurface):
         doc.active_layer_changed.connect(self._on_active_layer_changed)
         doc.descendant_added.connect(self._on_doc_structure_changed)
         doc.descendant_removed.connect(self._on_doc_structure_changed)
+        doc.descendant_added.connect(self._update_start_corner_element)
+        doc.descendant_removed.connect(self._update_start_corner_element)
+        doc.descendant_transform_changed.connect(
+            self._update_start_corner_element
+        )
         self._connect_active_layer_wcs()
         self._connected_doc = doc
+        self._update_start_corner_element()
 
     def _disconnect_doc_signals(self):
         self._disconnect_active_layer_wcs()
@@ -452,6 +464,13 @@ class WorkSurface(WorldSurface):
             doc.active_layer_changed.disconnect(self._on_active_layer_changed)
             doc.descendant_added.disconnect(self._on_doc_structure_changed)
             doc.descendant_removed.disconnect(self._on_doc_structure_changed)
+            doc.descendant_added.disconnect(self._update_start_corner_element)
+            doc.descendant_removed.disconnect(
+                self._update_start_corner_element
+            )
+            doc.descendant_transform_changed.disconnect(
+                self._update_start_corner_element
+            )
             self._connected_doc = None
 
     def _on_any_transform_begin(
@@ -688,6 +707,7 @@ class WorkSurface(WorldSurface):
             self.machine.state_changed.connect(self._on_machine_state_changed)
             self.reset_view()
             self._on_wcs_updated(self.machine)
+        self._update_start_corner_element()
 
     def _on_wcs_updated(self, machine: Machine):
         """Handles updates to the machine's WCS state."""
@@ -1144,6 +1164,26 @@ class WorkSurface(WorldSurface):
             self._sync_nogo_zone_elements()
             self._on_wcs_updated(machine)
             self._update_pipeline_view_context()
+        self._update_start_corner_element()
+
+    def _update_start_corner_element(self, sender=None, **kwargs):
+        """
+        Put the start-corner overlay on the job's bounding box: the head
+        marker on the selected corner, the arrow toward the opposite one.
+        """
+        workpieces: list[DocItem] = (
+            list(self.doc.all_workpieces) if self.doc else []
+        )
+        if not self.machine or not workpieces:
+            self._start_corner_element.set_visible(False)
+            self.queue_draw()
+            return
+        min_x, min_y, max_x, max_y = TransformCmd.group_bbox_world(workpieces)
+        self._start_corner_element.set_job(
+            (min_x, min_y, max_x - min_x, max_y - min_y),
+            self.machine.start_corner,
+        )
+        self.queue_draw()
 
     def reset_view(self):
         """

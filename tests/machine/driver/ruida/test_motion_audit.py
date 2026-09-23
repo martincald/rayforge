@@ -88,7 +88,13 @@ def moves_after_stop(commands: list[bytes]) -> list[bytes]:
 async def run_go_scale(driver) -> None:
     """Run a Go Scale job whose start corner needs a pre-move."""
     machine = driver._machine
-    machine.set_start_corner(StartCorner.BOTTOM_RIGHT)
+    machine.set_start_corner(
+        next(
+            corner
+            for corner in StartCorner
+            if all(machine.panel.start_corner_offset(corner, 100.0, 50.0))
+        )
+    )
     doc = Doc()
     ops = _go_scale_ops(machine, 100.0, 50.0, 2400)
     await driver.run(RuidaEncoder().encode(ops, machine, doc), doc, ops)

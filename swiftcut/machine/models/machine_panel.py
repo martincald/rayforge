@@ -22,7 +22,7 @@ from .coordspace import (
 from .zone import Zone, ZoneShape
 
 if TYPE_CHECKING:
-    from .machine import JogDirection, Machine
+    from .machine import JogDirection, Machine, StartCorner
 
 _DELTA_EPSILON = 1e-9  # mm — filter near-zero jog deltas
 
@@ -401,6 +401,36 @@ class MachinePanel:
         if abs(machine_delta[1]) > _DELTA_EPSILON:
             result[Axis.Y] = float(machine_delta[1])
         return result
+
+    def start_corner_offset(
+        self, corner: "StartCorner", width: float, height: float
+    ) -> tuple[float, float]:
+        """Native (dx, dy) from the head to where the job is anchored.
+
+        The head is at ``corner`` of the job and the job grows toward
+        the opposite corner. The controller anchors a job at its
+        bounding-box minimum, so that is where the head has to be when
+        the job is sent. Along each direction the job grows in, a
+        native axis that runs negative puts the minimum the job's
+        extent away that way; one that runs positive leaves it at the
+        head.
+
+        The directions come from calculate_jog, the one place a visual
+        direction becomes a native axis delta, so Start, Go Scale and
+        Cut Scale always agree with the arrow keys.
+
+        Args:
+            corner: Where the head is when the job starts.
+            width: The job's native X extent in mm.
+            height: The job's native Y extent in mm.
+        """
+        extents = {Axis.X: width, Axis.Y: height}
+        offset = {Axis.X: 0.0, Axis.Y: 0.0}
+        for direction in corner.toward_opposite:
+            for axis, delta in self.calculate_jog(direction, 1.0).items():
+                if delta < 0:
+                    offset[axis] -= extents[axis]
+        return offset[Axis.X], offset[Axis.Y]
 
     # -- Rect / position / label helpers ------------------------------
 

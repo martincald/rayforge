@@ -50,6 +50,32 @@ preferencesgroup.compact list {
 
 apply_css(controls_css)
 
+# The four start-corner toggles. Each tooltip says the whole rule: the
+# head is at this corner when the job starts, and the cut grows toward
+# the opposite one.
+_START_CORNER_BUTTONS = (
+    (
+        StartCorner.TOP_LEFT,
+        "top-left-symbolic",
+        _("Start here, cut toward bottom-right"),
+    ),
+    (
+        StartCorner.TOP_RIGHT,
+        "top-right-symbolic",
+        _("Start here, cut toward bottom-left"),
+    ),
+    (
+        StartCorner.BOTTOM_LEFT,
+        "bottom-left-symbolic",
+        _("Start here, cut toward top-right"),
+    ),
+    (
+        StartCorner.BOTTOM_RIGHT,
+        "bottom-right-symbolic",
+        _("Start here, cut toward top-left"),
+    ),
+)
+
 
 class BottomPanel(Gtk.Box):
     def __init__(
@@ -443,40 +469,26 @@ class BottomPanel(Gtk.Box):
         self._update_wcs_ui()
 
     def _setup_start_corner_row(self):
-        """Four toggles saying which corner of the job the head is on.
+        """Four toggles saying where the head is when the job starts.
 
-        The job is placed so the selected corner of its bounding box
-        lands where the head already is, so the operator parks on a
-        corner of the stock and names it rather than computing an
-        offset.
+        The selected corner of the job's bounding box lands where the
+        head already is and the job grows toward the opposite corner,
+        so the operator parks on a corner of the stock and names it
+        rather than computing an offset.
         """
         self.start_corner_row = Adw.ActionRow(title=_("Start Corner"))
         # Short enough to stay on one line at the panel's width; the
         # long form wrapped to three and made this the tallest row in
-        # the group.
+        # the group. Each button's tooltip says the rest.
         self.start_corner_row.set_subtitle(
-            _("The head is on this corner of the job")
+            _("Head starts here, cut grows away")
         )
         self.wcs_group.add(self.start_corner_row)
 
         self._start_corner_buttons: dict[StartCorner, Gtk.ToggleButton] = {}
-        buttons = (
-            (StartCorner.TOP_LEFT, "top-left-symbolic", _("Top Left")),
-            (StartCorner.TOP_RIGHT, "top-right-symbolic", _("Top Right")),
-            (
-                StartCorner.BOTTOM_LEFT,
-                "bottom-left-symbolic",
-                _("Bottom Left"),
-            ),
-            (
-                StartCorner.BOTTOM_RIGHT,
-                "bottom-right-symbolic",
-                _("Bottom Right"),
-            ),
-        )
         corner_buttons = []
-        for corner, icon_name, label in buttons:
-            button = icon_button(icon_name, label, toggle=True)
+        for corner, icon_name, tooltip in _START_CORNER_BUTTONS:
+            button = icon_button(icon_name, tooltip, toggle=True)
             button.connect("toggled", self._on_start_corner_toggled, corner)
             corner_buttons.append(button)
             self._start_corner_buttons[corner] = button

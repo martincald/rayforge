@@ -1271,16 +1271,30 @@ def square_job_ops() -> Ops:
 
 
 class StubJobClient:
-    """Captures the blob run() hands to send_job."""
+    """Captures the blob run() hands to send_job.
+
+    It also stands in for the head, so a start corner that pre-moves
+    the head before the job lands where it was sent.
+    """
 
     def __init__(self):
         self.blobs: list[bytes] = []
+        self.position = (100000, 100000)
         self.is_connected = False
         self.state_changed = Signal()
         self.position_updated = Signal()
 
     async def disconnect(self):
         pass
+
+    async def read_position(self, timeout: float = 2.0):
+        return self.position
+
+    async def set_travel_speed(self, um_per_s: int):
+        pass
+
+    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
+        self.position = (x_um, y_um)
 
     async def send_job(self, blob, on_start=None, on_chunk=None):
         self.blobs.append(blob)

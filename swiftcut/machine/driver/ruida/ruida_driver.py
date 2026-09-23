@@ -1102,44 +1102,6 @@ class RuidaDriver(Driver):
             return high - margin_um
         return low + margin_um
 
-    def _start_corner_offset_um(
-        self, width_mm: float, height_mm: float
-    ) -> tuple[int, int]:
-        """
-        How far the head has to move before a job of this size starts.
-
-        A job always begins at its own bounding box minimum: the
-        encoder normalizes it there, and shifting the geometry cannot
-        change that, because the bounds declared alongside it shift
-        with it. So the head is moved instead. The operator names the
-        corner of the job the head is standing on, and this is the
-        distance from that corner to the one the job starts at.
-
-        Which way is west and north is not decided here. The jog
-        panel's calculate_jog is the calibrated answer -- it is what
-        the arrow keys move -- so the axis mapping keeps its single
-        home there. It replies in native axes with the panel rotation
-        already applied, so a visual west can land on Y; both
-        components are accumulated.
-        """
-        # Imported here, not at module scope: machine.py imports this
-        # package for get_driver_cls, which is why Machine itself is
-        # only a TYPE_CHECKING name above.
-        from ...models.machine import JogDirection, StartCorner
-
-        corner = self._machine.start_corner
-        jogs = []
-        if corner in (StartCorner.TOP_RIGHT, StartCorner.BOTTOM_RIGHT):
-            jogs.append((JogDirection.WEST, width_mm))
-        if corner in (StartCorner.BOTTOM_LEFT, StartCorner.BOTTOM_RIGHT):
-            jogs.append((JogDirection.NORTH, height_mm))
-        dx_mm = dy_mm = 0.0
-        for direction, distance in jogs:
-            delta = self._machine.panel.calculate_jog(direction, distance)
-            dx_mm += delta.get(Axis.X, 0.0)
-            dy_mm += delta.get(Axis.Y, 0.0)
-        return int(dx_mm * 1000), int(dy_mm * 1000)
-
     def _log_start_corner_premove(self, x_um: int, y_um: int) -> None:
         """Say where the start corner sends the head, in mm."""
         logger.info(
@@ -1166,7 +1128,10 @@ class RuidaDriver(Driver):
         the job too: the head is not on the corner.
         """
         assert self._client
-        dx_um, dy_um = self._start_corner_offset_um(*_job_size_mm(ops))
+        dx_mm, dy_mm = self._machine.panel.start_corner_offset(
+            self._machine.start_corner, *_job_size_mm(ops)
+        )
+        dx_um, dy_um = int(dx_mm * 1000), int(dy_mm * 1000)
         if not (dx_um or dy_um):
             return True
 
