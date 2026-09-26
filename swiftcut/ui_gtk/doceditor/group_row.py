@@ -4,7 +4,7 @@ from gi.repository import Gdk, Gtk, Pango
 
 from ...core.group import Group
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_TIGHT
+from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP
 
 logger = logging.getLogger(__name__)
 
@@ -13,13 +13,12 @@ class GroupRow(Gtk.Box):
     def __init__(self, group: Group):
         super(
             ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_CONTROL,
+            spacing=COMPACT_SPACE_CONTROL,
         )
         self.group = group
-        self.set_margin_start(SPACE_CONTROL)
-        self.set_margin_end(SPACE_CONTROL)
-        self.set_margin_top(SPACE_TIGHT)
-        self.set_margin_bottom(SPACE_TIGHT)
+        # One compact row: the list row's own padding is the height.
+        self.set_margin_start(COMPACT_SPACE_GROUP)
+        self.set_margin_end(COMPACT_SPACE_GROUP)
 
         self.icon = get_icon("layer-symbolic")
         self.icon.set_valign(Gtk.Align.CENTER)

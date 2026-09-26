@@ -7,10 +7,9 @@ from ...machine.cmd import MachineCmd
 from ...machine.models.machine import JogDirection, Machine, Origin
 from ..icons import get_icon
 from ..layout import (
+    COMPACT_SPACE_CONTROL,
+    COMPACT_SPACE_GROUP,
     JOG_CELL,
-    SPACE_CONTROL,
-    SPACE_GROUP,
-    SPACE_TIGHT,
     format_position,
 )
 from .cut_scale_dialog import CutScaleDialog
@@ -42,8 +41,8 @@ _ORIGIN_LABELS = {
     Origin.BOTTOM_RIGHT: _("bottom-right"),
 }
 
-_GAP = SPACE_GROUP
-_SPACING = SPACE_CONTROL
+_GAP = COMPACT_SPACE_GROUP
+_SPACING = COMPACT_SPACE_CONTROL
 _ROWS = 5
 _MAX_HEIGHT = _ROWS * JOG_CELL + (_ROWS - 1) * _SPACING
 
@@ -105,7 +104,7 @@ class JogWidget(Gtk.Widget):
             else:
                 box = Gtk.Box(
                     orientation=Gtk.Orientation.VERTICAL,
-                    spacing=SPACE_TIGHT,
+                    spacing=COMPACT_SPACE_CONTROL,
                 )
                 box.set_halign(Gtk.Align.CENTER)
                 box.set_valign(Gtk.Align.CENTER)

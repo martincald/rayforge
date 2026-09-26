@@ -6,7 +6,7 @@ from ...machine.cmd import MachineCmd
 from ...machine.models.laser import Laser, LaserHead
 from ...machine.models.machine import Machine
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL
+from ..layout import COMPACT_SPACE_CONTROL, compact_spin_button
 from ..shared.gtk import apply_css
 from ..shared.pref_rows.base import SpinRow
 from ..shared.slider import create_slider
@@ -91,7 +91,7 @@ class LaserControlWidget(Gtk.Box):
 
         self._power_row = Adw.ActionRow(title=_("Power"))
         self._power_row.set_subtitle(_("Laser power in percent"))
-        suffix_box = Gtk.Box(spacing=SPACE_CONTROL)
+        suffix_box = Gtk.Box(spacing=COMPACT_SPACE_CONTROL)
         suffix_box.set_hexpand(False)
         suffix_box.append(self._power_entry)
         suffix_box.append(self._power_scale)
@@ -123,6 +123,14 @@ class LaserControlWidget(Gtk.Box):
             digits=1,
         )
         self._group.add(self._duration_row)
+
+        # This panel lives in the dock, so its fields are the dock's.
+        for row in (
+            self._frequency_row,
+            self._pulse_width_row,
+            self._duration_row,
+        ):
+            compact_spin_button(row.get_spin_button())
 
         self.append(self._group)
 

@@ -7,8 +7,7 @@ from gi.repository import Gdk, Gtk
 
 from ...core.doc import Doc
 from ...core.layer import Layer
-from ..icons import get_icon
-from ..layout import SPACE_GROUP, SPACE_SECTION
+from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP, icon_button
 from .layer_column import _LAYER_UID_PREFIX, LayerColumn
 
 if TYPE_CHECKING:
@@ -40,10 +39,10 @@ class LayersTab(Gtk.Box):
         self.columns_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=0
         )
-        self.columns_box.set_margin_start(SPACE_GROUP)
-        self.columns_box.set_margin_top(SPACE_GROUP)
-        self.columns_box.set_margin_bottom(SPACE_GROUP)
-        self.columns_box.set_valign(Gtk.Align.FILL)
+        self.columns_box.set_margin_start(COMPACT_SPACE_GROUP)
+        self.columns_box.set_margin_top(COMPACT_SPACE_CONTROL)
+        self.columns_box.set_margin_bottom(COMPACT_SPACE_CONTROL)
+        self.columns_box.set_valign(Gtk.Align.START)
         self.scrolled.set_child(self.columns_box)
         self.append(self.scrolled)
 
@@ -62,18 +61,27 @@ class LayersTab(Gtk.Box):
         drop_target.connect("leave", self._on_layer_drop_leave)
         self.scrolled.add_controller(drop_target)
 
-        add_button = Gtk.Button(child=get_icon("add-symbolic"))
-        add_button.add_css_class("flat")
-        add_button.set_tooltip_text(_("Add New Layer"))
+        # Level with the card headers, which are one row tall.
+        add_button = icon_button("add-symbolic", _("Add New Layer"))
         add_button.set_valign(Gtk.Align.START)
-        add_button.set_margin_top(SPACE_SECTION)
-        add_button.set_margin_start(SPACE_GROUP)
-        add_button.set_margin_end(SPACE_GROUP)
+        add_button.set_margin_top(COMPACT_SPACE_CONTROL)
+        add_button.set_margin_start(COMPACT_SPACE_GROUP)
+        add_button.set_margin_end(COMPACT_SPACE_GROUP)
         add_button.connect("clicked", self._on_add_clicked)
         self.append(add_button)
 
         self._connect_signals()
         self._rebuild()
+
+    def do_measure(self, orientation, for_size):
+        minimum, natural, min_bl, nat_bl = super().do_measure(
+            orientation, for_size
+        )
+        # The cards scroll inside whatever height the dock has; a long
+        # layer never makes the dock taller than its controls.
+        if orientation == Gtk.Orientation.VERTICAL:
+            natural = minimum
+        return minimum, natural, min_bl, nat_bl
 
     def set_doc(self, doc: Doc):
         if self.doc == doc:

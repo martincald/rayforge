@@ -1,10 +1,10 @@
 from blinker import Signal
 from gi.repository import Gdk, Gtk
 
-from ..layout import SPACE_TIGHT
+from ..layout import COMPACT_SPACE_CONTROL, stylesheet
 from .gtk import apply_css
 
-dock_area_css = """
+dock_area_css = stylesheet("""
 box.dock-area {
     background: @theme_bg_color;
 }
@@ -26,23 +26,23 @@ box.dock-area > box.dock-icon-strip button.active-tab {
 }
 
 box.dock-area > box.dock-icon-strip button.drag-highlight-top {
-    border-top: 3px solid @theme_selected_bg_color;
+    border-top: $stroke_wide solid @theme_selected_bg_color;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
 
 box.dock-area > box.dock-icon-strip button.drag-highlight-bottom {
-    border-bottom: 3px solid @theme_selected_bg_color;
+    border-bottom: $stroke_wide solid @theme_selected_bg_color;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
 box.dock-area.drag-active {
     background: alpha(@theme_selected_bg_color, 0.06);
-    border: 1px dashed alpha(@theme_selected_bg_color, 0.4);
-    border-radius: 10px;
+    border: $hairline dashed alpha(@theme_selected_bg_color, 0.4);
+    border-radius: $radius_card;
 }
-"""
+""")
 
 apply_css(dock_area_css)
 
@@ -71,7 +71,7 @@ class DockArea(Gtk.Box):
         self._icon_strip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._icon_strip.add_css_class("dock-icon-strip")
         self._icon_strip.add_css_class("sc-rail")
-        self._icon_strip.set_spacing(SPACE_TIGHT)
+        self._icon_strip.set_spacing(COMPACT_SPACE_CONTROL)
         self._icon_strip.set_visible(False)
 
         self._stack = Gtk.Stack()

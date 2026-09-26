@@ -71,6 +71,7 @@ class UnitSpinRow(SpinRow):
         self._unit_label = Gtk.Label()
         self._unit_label.add_css_class("sc-caption")
         self._unit_label.set_valign(Gtk.Align.CENTER)
+        self._unit_label.set_xalign(0)
         self._suffix.append(self._unit_label)
 
         self._config_handler_id = get_context().config.changed.connect(
@@ -88,6 +89,11 @@ class UnitSpinRow(SpinRow):
                 )
         finally:
             self._is_updating = False
+
+    @property
+    def unit_label(self) -> Gtk.Label:
+        """The unit suffix after the field."""
+        return self._unit_label
 
     def _resolve_unit_name(self) -> str | None:
         """Return the name of the unit to display for this row.

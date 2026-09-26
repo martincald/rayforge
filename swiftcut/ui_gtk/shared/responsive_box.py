@@ -1,8 +1,10 @@
 from gi.repository import Graphene, Gsk, Gtk
 
+from ..layout import COMPACT_SPACE_GROUP
+
 
 class ResponsiveBox(Gtk.Widget):
-    _SPACING = 12
+    _SPACING = COMPACT_SPACE_GROUP
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -40,6 +42,9 @@ class ResponsiveBox(Gtk.Widget):
         if orientation == Gtk.Orientation.VERTICAL:
             h1, h2 = self._get_vertical_height()
             stacked_nat = h1[1] + self._SPACING + h2[1]
+            # Side by side is the height asked for; the two stack only
+            # in a dock dragged tall enough to hold them that way.
+            side_nat = max(h1[1], h2[1])
 
             if for_size > 0:
                 h1c = self._first.measure(Gtk.Orientation.VERTICAL, for_size)
@@ -50,7 +55,8 @@ class ResponsiveBox(Gtk.Widget):
                 w2 = self._second.measure(Gtk.Orientation.HORIZONTAL, side_min)
 
                 if for_size >= w1[0] + self._SPACING + w2[0]:
-                    return (side_min, stacked_nat, -1, -1)
+                    side_nat = max(h1c[1], h2c[1])
+                    return (side_min, max(side_min, side_nat), -1, -1)
 
                 return (
                     h1[0] + self._SPACING + h2[0],
@@ -59,7 +65,8 @@ class ResponsiveBox(Gtk.Widget):
                     -1,
                 )
 
-            return (max(h1[0], h2[0]), stacked_nat, -1, -1)
+            side_min = max(h1[0], h2[0])
+            return (side_min, max(side_min, side_nat), -1, -1)
 
         if for_size > 0:
             h1, h2 = self._get_vertical_height()

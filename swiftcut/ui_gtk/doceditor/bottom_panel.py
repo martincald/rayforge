@@ -15,9 +15,11 @@ from ...shared.gcodeedit.viewer import GcodeViewer
 from ...shared.tasker import task_mgr
 from ..doceditor.layers_tab import LayersTab
 from ..layout import (
+    COMPACT_SPACE_CONTROL,
+    COMPACT_SPACE_GROUP,
     PANEL_MAX_WIDTH,
-    SPACE_GROUP,
     axis_button,
+    compact_spin_button,
     format_position,
     icon_button,
     suffix_box,
@@ -127,8 +129,8 @@ class BottomPanel(Gtk.Box):
         self.gcode_viewer = GcodeViewer()
         self.gcode_viewer.set_margin_start(0)
         self.gcode_viewer.set_margin_end(0)
-        self.gcode_viewer.set_margin_top(SPACE_GROUP)
-        self.gcode_viewer.set_margin_bottom(SPACE_GROUP)
+        self.gcode_viewer.set_margin_top(COMPACT_SPACE_CONTROL)
+        self.gcode_viewer.set_margin_bottom(COMPACT_SPACE_CONTROL)
 
         self.jog_widget = JogWidget()
         if machine and machine_cmd:
@@ -139,16 +141,16 @@ class BottomPanel(Gtk.Box):
             self.laser_control.set_machine(machine, machine_cmd)
 
         self._laser_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self._laser_box.set_margin_start(SPACE_GROUP)
-        self._laser_box.set_margin_end(SPACE_GROUP)
-        self._laser_box.set_margin_top(SPACE_GROUP)
-        self._laser_box.set_margin_bottom(SPACE_GROUP)
+        self._laser_box.set_margin_start(COMPACT_SPACE_GROUP)
+        self._laser_box.set_margin_end(COMPACT_SPACE_GROUP)
+        self._laser_box.set_margin_top(COMPACT_SPACE_CONTROL)
+        self._laser_box.set_margin_bottom(COMPACT_SPACE_CONTROL)
         self._laser_box.set_vexpand(True)
         self._laser_box.set_hexpand(False)
         self._laser_box.set_halign(Gtk.Align.START)
         self._laser_box.append(self.laser_control)
         self._jog_laser_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_GROUP
+            orientation=Gtk.Orientation.HORIZONTAL, spacing=COMPACT_SPACE_GROUP
         )
         self._jog_laser_box.append(self.jog_widget)
         self._jog_laser_box.set_vexpand(True)
@@ -157,16 +159,18 @@ class BottomPanel(Gtk.Box):
         self._controls_widget.set_halign(Gtk.Align.FILL)
         self._controls_widget.set_vexpand(True)
         self._controls_widget.set_valign(Gtk.Align.FILL)
-        self._controls_widget.set_margin_start(SPACE_GROUP)
-        self._controls_widget.set_margin_end(SPACE_GROUP)
-        self._controls_widget.set_margin_top(SPACE_GROUP)
-        self._controls_widget.set_margin_bottom(SPACE_GROUP)
+        # The compact group gap at the sides, the control gap above and
+        # below: the dock's height is the jog grid's and little else.
+        self._controls_widget.set_margin_start(COMPACT_SPACE_GROUP)
+        self._controls_widget.set_margin_end(COMPACT_SPACE_GROUP)
+        self._controls_widget.set_margin_top(COMPACT_SPACE_CONTROL)
+        self._controls_widget.set_margin_bottom(COMPACT_SPACE_CONTROL)
 
         if machine:
             self._setup_wcs_controls()
             self._connect_machine_signals()
             # Clamped, so the group stops at a readable width instead
-            # of stretching to the panel edge and leaving 100-140px of
+            # of stretching to the panel edge and leaving 100-140 pixels of
             # nothing between every label and its controls.
             clamp = Adw.Clamp(
                 maximum_size=PANEL_MAX_WIDTH,
@@ -463,6 +467,7 @@ class BottomPanel(Gtk.Box):
             value_in_base=DEFAULT_JOG_SPEED_BASE,
         )
         self.speed_row.value_changed.connect(self._on_speed_changed)
+        compact_spin_button(self.speed_row.get_spin_button())
         self.wcs_group.add(self.speed_row)
 
         self.distance_row = LengthSpinRow(
@@ -472,7 +477,14 @@ class BottomPanel(Gtk.Box):
             value_in_base=10.0,
         )
         self.distance_row.value_changed.connect(self._on_distance_changed)
+        compact_spin_button(self.distance_row.get_spin_button())
         self.wcs_group.add(self.distance_row)
+
+        # The units share one column, so both fields end at one edge
+        # whether the unit is "mm" or "mm/s".
+        self._unit_column = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+        self._unit_column.add_widget(self.speed_row.unit_label)
+        self._unit_column.add_widget(self.distance_row.unit_label)
 
         self._update_wcs_ui()
 

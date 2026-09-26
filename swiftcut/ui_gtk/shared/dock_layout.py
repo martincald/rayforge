@@ -3,12 +3,13 @@ import logging
 from blinker import Signal
 from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk
 
+from ..layout import DOCK_AREA_MIN_WIDTH, DOCK_DIVIDER, stylesheet
 from .dock_area import DockArea
 from .gtk import apply_css
 
 logger = logging.getLogger(__name__)
 
-divider_css = """
+divider_css = stylesheet("""
 .dock-divider {
     background: transparent;
     transition: background 100ms ease;
@@ -18,16 +19,16 @@ divider_css = """
 }
 .dock-divider.drop-highlight {
     background: alpha(@theme_selected_bg_color, 0.25);
-    border-left: 2px solid @theme_selected_bg_color;
-    border-right: 2px solid @theme_selected_bg_color;
+    border-left: $stroke solid @theme_selected_bg_color;
+    border-right: $stroke solid @theme_selected_bg_color;
 }
-"""
+""")
 
 apply_css(divider_css)
 
 
 class DockLayout(Gtk.Widget):
-    _DIVIDER_WIDTH = 6
+    _DIVIDER_WIDTH = DOCK_DIVIDER
 
     def __init__(self, orientation=Gtk.Orientation.HORIZONTAL, **kwargs):
         super().__init__(**kwargs)
@@ -233,7 +234,7 @@ class DockLayout(Gtk.Widget):
 
         expandable = [i for i, a in enumerate(self._areas) if a.get_hexpand()]
         if expandable:
-            share = max(50, remaining // len(expandable))
+            share = max(DOCK_AREA_MIN_WIDTH, remaining // len(expandable))
             for i in expandable:
                 sizes[i] = share
 
@@ -267,11 +268,11 @@ class DockLayout(Gtk.Widget):
             if exp_total > 0:
                 ratio = remaining / exp_total
                 for i in expandable:
-                    sizes[i] = max(50, int(sizes[i] * ratio))
+                    sizes[i] = max(DOCK_AREA_MIN_WIDTH, int(sizes[i] * ratio))
             else:
                 share = remaining // len(expandable)
                 for i in expandable:
-                    sizes[i] = max(50, share)
+                    sizes[i] = max(DOCK_AREA_MIN_WIDTH, share)
 
             diff = available - sum(sizes)
             if expandable:

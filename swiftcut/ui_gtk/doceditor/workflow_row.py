@@ -7,7 +7,13 @@ from ...context import get_context
 from ...core.step_registry import step_registry
 from ...core.undo.list_cmd import ListItemCommand, ReorderListCommand
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL
+from ..layout import (
+    COMPACT_SPACE_CONTROL,
+    CONTROL_SIZE,
+    ICON_GLYPH,
+    icon_button,
+    stylesheet,
+)
 from ..shared.gtk import apply_css
 from ..shared.popover_menu import PopoverMenu
 from .step_settings.dialog import StepSettingsDialog
@@ -17,34 +23,34 @@ if TYPE_CHECKING:
     from ...core.workflow import Workflow
     from ...doceditor.editor import DocEditor
 
-css = """
+css = stylesheet("""
 .workflow-row {
-    min-height: 36px;
-    padding: 0px 4px;
-    margin-bottom: 4px;
+    min-height: $compact_row;
+    padding: 0 $compact_space_control;
+    margin-bottom: $compact_space_control;
     background-color: alpha(@theme_fg_color, 0.04);
-    border-bottom: 1px solid @borders;
+    border-bottom: $hairline solid @borders;
 }
 .workflow-step-button {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 0px;
-    margin: 4px;
-    border-radius: 6px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border-radius: $radius_cell;
 }
 .workflow-step-button:hover {
     background-color: alpha(@theme_fg_color, 0.08);
 }
 .workflow-arrow {
-    margin: 0 -1px;
+    margin: 0 -$hairline;
 }
 .workflow-drop-indicator {
-    min-width: 2px;
-    min-height: 24px;
+    min-width: $stroke;
+    min-height: $drop_indicator;
     background-color: @accent_color;
-    border-radius: 1px;
+    border-radius: $radius_marker;
 }
-"""
+""")
 
 _FALLBACK_ICON = "laser-path-symbolic"
 
@@ -179,9 +185,9 @@ class WorkflowRow(Gtk.Box):
         if not color:
             return
         class_name = f"step-color-{color.lstrip('#').lower()}"
-        color_css = (
+        color_css = stylesheet(
             f".workflow-step-button.{class_name} {{"
-            f"  border: 2px solid {color};"
+            f"  border: $stroke solid {color};"
             "}"
         )
         apply_css(color_css)
@@ -204,7 +210,7 @@ class WorkflowRow(Gtk.Box):
             label = Gtk.Label(label=_("No Operations"))
             label.add_css_class("dim-label")
             label.add_css_class("sc-caption")
-            label.set_margin_start(SPACE_CONTROL)
+            label.set_margin_start(COMPACT_SPACE_CONTROL)
             self.append(label)
         else:
             for i, step in enumerate(workflow.steps):
@@ -215,10 +221,12 @@ class WorkflowRow(Gtk.Box):
                     self.append(arrow)
 
                 icon = get_icon(self._get_step_icon(step))
-                icon.set_pixel_size(18)
+                icon.set_pixel_size(ICON_GLYPH)
 
                 button = Gtk.Button(child=icon)
                 button.add_css_class("workflow-step-button")
+                # The step's colour border sits inside the control size.
+                button.set_size_request(CONTROL_SIZE, CONTROL_SIZE)
                 button.add_css_class("flat")
                 button.set_tooltip_text(step.name)
                 button.set_valign(Gtk.Align.CENTER)
@@ -234,11 +242,7 @@ class WorkflowRow(Gtk.Box):
         spacer.set_hexpand(True)
         self.append(spacer)
 
-        add_icon = get_icon("add-symbolic")
-        add_btn = Gtk.Button(child=add_icon)
-        add_btn.add_css_class("flat")
-        add_btn.set_tooltip_text(_("Add Step"))
-        add_btn.set_valign(Gtk.Align.CENTER)
+        add_btn = icon_button("add-symbolic", _("Add Step"))
         add_btn.connect("clicked", self._on_add_step_clicked)
         self.append(add_btn)
 

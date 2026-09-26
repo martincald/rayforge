@@ -13,28 +13,28 @@ from ...logging_setup import (
 from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
 from ..icons import get_icon
-from ..layout import SPACE_GROUP
+from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP, stylesheet
 from ..shared.gtk import apply_css
 
 logger = logging.getLogger(__name__)
 
-css = """
+css = stylesheet("""
 .terminal {
     font-family: Monospace;
-    font-size: 10pt;
+    font-size: $caption_font;
 }
 .console-input {
     font-family: Monospace;
-    font-size: 10pt;
+    font-size: $caption_font;
     background-color: transparent;
     border: none;
-    padding: 4px;
+    padding: $compact_space_control;
 }
 .console-input-scrolled {
     background-color: alpha(@window_fg_color, 0.05);
-    border-radius: 5px;
+    border-radius: $radius_chip;
 }
-"""
+""")
 
 
 class Console(Gtk.Box):
@@ -43,8 +43,8 @@ class Console(Gtk.Box):
 
         self.set_margin_start(0)
         self.set_margin_end(0)
-        self.set_margin_top(SPACE_GROUP)
-        self.set_margin_bottom(SPACE_GROUP)
+        self.set_margin_top(COMPACT_SPACE_CONTROL)
+        self.set_margin_bottom(COMPACT_SPACE_CONTROL)
 
         self._show_verbose = False
         self._command_history: list[str] = []
@@ -88,8 +88,8 @@ class Console(Gtk.Box):
             _("Show verbose output (status polls)")
         )
         self.verbose_toggle.connect("toggled", self._on_verbose_toggled)
-        self.verbose_toggle.set_margin_top(SPACE_GROUP)
-        self.verbose_toggle.set_margin_end(SPACE_GROUP)
+        self.verbose_toggle.set_margin_top(COMPACT_SPACE_GROUP)
+        self.verbose_toggle.set_margin_end(COMPACT_SPACE_GROUP)
         self.verbose_toggle.set_halign(Gtk.Align.END)
         self.verbose_toggle.set_valign(Gtk.Align.START)
         verbose_icon = get_icon("code-symbolic")

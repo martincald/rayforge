@@ -16,11 +16,11 @@ from ...core.stock import StockItem
 from ...core.undo import ListItemCommand
 from ..icons import get_icon
 from ..layout import (
-    SPACE_CONTROL,
-    SPACE_GROUP,
-    SPACE_PAGE,
-    SPACE_SECTION,
-    SPACE_TIGHT,
+    COMPACT_SPACE_CONTROL,
+    COMPACT_SPACE_GROUP,
+    EMPTY_STATE_ICON,
+    icon_button,
+    stylesheet,
 )
 from ..shared.gtk import apply_css
 from ..shared.popover_menu import PopoverMenu
@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 THUMBNAIL_SIZE = 64
 CARD_SIZE = THUMBNAIL_SIZE + 36
 
-css = """
+css = stylesheet("""
 .asset-browser {
-    padding: 12px;
+    padding: $compact_space_group;
 }
 .asset-flowbox > flowboxchild {
     padding: 0;
@@ -49,37 +49,36 @@ css = """
 }
 .asset-flowbox > flowboxchild.selected .asset-card {
     background: alpha(@theme_selected_bg_color, 0.25);
-    border: 2px solid @theme_selected_bg_color;
+    border: $stroke solid @theme_selected_bg_color;
 }
 .asset-card {
     background: @card_bg_color;
-    border-radius: 8px;
-    padding: 4px;
-    border: 2px solid transparent;
+    border-radius: $radius_inner;
+    padding: $compact_space_control;
+    border: $stroke solid transparent;
 }
 .asset-card:hover {
     background: alpha(@theme_selected_bg_color, 0.08);
 }
 .asset-card-label {
-    font-size: 13px;
-    margin-top: 4px;
+    font-size: $body_font;
+    margin-top: $compact_space_control;
 }
 .asset-type-icon {
     opacity: 0.9;
     background-color: alpha(@card_bg_color, 0.95);
-    border-radius: 5px;
+    border-radius: $radius_chip;
 }
 .asset-browser-empty {
-    padding: 24px;
+    padding: $compact_space_group;
 }
 .asset-browser-empty-icon {
     opacity: 0.15;
 }
 .asset-browser-empty-buttons button {
-    padding: 12px 24px;
-    font-size: 1.1em;
+    padding: $compact_space_control $space_group;
 }
-"""
+""")
 
 
 class AssetCard(Gtk.Box):
@@ -111,7 +110,7 @@ class AssetCard(Gtk.Box):
 
         type_icon = get_icon(asset.display_icon_name)
         type_icon.set_pixel_size(12)
-        type_icon.set_margin_end(SPACE_TIGHT)
+        type_icon.set_margin_end(COMPACT_SPACE_CONTROL)
         type_icon.set_tooltip_text(asset.type_display_name)
 
         self._label = Gtk.Label()
@@ -121,7 +120,7 @@ class AssetCard(Gtk.Box):
 
         label_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         label_box.set_halign(Gtk.Align.CENTER)
-        label_box.set_margin_top(SPACE_TIGHT)
+        label_box.set_margin_top(COMPACT_SPACE_CONTROL)
         label_box.append(type_icon)
         label_box.append(self._label)
 
@@ -195,8 +194,8 @@ class AssetBrowser(Gtk.Box):
 
         self._flowbox = Gtk.FlowBox()
         self._flowbox.add_css_class("asset-flowbox")
-        self._flowbox.set_column_spacing(SPACE_CONTROL)
-        self._flowbox.set_row_spacing(SPACE_CONTROL)
+        self._flowbox.set_column_spacing(COMPACT_SPACE_CONTROL)
+        self._flowbox.set_row_spacing(COMPACT_SPACE_CONTROL)
         self._flowbox.set_min_children_per_line(3)
         self._flowbox.set_max_children_per_line(200)
         self._flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -233,13 +232,10 @@ class AssetBrowser(Gtk.Box):
         self._main_box.append(self._empty_state)
 
         toolbar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        toolbar.set_spacing(SPACE_TIGHT)
-        toolbar.set_margin_start(SPACE_GROUP)
-        toolbar.set_margin_top(SPACE_GROUP)
+        toolbar.set_spacing(COMPACT_SPACE_CONTROL)
+        toolbar.set_margin_start(COMPACT_SPACE_GROUP)
 
-        self._add_btn = Gtk.Button(child=get_icon("add-symbolic"))
-        self._add_btn.add_css_class("flat")
-        self._add_btn.set_tooltip_text(_("Add Asset"))
+        self._add_btn = icon_button("add-symbolic", _("Add Asset"))
         self._add_btn.connect("clicked", self._on_add_clicked)
         toolbar.append(self._add_btn)
         self.append(toolbar)
@@ -254,24 +250,22 @@ class AssetBrowser(Gtk.Box):
     def _create_empty_state(self) -> Gtk.Box:
         empty_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=SPACE_SECTION,
+            spacing=COMPACT_SPACE_GROUP,
         )
         empty_box.add_css_class("asset-browser-empty")
         empty_box.set_halign(Gtk.Align.CENTER)
         empty_box.set_valign(Gtk.Align.CENTER)
-        empty_box.set_margin_top(SPACE_PAGE)
-        empty_box.set_margin_bottom(SPACE_PAGE)
         empty_box.set_hexpand(True)
         empty_box.set_vexpand(True)
 
         icon = get_icon("sketch-edit-symbolic")
-        icon.set_pixel_size(128)
+        icon.set_pixel_size(EMPTY_STATE_ICON)
         icon.add_css_class("asset-browser-empty-icon")
         empty_box.append(icon)
 
         buttons_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_GROUP,
+            spacing=COMPACT_SPACE_GROUP,
             halign=Gtk.Align.CENTER,
         )
         buttons_box.add_css_class("asset-browser-empty-buttons")

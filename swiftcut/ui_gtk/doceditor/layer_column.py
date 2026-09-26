@@ -15,7 +15,13 @@ from ...core.source_asset import SourceAsset
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_TIGHT
+from ..layout import (
+    COMPACT_SPACE_CONTROL,
+    LAYER_CARD_MAX_WIDTH,
+    ROW_MIN_HEIGHT_COMPACT,
+    icon_button,
+    stylesheet,
+)
 from ..shared.gtk import apply_css
 from . import import_handler
 from .group_row import GroupRow
@@ -29,33 +35,26 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-css = """
+css = stylesheet("""
 .layer-column {
     background-color: alpha(@theme_fg_color, 0.03);
-    border-radius: 8px;
-    border: 1px solid @borders;
-    min-width: 160px;
+    border-radius: $radius_inner;
+    border: $hairline solid @borders;
+    min-width: $layer_card_min_width;
 }
 .layer-column.active-layer-column {
     border-color: @accent_bg_color;
     background-color: alpha(@accent_bg_color, 0.05);
 }
 .layer-column-header {
-    padding: 8px 8px;
-    border-bottom: 1px solid @borders;
-    border-radius: 8px 8px 0 0;
+    min-height: $compact_row;
+    padding: 0 $compact_space_control;
+    border-bottom: $hairline solid @borders;
+    border-radius: $radius_inner $radius_inner 0 0;
     background-color: alpha(@theme_fg_color, 0.05);
 }
 .layer-column.active-layer-column .layer-column-header {
     background-color: alpha(@accent_bg_color, 0.1);
-}
-.layer-column-header button.flat {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 4px;
-}
-.layer-column-header .dim-label {
-    font-size: smaller;
 }
 .layer-workpiece-list {
     background-color: transparent;
@@ -63,35 +62,41 @@ css = """
 }
 .layer-workpiece-list > row {
     background-color: transparent;
-    border-radius: 5px;
-    padding: 4px 4px;
+    border-radius: $radius_chip;
+    padding: $compact_space_control;
     margin: 0;
     border: none;
 }
 .layer-workpiece-list > row > * {
-    margin: -1px -4px;
-    padding: 4px 4px;
+    margin: -$hairline -$compact_space_control;
+    padding: $compact_space_control;
 }
 .layer-workpiece-list > row:drop(active) {
     background-color: transparent;
     outline: none;
 }
 .layer-workpiece-list > row.drop-above {
-    box-shadow: inset 0 2px 0 0 @accent_bg_color;
+    box-shadow: inset 0 $stroke 0 0 @accent_bg_color;
 }
 .layer-workpiece-list > row.drop-below {
-    box-shadow: inset 0 -2px 0 0 @accent_bg_color;
+    box-shadow: inset 0 -$stroke 0 0 @accent_bg_color;
 }
 .layer-workpiece-list > row.selected-row {
     background-color: alpha(@accent_bg_color, 0.2);
 }
 .layer-column.drop-left {
-    box-shadow: inset 3px 0 0 0 @accent_bg_color;
+    box-shadow: inset $stroke_wide 0 0 0 @accent_bg_color;
 }
 .layer-column.drop-right {
-    box-shadow: inset -3px 0 0 0 @accent_bg_color;
+    box-shadow: inset -$stroke_wide 0 0 0 @accent_bg_color;
 }
-"""
+/* The list is one row at its smallest. The stock slider alone is
+   taller than that, and a scrollbar's height is a floor under the
+   list's. */
+.layer-column scrollbar.vertical > range > trough > slider {
+    min-height: $space_control;
+}
+""")
 
 _LAYER_UID_PREFIX = "layer:"
 
@@ -109,8 +114,11 @@ class LayerColumn(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         apply_css(css)
         self.add_css_class("layer-column")
-        self.set_margin_end(SPACE_CONTROL)
+        self.set_margin_end(COMPACT_SPACE_CONTROL)
         self.set_hexpand(False)
+        # As tall as its content and no taller: an empty layer is a
+        # header, its operations and one row, not a column of nothing.
+        self.set_valign(Gtk.Align.START)
 
         self.doc = doc
         self.layer = layer
@@ -152,27 +160,34 @@ class LayerColumn(Gtk.Box):
     def do_measure(self, orientation, for_size):
         min_, nat, min_bl, nat_bl = super().do_measure(orientation, for_size)
         if orientation == Gtk.Orientation.HORIZONTAL:
-            nat = min(nat, 400)
+            nat = min(nat, LAYER_CARD_MAX_WIDTH)
         return min_, nat, min_bl, nat_bl
 
     def _build_header(self, can_delete: bool):
+        # One line: the colour chip, the name and what the layer is,
+        # then its actions. The subtitle rides beside the name as a
+        # caption instead of under it, which is what kept the header
+        # two rows tall.
         self.header = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_TIGHT
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
         )
         self.header.add_css_class("layer-column-header")
         self.header.set_hexpand(True)
 
         self.drag_label = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_TIGHT
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
         )
 
         self.icon_container = Gtk.Box()
         self.icon_container.set_valign(Gtk.Align.CENTER)
-        self.icon_container.set_margin_start(SPACE_TIGHT)
-        self.icon_container.set_margin_end(SPACE_TIGHT)
         self.drag_label.append(self.icon_container)
 
-        self.name_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.name_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
+        )
         self.name_box.set_hexpand(True)
         self.name_box.set_halign(Gtk.Align.START)
         self.name_box.set_valign(Gtk.Align.CENTER)
@@ -180,6 +195,7 @@ class LayerColumn(Gtk.Box):
         name_label = Gtk.Label()
         name_label.set_text(self.layer.name)
         name_label.set_halign(Gtk.Align.START)
+        name_label.set_valign(Gtk.Align.BASELINE_CENTER)
         name_label.set_ellipsize(Pango.EllipsizeMode.END)
         # The layers scroller squeezes columns to their minimum before
         # it scrolls, and an ellipsized label's minimum is "...": keep
@@ -190,8 +206,9 @@ class LayerColumn(Gtk.Box):
 
         subtitle_label = Gtk.Label()
         subtitle_label.set_halign(Gtk.Align.START)
+        subtitle_label.set_valign(Gtk.Align.BASELINE_CENTER)
         subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
-        subtitle_label.add_css_class("dim-label")
+        subtitle_label.add_css_class("sc-caption")
         self.subtitle_label = subtitle_label
         self.name_box.append(subtitle_label)
 
@@ -199,15 +216,15 @@ class LayerColumn(Gtk.Box):
 
         self.header.append(self.drag_label)
 
-        self.settings_button = Gtk.Button(child=get_icon("settings-symbolic"))
-        self.settings_button.add_css_class("flat")
-        self.settings_button.set_tooltip_text(_("Layer Settings"))
+        self.settings_button = icon_button(
+            "settings-symbolic", _("Layer Settings")
+        )
         self.settings_button.connect("clicked", self._on_settings_clicked)
         self.header.append(self.settings_button)
 
-        self.delete_button = Gtk.Button(child=get_icon("delete-symbolic"))
-        self.delete_button.add_css_class("flat")
-        self.delete_button.set_tooltip_text(_("Delete this layer"))
+        self.delete_button = icon_button(
+            "delete-symbolic", _("Delete this layer")
+        )
         self.delete_button.set_visible(can_delete)
         self.delete_button.connect("clicked", self._on_delete_clicked)
         self.header.append(self.delete_button)
@@ -215,15 +232,15 @@ class LayerColumn(Gtk.Box):
         self.visibility_on_icon = get_icon("visibility-on-symbolic")
         self.visibility_off_icon = get_icon("visibility-off-symbolic")
 
-        self.visibility_button = Gtk.ToggleButton()
+        self.visibility_button = icon_button(
+            "visibility-on-symbolic", _("Toggle layer visibility"), toggle=True
+        )
         self.visibility_button.set_active(self.layer.visible)
         self.visibility_button.set_child(
             self.visibility_on_icon
             if self.layer.visible
             else self.visibility_off_icon
         )
-        self.visibility_button.add_css_class("flat")
-        self.visibility_button.set_tooltip_text(_("Toggle layer visibility"))
         self.visibility_button.connect("clicked", self._on_visibility_clicked)
         self.header.append(self.visibility_button)
 
@@ -237,7 +254,10 @@ class LayerColumn(Gtk.Box):
     def _build_workpiece_list(self):
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scrolled.set_vexpand(True)
+        # Grows with its rows, from one row, and scrolls once the dock
+        # is shorter than the list.
+        scrolled.set_propagate_natural_height(True)
+        scrolled.set_min_content_height(ROW_MIN_HEIGHT_COMPACT)
         scrolled.set_hexpand(True)
 
         self.listbox = Gtk.ListBox()
@@ -376,9 +396,11 @@ class LayerColumn(Gtk.Box):
         css_class = f"layer-icon-{self.layer.uid[:8]}"
         icon.set_css_classes([css_class])
         apply_css(
-            f".{css_class} "
-            f"{{ background: {bg}; border-radius: 5px; "
-            f"padding: 4px; }}"
+            stylesheet(
+                f".{css_class} "
+                f"{{ background: {bg}; border-radius: $radius_chip; "
+                "padding: $compact_space_control; }"
+            )
         )
         self.icon_container.append(icon)
 
