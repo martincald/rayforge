@@ -6,7 +6,10 @@ This wraps one of two USB backends -- d2xx (ctypes binding of the
 FTDI D2XX DLL, Windows default) or vcp (pyserial, macOS/Linux default,
 Windows optional) -- behind a single duck-typed surface. See
 docs/reference/rdcam_usb.md for the owner's decompile brief this
-module implements.
+module implements. The vcp backend needs no driver install on macOS
+(Apple's own FTDI driver exposes /dev/cu.usbserial-*) and finds the
+controller itself: FTDI ports (VID 0x0403) are enumerated on every
+connect, and a pinned usb_serial picks between several.
 
 Two framing differences from the UDP path, both required because a
 USB byte stream has neither a checksum nor datagram boundaries:
@@ -47,7 +50,7 @@ This supersedes the earlier ruida_serial_transport.py spike (absorbed
 here: RuidaSerialTransport -> RuidaUsbTransport, backend names
 "pyserial"/"ftd2xx" -> "vcp"/"d2xx" per the brief's own names, and the
 "ftd2xx" backend's raw ftd2xx-package prototype replaced by a ctypes
-D2XX binding -- see docs/reference/rdcam_usb.md section 3 for why the
+D2XX binding -- see docs/reference/rdcam_usb.md appendix A for why the
 PyPI ftd2xx package cannot be used in this environment).
 """
 
@@ -63,6 +66,7 @@ from typing import Literal
 
 import serial
 from blinker import Signal
+from serial.tools import list_ports
 
 from swiftcut.machine.transport.transport import TransportStatus
 
@@ -72,7 +76,7 @@ logger = logging.getLogger(__name__)
 
 Backend = Literal["vcp", "d2xx"]
 
-# Read chunk size for both backends' reader threads.
+# Read chunk size for the d2xx backend's reader thread.
 _READ_CHUNK_SIZE = 1024
 
 # FT_STATUS success value, and FT_Purge mask bits (D2XX API constants).
@@ -83,8 +87,12 @@ FT_PURGE_TX = 2
 _SERIAL_BUF_LEN = 16
 _DESC_BUF_LEN = 64
 
+# FTDI's USB vendor ID: the Ruida controller's USB side is an FTDI
+# FT245-style FIFO (docs/reference/rdcam_usb.md).
+FTDI_VID = 0x0403
+
 # The DLL is only staged in the Windows driver store on this
-# development machine (see docs/reference/rdcam_usb.md section 3); the
+# development machine (see docs/reference/rdcam_usb.md appendix A); the
 # hash suffix in the path is a per-package identifier that changes
 # when the driver updates, so it is globbed rather than hardcoded.
 _DRIVER_STORE_GLOB = (
@@ -149,7 +157,7 @@ class D2xxLibrary:
     """
     Pythonic wrapper around the subset of the D2XX API this transport
     uses, bound via ctypes rather than the PyPI ftd2xx package -- see
-    docs/reference/rdcam_usb.md section 3 for why: ftd2xx requires
+    docs/reference/rdcam_usb.md appendix A for why: ftd2xx requires
     pywin32 (no MSYS2/MinGW build) and its sdist fails on Python 3.14,
     while ctypes.WinDLL loads the DLL directly and every needed
     FT_* export is verified present.
@@ -381,6 +389,81 @@ def _select_device_index(
     return 0
 
 
+@dataclass(frozen=True)
+class VcpDeviceInfo:
+    """One FTDI serial port, as pyserial's list_ports reports it."""
+
+    port: str
+    description: str
+    serial: str
+
+
+def list_vcp_devices() -> list[VcpDeviceInfo]:
+    """Every serial port whose USB vendor is FTDI (VID 0x0403)."""
+    return [
+        VcpDeviceInfo(
+            port=p.device,
+            description=p.description or "",
+            serial=p.serial_number or "",
+        )
+        for p in list_ports.comports()
+        if p.vid == FTDI_VID
+    ]
+
+
+def list_usb_devices(
+    backend: Backend,
+) -> list[VcpDeviceInfo] | list[D2xxDeviceInfo]:
+    """
+    The FTDI devices the given backend could open, for the Device
+    settings picker. A missing D2XX DLL just means none are listed.
+    """
+    if backend == "vcp":
+        return list_vcp_devices()
+    try:
+        return D2xxLibrary(load_d2xx_dll()).list_devices()
+    except (D2xxNotAvailable, D2xxError) as e:
+        logger.warning(f"Cannot list D2XX devices: {e}")
+        return []
+
+
+def _select_vcp_device(
+    devices: list[VcpDeviceInfo], pinned_serial: str | None
+) -> VcpDeviceInfo:
+    """
+    Pick the FTDI port to open, better than RDWorks' FT_Open(0).
+
+    A profile-pinned serial wins; otherwise the only FTDI port; and
+    with several, the first, with a WARNING listing the others so a
+    wrong-default connection is never silent.
+    """
+    if not devices:
+        raise ConnectionError(
+            "No FTDI USB device (VID 0x0403) found. Check that the "
+            "laser's USB cable is plugged in and the controller is on."
+        )
+
+    listing = ", ".join(
+        f"{d.port} {d.description!r}/{d.serial!r}" for d in devices
+    )
+    if pinned_serial:
+        for d in devices:
+            if d.serial == pinned_serial:
+                return d
+        logger.warning(
+            f"Pinned usb_serial {pinned_serial!r} not found among FTDI "
+            f"devices: {listing}"
+        )
+
+    if len(devices) > 1:
+        logger.warning(
+            f"{len(devices)} FTDI devices found and none pinned; opening "
+            f"the first, {devices[0].port}. Pin usb_serial to choose. "
+            f"Found: {listing}"
+        )
+    return devices[0]
+
+
 class _UsbBackendBase:
     """
     Shared reader-thread scaffolding for the vcp and d2xx backends.
@@ -400,6 +483,8 @@ class _UsbBackendBase:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stop_event: threading.Event | None = None
         self._reader_thread: threading.Thread | None = None
+        # The device the last open() chose, for Diagnostics.
+        self.device: VcpDeviceInfo | D2xxDeviceInfo | None = None
 
     @property
     def is_connected(self) -> bool:
@@ -506,22 +591,64 @@ class _UsbBackendBase:
 
 
 class _VcpBackend(_UsbBackendBase):
-    """vcp backend: pyserial over an FTDI VCP COM/tty device."""
+    """
+    vcp backend: pyserial over an FTDI VCP COM/tty device.
+
+    The open is the VCP equivalent of FUN_10001C80
+    (docs/reference/rdcam_usb.md, "The open sequence"): 8N1 at a
+    nominal 19200 baud, the read and write timeouts of
+    FT_SetTimeouts(100, 1000), no flow control, RTS and DTR cleared
+    right after open (FT_ClrRts/FT_ClrDtr -- pyserial asserts both on
+    open by default), both buffers purged (FT_Purge(RX | TX)), then
+    the brief's 100 ms settle.
+    """
 
     _READ_TIMEOUT_S = 0.1
+    _WRITE_TIMEOUT_S = 1.0
 
-    def __init__(self, port: str, baudrate: int = 19200):
+    def __init__(
+        self,
+        port: str | None = None,
+        usb_serial: str | None = None,
+        baudrate: int = 19200,
+    ):
         super().__init__()
         self._port = port
+        self._usb_serial = usb_serial
         self._baudrate = baudrate
         self._serial: serial.Serial | None = None
 
     def _open(self) -> None:
-        self._serial = serial.Serial(
-            port=self._port,
-            baudrate=self._baudrate,
-            timeout=self._READ_TIMEOUT_S,
+        # Enumerated on every open, so a replug that renames the port
+        # is picked up by the next reconnect.
+        if self._port:
+            self.device = VcpDeviceInfo(self._port, "", "")
+        else:
+            self.device = _select_vcp_device(
+                list_vcp_devices(), self._usb_serial
+            )
+        logger.info(
+            f"USB device: port={self.device.port} "
+            f"description={self.device.description!r} "
+            f"serial={self.device.serial!r}"
         )
+        port = serial.Serial(
+            port=self.device.port,
+            baudrate=self._baudrate,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE,
+            timeout=self._READ_TIMEOUT_S,
+            write_timeout=self._WRITE_TIMEOUT_S,
+            rtscts=False,
+            dsrdtr=False,
+        )
+        port.rts = False
+        port.dtr = False
+        port.reset_input_buffer()
+        port.reset_output_buffer()
+        time.sleep(0.1)
+        self._serial = port
 
     def _close(self) -> None:
         if self._serial:
@@ -532,14 +659,18 @@ class _VcpBackend(_UsbBackendBase):
         self._serial = None
 
     def _raw_read(self) -> bytes:
+        # Asking for what is already buffered (at least one byte)
+        # returns as soon as a reply lands. A fixed large size would
+        # hold every ACK for the whole 0.1 s timeout.
         assert self._serial is not None
-        return self._serial.read(_READ_CHUNK_SIZE)
+        return self._serial.read(max(1, self._serial.in_waiting))
 
     def _raw_write(self, data: bytes) -> None:
+        # No flush(): tcdrain has no timeout, while write() is bounded
+        # by write_timeout, like FT_Write by FT_SetTimeouts.
         if not self._serial:
             raise ConnectionError("USB serial port not open")
         self._serial.write(data)
-        self._serial.flush()
 
     def _raw_purge(self) -> None:
         if self._serial:
@@ -551,8 +682,9 @@ class _D2xxBackend(_UsbBackendBase):
     d2xx backend: ctypes binding of the FTDI D2XX DLL.
 
     The open sequence matches FUN_10001C80 from the owner's decompile
-    brief (docs/reference/rdcam_usb.md section 2.1) exactly, in order,
-    including the asymmetric setUSBParameters(1024, 1204) reproduced
+    brief (docs/reference/rdcam_usb.md, "The open sequence") exactly,
+    in order, including the asymmetric setUSBParameters(1024, 1204)
+    reproduced
     verbatim rather than "corrected". FT_ResetDevice failing aborts
     the open with no further calls made, per the brief.
     """
@@ -579,6 +711,7 @@ class _D2xxBackend(_UsbBackendBase):
 
         devices = lib.list_devices()
         index = _select_device_index(devices, self._usb_serial)
+        self.device = next((d for d in devices if d.index == index), None)
 
         handle = lib.open(index)
         status = lib.reset_device(handle)
@@ -653,16 +786,15 @@ class RuidaUsbTransport:
         """
         Args:
             backend: "vcp" (pyserial) or "d2xx" (ctypes D2XX binding).
-                Defaults to "d2xx" on Windows, "vcp" elsewhere, per
-                docs/reference/rdcam_usb.md section 2.
-            port: Serial device path or COM port. Required for
-                backend="vcp".
+                Defaults to "d2xx" on Windows, "vcp" elsewhere.
+            port: For backend="vcp", open this serial device path or
+                COM port as given instead of enumerating FTDI ports.
             baudrate: Baud rate for backend="vcp" (nominal 19200; an
                 FT245 FIFO ignores it). backend="d2xx" always uses a
                 fixed 19200, per step 8 of the open sequence.
-            usb_serial: FTDI serial number to pin for backend="d2xx".
-                When unset, device index 0 is used and any other
-                detected devices are logged as a warning.
+            usb_serial: FTDI serial number to pin. When unset, the
+                only FTDI device is used, or with several the first,
+                and the others are logged as a warning.
             magic: Swizzle magic key. Magic auto-detection, which
                 RuidaTransport performs for UDP multi-controller
                 discovery, is out of scope here.
@@ -675,9 +807,7 @@ class RuidaUsbTransport:
 
         self._raw: _UsbBackendBase
         if backend == "vcp":
-            if not port:
-                raise ValueError("backend='vcp' requires a port")
-            self._raw = _VcpBackend(port, baudrate)
+            self._raw = _VcpBackend(port, usb_serial, baudrate)
         elif backend == "d2xx":
             self._raw = _D2xxBackend(usb_serial, library=d2xx_library)
         else:
@@ -695,6 +825,11 @@ class RuidaUsbTransport:
     @property
     def is_connected(self) -> bool:
         return self._raw.is_connected
+
+    @property
+    def device(self) -> VcpDeviceInfo | D2xxDeviceInfo | None:
+        """The device the last connect() opened, or None."""
+        return self._raw.device
 
     async def connect(self) -> None:
         await self._raw.connect()

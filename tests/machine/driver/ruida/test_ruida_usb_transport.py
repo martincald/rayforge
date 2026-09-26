@@ -9,7 +9,9 @@ Two groups:
   tests/machine/transport/test_serial_transport.py. These prove that
   RuidaClient's existing chunking (split_commands/build_datagrams) and
   ACK-paced send loop (send_job/_send_job_chunk) work unmodified over
-  the new transport -- nothing here reimplements either.
+  the new transport -- nothing here reimplements either. The vcp
+  open sequence, reads, and FTDI port enumeration/selection are
+  tested against the same mock.
 
 - d2xx-backend tests inject a fake D2xxLibrary (no ctypes, no real
   DLL) to verify the FUN_10001C80 open-sequence call order and abort
@@ -19,6 +21,7 @@ Two groups:
 import asyncio
 import logging
 import queue
+from types import SimpleNamespace
 
 import pytest
 
@@ -30,7 +33,10 @@ from swiftcut.machine.driver.ruida.ruida_usb_transport import (
     FT_PURGE_TX,
     D2xxDeviceInfo,
     RuidaUsbTransport,
+    VcpDeviceInfo,
     _select_device_index,
+    _select_vcp_device,
+    list_vcp_devices,
 )
 from swiftcut.machine.driver.ruida.ruida_util import (
     build_swizzle_lut,
@@ -62,10 +68,32 @@ class MockSerial:
         self._read_queue: queue.Queue = queue.Queue()
         self._closed = False
         self._written: list[bytes] = []
+        # Every modem-line set and buffer purge, in order, so the open
+        # sequence can be asserted.
+        self.calls: list[tuple] = []
+        self.in_waiting = 0
+        self.read_sizes: list[int] = []
+
+    @property
+    def rts(self):
+        return None
+
+    @rts.setter
+    def rts(self, value):
+        self.calls.append(("rts", value))
+
+    @property
+    def dtr(self):
+        return None
+
+    @dtr.setter
+    def dtr(self, value):
+        self.calls.append(("dtr", value))
 
     def read(self, size=1024):
         if self._closed:
             raise OSError("Port is closed")
+        self.read_sizes.append(size)
         try:
             return self._read_queue.get(timeout=self.timeout or 0.05)
         except queue.Empty:
@@ -84,11 +112,15 @@ class MockSerial:
         pass
 
     def reset_input_buffer(self):
+        self.calls.append(("reset_input_buffer",))
         while True:
             try:
                 self._read_queue.get_nowait()
             except queue.Empty:
                 break
+
+    def reset_output_buffer(self):
+        self.calls.append(("reset_output_buffer",))
 
     def feed_data(self, data: bytes):
         """Simulate incoming data from the device."""
@@ -96,14 +128,48 @@ class MockSerial:
 
 
 @pytest.fixture
-def mock_serial(mocker):
-    """Patch pyserial.Serial where ruida_usb_transport uses it."""
-    mock_instance = MockSerial()
-    mocker.patch(
+def serial_cls(mocker):
+    """Patch pyserial.Serial where ruida_usb_transport uses it. Each
+    construction (the open) is recorded as ("open",) in .calls."""
+    instance = MockSerial()
+
+    def open_port(*args, **kwargs):
+        instance._closed = False
+        instance.calls.append(("open",))
+        return instance
+
+    cls = mocker.patch(
         "swiftcut.machine.driver.ruida.ruida_usb_transport.serial.Serial",
-        return_value=mock_instance,
+        side_effect=open_port,
     )
-    return mock_instance
+    cls.instance = instance
+    return cls
+
+
+@pytest.fixture
+def mock_serial(serial_cls):
+    return serial_cls.instance
+
+
+def _ftdi_port(device, serial_number, description="FT245R USB FIFO"):
+    """A list_ports.comports() entry for an FTDI chip."""
+    return SimpleNamespace(
+        device=device,
+        vid=0x0403,
+        pid=0x6001,
+        description=description,
+        serial_number=serial_number,
+    )
+
+
+@pytest.fixture
+def comports(mocker):
+    """Patch list_ports.comports(); set .return_value per test."""
+    return mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport"
+        ".list_ports.comports",
+        return_value=[],
+    )
 
 
 class FakeD2xxLibrary:
@@ -407,6 +473,123 @@ async def test_disconnect_joins_reader_thread_before_closing(mock_serial):
 
 
 # --------------------------------------------------------------------
+# vcp backend: the open sequence, reads, and finding the device
+# --------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_vcp_open_sequence_matches_brief(
+    serial_cls, mock_serial, monkeypatch
+):
+    """
+    The VCP form of FUN_10001C80: 8N1 at 19200 with FT_SetTimeouts'
+    0.1 s read / 1 s write and no flow control, then -- after the
+    open -- RTS and DTR cleared, both buffers purged, a 100 ms settle.
+    """
+    import swiftcut.machine.driver.ruida.ruida_usb_transport as mod
+
+    monkeypatch.setattr(
+        mod.time, "sleep", lambda s: mock_serial.calls.append(("sleep", s))
+    )
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/cu.mock")
+    await transport.connect()
+    try:
+        serial_cls.assert_called_once_with(
+            port="/dev/cu.mock",
+            baudrate=19200,
+            bytesize=8,
+            parity="N",
+            stopbits=1,
+            timeout=0.1,
+            write_timeout=1.0,
+            rtscts=False,
+            dsrdtr=False,
+        )
+        assert mock_serial.calls == [
+            ("open",),
+            ("rts", False),
+            ("dtr", False),
+            ("reset_input_buffer",),
+            ("reset_output_buffer",),
+            ("sleep", 0.1),
+        ]
+    finally:
+        await transport.disconnect()
+
+
+def test_vcp_read_asks_for_what_is_buffered(mock_serial):
+    """At least one byte, else everything already buffered: an ACK is
+    handed over as soon as it lands, not after the read timeout."""
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    transport._raw._serial = mock_serial
+
+    mock_serial.in_waiting = 0
+    transport._raw._raw_read()
+    mock_serial.in_waiting = 5
+    transport._raw._raw_read()
+
+    assert mock_serial.read_sizes == [1, 5]
+
+
+@pytest.mark.asyncio
+async def test_vcp_connect_opens_the_ftdi_port_and_logs_it(
+    serial_cls, comports, caplog
+):
+    """With no port given, connect() enumerates FTDI ports itself and
+    logs the chosen device's description and serial every time."""
+    comports.return_value = [
+        SimpleNamespace(
+            device="/dev/cu.Bluetooth-Incoming-Port",
+            vid=None,
+            pid=None,
+            description="n/a",
+            serial_number=None,
+        ),
+        _ftdi_port("/dev/cu.usbserial-A10K3XYZ", "A10K3XYZ"),
+    ]
+    transport = RuidaUsbTransport(backend="vcp")
+
+    with caplog.at_level(logging.INFO):
+        for _ in range(2):
+            await transport.connect()
+            await transport.disconnect()
+
+    assert serial_cls.call_count == 2
+    assert serial_cls.call_args.kwargs["port"] == "/dev/cu.usbserial-A10K3XYZ"
+    assert transport.device == VcpDeviceInfo(
+        "/dev/cu.usbserial-A10K3XYZ", "FT245R USB FIFO", "A10K3XYZ"
+    )
+    logged = [
+        r.message
+        for r in caplog.records
+        if r.levelno == logging.INFO
+        and "A10K3XYZ" in r.message
+        and "FT245R USB FIFO" in r.message
+    ]
+    assert len(logged) == 2
+
+
+@pytest.mark.asyncio
+async def test_vcp_connect_without_an_ftdi_port_fails_clearly(
+    serial_cls, comports
+):
+    comports.return_value = [
+        SimpleNamespace(
+            device="/dev/cu.debug-console",
+            vid=None,
+            pid=None,
+            description="n/a",
+            serial_number=None,
+        )
+    ]
+    transport = RuidaUsbTransport(backend="vcp")
+
+    with pytest.raises(ConnectionError, match="No FTDI USB device"):
+        await transport.connect()
+    serial_cls.assert_not_called()
+
+
+# --------------------------------------------------------------------
 # d2xx backend, with a fake D2xxLibrary (no ctypes, no real DLL)
 # --------------------------------------------------------------------
 
@@ -507,3 +690,77 @@ def test_device_selection_falls_back_to_index0_with_warning(caplog):
         r.message for r in caplog.records if r.levelno == logging.WARNING
     ]
     assert any("BBB" in w and "Ruida B" in w for w in warnings)
+
+
+@pytest.mark.asyncio
+async def test_d2xx_records_the_opened_device(monkeypatch):
+    import swiftcut.machine.driver.ruida.ruida_usb_transport as mod
+
+    monkeypatch.setattr(mod.time, "sleep", lambda s: None)
+    devices = [
+        D2xxDeviceInfo(index=0, description="Ruida A", serial="AAA"),
+        D2xxDeviceInfo(index=1, description="Ruida B", serial="BBB"),
+    ]
+    fake = FakeD2xxLibrary(devices=devices)
+    transport = RuidaUsbTransport(
+        backend="d2xx", usb_serial="BBB", d2xx_library=fake
+    )
+    await transport.connect()
+    try:
+        assert transport.device == devices[1]
+    finally:
+        await transport.disconnect()
+
+
+_PORT_A = VcpDeviceInfo("/dev/cu.usbserial-AAA", "FT245R USB FIFO", "AAA")
+_PORT_B = VcpDeviceInfo("/dev/cu.usbserial-BBB", "FT232R USB UART", "BBB")
+
+
+def _warnings(caplog) -> list[str]:
+    return [r.message for r in caplog.records if r.levelno == logging.WARNING]
+
+
+def test_list_vcp_devices_keeps_only_ftdi_ports(comports):
+    comports.return_value = [
+        SimpleNamespace(
+            device="/dev/cu.usbmodem1101",
+            vid=0x2341,
+            pid=0x0043,
+            description="Arduino Uno",
+            serial_number="ARD1",
+        ),
+        _ftdi_port("/dev/cu.usbserial-AAA", "AAA"),
+    ]
+
+    assert list_vcp_devices() == [_PORT_A]
+
+
+def test_vcp_selection_pinned_serial_wins(caplog):
+    with caplog.at_level(logging.WARNING):
+        assert _select_vcp_device([_PORT_A, _PORT_B], "BBB") is _PORT_B
+    assert _warnings(caplog) == []
+
+
+def test_vcp_selection_sole_match_needs_no_pin(caplog):
+    with caplog.at_level(logging.WARNING):
+        assert _select_vcp_device([_PORT_A], None) is _PORT_A
+    assert _warnings(caplog) == []
+
+
+def test_vcp_selection_first_of_several_warns_with_the_others(caplog):
+    with caplog.at_level(logging.WARNING):
+        assert _select_vcp_device([_PORT_A, _PORT_B], None) is _PORT_A
+    assert any(
+        "BBB" in w and "FT232R USB UART" in w for w in _warnings(caplog)
+    )
+
+
+def test_vcp_selection_missing_pin_warns_and_falls_back(caplog):
+    with caplog.at_level(logging.WARNING):
+        assert _select_vcp_device([_PORT_A], "ZZZ") is _PORT_A
+    assert any("ZZZ" in w for w in _warnings(caplog))
+
+
+def test_vcp_selection_with_no_devices_raises():
+    with pytest.raises(ConnectionError, match="No FTDI USB device"):
+        _select_vcp_device([], None)
