@@ -14,7 +14,7 @@ from typing import (
 )
 
 from ....context import RayforgeContext
-from ....core.varset import ChoiceVar, HostnameVar, PortVar, Var, VarSet
+from ....core.varset import HostnameVar, PortVar, VarSet
 from ....core.varset.hostnamevar import is_valid_hostname_or_ip
 from ....pipeline.encoder.base import EncodedOutput, OpsEncoder
 from ...models.coordinate_system import CoordinateSystem
@@ -400,6 +400,9 @@ class RuidaDriver(Driver):
 
     @classmethod
     def get_setup_vars(cls) -> "VarSet":
+        # connection (udp | usb) and the usb_serial pin are chosen on
+        # the Device settings page instead; usb_backend (auto | d2xx |
+        # vcp) is a profile-only override.
         return VarSet(
             vars=[
                 HostnameVar(
@@ -424,40 +427,6 @@ class RuidaDriver(Driver):
                         "The UDP port for jog commands (default: 50207)"
                     ),
                     default=50207,
-                ),
-                ChoiceVar(
-                    key="connection",
-                    label=_("Connection"),
-                    choices=["udp", "usb"],
-                    description=_(
-                        "How to reach the controller: over the network "
-                        "(UDP) or a direct USB cable."
-                    ),
-                    default="udp",
-                    allow_none=False,
-                ),
-                ChoiceVar(
-                    key="usb_backend",
-                    label=_("USB Backend"),
-                    choices=["auto", "d2xx", "vcp"],
-                    description=_(
-                        "Which USB driver to use. 'auto' picks d2xx on "
-                        "Windows and vcp elsewhere."
-                    ),
-                    default="auto",
-                    allow_none=False,
-                ),
-                Var(
-                    key="usb_serial",
-                    label=_("USB Serial / Port"),
-                    var_type=str,
-                    description=_(
-                        "Optional: the FTDI serial number to pin (d2xx "
-                        "backend), or the serial port to use, e.g. COM5 "
-                        "(vcp backend). Leave empty to use the first "
-                        "device found."
-                    ),
-                    default="",
                 ),
             ]
         )

@@ -258,7 +258,9 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
     def on_driver_param_changed(self, sender, **kwargs):
         if self._is_initializing:
             return
-        values = self.driver_group.get_values()
+        # Merged, not replaced: args set elsewhere (the Device page's
+        # connection and USB device) are not in this VarSet.
+        values = {**self.machine.driver_args, **self.driver_group.get_values()}
         self.machine.set_driver_args(values)
 
     def on_name_changed(self, entry_row, _):

@@ -15,6 +15,7 @@ from ...machine.driver.driver import (
     ResourceBusyError,
 )
 from ...machine.driver.ruida.ruida_driver import RuidaDriver
+from ...machine.driver.ruida.ruida_usb_transport import list_usb_devices
 from ...machine.transport.transport import TransportStatus
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL
@@ -162,6 +163,42 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             self.main_group.add(warning_row)
             self._warning_rows.append(warning_row)
 
+        # Connection (Ruida only): Ethernet or USB, and which FTDI
+        # device over USB. A change rewrites the profile's driver args,
+        # which rebuilds the driver on the new transport; no restart.
+        self.connection_group = Adw.PreferencesGroup(title=_("Connection"))
+        self.connection_row = Adw.ComboRow(
+            title=_("Connection"),
+            model=Gtk.StringList.new([_("Ethernet"), _("USB")]),
+        )
+        self.connection_row.connect(
+            "notify::selected", self._on_connection_selected
+        )
+        self.connection_group.add(self.connection_row)
+        self.usb_device_row = Adw.ComboRow(
+            title=_("USB Device"),
+            subtitle=_("Automatic uses the only FTDI device found"),
+            model=Gtk.StringList.new([]),
+        )
+        refresh_usb_button = Gtk.Button(child=get_icon("refresh-symbolic"))
+        refresh_usb_button.set_tooltip_text(_("Refresh USB Devices"))
+        refresh_usb_button.add_css_class("flat")
+        refresh_usb_button.set_valign(Gtk.Align.CENTER)
+        refresh_usb_button.connect(
+            "clicked", self._on_refresh_usb_devices_clicked
+        )
+        self.usb_device_row.add_suffix(refresh_usb_button)
+        self.usb_device_row.connect(
+            "notify::selected", self._on_usb_device_selected
+        )
+        self.connection_group.add(self.usb_device_row)
+        self.add(self.connection_group)
+        # The last enumeration, and the usb_serial each dropdown entry
+        # stands for ("" is Automatic).
+        self._usb_devices = []
+        self._usb_device_serials: list[str] = []
+        self._is_syncing_connection = False
+
         # A group and row to prompt the user to load settings
         self.prompt_group = Adw.PreferencesGroup()
         prompt_row = Adw.ActionRow(
@@ -193,6 +230,7 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         # rows above when the driver's connection is "usb". ENQ/ACK
         # above are transport-agnostic and stay shown for USB too.
         self.diag_usb_backend_row = Adw.ActionRow(title=_("USB Backend"))
+        self.diag_usb_port_row = Adw.ActionRow(title=_("USB Port"))
         self.diag_usb_device_row = Adw.ActionRow(title=_("USB Device"))
         self.diag_usb_bytes_sent_row = Adw.ActionRow(title=_("Bytes Sent"))
         self.diag_usb_bytes_received_row = Adw.ActionRow(
@@ -241,6 +279,7 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         ]
         self._usb_diag_rows = [
             self.diag_usb_backend_row,
+            self.diag_usb_port_row,
             self.diag_usb_device_row,
             self.diag_usb_bytes_sent_row,
             self.diag_usb_bytes_received_row,
@@ -273,6 +312,12 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         self.machine.settings_error.connect(self._on_settings_op_error)
         self.connect("destroy", self.on_destroy)
 
+        if (
+            self.machine.driver_name == "RuidaDriver"
+            and self.machine.driver_args.get("connection") == "usb"
+        ):
+            self._refresh_usb_devices()
+        self._sync_connection_group()
         self._update_ui_state()
         logger.debug("__init__ finished.")
 
@@ -304,6 +349,7 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         for widget in self._varset_widgets:
             self.remove(widget)
         self._varset_widgets.clear()
+        self._sync_connection_group()
         self._update_ui_state()
 
     def _on_connection_status_changed(self, sender, **kwargs):
@@ -492,6 +538,9 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             self.diag_usb_backend_row.set_subtitle(
                 getattr(diagnostics, "usb_backend", None) or na
             )
+            self.diag_usb_port_row.set_subtitle(
+                getattr(diagnostics, "usb_port", None) or na
+            )
             self.diag_usb_device_row.set_subtitle(
                 getattr(diagnostics, "usb_device", None) or na
             )
@@ -664,6 +713,73 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         self.machine.set_driver_args(new_args)
         self._update_ui_state()
         self.show_toast.send(self, message=_("Ports reset to defaults."))
+
+    def _refresh_usb_devices(self):
+        """Enumerates the FTDI devices the profile's USB backend sees."""
+        backend = RuidaDriver._resolve_usb_backend(
+            self.machine.driver_args.get("usb_backend", "auto")
+        )
+        self._usb_devices = list_usb_devices(backend)
+
+    def _sync_connection_group(self):
+        """
+        Shows the profile's connection and USB pin. Never writes them
+        back: the handlers ignore changes made while syncing.
+        """
+        is_ruida = self.machine.driver_name == "RuidaDriver"
+        self.connection_group.set_visible(is_ruida)
+        if not is_ruida:
+            return
+        is_usb = self.machine.driver_args.get("connection") == "usb"
+        pin = self.machine.driver_args.get("usb_serial") or ""
+
+        labels = [_("Automatic")]
+        serials = [""]
+        for device in self._usb_devices:
+            labels.append(f"{device.description} ({device.serial})")
+            serials.append(device.serial)
+        if pin not in serials:
+            # Keep a pinned device that is unplugged selectable.
+            labels.append(_("{serial} (not found)").format(serial=pin))
+            serials.append(pin)
+
+        self._is_syncing_connection = True
+        try:
+            self.connection_row.set_selected(1 if is_usb else 0)
+            if serials != self._usb_device_serials:
+                model = cast(Gtk.StringList, self.usb_device_row.get_model())
+                model.splice(0, model.get_n_items(), labels)
+                self._usb_device_serials = serials
+            self.usb_device_row.set_selected(serials.index(pin))
+        finally:
+            self._is_syncing_connection = False
+        self.usb_device_row.set_visible(is_usb)
+
+    def _set_driver_arg(self, key: str, value: str):
+        """Writes one driver arg; the driver is rebuilt on the change."""
+        if self.machine.driver_args.get(key) == value:
+            return
+        self.machine.set_driver_args({**self.machine.driver_args, key: value})
+
+    def _on_connection_selected(self, row, _pspec):
+        if self._is_syncing_connection:
+            return
+        connection = "usb" if row.get_selected() == 1 else "udp"
+        if connection == "usb":
+            self._refresh_usb_devices()
+        self._set_driver_arg("connection", connection)
+        self._sync_connection_group()
+
+    def _on_usb_device_selected(self, row, _pspec):
+        if self._is_syncing_connection:
+            return
+        index = row.get_selected()
+        if 0 <= index < len(self._usb_device_serials):
+            self._set_driver_arg("usb_serial", self._usb_device_serials[index])
+
+    def _on_refresh_usb_devices_clicked(self, _button):
+        self._refresh_usb_devices()
+        self._sync_connection_group()
 
     def _on_activate_clicked(self, _banner):
         """Handler for the 'Activate Machine' button."""

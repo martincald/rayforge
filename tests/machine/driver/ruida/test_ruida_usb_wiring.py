@@ -31,36 +31,12 @@ from swiftcut.machine.models.machine import Machine
 _USB = "swiftcut.machine.driver.ruida.ruida_usb_transport"
 
 
-def test_get_setup_vars_adds_connection_usb_backend_and_usb_serial():
-    setup_vars = RuidaDriver.get_setup_vars()
-    connection_var = setup_vars.get("connection")
-    backend_var = setup_vars.get("usb_backend")
-    serial_var = setup_vars.get("usb_serial")
+def test_usb_settings_are_not_in_the_generic_setup_vars():
+    """connection and usb_serial are chosen on the Device page; a
+    second, generic copy on the General page would go stale."""
+    keys = {var.key for var in RuidaDriver.get_setup_vars()}
 
-    assert connection_var is not None
-    assert connection_var.choices == ["udp", "usb"]
-    assert connection_var.default == "udp"
-
-    assert backend_var is not None
-    assert backend_var.choices == ["auto", "d2xx", "vcp"]
-    assert backend_var.default == "auto"
-
-    assert serial_var is not None
-    assert serial_var.default == ""
-
-
-def test_new_settings_round_trip_through_the_profile():
-    """set_values()/get_values() is exactly what the profile save/load
-    path uses (see general_preferences_page.py)."""
-    setup_vars = RuidaDriver.get_setup_vars()
-    setup_vars.set_values(
-        {"connection": "usb", "usb_backend": "vcp", "usb_serial": "COM7"}
-    )
-    values = setup_vars.get_values()
-
-    assert values["connection"] == "usb"
-    assert values["usb_backend"] == "vcp"
-    assert values["usb_serial"] == "COM7"
+    assert keys == {"host", "port", "jog_port"}
 
 
 def test_connection_and_usb_serial_round_trip_through_the_machine_file(
@@ -431,3 +407,43 @@ class TestUsbTrafficCounter:
 
         await counter.disconnect()
         assert counter.is_connected is False
+
+
+@pytest.mark.asyncio
+async def test_changing_connection_rebuilds_on_the_other_transport(
+    lite_context,
+):
+    """
+    No restart: rewriting the profile's connection is all it takes.
+    The rebuild that set_driver_args schedules replaces the UDP
+    driver with one on USB, and back again.
+    """
+    machine = Machine(lite_context)
+    lite_context.machine_mgr.add_machine(machine)
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {
+        "host": "192.168.1.100",
+        "port": 50200,
+        "jog_port": 50207,
+    }
+    # Never let a test dial out to a real machine.
+    machine.auto_connect = False
+    controller = machine.controller
+
+    await controller.rebuild_driver()
+    assert controller.driver._connection == "udp"
+
+    machine.driver_args = {**machine.driver_args, "connection": "usb"}
+    await controller.rebuild_driver()
+    usb_driver = controller.driver
+    assert usb_driver._connection == "usb"
+    assert usb_driver._usb_transport is not None
+    assert usb_driver._udp_transport is None
+
+    machine.driver_args = {**machine.driver_args, "connection": "udp"}
+    await controller.rebuild_driver()
+    assert controller.driver is not usb_driver
+    assert controller.driver._connection == "udp"
+    assert controller.driver.host == "192.168.1.100"
+
+    await machine.shutdown()

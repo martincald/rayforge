@@ -317,7 +317,11 @@ def test_reset_ports_button_writes_defaults_and_clears_notice(
 
 
 def _usb_diagnostics(
-    backend="d2xx", device="ABC123", bytes_sent=10, bytes_received=20
+    backend="d2xx",
+    device="ABC123",
+    bytes_sent=10,
+    bytes_received=20,
+    port=None,
 ):
     return RuidaDiagnostics(
         driver_class="RuidaDriver",
@@ -331,6 +335,7 @@ def _usb_diagnostics(
         last_ack_received_at=None,
         connection="usb",
         usb_backend=backend,
+        usb_port=port,
         usb_device=device,
         usb_bytes_sent=bytes_sent,
         usb_bytes_received=bytes_received,
@@ -344,11 +349,22 @@ def test_diagnostics_group_shows_usb_fields_when_on_usb(
     page, _machine = _page(
         ui_context_initializer,
         monkeypatch,
-        _FakeRuidaDriver(_usb_diagnostics()),
+        _FakeRuidaDriver(
+            _usb_diagnostics(
+                backend="vcp",
+                device="FT245R USB FIFO (A10K3XYZ)",
+                port="/dev/cu.usbserial-A10K3XYZ",
+            )
+        ),
     )
 
-    assert page.diag_usb_backend_row.get_subtitle() == "d2xx"
-    assert page.diag_usb_device_row.get_subtitle() == "ABC123"
+    assert page.diag_usb_backend_row.get_subtitle() == "vcp"
+    assert (
+        page.diag_usb_port_row.get_subtitle() == "/dev/cu.usbserial-A10K3XYZ"
+    )
+    assert (
+        page.diag_usb_device_row.get_subtitle() == "FT245R USB FIFO (A10K3XYZ)"
+    )
     assert page.diag_usb_bytes_sent_row.get_subtitle() == "10"
     assert page.diag_usb_bytes_received_row.get_subtitle() == "20"
     for row in page._usb_diag_rows:
