@@ -7,9 +7,13 @@ the reskin never had, and the one
 
 The rule this document exists to enforce: **a widget never picks its
 own spacing, control size or row height.** It names a role, and the
-role has one value. Where GTK CSS can express the rule it lives in
-`swiftcut/ui_gtk/theme.py`; where only Python can (margins, box
-spacing, size requests) it lives in `swiftcut/ui_gtk/layout.py`.
+role has one value. Every value lives in one module,
+`swiftcut/ui_gtk/layout.py`: Python reads its constants (margins, box
+spacing, size requests), and every stylesheet in `ui_gtk` - the theme's
+in `swiftcut/ui_gtk/theme.py` and each widget's own - names a role from
+its `CSS_LENGTHS` through `layout.stylesheet()` instead of writing a
+length. No other module in `ui_gtk` writes a pixel length; a test
+(`tests/ui_gtk/test_dock_density.py`) greps for one.
 
 **Units.** Every px value below is a size *at the design's 13px type*,
 not a pixel count. `layout.scaled()` multiplies it by the system UI
@@ -58,20 +62,26 @@ separate fix from this one.
 
 ---
 
-## 2. Control sizes — two density contexts
+## 2. Control sizes — one density
 
-The brief asks for one size per type per density context, so the
-contexts are named first. There are two, not five:
+The brief asks for one size per type per density context. There is
+one context, **compact** (`layout.COMPACT`), and it covers the toolbar,
+the dock rail, the canvas overlays and the whole dock: layer cards,
+machine panel, jog grid, scale buttons and position readout.
 
-| Context | Where | Token | Size |
-| --- | --- | --- | --- |
-| **Compact** | toolbar, panel rows, dock rail, canvas overlay | `CONTROL_SIZE` | 32×32 |
-| **Touch** | the jog grid, and only the jog grid | `JOG_CELL` | 60×60 |
+| Token | px | Role |
+| --- | --- | --- |
+| `CONTROL_SIZE` | 32×32 | every icon and short-label button |
+| `ICON_GLYPH` | 16 | every icon glyph |
+| `JOG_CELL` | 40×40 | every button in the jog grid, bezel included |
+| `SPIN_WIDTH` × `SPIN_HEIGHT` | 96×28 | every spin field in the dock, − and + included |
+| `COMPACT_SPACE_CONTROL` | 4 | between sibling controls in the dock |
+| `COMPACT_SPACE_GROUP` | 8 | a dock panel's side padding, between its groups |
 
-The jog grid is the one surface an operator hits while watching the
-machine rather than the screen; everything else is pointer work at
-pointer size. That is the whole justification for a second context,
-and no third one is warranted.
+The jog grid used to be a second, *touch* context at 60×60. At 2×
+HiDPI that made the dock 40% of a 13" window, so it joins the compact
+density at 40: still the biggest target in the app, but one cell of
+the same system.
 
 Every icon glyph is `ICON_GLYPH` = **16px**, in both contexts. A jog
 button is a bigger target, not a bigger picture.
@@ -92,8 +102,8 @@ tightest contract.
 | Token | px | Rule |
 | --- | --- | --- |
 | `ROW_MIN_HEIGHT` | 48 | Dialog and page rows |
-| `ROW_MIN_HEIGHT_COMPACT` | 40 | Rows in a dock panel (`.sc-panel`) |
-| `PANEL_MAX_WIDTH` | 340 | A group inside a dock panel stops here |
+| `ROW_MIN_HEIGHT_COMPACT` | 32 | Rows in the dock: settings rows, layer headers, operations |
+| `PANEL_MAX_WIDTH` | 400 | A group inside a dock panel stops here |
 
 Three rules follow from those numbers:
 
@@ -144,9 +154,12 @@ is a circle, not a radius.
 | Title | `.sc-title` | 13px, weight 600 |
 | Label | *(inherit)* | 13px, the row title |
 | Dimmed label | `dim-label` | 13px, dimmed — a full-size secondary label |
-| Caption | `.sc-caption` | 11px, `@sc_fg_dim`, **one line** |
-| Jog caption | `.sc-jog .sc-caption` | 9px, from `swift-cut-tokens.md` §1.5 |
+| Caption | `.sc-caption` | 11px, `@sc_fg_dim`, **one line** — one step below the body, everywhere |
 | Mono numeric | `.sc-numeric` | tabular figures |
+
+The body is the system font, in the dock as everywhere else: the 11.5px
+panel body and the 9px jog caption of `swift-cut-tokens.md` §1.5 are
+gone, so a caption is one step below whatever the body is.
 
 The audit called `dim-label` and `caption` two vocabularies for one
 role (T1). They are not quite: a *dimmed label* is full-size
@@ -208,9 +221,9 @@ quantity — but in the same format, and the duplicate
 
 | Rule | Home |
 | --- | --- |
-| Spacing scale, control sizes, row heights, max widths | `swiftcut/ui_gtk/layout.py` (constants) |
-| Icon-button sizing, row minimum height, radii, type roles | `swiftcut/ui_gtk/theme.py` (`_LAYOUT`) |
-| Suffix box, row-action buttons, position formatting | `swiftcut/ui_gtk/layout.py` (helpers) |
+| Every value: spacing, control sizes, row heights, max widths, radii, strokes, shadows | `swiftcut/ui_gtk/layout.py` (`COMPACT`, constants, `CSS_LENGTHS`) |
+| Icon-button sizing, dock row rhythm, spin fields, radii, type roles | `swiftcut/ui_gtk/theme.py` (`_LAYOUT`, naming roles) |
+| Suffix box, row-action buttons, compact spin field, position formatting | `swiftcut/ui_gtk/layout.py` (helpers) |
 | Unit suffix | `swiftcut/ui_gtk/shared/pref_rows/unit_spin_row.py` |
 
 ### 6.1 The legacy colour names
@@ -245,3 +258,38 @@ that already exist:
 | `.sc-rail` | dock icon strip | **new** — the rule existed, nothing wore the class |
 | `.sc-overlay` | canvas overlays | **new** |
 | `.sc-split` | split menu buttons | **new** — same, the rule existed and matched nothing |
+
+---
+
+## 7. The dock at compact density
+
+The dock is built from `layout.COMPACT` and nothing else. At a 13"
+MacBook's 1440×900 it used to take 351 of 900 pixels (39%); it now
+takes 209 (23%), which leaves 70.6% of the window above it for the
+toolbar and canvas. Captures and measurements at 1440×900 and
+2560×1440, light and dark, are in `screens/compact-dock/`, taken with
+`scripts/screenshot/dock_fit.py`.
+
+- **Layer cards.** One header line - colour chip, name, what the layer
+  is as a caption beside it, then its actions - and one operations
+  row. The item list below grows with its items from a minimum of one
+  row and scrolls once the dock is shorter than it. A card is as tall
+  as its content, and a long layer never makes the dock taller.
+- **Machine panel.** Rows are one compact row, title and caption
+  included. The settings list stops at `PANEL_MAX_WIDTH`, and every
+  row's controls end at one edge: the spin fields are one width and
+  their units share one column.
+- **Jog grid.** Every button - arrows, Home, Go Scale, Cut Scale and
+  the job column - asks for one `JOG_CELL`, and the readout is a cell
+  of the same grid.
+- **Height.** The dock opens at its content's height. The paned handle
+  above it drags it taller; View ▸ Show Bottom Panel (and the toolbar
+  and status bar toggles) collapses it and brings it back at the same
+  height. A height the user dragged to is kept across launches; one
+  the paned only worked out from the content is not, so the default
+  follows the content.
+- **Windows.** Same tokens, same values. They are design pixels at the
+  system font, and GTK folds the platform's DPI into that font, so a
+  scaled Windows display scales the dock the way it scales its text.
+  Were a platform ever to need other values, `layout.COMPACT` is the
+  one place that would say so.

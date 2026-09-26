@@ -1,0 +1,12 @@
+window content 1440x900 (laid out 1440x900)
+  dock            209px  23.2%
+  above the dock  635px  70.6%
+  canvas alone    591px  65.7%
+  settings list   369px wide (PANEL_MAX_WIDTH 369px)
+  jog cell        37x37px (JOG_CELL 37px)
+window content 2560x1440 (laid out 2560x1440)
+  dock            209px  14.5%
+  above the dock  1175px  81.6%
+  canvas alone    1131px  78.5%
+  settings list   369px wide (PANEL_MAX_WIDTH 369px)
+  jog cell        37x37px (JOG_CELL 37px)
