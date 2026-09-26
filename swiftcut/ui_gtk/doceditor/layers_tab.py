@@ -42,7 +42,7 @@ class LayersTab(Gtk.Box):
         self.columns_box.set_margin_start(COMPACT_SPACE_GROUP)
         self.columns_box.set_margin_top(COMPACT_SPACE_CONTROL)
         self.columns_box.set_margin_bottom(COMPACT_SPACE_CONTROL)
-        self.columns_box.set_valign(Gtk.Align.START)
+        self.columns_box.set_valign(Gtk.Align.FILL)
         self.scrolled.set_child(self.columns_box)
         self.append(self.scrolled)
 

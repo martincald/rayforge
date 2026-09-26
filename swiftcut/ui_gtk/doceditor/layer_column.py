@@ -36,13 +36,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 css = stylesheet("""
-.layer-column {
+.layer-card {
     background-color: alpha(@theme_fg_color, 0.03);
     border-radius: $radius_inner;
     border: $hairline solid @borders;
     min-width: $layer_card_min_width;
 }
-.layer-column.active-layer-column {
+.layer-column.active-layer-column > .layer-card {
     border-color: @accent_bg_color;
     background-color: alpha(@accent_bg_color, 0.05);
 }
@@ -116,9 +116,14 @@ class LayerColumn(Gtk.Box):
         self.add_css_class("layer-column")
         self.set_margin_end(COMPACT_SPACE_CONTROL)
         self.set_hexpand(False)
-        # As tall as its content and no taller: an empty layer is a
-        # header, its operations and one row, not a column of nothing.
-        self.set_valign(Gtk.Align.START)
+        # The column is the dock's full height, so a drop, a click or a
+        # right-click anywhere in it still lands on this layer. The card
+        # drawn in it is only as tall as its content: an empty layer is
+        # a header, its operations and one row, not a column of nothing.
+        self.card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.card.add_css_class("layer-card")
+        self.card.set_valign(Gtk.Align.START)
+        self.append(self.card)
 
         self.doc = doc
         self.layer = layer
@@ -244,12 +249,12 @@ class LayerColumn(Gtk.Box):
         self.visibility_button.connect("clicked", self._on_visibility_clicked)
         self.header.append(self.visibility_button)
 
-        self.append(self.header)
+        self.card.append(self.header)
         self._update_icon()
 
     def _build_workflow_row(self):
         self.workflow_row = WorkflowRow(self.editor, self.layer)
-        self.append(self.workflow_row)
+        self.card.append(self.workflow_row)
 
     def _build_workpiece_list(self):
         scrolled = Gtk.ScrolledWindow()
@@ -276,7 +281,7 @@ class LayerColumn(Gtk.Box):
         self.add_controller(drop_target)
 
         scrolled.set_child(self.listbox)
-        self.append(scrolled)
+        self.card.append(scrolled)
 
         self._rebuild_workpiece_list()
 
