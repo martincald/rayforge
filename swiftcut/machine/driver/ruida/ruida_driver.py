@@ -35,7 +35,7 @@ from ..driver import (
 from .ruida_client import RuidaClient
 from .ruida_encoder import RuidaEncoder, build_rd_bytes
 from .ruida_transport import RuidaTransport
-from .ruida_usb_transport import RuidaUsbTransport
+from .ruida_usb_transport import RuidaUsbTransport, VcpDeviceInfo
 
 if TYPE_CHECKING:
     from raygeo.ops import Ops
@@ -136,6 +136,7 @@ class RuidaDiagnostics:
     last_ack_received_at: float | None
     connection: str = "udp"
     usb_backend: str | None = None
+    usb_port: str | None = None
     usb_device: str | None = None
     usb_bytes_sent: int = 0
     usb_bytes_received: int = 0
@@ -213,6 +214,7 @@ class RuidaDriver(Driver):
         self._connection = "udp"
         self._usb_backend_resolved: str | None = None
         self._usb_serial: str | None = None
+        self._usb_transport: RuidaUsbTransport | None = None
         self._usb_traffic: _UsbTrafficCounter | None = None
         self._response_received = asyncio.Event()
         self._connection_task: asyncio.Task | None = None
@@ -312,13 +314,19 @@ class RuidaDriver(Driver):
             last_enq_sent_at = self._client.last_enq_sent_at
             last_ack_received_at = self._client.last_ack_received_at
 
+        usb_port = None
         usb_device = None
         if self._connection == "usb":
-            # The transport (owned elsewhere) does not expose the
-            # live-resolved FTDI description/serial, so this reports
-            # the configured selection instead: the pin if one was
-            # set, or a note that the first device found is used.
-            usb_device = self._usb_serial or _("auto (first device found)")
+            transport = self._usb_transport
+            device = transport.device if transport else None
+            if device is not None:
+                usb_device = f"{device.description} ({device.serial})"
+                if isinstance(device, VcpDeviceInfo):
+                    usb_port = device.port
+            else:
+                # Nothing opened yet: report the configured selection,
+                # the pin if one was set, else that one is found.
+                usb_device = self._usb_serial or _("auto (first device found)")
 
         return RuidaDiagnostics(
             driver_class=type(self).__name__,
@@ -332,6 +340,7 @@ class RuidaDriver(Driver):
             last_ack_received_at=last_ack_received_at,
             connection=self._connection,
             usb_backend=self._usb_backend_resolved,
+            usb_port=usb_port,
             usb_device=usb_device,
             usb_bytes_sent=(
                 self._usb_traffic.bytes_sent if self._usb_traffic else 0
@@ -525,20 +534,12 @@ class RuidaDriver(Driver):
         self._usb_backend_resolved = backend
         self._usb_serial = usb_serial
 
-        if backend == "vcp":
-            if not usb_serial:
-                raise DriverSetupError(
-                    _(
-                        "USB Serial / Port must be set to a serial port "
-                        "(e.g. COM5) for the vcp backend."
-                    )
-                )
-            raw_transport = RuidaUsbTransport(backend="vcp", port=usb_serial)
-        else:
-            raw_transport = RuidaUsbTransport(
-                backend="d2xx", usb_serial=usb_serial
-            )
-
+        # Both backends find the FTDI device on each connect, so a
+        # missing pin is not a setup error.
+        raw_transport = RuidaUsbTransport(
+            backend=backend, usb_serial=usb_serial
+        )
+        self._usb_transport = raw_transport
         self._usb_traffic = _UsbTrafficCounter(raw_transport)
         self._ruida_transport = self._usb_traffic
         self._udp_transport = None
@@ -629,7 +630,8 @@ class RuidaDriver(Driver):
         await super().cleanup()
 
     async def _connect_implementation(self) -> None:
-        if not self.host:
+        # USB has no host; its transport finds the device on connect.
+        if self._connection != "usb" and not self.host:
             self._update_connection_status(
                 TransportStatus.DISCONNECTED, "No host configured"
             )
@@ -677,9 +679,13 @@ class RuidaDriver(Driver):
                 self.state.status = DeviceStatus.IDLE
                 self.state_changed.send(self, state=self.state)
 
+                where = (
+                    "over USB"
+                    if self._connection == "usb"
+                    else f"at {self.host}:{self.port}"
+                )
                 logger.info(
-                    f"Connected to Ruida controller "
-                    f"at {self.host}:{self.port}",
+                    f"Connected to Ruida controller {where}",
                     extra=self._log_extra("MACHINE_EVENT"),
                 )
 

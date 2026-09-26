@@ -10,20 +10,25 @@ USB branch: setup vars, backend resolution, transport construction
 precheck, and the diagnostics fields the Device settings page reads.
 """
 
+import asyncio
+import queue
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 from blinker import Signal
 
-from swiftcut.machine.driver.driver import (
-    DriverPrecheckError,
-    DriverSetupError,
-)
+from swiftcut.machine.driver.driver import DriverPrecheckError
+from swiftcut.machine.driver.ruida.ruida_codec import RuidaCodec
 from swiftcut.machine.driver.ruida.ruida_driver import (
     RuidaDriver,
     _UsbTrafficCounter,
 )
+from swiftcut.machine.driver.ruida.ruida_simulator import RuidaSimulator
+from swiftcut.machine.driver.ruida.ruida_usb_transport import VcpDeviceInfo
 from swiftcut.machine.models.machine import Machine
+
+_USB = "swiftcut.machine.driver.ruida.ruida_usb_transport"
 
 
 def test_get_setup_vars_adds_connection_usb_backend_and_usb_serial():
@@ -56,6 +61,23 @@ def test_new_settings_round_trip_through_the_profile():
     assert values["connection"] == "usb"
     assert values["usb_backend"] == "vcp"
     assert values["usb_serial"] == "COM7"
+
+
+def test_connection_and_usb_serial_round_trip_through_the_machine_file(
+    lite_context,
+):
+    machine = Machine(lite_context)
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {
+        "host": "192.168.1.100",
+        "connection": "usb",
+        "usb_serial": "A10K3XYZ",
+    }
+
+    loaded = Machine.from_dict(machine.to_dict(), lite_context)
+
+    assert loaded.driver_args["connection"] == "usb"
+    assert loaded.driver_args["usb_serial"] == "A10K3XYZ"
 
 
 class TestBackendResolution:
@@ -101,7 +123,90 @@ def _mock_usb_transport(mocker):
     instance.status_changed = Signal()
     instance.send_command = AsyncMock()
     instance.send = AsyncMock()
+    instance.device = None
     return usb_transport_cls, instance
+
+
+class _SimulatedFtdiPort:
+    """
+    A pyserial-shaped FTDI port with the Ruida simulator behind it.
+    Each write is answered the way run_udp_simulator answers a
+    datagram -- an ACK, then any reply -- swizzled, with no checksum.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self._codec = RuidaCodec(0x88)
+        self._simulator = RuidaSimulator()
+        self._replies: queue.Queue[bytes] = queue.Queue()
+        self.in_waiting = 0
+        self.rts = True
+        self.dtr = True
+
+    def read(self, size=1):
+        try:
+            return self._replies.get(timeout=0.05)
+        except queue.Empty:
+            return b""
+
+    def write(self, data):
+        plain = self._codec.unswizzle(bytes(data))
+        response = self._simulator.process_commands(plain)
+        if response in (b"", b"\xcc"):
+            response = b""
+        self._replies.put(self._codec.swizzle(b"\xcc" + response))
+        return len(data)
+
+    def reset_input_buffer(self):
+        pass
+
+    def reset_output_buffer(self):
+        pass
+
+    def close(self):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_a_usb_profile_connects_to_the_controller(lite_context, mocker):
+    """
+    End to end below the UI: a USB profile with no host and no pin
+    enumerates the FTDI port, opens it, and the connection loop's
+    ENQ/ACK brings the driver to connected, with Diagnostics naming
+    the port and device.
+    """
+    mocker.patch(f"{_USB}.serial.Serial", side_effect=_SimulatedFtdiPort)
+    mocker.patch(
+        f"{_USB}.list_ports.comports",
+        return_value=[
+            SimpleNamespace(
+                device="/dev/cu.usbserial-A10K3XYZ",
+                vid=0x0403,
+                pid=0x6001,
+                description="FT245R USB FIFO",
+                serial_number="A10K3XYZ",
+            )
+        ],
+    )
+    machine = Machine(lite_context)
+    driver = RuidaDriver(lite_context, machine)
+    driver._setup_implementation(connection="usb", usb_backend="vcp")
+    try:
+        await driver._connect_implementation()
+        for _ in range(100):
+            if driver.is_connected:
+                break
+            await asyncio.sleep(0.05)
+        assert driver.is_connected
+
+        diagnostics = driver.get_diagnostics()
+        assert diagnostics.usb_port == "/dev/cu.usbserial-A10K3XYZ"
+        assert diagnostics.usb_device == "FT245R USB FIFO (A10K3XYZ)"
+        assert diagnostics.last_enq_sent_at is not None
+        assert diagnostics.last_ack_received_at is not None
+        assert diagnostics.usb_bytes_sent > 0
+        assert diagnostics.usb_bytes_received > 0
+    finally:
+        await driver.cleanup()
 
 
 class TestSetupUsb:
@@ -140,31 +245,51 @@ class TestSetupUsb:
         assert driver._udp_transport is None
         assert driver.host is None
 
-    def test_vcp_backend_passes_usb_serial_as_the_port(
-        self, lite_context, mocker
-    ):
+    def test_vcp_backend_pins_usb_serial(self, lite_context, mocker):
         usb_transport_cls, _instance = _mock_usb_transport(mocker)
         machine = Machine(lite_context)
         driver = RuidaDriver(lite_context, machine)
 
         driver._setup_implementation(
-            connection="usb", usb_backend="vcp", usb_serial="COM5"
+            connection="usb", usb_backend="vcp", usb_serial="A10K3XYZ"
         )
 
         usb_transport_cls.assert_called_once_with(
-            backend="vcp", port="COM5"
+            backend="vcp", usb_serial="A10K3XYZ"
         )
         assert driver._usb_backend_resolved == "vcp"
 
-    def test_vcp_backend_without_usb_serial_raises_setup_error(
+    def test_vcp_backend_without_a_pin_finds_the_device_itself(
         self, lite_context, mocker
     ):
-        _mock_usb_transport(mocker)
+        """No pin is not a setup error: the transport enumerates FTDI
+        ports on connect."""
+        usb_transport_cls, _instance = _mock_usb_transport(mocker)
         machine = Machine(lite_context)
         driver = RuidaDriver(lite_context, machine)
 
-        with pytest.raises(DriverSetupError):
-            driver._setup_implementation(connection="usb", usb_backend="vcp")
+        driver._setup_implementation(connection="usb", usb_backend="vcp")
+
+        usb_transport_cls.assert_called_once_with(
+            backend="vcp", usb_serial=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_usb_connection_starts_without_a_host(
+        self, lite_context, mocker
+    ):
+        """A USB profile has no host; connecting must still start the
+        connection loop instead of reporting "No host configured"."""
+        _mock_usb_transport(mocker)
+        machine = Machine(lite_context)
+        driver = RuidaDriver(lite_context, machine)
+        driver._setup_implementation(connection="usb")
+        loop = mocker.patch.object(driver, "_connection_loop", new=AsyncMock())
+
+        await driver._connect_implementation()
+        await driver._connection_task
+
+        loop.assert_awaited_once()
 
     def test_auto_backend_is_resolved_before_construction(
         self, lite_context, mocker, monkeypatch
@@ -230,6 +355,22 @@ class TestUsbDiagnostics:
         diagnostics = driver.get_diagnostics()
 
         assert diagnostics.usb_device == "auto (first device found)"
+
+    def test_opened_device_reports_its_port_and_identity(
+        self, lite_context, mocker
+    ):
+        _usb_transport_cls, instance = _mock_usb_transport(mocker)
+        instance.device = VcpDeviceInfo(
+            "/dev/cu.usbserial-A10K3XYZ", "FT245R USB FIFO", "A10K3XYZ"
+        )
+        machine = Machine(lite_context)
+        driver = RuidaDriver(lite_context, machine)
+
+        driver._setup_implementation(connection="usb", usb_backend="vcp")
+        diagnostics = driver.get_diagnostics()
+
+        assert diagnostics.usb_port == "/dev/cu.usbserial-A10K3XYZ"
+        assert diagnostics.usb_device == "FT245R USB FIFO (A10K3XYZ)"
 
     @pytest.mark.asyncio
     async def test_reports_bytes_sent_and_received(self, lite_context, mocker):
