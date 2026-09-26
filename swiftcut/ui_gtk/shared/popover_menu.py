@@ -3,17 +3,19 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from gi.repository import Gdk, Gtk
 
+from ..layout import stylesheet
+
 if TYPE_CHECKING:
     from ...context import RayforgeContext
 
 
-css = """
+css = stylesheet("""
 .popover-menu-label {
     font-family: 'Roboto', sans-serif;
-    font-size: 14px;
-    margin: 12px;
+    font-size: $menu_label_font;
+    margin: $space_group;
 }
-"""
+""")
 
 
 class PopoverMenu(Gtk.Popover):

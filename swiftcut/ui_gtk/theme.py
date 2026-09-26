@@ -10,18 +10,18 @@ not go through ``shared.gtk.apply_css`` (that helper is
 reload).
 
 The token values come from ``docs/design/swift-cut-tokens.md``, which
-reads them out of the design's light and dark artboards. Type sizes and
-control sizes are given there in pixels at the design's 13px type and
-are written here in ``rem``, so they follow the system font rather than
-fixing the design's pixels on every display.
+reads them out of the design's light and dark artboards. Every length
+is named, not written: the rules below take them from
+:data:`swiftcut.ui_gtk.layout.CSS_LENGTHS`, where type and control
+sizes are in ``rem`` so they follow the system font rather than fixing
+the design's pixels on every display.
 """
 
 import logging
-from string import Template
 
 from gi.repository import Adw, Gdk, Gtk
 
-from .layout import rem
+from .layout import stylesheet
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ _SHARED_TOKENS = """
 # Rules are scoped to the surfaces the reskin actually covers. A bare
 # `button` rule would reach into every dialog and preference row in
 # the app, which is a layout risk this direction does not take.
-_RULES = Template("""
+_RULES = stylesheet("""
 /* --- Canvas ---------------------------------------------------- */
 .sc-canvas {
     background-color: @sc_canvas_bg;
@@ -136,21 +136,21 @@ _RULES = Template("""
 .sc-toolbar separator,
 .sc-dock separator {
     background-color: @sc_hairline;
-    min-width: 1px;
-    min-height: 1px;
+    min-width: $hairline;
+    min-height: $hairline;
 }
 
 /* --- Bezel buttons --------------------------------------------- */
-/* The design's half-pixel edge, drawn as a 1px alpha border: GTK
-   rounds sub-pixel spreads to the device grid, so 0.5px is 0 or 1
-   depending on the monitor. */
+/* The design's half-pixel edge, drawn as a hairline alpha border:
+   GTK rounds sub-pixel spreads to the device grid, so half a pixel
+   is 0 or 1 depending on the monitor. */
 .sc-toolbar > button,
 .sc-toolbar > togglebutton,
 .sc-split > button,
 .sc-split > menubutton > button,
 .sc-jog button {
-    border: 1px solid @sc_bezel;
-    border-radius: 7px;
+    border: $hairline solid @sc_bezel;
+    border-radius: $radius_button;
     background-image: none;
     background-color: @sc_button_bg;
     box-shadow: none;
@@ -158,7 +158,7 @@ _RULES = Template("""
 }
 
 .sc-jog button {
-    border-radius: 6px;
+    border-radius: $radius_cell;
 }
 
 /* The two halves of a split button keep the bezel but stay joined,
@@ -221,8 +221,8 @@ _RULES = Template("""
 
 .sc-toolbar > button:focus-visible,
 .sc-jog button:focus-visible {
-    outline: 2px solid @sc_accent;
-    outline-offset: -1px;
+    outline: $stroke solid @sc_accent;
+    outline-offset: -$hairline;
 }
 
 /* --- Panels ----------------------------------------------------- */
@@ -232,14 +232,6 @@ _RULES = Template("""
 
 .sc-dock .sc-rail {
     background-color: @sc_rail_bg;
-}
-
-.sc-panel {
-    font-size: $panel_font;
-}
-
-.sc-jog .sc-caption {
-    font-size: $jog_caption_font;
 }
 
 /* Readouts hold their column when the digits change. */
@@ -278,14 +270,14 @@ _RULES = Template("""
 /* Driven by the job monitor's distance estimate, since Ruida
    reports nothing granular. */
 .sc-job-progress progressbar trough {
-    min-height: 5px;
-    border-radius: 3px;
+    min-height: $progress_bar;
+    border-radius: $radius_bar;
     background-color: @sc_fill_subtle;
 }
 
 .sc-job-progress progressbar progress {
-    min-height: 5px;
-    border-radius: 3px;
+    min-height: $progress_bar;
+    border-radius: $radius_bar;
     background-color: @sc_accent;
 }
 
@@ -302,22 +294,19 @@ _RULES = Template("""
     border-color: @sc_spark_bottom;
     color: #1D1D1F;
 }
-""").substitute(panel_font=rem(11.5), jog_caption_font=rem(9))
+""")
 
 # The layout layer, from docs/design/swift-cut-layout.md. Kept apart
 # from _RULES because it answers a different question: _RULES says
 # what a surface is made of, this says how big it is and where it
-# sits. The Python half of the same map - margins, box spacing, size
-# requests - is in rayforge/ui_gtk/layout.py.
-_LAYOUT = Template("""
-/* --- Control sizes: two density contexts ------------------------ */
-/* Compact is pointer work. Touch is the jog grid, and only the jog
-   grid: the one surface an operator hits while watching the machine
-   rather than the screen.
-
-   Icon buttons only: a text button sizes itself from its label, and
+# sits. Every length in it is a role from layout.CSS_LENGTHS, and the
+# Python half of the same map - margins, box spacing, size requests -
+# reads the same table in swiftcut/ui_gtk/layout.py.
+_LAYOUT = stylesheet("""
+/* --- Control sizes: the compact density ------------------------- */
+/* Icon buttons only: a text button sizes itself from its label, and
    a bare `.sc-overlay button` rule would crush the 3D playback speed
-   button ("1x") into a 32px square. */
+   button ("1x") into a square. */
 .sc-toolbar > button,
 .sc-toolbar > togglebutton,
 .sc-split > button,
@@ -328,14 +317,17 @@ _LAYOUT = Template("""
     padding: 0;
 }
 
+/* Every button in the jog grid is one cell: the arrows, Home, the
+   two scale buttons and the job column. The cell is the buttons'
+   size request, bezel included, so nothing here adds to it. */
 .sc-jog button {
-    min-width: $jog_cell;
-    min-height: $jog_cell;
+    min-width: 0;
+    min-height: 0;
     padding: 0;
 }
 
-/* One glyph size in both contexts. A jog button is a bigger target,
-   not a bigger picture. */
+/* One glyph size everywhere. A jog button is a bigger target, not a
+   bigger picture. */
 .sc-toolbar image,
 .sc-jog image,
 .sc-rail image,
@@ -344,9 +336,62 @@ _LAYOUT = Template("""
     -gtk-icon-size: $icon_glyph;
 }
 
-/* --- Row rhythm -------------------------------------------------- */
-.sc-panel row {
-    min-height: $row_compact;
+/* --- The dock: row rhythm ---------------------------------------- */
+/* libadwaita draws a row fifty pixels tall with six above and below
+   its title. A dock row is one compact row, title and caption included;
+   every row the dock grows is a row the canvas loses. */
+.sc-dock list.boxed-list > row {
+    min-height: $compact_row;
+    padding: 0;
+}
+
+.sc-dock list.boxed-list > row > box.header {
+    min-height: $compact_row;
+    margin-left: $compact_space_group;
+    margin-right: $compact_space_group;
+    border-spacing: $compact_space_control;
+}
+
+.sc-dock list.boxed-list > row > box.header > box.title {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-spacing: 0;
+}
+
+.sc-dock list.boxed-list > row > box.header > box.title > .subtitle {
+    font-size: $caption_font;
+}
+
+.sc-dock list.boxed-list > row > box.header > .suffixes {
+    border-spacing: $compact_space_control;
+}
+
+/* A row's trailing controls: the regular gap, the compact one in the
+   dock. */
+.sc-suffix {
+    border-spacing: $space_control;
+}
+
+.sc-dock .sc-suffix {
+    border-spacing: $compact_space_control;
+}
+
+/* A spin field in the dock is one size whatever it holds. The - and
+   + shrink to their glyph so the value keeps the room. */
+.sc-compact-spin {
+    min-width: 0;
+    min-height: $spin_height;
+}
+
+.sc-compact-spin > text {
+    min-width: 0;
+    padding: 0 $compact_space_control;
+}
+
+.sc-compact-spin > button {
+    min-width: $icon_glyph;
+    min-height: 0;
+    padding: 0;
 }
 
 /* --- Radii ------------------------------------------------------- */
@@ -354,20 +399,21 @@ _LAYOUT = Template("""
    are the surfaces that predate the reskin and drifted off it. */
 list.boxed-list,
 .card {
-    border-radius: 10px;
+    border-radius: $radius_card;
 }
 
 .sc-overlay {
-    border-radius: 9px;
+    border-radius: $radius_overlay;
 }
 
 .sc-rail button {
-    border-radius: 5px;
+    border-radius: $radius_chip;
 }
 
 /* --- Type roles -------------------------------------------------- */
 /* Four roles, one class each. dim-label, caption, title-4 and
-   caption-heading all collapse into these. */
+   caption-heading all collapse into these. A caption is one step
+   below the body, and the body is the system font. */
 .sc-title {
     font-weight: 600;
 }
@@ -376,13 +422,7 @@ list.boxed-list,
     font-size: $caption_font;
     color: @sc_fg_dim;
 }
-""").substitute(
-    control_size=rem(32),
-    jog_cell=rem(60),
-    icon_glyph=rem(16),
-    row_compact=rem(40),
-    caption_font=rem(11),
-)
+""")
 
 _provider: Gtk.CssProvider | None = None
 

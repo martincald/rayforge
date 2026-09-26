@@ -4,10 +4,10 @@ from blinker import Signal
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL
+from ..layout import SPACE_CONTROL, stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 .material-list {
     background-color: transparent;
     padding: 0;
@@ -16,7 +16,7 @@ css = """
 .material-list>row {
     background-color: transparent;
     transition: background-color 0.2s ease;
-    border-bottom: 1px solid #00000020;
+    border-bottom: $hairline solid #00000020;
 }
 .material-list>row:last-child {
     border: 0;
@@ -28,12 +28,12 @@ css = """
     box-shadow: none;
 }
 .material-list>row.drop-above {
-    border: 1px solid #f00;
-    border-width: 2px 0px 0px 0px;
+    border: $hairline solid #f00;
+    border-width: $stroke 0 0 0;
 }
 .material-list>row.drop-below {
-    border: 1px solid #f00;
-    border-width: 0px 0px 2px 0px;
+    border: $hairline solid #f00;
+    border-width: 0 0 $stroke 0;
 }
 .material-list>row:active {
 }
@@ -43,7 +43,7 @@ css = """
 .material-list>row:hover .drag-handle {
     opacity: 1;
 }
-"""
+""")
 
 
 @runtime_checkable

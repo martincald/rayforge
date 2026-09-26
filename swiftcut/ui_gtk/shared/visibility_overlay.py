@@ -3,16 +3,16 @@ from gettext import gettext as _
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_TIGHT
+from ..layout import SPACE_CONTROL, SPACE_TIGHT, stylesheet
 from .gtk import apply_css
 
 # Size and radius come from the layout layer (.sc-overlay).
-css = """
+css = stylesheet("""
 .visibility-overlay {
     background-color: alpha(@theme_bg_color, 0.75);
-    padding: 4px;
+    padding: $space_tight;
 }
-"""
+""")
 
 
 class VisibilityOverlay(Gtk.Box):

@@ -1,11 +1,12 @@
 from gi.repository import Graphene, Gtk, Pango, PangoCairo
 
+from ..layout import stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 .number-badge {
-    border-radius: 5px;
-    border: 1px solid transparent;
+    border-radius: $radius_chip;
+    border: $hairline solid transparent;
     background-color: @accent_bg_color;
     color: @accent_fg_color;
 }
@@ -13,7 +14,7 @@ css = """
     background-color: alpha(@window_fg_color, 0.15);
     color: @window_fg_color;
 }
-"""
+""")
 
 
 def _contrast_color(hex_color: str) -> str:
@@ -81,10 +82,10 @@ class NumberBadge(Gtk.Widget):
             self.remove_css_class("number-badge")
             fg = _contrast_color(hex_color)
             class_name = f"badge-{hex_color.lstrip('#').lower()}"
-            color_css = (
+            color_css = stylesheet(
                 f".{class_name} {{"
-                f"  border-radius: 5px;"
-                f"  border: 1px solid @borders;"
+                "  border-radius: $radius_chip;"
+                "  border: $hairline solid @borders;"
                 f"  background-color: {hex_color};"
                 f"  color: {fg};"
                 "}"

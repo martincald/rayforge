@@ -5,14 +5,14 @@ from typing import Any
 from gi.repository import Adw, Gtk
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_GROUP
+from ..layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 /* 1. Round the top corners of the ListBox to match its .card parent. */
 .group-with-button-container > .list-box-in-card {
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+    border-top-left-radius: $radius_group;
+    border-top-right-radius: $radius_group;
 }
 
 /* 2. Style the button to connect seamlessly to the ListBox above it. */
@@ -20,17 +20,17 @@ css = """
 .group-with-button-container > .flat-bottom-button > .toggle {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: $radius_group;
+    border-bottom-right-radius: $radius_group;
     box-shadow: none;
 }
 
 /* 3. Round the top corners of a selected row if it's the first child. */
 .list-box-in-card row:first-child:selected {
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+    border-top-left-radius: $radius_group;
+    border-top-right-radius: $radius_group;
 }
-"""
+""")
 
 
 class PreferencesGroupWithButton(Adw.PreferencesGroup):

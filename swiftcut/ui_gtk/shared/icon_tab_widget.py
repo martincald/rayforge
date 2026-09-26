@@ -2,16 +2,16 @@ from blinker import Signal
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
-from ..layout import SPACE_TIGHT
+from ..layout import SPACE_TIGHT, stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 box.icon-tab-strip button {
-    min-width: 36px;
-    min-height: 36px;
-    padding: 4px;
-    margin: 4px;
-    border-radius: 6px;
+    min-width: $tab_button;
+    min-height: $tab_button;
+    padding: $space_tight;
+    margin: $space_tight;
+    border-radius: $radius_cell;
     border: none;
     background: transparent;
 }
@@ -26,17 +26,17 @@ box.icon-tab-strip button.active-tab {
 }
 
 box.icon-tab-strip button.drag-highlight-top {
-    border-top: 3px solid @theme_selected_bg_color;
+    border-top: $stroke_wide solid @theme_selected_bg_color;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
 
 box.icon-tab-strip button.drag-highlight-bottom {
-    border-bottom: 3px solid @theme_selected_bg_color;
+    border-bottom: $stroke_wide solid @theme_selected_bg_color;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
-"""
+""")
 
 
 class IconTabWidget(Gtk.Box):

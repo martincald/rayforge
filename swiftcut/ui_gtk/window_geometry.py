@@ -26,7 +26,7 @@ from gi.repository import Gdk, Gtk
 logger = logging.getLogger(__name__)
 
 #: The size the layout was reviewed at, in the audit's wide pass
-#: (docs/design/audit/AUDIT.md, 1920px).
+#: (docs/design/audit/AUDIT.md, 1920 pixels).
 DESIGN_SIZE = (1920, 1080)
 
 #: How much of a monitor's work area a first window may take.

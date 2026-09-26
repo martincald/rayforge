@@ -49,7 +49,7 @@ from .doceditor.item_properties import DocItemPropertiesWidget
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
-from .layout import SPACE_CONTROL, SPACE_GROUP
+from .layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
 from .machine.settings_dialog import MachineSettingsDialog
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
@@ -65,39 +65,39 @@ from .toolbar import MainToolbar
 logger = logging.getLogger(__name__)
 
 # Canvas width, in px, at and below which the right sidebar collapses:
-# the 430px sidebar would leave the canvas less than two thirds. Not
+# the 430 pixel sidebar would leave the canvas less than two thirds. Not
 # sp: libadwaita scales sp by dpi/96, which is 0.75 on macOS.
 _NARROW_WIDTH = 1100
 
 
-css = """
+css = stylesheet("""
 .right-panel-overlay {
     background-color: transparent;
-    border-radius: 10px;
-    margin: 8px 12px 12px 8px;
-    box-shadow: 0 2px 12px alpha(black, 0.2);
+    border-radius: $radius_card;
+    margin: $space_control $space_group $space_group $space_control;
+    box-shadow: $shadow_panel;
 }
 
 .status-message-overlay {
     background-color: @theme_bg_color;
-    border-radius: 9px;
-    padding: 4px 12px;
-    box-shadow: 0 2px 6px alpha(black, 0.15);
+    border-radius: $radius_overlay;
+    padding: $space_tight $space_group;
+    box-shadow: $shadow_toast;
 }
 
 .in-header-menubar {
-    margin-left: 8px;
+    margin-left: $space_control;
     box-shadow: none;
 }
 
 .in-header-menubar item {
-    padding: 8px 12px 8px 12px;
+    padding: $space_control $space_group $space_control $space_group;
 }
 
 .menu separator {
-    border-top: 1px solid @borders;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    border-top: $hairline solid @borders;
+    margin-top: $space_tight;
+    margin-bottom: $space_tight;
 }
 
 .warning-label {
@@ -106,10 +106,10 @@ css = """
 }
 
 dropdown.machine-dropdown button {
-    padding-top: 4px;
-    padding-bottom: 4px;
+    padding-top: $space_tight;
+    padding-bottom: $space_tight;
 }
-"""
+""")
 
 
 class CappedWidthBox(Gtk.Box):

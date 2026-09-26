@@ -10,18 +10,19 @@ from ...core.expression import (
     Token,
     TokenType,
 )
+from ..layout import stylesheet
 from .gtk import apply_css
 
 logger = logging.getLogger(__name__)
 
 # Self-contained CSS for the widget
-css = """
+css = stylesheet("""
 /* Styles for ExpressionEntry Widget */
 
 /* Add a border and background to the frame to mimic a Gtk.Entry */
 .expression-entry-frame {
   background-color: @theme_bg_color;
-  border: 1px solid @borders;
+  border: $hairline solid @borders;
 }
 
 /* Add a red border when the expression is invalid */
@@ -31,20 +32,20 @@ css = """
 
 /* Set a transparent background for the TextView inside the frame */
 .expression-entry-frame > GtkTextView {
-  padding: 8px;
+  padding: $space_control;
   background-color: transparent;
 }
 
 /* Label for displaying validation errors below the entry */
 .expression-error-label {
     color: @error_color;
-    margin: 12px;
+    margin: $space_group;
 }
 
 .autocomplete-selector > contents {
-  padding: 4px;
+  padding: $space_tight;
 }
-"""
+""")
 
 
 class AutoCompleteSelector(Gtk.Popover):

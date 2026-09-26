@@ -1,18 +1,19 @@
 from gi.repository import Gtk
 
+from ..layout import stylesheet
 from ..shared.gtk import apply_css
 
-css = """
+css = stylesheet("""
 .key {
-    padding: 4px 8px;
-    border-radius: 5px;
+    padding: $space_tight $space_control;
+    border-radius: $radius_chip;
     background-color: @theme_base_color;
     color: @theme_fg_color;
-    border: 1px solid @borders;
-    font-size: 12px;
+    border: $hairline solid @borders;
+    font-size: $keycap_font;
     font-weight: 500;
 }
-"""
+""")
 
 
 class Key(Gtk.Label):

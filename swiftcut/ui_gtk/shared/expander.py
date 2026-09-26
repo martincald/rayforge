@@ -1,19 +1,19 @@
 from gi.repository import Gtk, Pango
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_GROUP
+from ..layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 .expander-card {
     background-color: @headerbar_bg_color;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px alpha(black, 0.06);
-    margin-bottom: 8px;
+    border-radius: $radius_card;
+    box-shadow: $shadow_card;
+    margin-bottom: $space_control;
 }
 
 .expander-header {
-    border-radius: 10px;
+    border-radius: $radius_card;
 }
 
 .expander-header:hover {
@@ -21,12 +21,12 @@ css = """
 }
 
 .expander-card.expanded .expander-header {
-    border-radius: 10px 10px 0 0;
-    border-bottom: 1px solid @borders;
+    border-radius: $radius_card $radius_card 0 0;
+    border-bottom: $hairline solid @borders;
 }
 
 .expander-card.expanded .expander-header:hover {
-    border-radius: 10px 10px 0 0;
+    border-radius: $radius_card $radius_card 0 0;
 }
 
 .expander-title, .expander-subtitle {
@@ -48,7 +48,7 @@ css = """
 .expander-card>:nth-child(2) {
     border-radius: 0;
 }
-"""
+""")
 
 
 class Expander(Gtk.Box):

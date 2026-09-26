@@ -1,6 +1,11 @@
 from gi.repository import Gdk, Gtk
 
-_SPINROW_MIN_WIDTH_CSS = "row spinbutton { min-width: 130px; }"
+from ..layout import stylesheet
+
+# A compact spin field in the dock takes its width from the density.
+_SPINROW_MIN_WIDTH_CSS = stylesheet(
+    "row spinbutton:not(.sc-compact-spin) { min-width: $row_spin_min_width; }"
+)
 
 _css_loaded = False
 

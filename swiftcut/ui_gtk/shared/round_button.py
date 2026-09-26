@@ -1,33 +1,32 @@
 from gi.repository import Gtk
 
-css = """
+from ..layout import stylesheet
+
+css = stylesheet("""
 button.round-button {
-    min-width: 64px;
-    min-height: 64px;
-    border-radius: 32px;
+    min-width: $fab_size;
+    min-height: $fab_size;
+    border-radius: $fab_radius;
     padding: 0;
-    margin: 12px;
+    margin: $space_group;
     background-color: @theme_selected_bg_color; /* Material primary color */
     color: @theme_selected_fg_color;
-    font-size: 24px;
+    font-size: $display_font;
     border: none;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16),
-                0 3px 6px rgba(0, 0, 0, 0.23); /* Shadow for depth */
+    box-shadow: $shadow_fab; /* Shadow for depth */
     transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 button.round-button:hover {
     background-color: shade(@theme_selected_bg_color, 0.9);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.19),
-                0 6px 12px rgba(0, 0, 0, 0.23); /* Enhanced shadow on hover */
+    box-shadow: $shadow_fab_hover; /* Enhanced shadow on hover */
 }
 
 button.round-button:active {
     background-color: shade(@theme_selected_bg_color, 1.1); /* Lighter shade */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.16),
-                0 2px 4px rgba(0, 0, 0, 0.23); /* Reduced shadow on click */
+    box-shadow: $shadow_fab_active; /* Reduced shadow on click */
 }
-"""
+""")
 
 
 class RoundButton(Gtk.Button):

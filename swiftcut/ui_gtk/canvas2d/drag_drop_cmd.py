@@ -27,6 +27,7 @@ from ...doceditor.file_cmd import ImportAction
 from ...image import ImporterFeature
 from ...image.registry import importer_registry
 from ..doceditor import import_handler
+from ..layout import stylesheet
 
 if TYPE_CHECKING:
     from ...ui_gtk.mainwindow import MainWindow
@@ -59,17 +60,17 @@ class DragDropCmd:
         display = Gdk.Display.get_default()
 
         # CSS for drop overlay
-        drop_overlay_css = """
+        drop_overlay_css = stylesheet("""
         .drop-overlay {
-            font-size: 24px;
+            font-size: $display_font;
             font-weight: bold;
             color: white;
             background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            padding: 24px 48px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border-radius: $radius_card;
+            padding: $space_page $space_page_wide;
+            box-shadow: $shadow_drop_overlay;
         }
-        """
+        """)
 
         if display:
             provider = Gtk.CssProvider()

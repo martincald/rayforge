@@ -1,11 +1,12 @@
 from gi.repository import Gtk
 
+from ..layout import stylesheet
 from .gtk import apply_css
 
-css = """
+css = stylesheet("""
 .tag {
-    border-radius: 5px;
-    padding: 4px 8px;
+    border-radius: $radius_chip;
+    padding: $space_tight $space_control;
     transition: background-color 0.15s;
 }
 
@@ -18,7 +19,7 @@ css = """
     background-color: alpha(@view_fg_color, 0.12);
     color: @view_fg_color;
 }
-"""
+""")
 
 
 class TagWidget(Gtk.Box):

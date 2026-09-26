@@ -9,7 +9,7 @@ from ...machine.driver import (
 )
 from ...machine.models.machine import Machine
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_GROUP
+from ..layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
 from ..shared.gtk import apply_css
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .advanced_preferences_page import AdvancedPreferencesPage
@@ -23,12 +23,14 @@ from .maintenance_page import MaintenancePage
 from .nogo_zones_page import NogoZonesPage
 from .rotary_module_page import RotaryModulePage
 
-apply_css("""
+apply_css(
+    stylesheet("""
 .maturity-warning {
     background-color: alpha(@warning_color, 0.15);
-    padding: 12px 24px;
+    padding: $space_group $space_page;
 }
 """)
+)
 
 
 class MachineSettingsDialog(PatchedDialogWindow):

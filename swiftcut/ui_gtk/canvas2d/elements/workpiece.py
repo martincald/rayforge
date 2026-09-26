@@ -491,7 +491,7 @@ class WorkPieceElement(CanvasElement):
             return
 
         # Effective PPM per axis after capping surface dimensions. When the
-        # 8192px cap binds on one axis but not the other, these differ and
+        # 8192 pixel cap binds on one axis but not the other, these differ and
         # must be applied independently to keep each axis aligned.
         eff_ppm_x = (
             comp_w_px / composite_w_mm if composite_w_mm > 1e-9 else ppm_x

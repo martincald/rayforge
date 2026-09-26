@@ -1,16 +1,16 @@
 from gi.repository import Gtk
 
 from ...shared.util.time_format import format_clock
-from ..layout import SPACE_CONTROL, SPACE_TIGHT
+from ..layout import SPACE_CONTROL, SPACE_TIGHT, stylesheet
 from .gtk import apply_css
 
 # The radius comes from the layout layer (.sc-overlay).
-css = """
+css = stylesheet("""
 .time-estimate-overlay {
     background-color: @theme_bg_color;
-    padding: 4px 8px;
+    padding: $space_tight $space_control;
 }
-"""
+""")
 
 
 class TimeEstimateOverlay(Gtk.Box):

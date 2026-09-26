@@ -1,14 +1,14 @@
 from gi.repository import Gtk
 
-from ..layout import SPACE_TIGHT
+from ..layout import SPACE_TIGHT, stylesheet
 from ..shared.gtk import apply_css
 from .key import Key
 
-css = """
+css = stylesheet("""
 .shortcut-description {
-    margin-left: 8px;
+    margin-left: $space_control;
 }
-"""
+""")
 
 
 class Shortcut(Gtk.Box):

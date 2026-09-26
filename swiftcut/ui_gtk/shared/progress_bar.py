@@ -1,5 +1,6 @@
 from gi.repository import Gtk
 
+from ..layout import stylesheet
 from .gtk import apply_css
 
 
@@ -20,12 +21,12 @@ class ProgressBar(Gtk.ProgressBar):
 
         self.add_css_class("thin-progress-bar")
         apply_css(
-            """
+            stylesheet("""
             progressbar.thin-progress-bar {
-                min-height: 5px;
+                min-height: $progress_bar;
                 transition: opacity 0.25s;
             }
-            """
+            """)
         )
 
         self.task_manager.tasks_updated.connect(self._on_tasks_updated)
