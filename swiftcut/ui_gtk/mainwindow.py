@@ -134,7 +134,6 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(**kwargs)
         self.set_title(const.APP_NAME)
         self._current_machine: Machine | None = None  # For signal handling
-        self._last_bottom_panel_height = 200
         self._saved_bottom_panel_visible = False
         self._old_doc = None  # Track previous document for signal reconnection
 
@@ -436,7 +435,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel = BottomPanel(
             config.machine, self.doc_editor, self.machine_cmd
         )
-        self.bottom_panel.set_size_request(-1, self._last_bottom_panel_height)
         self.bottom_panel.set_visible(True)
         self.vertical_paned.set_end_child(self.bottom_panel)
 
@@ -480,7 +478,7 @@ class MainWindow(Adw.ApplicationWindow):
             "notify::visible-child-name", self._on_view_stack_changed
         )
 
-        # Connect to position signal to remember user's chosen height
+        # Remember the height the user drags the dock to.
         self.vertical_paned.connect(
             "notify::position", self._on_vertical_pane_position_changed
         )
@@ -758,11 +756,43 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
     def _on_vertical_pane_position_changed(self, paned, param):
-        position = paned.get_position()
-        full_height = paned.get_height()
-        panel_height = full_height - position
+        # Only a position somebody set is a height to keep. One the
+        # paned worked out from the dock's content is the default, and
+        # remembering it would freeze the default at today's content.
+        if not paned.props.position_set or not self.bottom_panel.get_visible():
+            return
+        panel_height = paned.get_height() - paned.get_position()
         if panel_height > 1:
-            self._last_bottom_panel_height = panel_height
+            self.bottom_panel.user_height = panel_height
+
+    def _apply_dock_height(self):
+        """Give the dock the user's height, or its content's.
+
+        A height can only be set against the paned's own, so before
+        the first allocation it waits for one.
+        """
+        height = self.bottom_panel.user_height
+        if height is None:
+            # Unset, the paned sizes the dock to its content.
+            self.vertical_paned.set_position(-1)
+            return
+        full_height = self.vertical_paned.get_height()
+        if full_height > 0:
+            self.vertical_paned.set_position(full_height - height)
+            return
+        handler_id = 0
+
+        def on_allocated(paned, _pspec):
+            paned.disconnect(handler_id)
+            GLib.idle_add(self._apply_dock_height_once)
+
+        handler_id = self.vertical_paned.connect(
+            "notify::max-position", on_allocated
+        )
+
+    def _apply_dock_height_once(self):
+        self._apply_dock_height()
+        return GLib.SOURCE_REMOVE
 
     def _on_surface_transform_initiated(self, sender):
         pass
@@ -1684,10 +1714,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         if is_visible:
             self.bottom_panel.set_visible(True)
-            full_height = self.vertical_paned.get_height()
-            self.vertical_paned.set_position(
-                full_height - self._last_bottom_panel_height
-            )
+            self._apply_dock_height()
         else:
             self.bottom_panel.set_visible(False)
 
@@ -1769,6 +1796,7 @@ class MainWindow(Adw.ApplicationWindow):
         running (i.e., stops the close). Returning False allows it.
         """
         self._save_geometry()
+        self._save_bottom_panel()
         if self.doc_editor.is_saved:
             return False  # Allow the window to close
 

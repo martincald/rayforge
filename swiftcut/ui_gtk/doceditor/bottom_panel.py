@@ -103,6 +103,9 @@ class BottomPanel(Gtk.Box):
         self._click_to_zero_mode = False
         self._updating_wcs_ui = False
         self._active_layer = None
+        # The height the user dragged the dock to, or None for the height
+        # of its content.
+        self.user_height: int | None = None
         self._get_bounds_callback: (
             Callable[[], tuple[float, float, float, float] | None] | None
         ) = None
@@ -263,10 +266,13 @@ class BottomPanel(Gtk.Box):
         self.dock_layout.set_default_item_buddy("laser", "controls")
 
     def to_dict(self):
-        return {
+        data = {
             "visible": self.get_visible(),
             "areas": self.dock_layout.get_layout()["areas"],
         }
+        if self.user_height is not None:
+            data["height"] = self.user_height
+        return data
 
     def from_dict(self, data):
         if not data:
@@ -276,6 +282,9 @@ class BottomPanel(Gtk.Box):
         areas = data.get("areas")
         if areas:
             self.dock_layout.apply_layout({"areas": areas})
+        height = data.get("height")
+        if isinstance(height, int) and height > 0:
+            self.user_height = height
 
     def is_item_visible(self, name):
         area = self.dock_layout.find_item_area(name)
