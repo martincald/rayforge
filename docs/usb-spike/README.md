@@ -1,5 +1,7 @@
 # Ruida USB transport spike
 
+**On a Mac:** use the vcp ladder in [`mac/`](mac/README.md).
+
 **Current state:** the transport described below is implemented as
 `RuidaUsbTransport` in
 `swiftcut/machine/driver/ruida/ruida_usb_transport.py` (backends
