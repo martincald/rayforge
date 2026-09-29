@@ -6,7 +6,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from ....core.item import DocItem
 from ....core.workpiece import WorkPiece
-from ...icons import get_icon
+from ...layout import icon_button
 from ...shared.pref_rows.length_spin_row import LengthSpinRow
 from ..image_metadata_dialog import ImageMetadataDialog
 from .base import PropertyProvider
@@ -30,20 +30,16 @@ class WorkpieceInfoProvider(PropertyProvider):
         logger.debug("Creating workpiece info property widgets.")
         # Source File Row
         self.source_file_row = Adw.ActionRow(title=_("Source File"))
-        self.metadata_info_button = Gtk.Button(
-            child=get_icon("info-symbolic"),
-            valign=Gtk.Align.CENTER,
-            tooltip_text=_("Show Image Metadata"),
+        self.metadata_info_button = icon_button(
+            "info-symbolic", _("Show Image Metadata")
         )
         self.metadata_info_button.connect(
             "clicked", self._on_metadata_info_clicked
         )
         self.source_file_row.add_suffix(self.metadata_info_button)
 
-        self.open_source_button = Gtk.Button(
-            child=get_icon("open-in-new-symbolic"),
-            valign=Gtk.Align.CENTER,
-            tooltip_text=_("Show in File Browser"),
+        self.open_source_button = icon_button(
+            "open-in-new-symbolic", _("Show in File Browser")
         )
         self.open_source_button.connect(
             "clicked", self._on_open_source_file_clicked
@@ -148,10 +144,8 @@ class TabsPropertyProvider(PropertyProvider):
         self.tabs_row = Adw.SwitchRow(title=_("Tabs"))
         self.tabs_row.connect("notify::active", self._on_tabs_enabled_toggled)
 
-        self.clear_tabs_button = Gtk.Button(
-            child=get_icon("clear-symbolic"),
-            valign=Gtk.Align.CENTER,
-            tooltip_text=_("Remove all tabs"),
+        self.clear_tabs_button = icon_button(
+            "clear-symbolic", _("Remove all tabs")
         )
         self.clear_tabs_button.connect("clicked", self._on_clear_tabs_clicked)
         self.tabs_row.add_suffix(self.clear_tabs_button)
@@ -166,12 +160,8 @@ class TabsPropertyProvider(PropertyProvider):
             value_in_base=1.0,
         )
         self.tab_width_row.value_changed.connect(self._on_tab_width_changed)
-        self.reset_tab_width_button = Gtk.Button(
-            child=get_icon("undo-symbolic")
-        )
-        self.reset_tab_width_button.set_valign(Gtk.Align.CENTER)
-        self.reset_tab_width_button.set_tooltip_text(
-            _("Reset tab width to default (1.0)")
+        self.reset_tab_width_button = icon_button(
+            "undo-symbolic", _("Reset tab width to default (1.0)")
         )
         self.reset_tab_width_button.connect(
             "clicked", self._on_reset_tab_width_clicked

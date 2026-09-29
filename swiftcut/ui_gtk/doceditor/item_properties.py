@@ -10,8 +10,9 @@ from ...core.group import Group
 from ...core.item import DocItem
 from ...core.stock import StockItem
 from ...core.workpiece import WorkPiece
-from ..layout import SPACE_CONTROL
+from ..layout import SPACE_CONTROL, compact_spin_button
 from ..shared.expander import Expander
+from ..shared.pref_rows.base import SpinRow
 from .property_providers import (
     PropertyProvider,
     property_provider_registry,
@@ -108,6 +109,11 @@ class DocItemPropertiesWidget(Gtk.Box):
         """
         for provider in self.providers:
             widgets = provider.create_widgets()
+            # This panel floats over the canvas, so its fields are the
+            # dock's.
+            for widget in widgets:
+                if isinstance(widget, SpinRow):
+                    compact_spin_button(widget.get_spin_button())
             if provider.separate_group:
                 expander = Expander()
                 expander.set_expanded(True)

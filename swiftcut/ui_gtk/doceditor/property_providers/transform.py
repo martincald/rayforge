@@ -11,7 +11,7 @@ from ....core.stock import StockItem
 from ....core.workpiece import WorkPiece
 from ....doceditor.transform_cmd import TransformCmd
 from ....shared.units.formatter import format_value
-from ...icons import get_icon
+from ...layout import icon_button
 from ...shared.pref_rows.angle_spin_row import AngleSpinRow
 from ...shared.pref_rows.base import SpinRow
 from ...shared.pref_rows.length_spin_row import LengthSpinRow
@@ -260,6 +260,21 @@ class TransformPropertyProvider(PropertyProvider):
         )
         self.shear_row.value_changed.connect(self._on_shear_changed)
 
+        # Their unit, beside the field as a length row's is. The units
+        # share one column, so every field ends at one edge whether the
+        # unit is "mm" or "°".
+        self._unit_column = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
+        for row in (self.x_row, self.y_row, self.width_row, self.height_row):
+            self._unit_column.add_widget(row.unit_label)
+        for row in (self.angle_row, self.shear_row):
+            unit = Gtk.Label(label="°", xalign=0)
+            unit.add_css_class("sc-caption")
+            unit.set_valign(Gtk.Align.CENTER)
+            self._unit_column.add_widget(unit)
+            suffix = row.get_spin_button().get_parent()
+            assert isinstance(suffix, Gtk.Box)
+            suffix.append(unit)
+
         # Reset Buttons
         self.reset_angle_button = self._create_reset_button(
             _("Reset angle to 0°"), self._on_reset_angle_clicked
@@ -320,11 +335,7 @@ class TransformPropertyProvider(PropertyProvider):
             self.height_row.set_subtitle("")
 
     def _create_reset_button(self, tooltip_text, on_clicked):
-        icon = get_icon("undo-symbolic")
-        button = Gtk.Button()
-        button.set_child(icon)
-        button.set_valign(Gtk.Align.CENTER)
-        button.set_tooltip_text(tooltip_text)
+        button = icon_button("undo-symbolic", tooltip_text)
         button.connect("clicked", on_clicked)
         return button
 

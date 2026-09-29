@@ -116,6 +116,9 @@ class Density:
     spin_height: float
     #: The widest a settings group grows before it stops stretching.
     panel_max_width: float
+    #: The floating panels over the canvas: Layer Workflow and
+    #: Workpiece Properties.
+    overlay_panel_width: float
     #: Caption text: one step below the body, which is the system font.
     caption_font: float
 
@@ -139,6 +142,7 @@ COMPACT = Density(
     spin_width=96,
     spin_height=28,
     panel_max_width=400,
+    overlay_panel_width=360,
     caption_font=11,
 )
 
@@ -173,6 +177,11 @@ ROW_MIN_HEIGHT_COMPACT = scaled(COMPACT.row_height)
 #: A settings group inside a dock panel stops here instead of
 #: stretching to the panel edge and leaving a hole in the middle.
 PANEL_MAX_WIDTH = scaled(COMPACT.panel_max_width)
+
+#: The floating panels over the canvas. Taller than this share of the
+#: canvas, they scroll inside themselves instead of covering it.
+OVERLAY_PANEL_WIDTH = scaled(COMPACT.overlay_panel_width)
+OVERLAY_PANEL_HEIGHT_FRACTION = 0.6
 
 
 # --- Dock furniture --------------------------------------------------

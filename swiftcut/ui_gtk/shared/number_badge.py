@@ -1,6 +1,6 @@
 from gi.repository import Graphene, Gtk, Pango, PangoCairo
 
-from ..layout import stylesheet
+from ..layout import SPIN_HEIGHT, stylesheet
 from .gtk import apply_css
 
 css = stylesheet("""
@@ -33,7 +33,9 @@ class NumberBadge(Gtk.Widget):
         self._color_class: str | None = None
 
     def do_measure(self, orientation, for_size):
-        return (32, 32, -1, -1)
+        # A field's height, so that with its border it still sits in one
+        # compact row beside the row's icon buttons.
+        return (SPIN_HEIGHT, SPIN_HEIGHT, -1, -1)
 
     def do_snapshot(self, snapshot):
         w = self.get_width()

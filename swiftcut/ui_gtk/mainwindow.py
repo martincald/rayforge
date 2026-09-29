@@ -49,7 +49,13 @@ from .doceditor.item_properties import DocItemPropertiesWidget
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
-from .layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
+from .layout import (
+    OVERLAY_PANEL_HEIGHT_FRACTION,
+    OVERLAY_PANEL_WIDTH,
+    SPACE_CONTROL,
+    SPACE_GROUP,
+    stylesheet,
+)
 from .machine.settings_dialog import MachineSettingsDialog
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
@@ -65,7 +71,7 @@ from .toolbar import MainToolbar
 logger = logging.getLogger(__name__)
 
 # Canvas width, in px, at and below which the right sidebar collapses:
-# the 430 pixel sidebar would leave the canvas less than two thirds. Not
+# the sidebar would leave the canvas barely two thirds. Not
 # sp: libadwaita scales sp by dpi/96, which is 0.75 on macOS.
 _NARROW_WIDTH = 1100
 
@@ -76,6 +82,38 @@ css = stylesheet("""
     border-radius: $radius_card;
     margin: $space_control $space_group $space_group $space_control;
     box-shadow: $shadow_panel;
+}
+
+/* The floating panels take the dock's density: a row is one compact
+   row, title and caption included, and a glyph is one glyph. */
+.right-panel-overlay list > row {
+    min-height: $compact_row;
+    padding: 0;
+}
+
+.right-panel-overlay list > row > box.header {
+    min-height: $compact_row;
+    margin-left: $compact_space_group;
+    margin-right: $compact_space_group;
+    border-spacing: $compact_space_control;
+}
+
+.right-panel-overlay list > row > box.header > box.title {
+    margin-top: 0;
+    margin-bottom: 0;
+    border-spacing: 0;
+}
+
+.right-panel-overlay list > row > box.header > box.title > .subtitle {
+    font-size: $caption_font;
+}
+
+.right-panel-overlay list > row > box.header > .suffixes {
+    border-spacing: $compact_space_control;
+}
+
+.right-panel-overlay image {
+    -gtk-icon-size: $icon_glyph;
 }
 
 .status-message-overlay {
@@ -324,7 +362,10 @@ class MainWindow(Adw.ApplicationWindow):
             show_tabs=True,
             shortcuts=SHORTCUTS,
         )
-        self._surface_vis_overlay.set_margin_end(454)
+        # Clear of the right pane: its width and its margins.
+        self._surface_vis_overlay.set_margin_end(
+            OVERLAY_PANEL_WIDTH + 2 * SPACE_GROUP
+        )
         self.surface_overlay.add_overlay(self._surface_vis_overlay)
         self._time_estimate_overlay = TimeEstimateOverlay()
         self.surface_overlay.add_overlay(self._time_estimate_overlay)
@@ -360,13 +401,16 @@ class MainWindow(Adw.ApplicationWindow):
         self._right_pane.set_valign(Gtk.Align.START)
         self._right_pane.set_propagate_natural_height(True)
         self._canvas_overlay.add_overlay(self._right_pane)
+        self._canvas_overlay.connect(
+            "get-child-position", self._on_canvas_overlay_child_position
+        )
 
         # Create a vertical box to organize the content within the
         # ScrolledWindow.
         right_pane_box = CappedWidthBox(
-            430, orientation=Gtk.Orientation.VERTICAL
+            OVERLAY_PANEL_WIDTH, orientation=Gtk.Orientation.VERTICAL
         )
-        right_pane_box.set_size_request(430, -1)
+        right_pane_box.set_size_request(OVERLAY_PANEL_WIDTH, -1)
         self._right_pane.set_child(right_pane_box)
 
         # The WorkflowView will be updated when a layer is activated.
@@ -1732,6 +1776,27 @@ class MainWindow(Adw.ApplicationWindow):
         action = self.lookup_action("toggle_right_panel")
         if isinstance(action, Gio.SimpleAction):
             action.set_state(GLib.Variant.new_boolean(visible))
+
+    def _on_canvas_overlay_child_position(
+        self, overlay: Gtk.Overlay, child: Gtk.Widget, allocation
+    ) -> bool:
+        """
+        Cap the sidebar at a share of the canvas height.
+
+        The sidebar gets the whole canvas less the height past the cap,
+        and its own alignment places it at the top right at its natural
+        size inside that. Taller than the cap, it scrolls inside
+        itself. Every other overlay keeps the default placement.
+        """
+        if child is not self._right_pane:
+            return False
+        allocation.x = 0
+        allocation.y = 0
+        allocation.width = overlay.get_width()
+        allocation.height = round(
+            overlay.get_height() * OVERLAY_PANEL_HEIGHT_FRACTION
+        )
+        return True
 
     def on_toggle_right_panel_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant

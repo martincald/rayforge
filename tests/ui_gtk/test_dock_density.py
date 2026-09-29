@@ -36,6 +36,19 @@ DOCK_MODULES = (
     "shared/responsive_box.py",
 )
 
+# The floating panels over the canvas, Layer Workflow and Workpiece
+# Properties, take the dock's density and are held to the same rule.
+PANEL_MODULES = (
+    "doceditor/item_properties.py",
+    "doceditor/property_providers/transform.py",
+    "doceditor/property_providers/workpiece.py",
+    "doceditor/step_box.py",
+    "doceditor/workflow_view.py",
+    "shared/draglist.py",
+    "shared/expander.py",
+    "shared/number_badge.py",
+)
+
 _PIXELS = re.compile(r"\d+(\.\d+)?px")
 _BARE_SIZE = re.compile(
     r"\b(set_size_request|set_margin_\w+|set_spacing|set_row_spacing"
@@ -64,7 +77,7 @@ def test_no_module_but_the_token_module_writes_a_pixel_length():
     assert offenders == []
 
 
-@pytest.mark.parametrize("module", DOCK_MODULES)
+@pytest.mark.parametrize("module", DOCK_MODULES + PANEL_MODULES)
 def test_the_dock_sizes_nothing_with_a_bare_number(module):
     offenders = [
         f"{module}:{number}: {line.strip()}"
@@ -108,6 +121,11 @@ def test_the_compact_density_is_the_one_the_dock_asked_for():
     )
     assert layout.COMPACT.panel_max_width == 400
     assert layout.COMPACT.caption_font < layout.DESIGN_FONT_PX
+
+
+def test_the_floating_panels_are_capped_as_asked():
+    assert layout.COMPACT.overlay_panel_width == 360
+    assert layout.OVERLAY_PANEL_HEIGHT_FRACTION == 0.6
 
 
 def test_a_stylesheet_role_that_does_not_exist_fails_loudly():
@@ -169,3 +187,148 @@ def test_every_dock_spin_button_is_the_compact_size(
         }
     finally:
         editor.cleanup()
+
+
+@pytest.mark.ui
+def test_the_properties_panel_is_at_the_compact_density(
+    ui_context_initializer, ui_task_mgr, monkeypatch
+):
+    from gi.repository import Gtk
+
+    from swiftcut.doceditor.editor import DocEditor
+    from swiftcut.ui_gtk.doceditor.item_properties import (
+        DocItemPropertiesWidget,
+    )
+    from swiftcut.ui_gtk.doceditor.property_providers import (
+        property_provider_registry,
+        register_builtin_providers,
+    )
+
+    # The main window registers these; the addons' own stay out.
+    monkeypatch.setattr(property_provider_registry, "_providers", [])
+    monkeypatch.setattr(property_provider_registry, "_addon_map", {})
+    register_builtin_providers()
+    editor = DocEditor(
+        task_manager=ui_task_mgr, context=ui_context_initializer
+    )
+    try:
+        panel = DocItemPropertiesWidget(editor)
+        spins = _descendants(panel, Gtk.SpinButton)
+        buttons = [
+            b
+            for b in _descendants(panel, Gtk.Button)
+            if b.get_ancestor(Gtk.SpinButton) is None
+        ]
+
+        # X, Y, width, height, angle, shear and the tab width.
+        assert len(spins) == 7
+        assert {tuple(s.get_size_request()) for s in spins} == {
+            (layout.SPIN_WIDTH, layout.SPIN_HEIGHT)
+        }
+        # The resets, the file buttons and Remove all tabs.
+        assert buttons
+        assert all(b.has_css_class("sc-icon-button") for b in buttons)
+    finally:
+        editor.cleanup()
+
+
+@pytest.mark.ui
+def test_a_step_is_one_compact_row(ui_context_initializer, ui_task_mgr):
+    from gi.repository import Gtk
+
+    from swiftcut.core.step import Step
+    from swiftcut.doceditor.editor import DocEditor
+    from swiftcut.ui_gtk import theme
+    from swiftcut.ui_gtk.doceditor.step_box import StepBox
+
+    theme.install()
+    editor = DocEditor(
+        task_manager=ui_task_mgr, context=ui_context_initializer
+    )
+    try:
+        step = Step(typelabel="Contour")
+        step.name = "Contour"
+        box = StepBox(editor, step, 1)
+        box.subtitle_label.set_text("1000 mm/s, 80% power")
+        window = Gtk.Window(child=box)
+        window.present()
+
+        _, natural, _, _ = box.measure(Gtk.Orientation.VERTICAL, -1)
+
+        assert natural <= layout.ROW_MIN_HEIGHT_COMPACT
+        window.destroy()
+    finally:
+        editor.cleanup()
+
+
+@pytest.mark.ui
+def test_a_narrow_step_row_cuts_the_summary_not_the_name(
+    ui_context_initializer, ui_task_mgr
+):
+    from gi.repository import Gtk
+
+    from swiftcut.core.step import Step
+    from swiftcut.doceditor.editor import DocEditor
+    from swiftcut.ui_gtk.doceditor.step_box import StepBox
+
+    editor = DocEditor(
+        task_manager=ui_task_mgr, context=ui_context_initializer
+    )
+    try:
+        step = Step(typelabel="Contour")
+        step.name = "Contour"
+        box = StepBox(editor, step, 1)
+        box.mode_tag_label.set_text("Centerline")
+        box.mode_tag.set_visible(True)
+        box.subtitle_label.set_text("100% power, 8.3 mm/s")
+
+        def shortfall(widget):
+            low, high, _, _ = widget.measure(Gtk.Orientation.HORIZONTAL, -1)
+            return high - low
+
+        # Room for the name and the mode in full, and little more.
+        width = (
+            box.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
+            + shortfall(box.title_label)
+            + shortfall(box.mode_tag)
+            + 4
+        )
+        box.allocate(width, layout.ROW_MIN_HEIGHT_COMPACT, -1, None)
+
+        assert not box.title_label.get_layout().is_ellipsized()
+        assert box.subtitle_label.get_layout().is_ellipsized()
+        assert box.subtitle_label.get_tooltip_text() == step.get_summary()
+    finally:
+        editor.cleanup()
+
+
+@pytest.mark.ui
+def test_the_sidebar_is_capped_at_a_share_of_the_canvas():
+    from gi.repository import Gdk
+
+    from swiftcut.ui_gtk.mainwindow import MainWindow
+
+    pane, other = MagicMock(), MagicMock()
+    window = MagicMock(_right_pane=pane)
+    overlay = MagicMock()
+    overlay.get_width.return_value = 1100
+    overlay.get_height.return_value = 800
+
+    allocation = Gdk.Rectangle()
+    placed = MainWindow._on_canvas_overlay_child_position(
+        window, overlay, pane, allocation
+    )
+
+    assert placed is True
+    assert (allocation.x, allocation.y) == (0, 0)
+    assert allocation.width == 1100
+    assert allocation.height == round(
+        800 * layout.OVERLAY_PANEL_HEIGHT_FRACTION
+    )
+    # Every other overlay keeps GTK's own placement.
+    assert (
+        MainWindow._on_canvas_overlay_child_position(
+            window, overlay, other, Gdk.Rectangle()
+        )
+        is False
+    )

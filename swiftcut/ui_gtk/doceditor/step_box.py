@@ -7,7 +7,7 @@ from gi.repository import Gtk, Pango
 from ...context import get_context
 from ...core.step import Step
 from ...core.undo.property_cmd import ChangePropertyCommand
-from ..layout import SPACE_CONTROL, SPACE_GROUP, SPACE_TIGHT, icon_button
+from ..layout import COMPACT_SPACE_CONTROL, icon_button
 from ..shared.number_badge import NumberBadge
 from ..shared.tag import TagWidget
 from .step_settings.dialog import StepSettingsDialog
@@ -25,12 +25,8 @@ class StepBox(Gtk.Box):
     ):
         super(
             ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_GROUP,
+            spacing=COMPACT_SPACE_CONTROL,
         )
-        self.set_margin_start(SPACE_TIGHT)
-        self.set_margin_end(SPACE_TIGHT)
-        self.set_margin_top(SPACE_TIGHT)
-        self.set_margin_bottom(SPACE_TIGHT)
         self.editor = editor
         self.doc = editor.doc
         self.step = step
@@ -41,21 +37,25 @@ class StepBox(Gtk.Box):
         self.badge.set_valign(Gtk.Align.CENTER)
         self.append(self.badge)
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        # One line, like a row in the dock: the name, its mode, then the
+        # summary in the room that is left.
+        content = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
+        )
         content.set_hexpand(True)
         content.set_valign(Gtk.Align.CENTER)
         self.append(content)
 
         title_row = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_CONTROL,
+            spacing=COMPACT_SPACE_CONTROL,
         )
         content.append(title_row)
 
         self.title_label = Gtk.Label(xalign=0)
         self.title_label.set_ellipsize(Pango.EllipsizeMode.END)
         self.title_label.set_max_width_chars(40)
-        self.title_label.set_hexpand(True)
         title_row.append(self.title_label)
 
         self.mode_tag = TagWidget(active=False)
@@ -63,10 +63,13 @@ class StepBox(Gtk.Box):
         self.mode_tag.append(self.mode_tag_label)
         title_row.append(self.mode_tag)
 
+        # The summary asks for no room of its own and takes what is left,
+        # so the name and mode are never the ones cut short. Cut short
+        # itself, it is whole in its tooltip.
         self.subtitle_label = Gtk.Label(xalign=0)
         self.subtitle_label.add_css_class("sc-caption")
         self.subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.subtitle_label.set_max_width_chars(40)
+        self.subtitle_label.set_max_width_chars(1)
         self.subtitle_label.set_hexpand(True)
         content.append(self.subtitle_label)
 
@@ -101,7 +104,9 @@ class StepBox(Gtk.Box):
 
     def on_step_changed(self, sender, **kwargs):
         self.title_label.set_text(self.step.name)
-        self.subtitle_label.set_text(self.step.get_summary())
+        summary = self.step.get_summary()
+        self.subtitle_label.set_text(summary)
+        self.subtitle_label.set_tooltip_text(summary)
 
         mode = self.step.get_operation_mode_short()
         if mode:

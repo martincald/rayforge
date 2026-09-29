@@ -4,7 +4,7 @@ from blinker import Signal
 from gi.repository import Gdk, Gtk
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, stylesheet
+from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP, stylesheet
 from .gtk import apply_css
 
 css = stylesheet("""
@@ -77,14 +77,13 @@ class DragListBox(Gtk.ListBox):
         if original_child:
             row.set_child(None)  # Detach to re-parent it
 
-        # Create a container box with a handle and the original content
+        # Create a container box with a handle and the original content.
+        # One compact row: the content sets the height, not margins.
         hbox = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_CONTROL,
-            margin_start=SPACE_CONTROL,
-            margin_end=SPACE_CONTROL,
-            margin_top=SPACE_CONTROL,
-            margin_bottom=SPACE_CONTROL,
+            spacing=COMPACT_SPACE_CONTROL,
+            margin_start=COMPACT_SPACE_GROUP,
+            margin_end=COMPACT_SPACE_GROUP,
         )
 
         # Create drag handle

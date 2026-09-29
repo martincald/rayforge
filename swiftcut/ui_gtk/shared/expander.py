@@ -1,7 +1,12 @@
 from gi.repository import Gtk, Pango
 
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
+from ..layout import (
+    COMPACT_SPACE_CONTROL,
+    COMPACT_SPACE_GROUP,
+    icon_button,
+    stylesheet,
+)
 from .gtk import apply_css
 
 css = stylesheet("""
@@ -14,6 +19,7 @@ css = stylesheet("""
 
 .expander-header {
     border-radius: $radius_card;
+    min-height: $compact_row;
 }
 
 .expander-header:hover {
@@ -35,6 +41,7 @@ css = stylesheet("""
 
 .expander-subtitle {
     color: alpha(@headerbar_fg_color, 0.7);
+    font-size: $caption_font;
 }
 
 .expander-arrow {
@@ -75,18 +82,19 @@ class Expander(Gtk.Box):
         click_controller.connect("released", self._on_header_clicked)
         self.header.add_controller(click_controller)
 
+        # One compact row, like a row in the dock: the header's height
+        # is the stylesheet's, not the margins'.
         header_content_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_GROUP,
-            margin_top=SPACE_GROUP,
-            margin_bottom=SPACE_GROUP,
-            margin_start=SPACE_GROUP,
-            margin_end=SPACE_GROUP,
+            spacing=COMPACT_SPACE_CONTROL,
+            margin_start=COMPACT_SPACE_GROUP,
+            margin_end=COMPACT_SPACE_GROUP,
         )
         self.header.append(header_content_box)
 
         label_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         label_box.set_hexpand(True)
+        label_box.set_valign(Gtk.Align.CENTER)
         header_content_box.append(label_box)
 
         self.title_label = Gtk.Label(xalign=0)
@@ -104,8 +112,10 @@ class Expander(Gtk.Box):
         label_box.append(self.subtitle_label)
 
         self.suffix_box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL, spacing=SPACE_CONTROL
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
         )
+        self.suffix_box.set_valign(Gtk.Align.CENTER)
         header_content_box.append(self.suffix_box)
 
         self.arrow = get_icon("chevron-right-symbolic")
@@ -167,9 +177,7 @@ class ExpanderWithButton(Expander):
         self.content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.set_child(self.content_box)
 
-        self.add_button = Gtk.Button()
-        self.add_button.set_tooltip_text(button_label)
-        self.add_button.set_child(get_icon("add-symbolic"))
+        self.add_button = icon_button("add-symbolic", button_label)
         self.add_suffix(self.add_button)
 
     def append_content(self, widget: Gtk.Widget):
