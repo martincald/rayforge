@@ -22,7 +22,11 @@ from .cursor import get_cursor_for_region
 from .element import CanvasElement
 from .intersect import obb_intersects_aabb
 from .multiselect import MultiSelectionGroup
-from .overlays import render_selection_frame, render_selection_handles
+from .overlays import (
+    render_angle_readout,
+    render_selection_frame,
+    render_selection_handles,
+)
 from .region import (
     BBOX_REGIONS,
     MOVE_HANDLES,
@@ -60,7 +64,9 @@ class Canvas(Gtk.DrawingArea):
     """
 
     BASE_HANDLE_SIZE = 20.0
+    # Rotation snaps with Ctrl to the fine step, with Shift to the coarse.
     SNAP_ANGLE_DEGREES = 5.0
+    SHIFT_SNAP_ANGLE_DEGREES = 15.0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -114,6 +120,9 @@ class Canvas(Gtk.DrawingArea):
         # --- Rotation State ---
         self._drag_start_angle: float = 0.0
         self._rotation_pivot: Point | None = None
+        # The live readout while rotating: the angle, and the pointer's
+        # position on screen.
+        self._rotation_readout: tuple[float, Point] | None = None
 
         # --- Signals ---
         self.move_begin = Signal()
@@ -276,6 +285,10 @@ class Canvas(Gtk.DrawingArea):
             ctx.stroke()
             ctx.restore()
 
+        if self._rotating and self._rotation_readout:
+            angle, (x, y) = self._rotation_readout
+            render_angle_readout(ctx, angle, x, y)
+
     def _render_selection_overlay(
         self, ctx: cairo.Context, elem: CanvasElement
     ):
@@ -398,7 +411,7 @@ class Canvas(Gtk.DrawingArea):
         # We build a set of candidate regions based on the current mode.
         handle_candidates: set[ElementRegion] | None = None
         if self._selection_mode == SelectionMode.RESIZE:
-            handle_candidates = RESIZE_HANDLES | MOVE_HANDLES
+            handle_candidates = RESIZE_HANDLES | ROTATE_HANDLES | MOVE_HANDLES
         elif self._selection_mode == SelectionMode.ROTATE_SHEAR:
             handle_candidates = ROTATE_SHEAR_HANDLES | MOVE_HANDLES
 
@@ -822,93 +835,56 @@ class Canvas(Gtk.DrawingArea):
         world_dx = current_world_x - start_world_x
         world_dy = current_world_y - start_world_y
 
-        if self._ctrl_pressed:
-            if self._moving:
-                if self._selection_group and self._active_origin:
-                    # Snap group move to grid using its AABB
-                    initial_x, initial_y, w, h = self._active_origin
-                    target_x = initial_x + world_dx
-                    target_y = initial_y + world_dy
+        if self._ctrl_pressed and self._moving:
+            if self._selection_group and self._active_origin:
+                # Snap group move to grid using its AABB
+                initial_x, initial_y, w, h = self._active_origin
+                target_x = initial_x + world_dx
+                target_y = initial_y + world_dy
 
-                    snap_offset_x = self._calculate_snap_offset(
-                        target_x, w, self.grid_size
-                    )
-                    snap_offset_y = self._calculate_snap_offset(
-                        target_y, h, self.grid_size
-                    )
-
-                    world_dx += snap_offset_x
-                    world_dy += snap_offset_y
-
-                elif self._drag_target and self._initial_world_transform:
-                    # Snap single element move using its world AABB
-                    elem = self._drag_target
-                    target_transform = (
-                        Matrix.translation(world_dx, world_dy)
-                        @ self._initial_world_transform
-                    )
-                    w, h = elem.width, elem.height
-                    local_corners = [(0, 0), (w, 0), (w, h), (0, h)]
-                    world_corners = [
-                        target_transform.transform_point(p)
-                        for p in local_corners
-                    ]
-
-                    x_coords = [c[0] for c in world_corners]
-                    y_coords = [c[1] for c in world_corners]
-                    min_x, max_x = min(x_coords), max(x_coords)
-                    min_y, max_y = min(y_coords), max(y_coords)
-
-                    snap_offset_x = self._calculate_snap_offset(
-                        min_x, max_x - min_x, self.grid_size
-                    )
-                    snap_offset_y = self._calculate_snap_offset(
-                        min_y, max_y - min_y, self.grid_size
-                    )
-
-                    world_dx += snap_offset_x
-                    world_dy += snap_offset_y
-
-            elif self._rotating and self._rotation_pivot:
-                # Snap rotation to configured degree increments
-                initial_angle_deg = 0.0
-                if self._initial_world_transform:
-                    initial_angle_deg = (
-                        self._initial_world_transform.get_rotation()
-                    )
-
-                pivot_x, pivot_y = self._rotation_pivot
-                current_mouse_angle_deg = math.degrees(
-                    math.atan2(
-                        current_world_y - pivot_y, current_world_x - pivot_x
-                    )
+                snap_offset_x = self._calculate_snap_offset(
+                    target_x, w, self.grid_size
+                )
+                snap_offset_y = self._calculate_snap_offset(
+                    target_y, h, self.grid_size
                 )
 
-                angle_delta_deg = (
-                    current_mouse_angle_deg - self._drag_start_angle
-                )
-                angle_delta_deg = (angle_delta_deg + 180) % 360 - 180
-                target_angle_deg = initial_angle_deg + angle_delta_deg
+                world_dx += snap_offset_x
+                world_dy += snap_offset_y
 
-                snapped_angle_deg = (
-                    round(target_angle_deg / self.SNAP_ANGLE_DEGREES)
-                    * self.SNAP_ANGLE_DEGREES
+            elif self._drag_target and self._initial_world_transform:
+                # Snap single element move using its world AABB
+                elem = self._drag_target
+                target_transform = (
+                    Matrix.translation(world_dx, world_dy)
+                    @ self._initial_world_transform
                 )
-                snapped_delta_deg = snapped_angle_deg - initial_angle_deg
-                snapped_mouse_angle_deg = (
-                    self._drag_start_angle + snapped_delta_deg
+                w, h = elem.width, elem.height
+                local_corners = [(0, 0), (w, 0), (w, h), (0, h)]
+                world_corners = [
+                    target_transform.transform_point(p) for p in local_corners
+                ]
+
+                x_coords = [c[0] for c in world_corners]
+                y_coords = [c[1] for c in world_corners]
+                min_x, max_x = min(x_coords), max(x_coords)
+                min_y, max_y = min(y_coords), max(y_coords)
+
+                snap_offset_x = self._calculate_snap_offset(
+                    min_x, max_x - min_x, self.grid_size
+                )
+                snap_offset_y = self._calculate_snap_offset(
+                    min_y, max_y - min_y, self.grid_size
                 )
 
-                dist = math.hypot(
-                    current_world_x - pivot_x, current_world_y - pivot_y
-                )
-                snapped_mouse_angle_rad = math.radians(snapped_mouse_angle_deg)
-                current_world_x = pivot_x + dist * math.cos(
-                    snapped_mouse_angle_rad
-                )
-                current_world_y = pivot_y + dist * math.sin(
-                    snapped_mouse_angle_rad
-                )
+                world_dx += snap_offset_x
+                world_dy += snap_offset_y
+
+        if self._rotating and self._rotation_pivot:
+            angle, (current_world_x, current_world_y) = self._rotate_pointer(
+                current_world_x, current_world_y
+            )
+            self._rotation_readout = (angle, (current_x, current_y))
 
         # Dispatch to transform handlers (copied from base class)
         if self._selection_group:
@@ -1060,6 +1036,48 @@ class Canvas(Gtk.DrawingArea):
             )
         )
 
+    def _rotate_pointer(self, x: float, y: float) -> tuple[float, Point]:
+        """
+        Snaps a rotate drag's pointer, in WORLD space, and reads its angle.
+
+        Shift snaps the selection's angle to SHIFT_SNAP_ANGLE_DEGREES,
+        Ctrl to SNAP_ANGLE_DEGREES; the pointer moves onto the snapped
+        angle at its own distance from the pivot. The angle read is the
+        selection's, clockwise positive as the Angle field reads it; a
+        group's starts at zero.
+
+        Returns:
+            The angle in degrees, and the pointer.
+        """
+        assert self._rotation_pivot is not None
+        pivot_x, pivot_y = self._rotation_pivot
+        initial_angle_deg = 0.0
+        if self._initial_world_transform and not self._selection_group:
+            initial_angle_deg = self._initial_world_transform.get_rotation()
+
+        current_mouse_angle_deg = math.degrees(
+            math.atan2(y - pivot_y, x - pivot_x)
+        )
+        angle_delta_deg = current_mouse_angle_deg - self._drag_start_angle
+        angle_delta_deg = (angle_delta_deg + 180) % 360 - 180
+        target_angle_deg = initial_angle_deg + angle_delta_deg
+
+        step = 0.0
+        if self._shift_pressed:
+            step = self.SHIFT_SNAP_ANGLE_DEGREES
+        elif self._ctrl_pressed:
+            step = self.SNAP_ANGLE_DEGREES
+        if step:
+            target_angle_deg = round(target_angle_deg / step) * step
+            snapped_mouse_angle_rad = math.radians(
+                self._drag_start_angle + target_angle_deg - initial_angle_deg
+            )
+            dist = math.hypot(x - pivot_x, y - pivot_y)
+            x = pivot_x + dist * math.cos(snapped_mouse_angle_rad)
+            y = pivot_y + dist * math.sin(snapped_mouse_angle_rad)
+
+        return -((target_angle_deg + 180) % 360 - 180), (x, y)
+
     def on_drag_end(self, gesture, offset_x: float, offset_y: float):
         """
         Handles the end of a drag operation, finalizing transforms.
@@ -1133,6 +1151,7 @@ class Canvas(Gtk.DrawingArea):
         self._initial_transform = None
         self._initial_world_transform = None
         self._rotation_pivot = None
+        self._rotation_readout = None
         self._drag_target = None
 
         self.queue_draw()

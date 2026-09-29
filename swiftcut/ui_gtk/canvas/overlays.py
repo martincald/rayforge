@@ -464,6 +464,9 @@ def render_selection_handles(
     regions_to_draw = []
     if mode == SelectionMode.RESIZE:
         regions_to_draw.extend(CORNER_RESIZE_HANDLES)
+        # A selection can be rotated from its corners without first
+        # switching mode.
+        regions_to_draw.extend(ROTATE_HANDLES)
         if hovered_region in MIDDLE_RESIZE_HANDLES:
             regions_to_draw.append(hovered_region)
 
@@ -495,6 +498,37 @@ def render_selection_handles(
             base_handle_size,
             scale_compensation,
         )
+
+
+def render_angle_readout(
+    ctx: cairo.Context, angle_deg: float, x: float, y: float
+):
+    """
+    Draws a rotate drag's angle beside the pointer at (x, y), in screen
+    space: light text on a dark tag, which reads on the light canvas
+    and the dark alike.
+    """
+    # Rounded first, so that a hair below zero reads "0.0", not "-0.0".
+    text = f"{round(angle_deg, 1) + 0.0:.1f}°"
+    pad = 4.0
+    ctx.save()
+    ctx.set_font_size(12)
+    extents = ctx.text_extents(text)
+    left, top = x + 16.0, y + 16.0
+    path_rounded_square(
+        ctx,
+        left,
+        top,
+        extents.x_advance + 2 * pad,
+        extents.height + 2 * pad,
+        pad,
+    )
+    ctx.set_source_rgba(0.1, 0.1, 0.1, 0.85)
+    ctx.fill()
+    ctx.set_source_rgb(1.0, 1.0, 1.0)
+    ctx.move_to(left + pad, top + pad - extents.y_bearing)
+    ctx.show_text(text)
+    ctx.restore()
 
 
 def _render_debug_labels(

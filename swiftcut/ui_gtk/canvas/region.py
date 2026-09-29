@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import math
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from raygeo.geo.types import Rect
+
+# The rotate zone: a ring outside each corner of the selection frame,
+# from 6 to 14 screen pixels from the corner. Screen pixels are the
+# widget's logical ones, whatever the display's scale factor.
+ROTATE_ZONE_INNER = 6.0
+ROTATE_ZONE_OUTER = 14.0
 
 
 class ElementRegion(Enum):
@@ -96,6 +103,46 @@ CORNER_RESIZE_HANDLES: set[ElementRegion] = (TOP_HANDLES | BOTTOM_HANDLES) & (
 MIDDLE_RESIZE_HANDLES: set[ElementRegion] = (
     RESIZE_HANDLES - CORNER_RESIZE_HANDLES
 )
+
+
+def _rotate_corner(
+    region: ElementRegion, width: float, height: float, is_flipped_y: bool
+) -> tuple[float, float]:
+    """The corner of the frame, in local coordinates, a rotate zone rings."""
+    left = region in (
+        ElementRegion.ROTATE_TOP_LEFT,
+        ElementRegion.ROTATE_BOTTOM_LEFT,
+    )
+    top = region in (
+        ElementRegion.ROTATE_TOP_LEFT,
+        ElementRegion.ROTATE_TOP_RIGHT,
+    )
+    # In a flipped system the visual top is at y=h.
+    return 0.0 if left else width, height if top == is_flipped_y else 0.0
+
+
+def _in_rotate_zone(
+    region: ElementRegion,
+    local_x: float,
+    local_y: float,
+    width: float,
+    height: float,
+    scale_x: float,
+    scale_y: float,
+) -> bool:
+    """
+    Whether a local point is in a corner's rotate zone: outside the
+    frame, and ROTATE_ZONE_INNER to ROTATE_ZONE_OUTER screen pixels from
+    the corner.
+    """
+    if 0 <= local_x <= width and 0 <= local_y <= height:
+        return False
+    corner_x, corner_y = _rotate_corner(region, width, height, scale_y < 0)
+    distance = math.hypot(
+        (local_x - corner_x) * abs(scale_x),
+        (local_y - corner_y) * abs(scale_y),
+    )
+    return ROTATE_ZONE_INNER <= distance <= ROTATE_ZONE_OUTER
 
 
 def get_region_rect(
@@ -194,26 +241,14 @@ def get_region_rect(
         return w - effective_hw, y_start_middle, effective_hw, middle_height
 
     # Rotate/Shear handles (external)
-    if region == ElementRegion.ROTATE_TOP_LEFT:
-        rot_w = min((base_handle_size * 1.4) / abs_scale_x, w / 2.0)
-        rot_h = min((base_handle_size * 1.4) / abs_scale_y, h / 2.0)
-        center_y = h if is_flipped_y else 0.0
-        return -rot_w / 2, center_y - rot_h / 2, rot_w, rot_h
-    if region == ElementRegion.ROTATE_TOP_RIGHT:
-        rot_w = min((base_handle_size * 1.4) / abs_scale_x, w / 2.0)
-        rot_h = min((base_handle_size * 1.4) / abs_scale_y, h / 2.0)
-        center_y = h if is_flipped_y else 0.0
-        return w - rot_w / 2, center_y - rot_h / 2, rot_w, rot_h
-    if region == ElementRegion.ROTATE_BOTTOM_LEFT:
-        rot_w = min((base_handle_size * 1.4) / abs_scale_x, w / 2.0)
-        rot_h = min((base_handle_size * 1.4) / abs_scale_y, h / 2.0)
-        center_y = 0.0 if is_flipped_y else h
-        return -rot_w / 2, center_y - rot_h / 2, rot_w, rot_h
-    if region == ElementRegion.ROTATE_BOTTOM_RIGHT:
-        rot_w = min((base_handle_size * 1.4) / abs_scale_x, w / 2.0)
-        rot_h = min((base_handle_size * 1.4) / abs_scale_y, h / 2.0)
-        center_y = 0.0 if is_flipped_y else h
-        return w - rot_w / 2, center_y - rot_h / 2, rot_w, rot_h
+    if region in ROTATE_HANDLES:
+        # Centered on the corner, so the arc drawn in it runs along the
+        # middle of the corner's rotate zone.
+        radius = (ROTATE_ZONE_INNER + ROTATE_ZONE_OUTER) / 2.0
+        rot_w = 2.0 * radius / abs_scale_x
+        rot_h = 2.0 * radius / abs_scale_y
+        corner_x, corner_y = _rotate_corner(region, w, h, is_flipped_y)
+        return corner_x - rot_w / 2, corner_y - rot_h / 2, rot_w, rot_h
 
     if region == ElementRegion.SHEAR_TOP:
         y_pos = (
@@ -278,7 +313,19 @@ def check_region_hit(
     # The order of _HIT_TEST_ORDER is crucial to resolve overlap ambiguity.
     regions_to_check = candidates if candidates is not None else BBOX_REGIONS
 
-    for region in regions_to_check:
+    # A rotate zone wins over any region it overlaps. It is a ring, not
+    # a rectangle.
+    if isinstance(scale_compensation, tuple):
+        scale_x, scale_y = scale_compensation
+    else:
+        scale_x = scale_y = scale_compensation
+    for region in ROTATE_HANDLES & regions_to_check:
+        if _in_rotate_zone(
+            region, local_x, local_y, width, height, scale_x, scale_y
+        ):
+            return region
+
+    for region in regions_to_check - ROTATE_HANDLES:
         # Calculate the hit rectangle for the current region. This ensures
         # the hit-test area matches the rendered handle size.
         rx, ry, rw, rh = get_region_rect(
