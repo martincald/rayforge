@@ -36,6 +36,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def fix_macos_file_uri(gfile: Gio.File) -> Gio.File:
+    """
+    GTK 4 on macOS percent-encodes the whole dropped URI, including the
+    scheme colon ("file%3A///..."), which GLib cannot resolve to a path.
+    Restore the colon; any other file is returned unchanged.
+    """
+    uri = gfile.get_uri()
+    if uri.lower().startswith("file%3a"):
+        return Gio.File.new_for_uri("file:" + uri[len("file%3a") :])
+    return gfile
+
+
 class DragDropCmd:
     """Handles drag-and-drop file imports and clipboard paste operations."""
 
@@ -371,9 +383,12 @@ class DragDropCmd:
         editor = self.main_window.doc_editor
         file_infos = []
         for gfile in files:
+            gfile = fix_macos_file_uri(gfile)
             path_str = gfile.get_path()
             if not path_str:
-                logger.warning("File has no path, skipping")
+                logger.warning(
+                    f"File has no path, skipping (uri={gfile.get_uri()!r})"
+                )
                 continue
 
             file_path = Path(path_str)
