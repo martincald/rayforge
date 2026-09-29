@@ -3,12 +3,14 @@ Tests for the bundled ilab-614 default machine profile (Package B).
 
 A fresh install seeds a single machine profile named "ilab-614", built
 from the shop's real Duplotech-1490 Ruida machine, instead of a bare
-200x200mm placeholder. See docs/profiles/ilab-614.source.yaml for the
-verbatim source this profile was captured from.
+200x200mm placeholder. See docs/profiles/ilab-614.yaml for the
+canonical profile it embeds verbatim.
 """
 
-import copy
 import hashlib
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -17,16 +19,15 @@ from raygeo.ops.axis import Axis
 
 from swiftcut.machine.driver import get_driver_cls
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
-from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
+from swiftcut.machine.models.default_profile import (
+    ILAB_614_PROFILE,
+    PROFILE_FILE,
+)
 from swiftcut.machine.models.machine import Origin, StartCorner
 from swiftcut.machine.models.manager import MachineManager
 
-SOURCE_YAML = (
-    Path(__file__).resolve().parents[3]
-    / "docs"
-    / "profiles"
-    / "ilab-614.source.yaml"
-)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PROFILE_YAML = REPO_ROOT / "docs" / "profiles" / "ilab-614.yaml"
 
 
 @pytest.mark.usefixtures("lite_context")
@@ -47,18 +48,20 @@ class TestIlab614DefaultProfile:
         }
         assert machine.axis_extents == (1400.0, 900.0)
         assert machine.origin == Origin.TOP_LEFT
-        assert machine.start_corner == StartCorner.BOTTOM_LEFT
-        assert machine.max_cut_speed == 9342
+        assert machine.start_corner == StartCorner.TOP_LEFT
+        assert machine.max_cut_speed == 18000
         assert machine.max_travel_speed == 3000
         assert machine.acceleration == 1000
 
-        # Additional fields, read from docs/profiles/ilab-614.source.yaml.
+        # Additional fields, read from docs/profiles/ilab-614.yaml.
         assert machine.auto_connect is True
         assert machine.arc_tolerance == 0.03
         assert machine.active_wcs == "REF0"
         z_axis = machine.axes.get(Axis.Z)
         assert z_axis is not None
         assert z_axis.extents == (-50, 50)
+        assert machine.cut_scale_speed_mm_s == 500.0
+        assert machine.cut_scale_power_pct == 1.0
 
         # Laser head power is stored 0-100 in YAML but 0-1 in memory.
         head = machine.heads[0]
@@ -106,7 +109,7 @@ class TestIlab614DefaultProfile:
         existing_file = (
             machine_dir / "20fb2d0b-9637-4761-9331-286479d6307a.yaml"
         )
-        existing_file.write_bytes(SOURCE_YAML.read_bytes())
+        existing_file.write_bytes(PROFILE_YAML.read_bytes())
 
         before_hash = hashlib.sha256(existing_file.read_bytes()).hexdigest()
 
@@ -122,19 +125,54 @@ class TestIlab614DefaultProfile:
         assert len(manager.machines) == 1
         assert list(machine_dir.glob("*.yaml")) == [existing_file]
 
-    def test_embedded_profile_matches_source_except_name(self):
+    def test_bundled_profile_is_the_committed_file_verbatim(self):
         """
-        The embedded ILAB_614_PROFILE must be identical to the captured
-        source YAML in every field except "name".
+        The profile shipped in the package's resources (and so in the
+        .app) is byte-identical to docs/profiles/ilab-614.yaml, and is
+        what ILAB_614_PROFILE holds.
         """
-        with open(SOURCE_YAML) as f:
-            source = yaml.safe_load(f)
+        assert PROFILE_FILE.read_bytes() == PROFILE_YAML.read_bytes()
+        with open(PROFILE_YAML) as f:
+            assert ILAB_614_PROFILE == yaml.safe_load(f)
 
-        embedded = copy.deepcopy(ILAB_614_PROFILE)
 
-        source_name = source["machine"].pop("name")
-        embedded_name = embedded["machine"].pop("name")
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS config paths")
+def test_fresh_macos_install_seeds_the_committed_profile(tmp_path):
+    """
+    With no ~/Library/Application Support/swiftcut yet, the app's own
+    config-path and seeding code writes the committed profile there.
+    Runs in a child process with HOME pointed at an empty directory;
+    nothing connects, since only the UI starts auto-connect.
+    """
+    env = dict(os.environ)
+    env.pop("RAYFORGE_CONFIG_DIR", None)
+    env["HOME"] = str(tmp_path)
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from swiftcut.context import get_context; "
+                "get_context().machine_mgr"
+            ),
+        ],
+        env=env,
+        cwd=REPO_ROOT,
+        check=True,
+        timeout=120,
+    )
 
-        assert source_name == "Ilab"
-        assert embedded_name == "ilab-614"
-        assert embedded == source
+    machine_dir = (
+        tmp_path / "Library" / "Application Support" / "swiftcut" / "machines"
+    )
+    seeded_files = list(machine_dir.glob("*.yaml"))
+    assert len(seeded_files) == 1
+    with open(seeded_files[0]) as f:
+        seeded = yaml.safe_load(f)
+    with open(PROFILE_YAML) as f:
+        committed = yaml.safe_load(f)
+
+    # The machine's uid is the file's name, not a field in it.
+    assert seeded["machine"].pop("name") == "ilab-614"
+    committed["machine"].pop("name")
+    assert seeded == committed
