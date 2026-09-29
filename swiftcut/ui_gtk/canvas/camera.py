@@ -50,17 +50,19 @@ class Camera:
         self._min_pan_y = min_pan_y
         self._max_pan_y = max_pan_y
 
-    def clamped_pan(self) -> tuple[float, float]:
+    def clamped_pan(
+        self, pan_x_mm: float, pan_y_mm: float
+    ) -> tuple[float, float]:
         """
-        Returns the current (pan_x_mm, pan_y_mm) clamped to the
-        bounds set via ``set_pan_bounds``, without mutating this
-        Camera. Callers implement the soft pan clamp by easing the
-        live camera toward this value (e.g. via CameraAnimator) once
-        a gesture ends, rather than clamping set_pan directly.
+        Returns (pan_x_mm, pan_y_mm) clamped to the bounds set via
+        ``set_pan_bounds``, without mutating this Camera. Callers
+        implement the soft pan clamp by clamping the camera's target
+        and easing toward it (e.g. via CameraAnimator) once a gesture
+        ends, rather than clamping set_pan directly.
         """
         return (
-            max(self._min_pan_x, min(self.pan_x_mm, self._max_pan_x)),
-            max(self._min_pan_y, min(self.pan_y_mm, self._max_pan_y)),
+            max(self._min_pan_x, min(pan_x_mm, self._max_pan_x)),
+            max(self._min_pan_y, min(pan_y_mm, self._max_pan_y)),
         )
 
     def set_zoom(self, zoom: float) -> None:

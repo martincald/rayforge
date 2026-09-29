@@ -59,9 +59,11 @@ def finish_camera_animation(surface: WorldSurface) -> None:
     """
     Fast-forwards a WorldSurface's in-progress camera animation (from a
     discrete zoom step) to completion, snapping the live camera exactly
-    to its target instead of waiting for real frame-clock ticks.
+    to its target instead of waiting for real frame-clock ticks. Like a
+    real tick, it rebuilds the view transform afterwards.
     """
     surface._camera_animator.advance(float("inf"))
+    surface._rebuild_view_transform()
 
 
 @pytest.fixture

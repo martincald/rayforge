@@ -37,14 +37,12 @@ class TestCameraPanBounds:
 
     def test_clamped_pan_is_unclamped_by_default(self):
         c = Camera()
-        c.set_pan(500.0, -500.0)
-        assert c.clamped_pan() == (500.0, -500.0)
+        assert c.clamped_pan(500.0, -500.0) == (500.0, -500.0)
 
     def test_clamped_pan_respects_configured_bounds(self):
         c = Camera()
         c.set_pan_bounds(-10.0, 10.0, -5.0, 5.0)
-        c.set_pan(1000.0, -1000.0)
-        assert c.clamped_pan() == (10.0, -5.0)
+        assert c.clamped_pan(1000.0, -1000.0) == (10.0, -5.0)
 
     def test_set_pan_itself_is_not_clamped(self):
         c = Camera()
@@ -56,8 +54,7 @@ class TestCameraPanBounds:
     def test_pan_within_bounds_is_unchanged(self):
         c = Camera()
         c.set_pan_bounds(-10.0, 10.0, -5.0, 5.0)
-        c.set_pan(3.0, -2.0)
-        assert c.clamped_pan() == (3.0, -2.0)
+        assert c.clamped_pan(3.0, -2.0) == (3.0, -2.0)
 
 
 class TestCameraSetZoom:

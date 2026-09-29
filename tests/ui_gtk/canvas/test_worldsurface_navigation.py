@@ -413,3 +413,49 @@ class TestZoomClampsAtExtremes:
         s.on_pinch_begin(gesture, None)
         s.on_pinch_scale_changed(gesture, 1000.0)
         assert s.zoom_level == pytest.approx(s.MAX_PIXELS_PER_MM / base_ppm)
+
+
+class TestGestureStartCancelsAnimations:
+    """Any navigation gesture starts from the live camera: a running
+    animation or flick inertia is stopped, never left to fight it."""
+
+    def test_pinch_begin_stops_a_running_zoom_animation(
+        self, world_surface_factory, wheel_scroll_controller
+    ):
+        s = world_surface_factory()
+        s._mouse_pos = (400.0, 300.0)
+        s.on_scroll(wheel_scroll_controller(), 0.0, -1.0)
+        assert s._camera_animator.is_running
+
+        s.on_pinch_begin(MagicMock(), None)
+
+        assert not s._camera_animator.is_running
+        assert s._animation_tick_id is None
+        assert s._pinch_start_zoom == s.zoom_level
+
+    def test_scroll_begin_stops_a_coasting_flick(self, world_surface_factory):
+        s = world_surface_factory()
+        s.on_scroll_decelerate(MagicMock(), 600.0, 0.0)
+        assert s._inertia_tick_id is not None
+
+        s.on_scroll_begin(MagicMock())
+
+        assert s._inertia_tick_id is None
+        assert s._pan_velocity_x == 0.0
+
+    def test_drag_update_pre_empts_an_animation_started_mid_drag(
+        self, world_surface_factory, finish_animation
+    ):
+        s = world_surface_factory()
+        gesture = MagicMock()
+        s.on_pan_begin(gesture, 0.0, 0.0)
+        s.zoom_in()
+        assert s._camera_animator.is_running
+
+        gesture.get_offset.return_value = (True, 0.0, 30.0)
+        s.on_pan_update(gesture, 0.0, 0.0)
+        at_update = (s.zoom_level, s.pan_x_mm, s.pan_y_mm)
+        finish_animation(s)
+
+        assert not s._camera_animator.is_running
+        assert (s.zoom_level, s.pan_x_mm, s.pan_y_mm) == at_update

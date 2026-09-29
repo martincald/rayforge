@@ -52,6 +52,19 @@ class CameraAnimator:
     def is_running(self) -> bool:
         return self._running
 
+    @property
+    def target(self) -> tuple[float, float, float]:
+        """
+        The (zoom, pan_x_mm, pan_y_mm) the camera is heading for: the
+        animation's target while one runs, otherwise the live camera
+        itself. So once an animation is stopped, the target follows
+        every direct update of the live camera, and nothing stale is
+        left to pull the view back.
+        """
+        if self._running:
+            return self._target_zoom, self._target_pan_x, self._target_pan_y
+        return self._camera.zoom, self._camera.pan_x_mm, self._camera.pan_y_mm
+
     def start(
         self,
         target_zoom: float,

@@ -118,6 +118,7 @@ class WorldSurface(Canvas):
             Gtk.EventControllerScrollFlags.BOTH_AXES
             | Gtk.EventControllerScrollFlags.KINETIC
         )
+        self._scroll_controller.connect("scroll-begin", self.on_scroll_begin)
         self._scroll_controller.connect("scroll", self.on_scroll)
         self._scroll_controller.connect(
             "decelerate", self.on_scroll_decelerate
@@ -270,15 +271,19 @@ class WorldSurface(Canvas):
         )
         self._camera.set_zoom_bounds(self.MIN_ZOOM_FACTOR, max_zoom)
 
-    def _update_pan_bounds(self) -> None:
+    def _update_pan_bounds(self, zoom: float) -> None:
         """
-        Refreshes the Camera's pan bounds from the current widget size
-        and zoom level, so panning cannot move the bed so far that
+        Refreshes the Camera's pan bounds for ``zoom`` from the current
+        widget size, so panning cannot move the bed so far that
         less than MIN_VISIBLE_BED_FRACTION of its width/height remains
         visible. This is the bound used by ``_ease_pan_into_bounds``;
         it does not clamp pan updates directly (the clamp is soft).
+
+        The view zooms about the content area's top-left corner (see
+        _rebuild_view_transform), so the visible world window is
+        x in [pan_x, pan_x + width/zoom] but
+        y in [pan_y + height - height/zoom, pan_y + height].
         """
-        zoom = self.zoom_level
         effective_height = self._axis_renderer.get_effective_height()
         visible_w = self.width_mm / zoom if zoom > 0 else self.width_mm
         visible_h = (
@@ -293,27 +298,26 @@ class WorldSurface(Canvas):
         self._camera.set_pan_bounds(
             min_visible_w - visible_w,
             self.width_mm - min_visible_w,
-            min_visible_h - visible_h,
-            effective_height - min_visible_h,
+            min_visible_h - effective_height,
+            visible_h - min_visible_h,
         )
 
     def _ease_pan_into_bounds(self) -> bool:
         """
-        If the current pan violates the soft "keep at least
-        MIN_VISIBLE_BED_FRACTION of the bed visible" clamp, eases it
-        back into bounds via the camera animator (reusing Package D3's
-        CameraAnimator/tick machinery), leaving zoom unchanged.
-        Returns True if an easing animation was started (the pan was
-        out of bounds), False if it was already within bounds.
+        If the camera's target pan violates the soft "keep at least
+        MIN_VISIBLE_BED_FRACTION of the bed visible" clamp, clamps
+        the target and eases toward it via the camera animator
+        (reusing Package D3's CameraAnimator/tick machinery), keeping
+        the target zoom. Never snaps. Returns True if an easing
+        animation was started (the target was out of bounds), False
+        if it was already within bounds.
         """
-        self._update_pan_bounds()
-        clamped_x, clamped_y = self._camera.clamped_pan()
-        if (
-            abs(clamped_x - self.pan_x_mm) < 1e-9
-            and abs(clamped_y - self.pan_y_mm) < 1e-9
-        ):
+        zoom, pan_x, pan_y = self._camera_animator.target
+        self._update_pan_bounds(zoom)
+        clamped_x, clamped_y = self._camera.clamped_pan(pan_x, pan_y)
+        if abs(clamped_x - pan_x) < 1e-9 and abs(clamped_y - pan_y) < 1e-9:
             return False
-        self._start_camera_animation(self.zoom_level, clamped_x, clamped_y)
+        self._start_camera_animation(zoom, clamped_x, clamped_y)
         return True
 
     def _get_view_layout(
@@ -350,15 +354,47 @@ class WorldSurface(Canvas):
         layout = self._get_view_layout()
         if layout is None:
             return
-        self._cancel_camera_animation()
         self._update_zoom_bounds()
         zoom, pan_x, pan_y = self._camera.zoom_about_point(
             pointer_x_px, pointer_y_px, new_zoom, *layout
         )
+        self._set_camera_live(zoom, pan_x, pan_y)
+
+    def _set_camera_live(
+        self, zoom: float, pan_x_mm: float, pan_y_mm: float
+    ) -> None:
+        """
+        Moves the live camera at once, with zero lag. Every continuous
+        gesture update goes through here. It cancels any animation
+        first, so the animator's target becomes the live camera and
+        follows this update: nothing is left to pull the view back
+        once the gesture ends.
+        """
+        self._cancel_camera_animation()
         self._camera.set_zoom(zoom)
-        self._camera.set_pan(pan_x, pan_y)
+        self._camera.set_pan(pan_x_mm, pan_y_mm)
         self._rebuild_view_transform()
         self.queue_draw()
+        self._log_camera("update")
+
+    def _begin_navigation_gesture(self, name: str) -> None:
+        """
+        Called when any navigation gesture starts: stops a running
+        camera animation and any flick inertia, so the gesture starts
+        from, and the target is, the live camera.
+        """
+        self._stop_inertia()
+        self._cancel_camera_animation()
+        self._log_camera(f"{name} begin")
+
+    def _log_camera(self, phase: str) -> None:
+        zoom, pan_x, pan_y = self._camera_animator.target
+        logger.debug(
+            f"Camera {phase}: zoom={self.zoom_level:.4f} "
+            f"pan=({self.pan_x_mm:.3f}, {self.pan_y_mm:.3f}) "
+            f"target=({zoom:.4f}, {pan_x:.3f}, {pan_y:.3f}) "
+            f"animating={self._camera_animator.is_running}"
+        )
 
     def _zoom_about_point_animated(
         self, pointer_x_px: float, pointer_y_px: float, new_zoom: float
@@ -494,6 +530,10 @@ class WorldSurface(Canvas):
         # Let the base canvas handle hover updates and cursor changes.
         super().on_motion(gesture, x, y)
 
+    def on_scroll_begin(self, controller: Gtk.EventControllerScroll) -> None:
+        """A trackpad scroll sequence starts (fingers down)."""
+        self._begin_navigation_gesture("scroll")
+
     def on_scroll(
         self, controller: Gtk.EventControllerScroll, dx: float, dy: float
     ) -> None:
@@ -539,14 +579,13 @@ class WorldSurface(Canvas):
         left moves it right. Flick inertia feeds its decayed velocity
         through here too, so the glide keeps the gesture's direction.
         """
-        self._cancel_camera_animation()
         scale_x, scale_y = self.get_view_scale()
         if scale_x <= 0 or scale_y <= 0:
             return
         new_pan_x, new_pan_y = self._camera.pan_by_pixel_offset(
             self.pan_x_mm, self.pan_y_mm, -dx_px, -dy_px, scale_x, scale_y
         )
-        self.set_pan(new_pan_x, new_pan_y)
+        self._set_camera_live(self.zoom_level, new_pan_x, new_pan_y)
 
     def on_scroll_decelerate(
         self, controller: Gtk.EventControllerScroll, vel_x: float, vel_y: float
@@ -555,6 +594,7 @@ class WorldSurface(Canvas):
         Starts trackpad-flick pan inertia from the velocity (px/sec)
         GTK reports at the end of a smooth scroll gesture.
         """
+        self._log_camera(f"scroll end, velocity=({vel_x:.1f}, {vel_y:.1f})")
         if not self.pan_inertia_enabled:
             self._ease_pan_into_bounds()
             return
@@ -576,6 +616,7 @@ class WorldSurface(Canvas):
         if decayed is None:
             self._stop_inertia()
             self._ease_pan_into_bounds()
+            self._log_camera("inertia end")
             return GLib.SOURCE_REMOVE
         self._pan_velocity_x, self._pan_velocity_y = decayed
         self._pan_by_scroll_delta(self._pan_velocity_x, self._pan_velocity_y)
@@ -584,6 +625,7 @@ class WorldSurface(Canvas):
             # the easing animation instead of continuing to coast
             # (and potentially fighting it) further out of bounds.
             self._stop_inertia()
+            self._log_camera("inertia end at the clamp")
             return GLib.SOURCE_REMOVE
         return GLib.SOURCE_CONTINUE
 
@@ -596,6 +638,7 @@ class WorldSurface(Canvas):
             self._inertia_tick_id = None
 
     def on_pinch_begin(self, gesture: Gtk.GestureZoom, sequence) -> None:
+        self._begin_navigation_gesture("pinch")
         self._pinch_start_zoom = self.zoom_level
 
     def on_pinch_scale_changed(
@@ -611,9 +654,11 @@ class WorldSurface(Canvas):
 
     def on_pinch_end(self, gesture: Gtk.GestureZoom, sequence) -> None:
         self._reset_transient_gesture_state()
+        self._log_camera("pinch end")
 
     def on_pinch_cancel(self, gesture: Gtk.GestureZoom, sequence) -> None:
         self._reset_transient_gesture_state()
+        self._log_camera("pinch cancel")
 
     def _reset_transient_gesture_state(self) -> None:
         """
@@ -810,7 +855,7 @@ class WorldSurface(Canvas):
         """
         if self._space_pressed:
             self.grab_focus()
-            self._cancel_camera_animation()
+            self._begin_navigation_gesture("space-drag")
             self._pan_start = (self.pan_x_mm, self.pan_y_mm)
             return
         if n_press == 2 and not self.edit_context:
@@ -858,7 +903,7 @@ class WorldSurface(Canvas):
             base_scale_x * self.zoom_level,
             base_scale_y * self.zoom_level,
         )
-        self.set_pan(new_pan_x, new_pan_y)
+        self._set_camera_live(self.zoom_level, new_pan_x, new_pan_y)
 
     def on_mouse_drag(
         self, gesture: Gtk.GestureDrag, offset_x: float, offset_y: float
@@ -879,6 +924,7 @@ class WorldSurface(Canvas):
         if self._space_pressed:
             self._reset_transient_gesture_state()
             self._ease_pan_into_bounds()
+            self._log_camera("space-drag end")
             return
         super().on_drag_end(gesture, offset_x, offset_y)
 
@@ -886,7 +932,7 @@ class WorldSurface(Canvas):
         self, gesture: Gtk.GestureDrag, x: float, y: float
     ) -> None:
         logger.debug(f"Pan begin at ({x:.2f}, {y:.2f})")
-        self._cancel_camera_animation()
+        self._begin_navigation_gesture("pan")
         self._pan_start = (self.pan_x_mm, self.pan_y_mm)
 
     def on_pan_update(
@@ -912,3 +958,4 @@ class WorldSurface(Canvas):
         logger.debug(f"Pan end at ({x:.2f}, {y:.2f})")
         self._reset_transient_gesture_state()
         self._ease_pan_into_bounds()
+        self._log_camera("pan end")

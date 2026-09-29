@@ -134,3 +134,22 @@ class TestCameraAnimatorClamping:
         a.start(50.0, 0.0, 0.0, now_ms=0.0)
         a.advance(200.0)
         assert c.zoom == pytest.approx(5.0)
+
+
+class TestCameraAnimatorTarget:
+    def test_target_is_the_animation_target_while_running(self):
+        c = Camera()
+        a = CameraAnimator(c, duration_ms=200.0)
+        a.start(2.0, 10.0, -5.0, now_ms=0.0)
+        a.advance(100.0)
+        assert a.target == (2.0, 10.0, -5.0)
+
+    def test_target_follows_the_live_camera_once_stopped(self):
+        """A stopped animation leaves no stale target behind: direct
+        updates of the live camera move the target with them."""
+        c = Camera()
+        a = CameraAnimator(c, duration_ms=200.0)
+        a.start(2.0, 10.0, -5.0, now_ms=0.0)
+        a.stop()
+        c.set_pan(3.0, 4.0)
+        assert a.target == (1.0, 3.0, 4.0)

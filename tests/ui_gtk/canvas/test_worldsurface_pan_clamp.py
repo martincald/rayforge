@@ -11,13 +11,16 @@ Max-zoom coverage lives in test_worldsurface_pan_zoom.py
     it, and it eases back only once the gesture ends;
 (c) trackpad-flick inertia that carries the view past the limit
     settles at the boundary instead of oscillating or sticking
-    outside it.
+    outside it;
+(d) after zooming in, a pan that stays on the bed ends exactly where
+    the gesture left it: no snap-back, and no reversing glide.
 """
 
+from itertools import pairwise
 from unittest.mock import MagicMock
 
 import pytest
-from gi.repository import GLib
+from gi.repository import Gdk, GLib
 
 pytestmark = pytest.mark.ui
 
@@ -26,19 +29,18 @@ def _visible_bed_fraction(s) -> tuple[float, float]:
     """
     Returns the fraction of the bed's width/height that is currently
     visible in the viewport, computed independently from the pan
-    clamp implementation under test (from width_mm/height_mm, zoom
-    and pan alone, mirroring WorldSurface._update_pan_bounds's own
-    "visible = size / zoom" derivation).
+    clamp implementation under test: the content area's corners are
+    mapped to world space through the live view transform.
     """
-    zoom = s.zoom_level
-    visible_w = s.width_mm / zoom
-    visible_h = s.height_mm / zoom
-    overlap_x = min(s.pan_x_mm + visible_w, s.width_mm) - max(
-        s.pan_x_mm, 0.0
+    content_x, content_y, content_w, content_h = (
+        s._axis_renderer.get_content_layout(s.get_width(), s.get_height())
     )
-    overlap_y = min(s.pan_y_mm + visible_h, s.height_mm) - max(
-        s.pan_y_mm, 0.0
+    left, top = s._get_world_coords(content_x, content_y)
+    right, bottom = s._get_world_coords(
+        content_x + content_w, content_y + content_h
     )
+    overlap_x = min(right, s.width_mm) - max(left, 0.0)
+    overlap_y = min(top, s.height_mm) - max(bottom, 0.0)
     return (
         max(overlap_x, 0.0) / s.width_mm,
         max(overlap_y, 0.0) / s.height_mm,
@@ -53,6 +55,42 @@ def _drag_pan(s, offset_x: float, offset_y: float) -> MagicMock:
     gesture.get_offset.return_value = (True, offset_x, offset_y)
     s.on_pan_update(gesture, 0.0, 0.0)
     return gesture
+
+
+def _pinch_zoom(s, scale: float) -> None:
+    """Pinch-zooms by ``scale`` about the widget centre, which lies
+    over the bed, so the zoomed-in view stays entirely on it."""
+    gesture = MagicMock()
+    gesture.get_bounding_box_center.return_value = (
+        True,
+        s.get_width() / 2.0,
+        s.get_height() / 2.0,
+    )
+    s.on_pinch_begin(gesture, None)
+    s.on_pinch_scale_changed(gesture, scale)
+    s.on_pinch_end(gesture, None)
+
+
+def _surface_scroll_controller() -> MagicMock:
+    controller = MagicMock()
+    controller.get_unit.return_value = Gdk.ScrollUnit.SURFACE
+    controller.get_current_event_state.return_value = Gdk.ModifierType(0)
+    return controller
+
+
+def _run_inertia(s) -> list[tuple[float, float]]:
+    """Drives the inertia tick loop to completion; returns the pan
+    after every tick."""
+    pans = []
+    for _ in range(500):
+        if s._inertia_tick_id is None:
+            break
+        result = s._on_inertia_tick(s, MagicMock())
+        pans.append((s.pan_x_mm, s.pan_y_mm))
+        if result == GLib.SOURCE_REMOVE:
+            break
+    assert s._inertia_tick_id is None
+    return pans
 
 
 class TestPanClampKeepsBedReachable:
@@ -149,3 +187,78 @@ class TestPanClampAndInertia:
         finish_animation(s)
         frac_x, _ = _visible_bed_fraction(s)
         assert frac_x >= s.MIN_VISIBLE_BED_FRACTION - 1e-6
+
+
+class TestNoSnapBackAfterZoom:
+    """REQUIRED TEST (part d): the macOS snap-back report."""
+
+    @pytest.mark.parametrize("zoom", [0.5, 2.0, 4.0, 8.0])
+    def test_a_view_on_the_bed_is_within_the_clamp_at_any_zoom(
+        self, world_surface_factory, zoom
+    ):
+        s = world_surface_factory()
+        _pinch_zoom(s, zoom)
+        # Zoomed in, the viewport lies wholly on the bed; zoomed out,
+        # the whole bed is in view.
+        frac_x, frac_y = _visible_bed_fraction(s)
+        assert frac_x == pytest.approx(min(1.0, 1.0 / zoom))
+        assert frac_y == pytest.approx(min(1.0, 1.0 / zoom))
+
+        assert s._ease_pan_into_bounds() is False
+        assert not s._camera_animator.is_running
+
+    @pytest.mark.parametrize("zoom", [2.0, 4.0, 8.0])
+    def test_two_finger_pan_after_zoom_stays_where_it_ended(
+        self, world_surface_factory, finish_animation, zoom
+    ):
+        s = world_surface_factory()
+        _pinch_zoom(s, zoom)
+
+        controller = _surface_scroll_controller()
+        s.on_scroll_begin(controller)
+        for _ in range(5):
+            s.on_scroll(controller, 0.0, 4.0)
+        ended_at = (s.zoom_level, s.pan_x_mm, s.pan_y_mm)
+
+        # Fingers lift with no flick velocity.
+        s.on_scroll_decelerate(controller, 0.0, 0.0)
+        _run_inertia(s)
+        finish_animation(s)
+
+        assert (s.zoom_level, s.pan_x_mm, s.pan_y_mm) == ended_at
+
+    @pytest.mark.parametrize("zoom", [2.0, 4.0, 8.0])
+    def test_middle_drag_after_zoom_stays_where_it_ended(
+        self, world_surface_factory, finish_animation, zoom
+    ):
+        s = world_surface_factory()
+        _pinch_zoom(s, zoom)
+
+        gesture = _drag_pan(s, 0.0, 40.0)
+        ended_at = (s.zoom_level, s.pan_x_mm, s.pan_y_mm)
+        s.on_pan_end(gesture, 0.0, 0.0)
+        finish_animation(s)
+
+        assert (s.zoom_level, s.pan_x_mm, s.pan_y_mm) == ended_at
+
+    def test_inertia_glide_after_zoom_ends_without_reversal(
+        self, world_surface_factory, finish_animation
+    ):
+        s = world_surface_factory()
+        _pinch_zoom(s, 4.0)
+        start_y = s.pan_y_mm
+
+        controller = _surface_scroll_controller()
+        s.on_scroll_begin(controller)
+        s.on_scroll(controller, 0.0, 4.0)
+        s.on_scroll_decelerate(controller, 0.0, 600.0)
+        pans = _run_inertia(s)
+        glide_end = (s.pan_x_mm, s.pan_y_mm)
+        finish_animation(s)
+
+        # Fingers down move the content up: pan_y only ever falls.
+        ys = [start_y] + [y for _, y in pans]
+        assert len(ys) > 2
+        assert all(b <= a for a, b in pairwise(ys))
+        assert ys[-1] < start_y
+        assert (s.pan_x_mm, s.pan_y_mm) == glide_end
