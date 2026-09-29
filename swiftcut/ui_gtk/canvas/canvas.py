@@ -436,8 +436,8 @@ class Canvas(Gtk.DrawingArea):
 
         # Priority 2: If no valid handles were hit, find the element body.
         if new_hovered_region == ElementRegion.NONE:
-            hit_elem = self.root.get_elem_hit(x, y, selectable=True)
-            if hit_elem and hit_elem is not self.root:
+            hit_elem = self._get_body_hit(x, y)
+            if hit_elem:
                 new_hovered_region = ElementRegion.BODY
                 new_hovered_elem = hit_elem
 
@@ -472,6 +472,30 @@ class Canvas(Gtk.DrawingArea):
             needs_redraw = True
 
         return needs_redraw
+
+    def _get_body_hit(self, x: float, y: float) -> CanvasElement | None:
+        """
+        Finds the element a press at WORLD (x, y) would move. A stroke in
+        reach wins over the inside of a shape, which wins over the
+        bounding box of a selected element; the top-most wins among
+        equals.
+        """
+        for strokes_only in (True, False):
+            hit = self.root.get_elem_hit(
+                x, y, selectable=True, strokes_only=strokes_only
+            )
+            if hit and hit is not self.root:
+                return hit
+
+        for elem in reversed(self.get_selected_elements()):
+            try:
+                inv_world = elem.get_world_transform().invert()
+            except np.linalg.LinAlgError:
+                continue
+            local_x, local_y = inv_world.transform_point((x, y))
+            if 0 <= local_x < elem.width and 0 <= local_y < elem.height:
+                return elem
+        return None
 
     def on_button_press(self, gesture, n_press: int, x: float, y: float):
         """

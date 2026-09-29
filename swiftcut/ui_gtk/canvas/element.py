@@ -1001,7 +1001,11 @@ class CanvasElement:
         return any(c.has_dirty_children() for c in self.children)
 
     def get_elem_hit(
-        self, world_x: float, world_y: float, selectable: bool = False
+        self,
+        world_x: float,
+        world_y: float,
+        selectable: bool = False,
+        strokes_only: bool = False,
     ) -> CanvasElement | None:
         """
         Checks for a hit on this element or its children given world
@@ -1015,6 +1019,8 @@ class CanvasElement:
             world_x: The x-coordinate in the canvas's world space.
             world_y: The y-coordinate in the canvas's world space.
             selectable: If True, only selectable elements are checked.
+            strokes_only: If True, an element is hit only near its stroke;
+                draggable elements are still hit anywhere in their bbox.
 
         Returns:
             The `CanvasElement` that was hit, or `None`.
@@ -1022,7 +1028,9 @@ class CanvasElement:
         # 1. Check children first (top-most are last in list, so drawn on top).
         for child in reversed(self.children):
             # Pass the original world coordinates down recursively.
-            hit = child.get_elem_hit(world_x, world_y, selectable)
+            hit = child.get_elem_hit(
+                world_x, world_y, selectable, strokes_only
+            )
             if hit:
                 # A child was hit, so it's on top of us. Return it immediately.
                 return hit
@@ -1030,6 +1038,10 @@ class CanvasElement:
         # 2. If no children were hit, check this element itself.
         if selectable and not self.selectable:
             return None
+
+        if strokes_only and not self.draggable:
+            # A stroke can be hit from just outside the bounding box.
+            return self if self.is_near_stroke(world_x, world_y) else None
 
         # To check ourself, transform the world point into our local
         # geometry space.
@@ -1052,15 +1064,32 @@ class CanvasElement:
 
         # 4. Optional: If inside the bounding box, perform pixel-perfect check.
         # Draggable elements should be hittable anywhere within their bbox.
+        # The inside of a closed shape is hit even where nothing is painted.
         if (
             self.pixel_perfect_hit
             and not self.draggable
             and not self.is_pixel_opaque(local_geom_x, local_geom_y)
+            and not self.encloses_point(local_geom_x, local_geom_y)
         ):
             return None
 
         # 5. If all checks pass, we have a hit on this element.
         return self
+
+    def is_near_stroke(self, world_x: float, world_y: float) -> bool:
+        """
+        Checks if a world point is within STROKE_HIT_DISTANCE screen
+        pixels of the element's stroke. An element without a path has
+        no stroke.
+        """
+        return False
+
+    def encloses_point(self, local_x: float, local_y: float) -> bool:
+        """
+        Checks if a point in local GEOMETRY space is inside one of the
+        element's closed shapes. An element without a path has none.
+        """
+        return False
 
     def is_pixel_opaque(self, local_x: float, local_y: float) -> bool:
         """

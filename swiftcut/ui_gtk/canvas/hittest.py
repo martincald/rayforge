@@ -8,6 +8,11 @@ import numpy as np
 if TYPE_CHECKING:
     from raygeo.geo import Matrix
 
+# A press this many screen pixels from a path's stroke hits it. Screen
+# pixels are the widget's logical ones, whatever the display's scale
+# factor.
+STROKE_HIT_DISTANCE = 8.0
+
 
 def check_pixel_hit(
     surface: cairo.ImageSurface,

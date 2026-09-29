@@ -77,7 +77,11 @@ class GroupElement(ShrinkWrapGroup):
             child.set_ops_visibility(step_uid, visible)
 
     def get_elem_hit(
-        self, world_x: float, world_y: float, selectable: bool = False
+        self,
+        world_x: float,
+        world_y: float,
+        selectable: bool = False,
+        strokes_only: bool = False,
     ) -> Optional["CanvasElement"]:
         """
         Overrides the default hit-test to enforce group selection behavior.
@@ -97,7 +101,7 @@ class GroupElement(ShrinkWrapGroup):
         # individual `selectable` flags of children. This is the key to making
         # the group an atomic unit for click-selection.
         hit_candidate = super().get_elem_hit(
-            world_x, world_y, selectable=False
+            world_x, world_y, selectable=False, strokes_only=strokes_only
         )
 
         # If a visual component was hit, the hit is on the group itself.

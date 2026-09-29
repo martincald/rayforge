@@ -6,6 +6,7 @@ import cairo
 import numpy as np
 from gi.repository import Gdk, GLib
 from raygeo.geo import Arc, Bezier, Geometry, Line, Matrix, Move
+from raygeo.geo.shape.polygon import is_point_inside_polygon
 from raygeo.image.composite import composite_views_into
 
 from ....core.step import Step
@@ -15,6 +16,7 @@ from ....pipeline.artifact import (
     WorkPieceArtifact,
 )
 from ...canvas import CanvasElement
+from ...canvas.hittest import STROKE_HIT_DISTANCE
 from ..ops_cache_registry import registry
 from .tab_handle import TabHandleElement
 
@@ -722,6 +724,62 @@ class WorkPieceElement(CanvasElement):
 
         # 6. Return location info if within threshold
         return {"segment_index": segment_index, "t": t}
+
+    def is_near_stroke(self, world_x: float, world_y: float) -> bool:
+        """
+        Checks if a world point is within STROKE_HIT_DISTANCE screen
+        pixels of the workpiece's path, measured on screen.
+        """
+        boundaries = self.data.boundaries
+        if not self.canvas or not boundaries or boundaries.is_empty():
+            return False
+
+        view = self.canvas.view_transform
+        to_screen = view @ self.get_world_transform()
+        x, y = view.transform_point((world_x, world_y))
+
+        # The path lies within the element's box: skip the search when
+        # the point is well clear of it.
+        w, h = self.width, self.height
+        corners = [
+            to_screen.transform_point(p)
+            for p in ((0, 0), (w, 0), (w, h), (0, h))
+        ]
+        reach = STROKE_HIT_DISTANCE
+        if not (
+            min(c[0] for c in corners) - reach
+            <= x
+            <= max(c[0] for c in corners) + reach
+            and min(c[1] for c in corners) - reach
+            <= y
+            <= max(c[1] for c in corners) + reach
+        ):
+            return False
+
+        path = boundaries.copy()
+        path.transform(to_screen)
+        closest = path.find_closest_point(x, y)
+        if closest is None:
+            return False
+        closest_x, closest_y = closest[2][0], closest[2][1]
+        return math.hypot(x - closest_x, y - closest_y) <= reach
+
+    def encloses_point(self, local_x: float, local_y: float) -> bool:
+        """
+        Checks if a local point is inside the workpiece's closed shapes;
+        a shape inside another is a hole in it.
+        """
+        boundaries = self.data.boundaries
+        if not boundaries:
+            return False
+        inside = False
+        for contour in boundaries.split_into_contours():
+            if not contour.is_closed():
+                continue
+            for polygon in contour.to_polygons():
+                if is_point_inside_polygon((local_x, local_y), polygon):
+                    inside = not inside
+        return inside
 
     def _update_editable_state(self):
         if self.data.geometry_provider_uid:
