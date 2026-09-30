@@ -367,6 +367,24 @@ def render_rotation_arc(
     ctx.restore()
 
 
+def render_snap_guides(
+    ctx: cairo.Context,
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+):
+    """
+    Draws the guides of a snap in screen space: a 1 px accent line for
+    each segment, on the pixel grid so it is crisp.
+    """
+    ctx.save()
+    ctx.set_source_rgb(*ACCENT_RGB)
+    ctx.set_line_width(1.0)
+    for (x1, y1), (x2, y2) in segments:
+        ctx.move_to(round(x1) + 0.5, round(y1) + 0.5)
+        ctx.line_to(round(x2) + 0.5, round(y2) + 0.5)
+    ctx.stroke()
+    ctx.restore()
+
+
 def _render_debug_labels(
     ctx, target, transform, regions, base_size, scale_comp
 ):

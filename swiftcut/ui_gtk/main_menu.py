@@ -89,6 +89,7 @@ class MainMenu(Gio.Menu):
         visibility_group.append(
             _("Trackpad-Flick Inertia"), "win.toggle_pan_inertia"
         )
+        visibility_group.append(_("Snapping"), "win.toggle_snapping")
         if haptics.available:
             visibility_group.append(_("Trackpad Haptics"), "win.haptics")
         view_menu.append_section(None, visibility_group)

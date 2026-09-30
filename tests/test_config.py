@@ -238,3 +238,15 @@ def test_haptics_are_on_by_default_and_survive_the_config_file():
     restored = Config.from_dict(config.to_dict(), lambda _id: None)
 
     assert restored.canvas_view.haptics_enabled is False
+
+
+def test_snapping_is_on_by_default_and_survives_the_config_file():
+    assert Config().canvas_view.snapping_enabled is True
+    blank = Config.from_dict({}, lambda _id: None)
+    assert blank.canvas_view.snapping_enabled is True
+
+    config = Config()
+    config.canvas_view.snapping_enabled = False
+    restored = Config.from_dict(config.to_dict(), lambda _id: None)
+
+    assert restored.canvas_view.snapping_enabled is False

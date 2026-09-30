@@ -12,10 +12,12 @@ if sys.platform == "darwin":
         PRIMARY_MODIFIER_MASK = Gdk.ModifierType.CONTROL_MASK
     PRIMARY_ACCEL = "<Meta>"
     PRIMARY_KEY_NAME = "Cmd"
+    SNAP_OVERRIDE_MASK = PRIMARY_MODIFIER_MASK
 else:
     PRIMARY_MODIFIER_MASK = Gdk.ModifierType.CONTROL_MASK
     PRIMARY_ACCEL = "<Primary>"
     PRIMARY_KEY_NAME = "Ctrl"
+    SNAP_OVERRIDE_MASK = Gdk.ModifierType.ALT_MASK
 
 
 def is_primary_modifier(state: Gdk.ModifierType) -> bool:
@@ -35,3 +37,9 @@ def is_primary_keyval(keyval: int) -> bool:
             primary_keys.append(command_key)
         return keyval in primary_keys
     return keyval in (Gdk.KEY_Control_L, Gdk.KEY_Control_R)
+
+
+def is_snap_override_keyval(keyval: int) -> bool:
+    if sys.platform == "darwin":
+        return is_primary_keyval(keyval)
+    return keyval in (Gdk.KEY_Alt_L, Gdk.KEY_Alt_R)

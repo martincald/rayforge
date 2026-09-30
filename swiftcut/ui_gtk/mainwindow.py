@@ -894,6 +894,16 @@ class MainWindow(Adw.ApplicationWindow):
         config.canvas_view.pan_inertia_enabled = is_enabled
         config.changed.send(config)
 
+    def on_toggle_snapping_state_change(
+        self, action: Gio.SimpleAction, value: GLib.Variant
+    ):
+        is_enabled = value.get_boolean()
+        action.set_state(value)
+        self.surface.object_snap_enabled = is_enabled
+        config = get_context().config
+        config.canvas_view.snapping_enabled = is_enabled
+        config.changed.send(config)
+
     def on_show_workpieces_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
@@ -1022,6 +1032,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.on_toggle_pan_inertia_state_change(
             am.get_action("toggle_pan_inertia"),
             GLib.Variant.new_boolean(cv.pan_inertia_enabled),
+        )
+
+        am.get_action("toggle_snapping").set_state(
+            GLib.Variant.new_boolean(not cv.snapping_enabled)
+        )
+        self.on_toggle_snapping_state_change(
+            am.get_action("toggle_snapping"),
+            GLib.Variant.new_boolean(cv.snapping_enabled),
         )
 
     def _connect_toolbar_signals(self):

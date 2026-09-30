@@ -307,6 +307,11 @@ class ActionManager:
             self.win.on_toggle_pan_inertia_state_change,
             GLib.Variant.new_boolean(cv.pan_inertia_enabled),
         )
+        self._add_stateful_action(
+            "toggle_snapping",
+            self.win.on_toggle_snapping_state_change,
+            GLib.Variant.new_boolean(cv.snapping_enabled),
+        )
 
         # Edit & Clipboard Actions
         self._add_action(

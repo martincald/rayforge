@@ -286,6 +286,9 @@ class TestDragFromTheStroke:
         wp, elem = add(_square(), (60, 50), (60, 40))
         x, y = _screen(s, elem, 0.0, 0.25)
         start = wp.matrix.get_translation()
+        # Its centre lands a pixel off the bed's; unsnapped, it moves by
+        # the pointer delta alone.
+        s.object_snap_enabled = False
 
         # 5 pixels outside the box, on an object not yet selected.
         gesture = _press(s, x - 5, y)

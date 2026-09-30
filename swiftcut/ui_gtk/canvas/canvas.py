@@ -16,8 +16,12 @@ from gi.repository import Gdk, Graphene, Gtk
 from raygeo.geo import Matrix
 
 from ..layout import HANDLE_HIT_SIZE, ROTATION_ARC_RADIUS
-from ..shared.keyboard import is_primary_keyval
-from . import transform
+from ..shared.keyboard import (
+    SNAP_OVERRIDE_MASK,
+    is_primary_keyval,
+    is_snap_override_keyval,
+)
+from . import snapping, transform
 from .cursor import get_cursor_for_region
 from .element import CanvasElement
 from .intersect import obb_intersects_aabb
@@ -27,6 +31,7 @@ from .overlays import (
     render_rotation_arc,
     render_selection_frame,
     render_selection_handles,
+    render_snap_guides,
 )
 from .region import (
     BBOX_REGIONS,
@@ -133,6 +138,16 @@ class Canvas(Gtk.DrawingArea):
         # The snap the current drag sits on, None when unsnapped.
         self._last_snap: tuple | None = None
 
+        # --- Object snapping ---
+        # View > Snapping: a move snaps to other objects and the bed.
+        self.object_snap_enabled: bool = True
+        # The x and y lines a move snaps to, built on its first frame.
+        self._snap_lines: (
+            tuple[list[snapping.SnapLine], list[snapping.SnapLine]] | None
+        ) = None
+        # The guides of the snap a move sits on, world-space segments.
+        self._snap_guides: list[tuple[Point, Point]] = []
+
         # --- Signals ---
         self.move_begin = Signal()
         self.move_end = Signal()
@@ -223,6 +238,8 @@ class Canvas(Gtk.DrawingArea):
         self.add_controller(self._key_controller)
         self._shift_pressed: bool = False
         self._ctrl_pressed: bool = False
+        # Alt (Cmd on macOS) held: a move snaps to nothing.
+        self._snap_override: bool = False
         self.set_focusable(True)
         self.grab_focus()
 
@@ -305,6 +322,13 @@ class Canvas(Gtk.DrawingArea):
                     ROTATION_ARC_RADIUS,
                 )
             render_angle_readout(ctx, angle, x, y)
+
+        if self._snap_guides:
+            to_screen = self.view_transform.transform_point
+            render_snap_guides(
+                ctx,
+                [(to_screen(a), to_screen(b)) for a, b in self._snap_guides],
+            )
 
     def _render_selection_overlay(
         self, ctx: cairo.Context, elem: CanvasElement
@@ -516,6 +540,7 @@ class Canvas(Gtk.DrawingArea):
             mods = event.get_modifier_state()
             self._shift_pressed = bool(mods & Gdk.ModifierType.SHIFT_MASK)
             self._ctrl_pressed = bool(mods & Gdk.ModifierType.CONTROL_MASK)
+            self._snap_override = bool(mods & SNAP_OVERRIDE_MASK)
         world_x, world_y = self._get_world_coords(x, y)
         self._update_hover_state(world_x, world_y)
 
@@ -858,62 +883,8 @@ class Canvas(Gtk.DrawingArea):
         world_dx = current_world_x - start_world_x
         world_dy = current_world_y - start_world_y
 
-        snap_key = None
-        if self._ctrl_pressed and self._moving:
-            if self._selection_group and self._active_origin:
-                # Snap group move to grid using its AABB
-                initial_x, initial_y, w, h = self._active_origin
-                target_x = initial_x + world_dx
-                target_y = initial_y + world_dy
-
-                snap_offset_x = self._calculate_snap_offset(
-                    target_x, w, self.grid_size
-                )
-                snap_offset_y = self._calculate_snap_offset(
-                    target_y, h, self.grid_size
-                )
-
-                world_dx += snap_offset_x
-                world_dy += snap_offset_y
-                snap_key = (
-                    round(target_x + snap_offset_x, 6),
-                    round(target_y + snap_offset_y, 6),
-                )
-
-            elif self._drag_target and self._initial_world_transform:
-                # Snap single element move using its world AABB
-                elem = self._drag_target
-                target_transform = (
-                    Matrix.translation(world_dx, world_dy)
-                    @ self._initial_world_transform
-                )
-                w, h = elem.width, elem.height
-                local_corners = [(0, 0), (w, 0), (w, h), (0, h)]
-                world_corners = [
-                    target_transform.transform_point(p) for p in local_corners
-                ]
-
-                x_coords = [c[0] for c in world_corners]
-                y_coords = [c[1] for c in world_corners]
-                min_x, max_x = min(x_coords), max(x_coords)
-                min_y, max_y = min(y_coords), max(y_coords)
-
-                snap_offset_x = self._calculate_snap_offset(
-                    min_x, max_x - min_x, self.grid_size
-                )
-                snap_offset_y = self._calculate_snap_offset(
-                    min_y, max_y - min_y, self.grid_size
-                )
-
-                world_dx += snap_offset_x
-                world_dy += snap_offset_y
-                snap_key = (
-                    round(min_x + snap_offset_x, 6),
-                    round(min_y + snap_offset_y, 6),
-                )
-
         if self._moving:
-            self._snapped(snap_key)
+            world_dx, world_dy = self._snap_move(world_dx, world_dy)
 
         if self._rotating and self._rotation_pivot:
             angle, (current_world_x, current_world_y) = self._rotate_pointer(
@@ -1118,6 +1089,132 @@ class Canvas(Gtk.DrawingArea):
 
         return -((target_angle_deg + 180) % 360 - 180), (x, y)
 
+    def _moving_box(self) -> Rect | None:
+        """The world box of what a move drags, where it started."""
+        if self._selection_group and self._active_origin:
+            return self._active_origin
+        target = self._drag_target
+        if target and self._initial_world_transform:
+            return self._initial_world_transform.transform_rectangle(
+                (0, 0, target.width, target.height)
+            )
+        return None
+
+    def _snap_sources(self) -> list[Rect]:
+        """
+        The world boxes a move snaps to: the bed, and every visible
+        object that is neither selected nor moving.
+        """
+        moving = set(self._transforming_elements)
+        sources = [self.root.get_world_bounding_box()]
+
+        def visit(elem: CanvasElement) -> None:
+            for child in elem.children:
+                if not child.visible:
+                    continue
+                if not child.selectable:
+                    visit(child)
+                elif not (
+                    child.selected or child.draggable or child in moving
+                ):
+                    sources.append(child.get_world_bounding_box())
+
+        visit(self.root)
+        return sources
+
+    def invalidate_snap_candidates(self) -> None:
+        """Drops the lines a move snaps to; they rebuild when next used."""
+        self._snap_lines = None
+
+    def _object_snap_lines(
+        self,
+    ) -> tuple[list[snapping.SnapLine], list[snapping.SnapLine]] | None:
+        """The x and y lines a move snaps to, None when it snaps to none."""
+        target = self._drag_target
+        if not self.object_snap_enabled or (target and target.draggable):
+            return None
+        if self._snap_lines is None:
+            self._snap_lines = snapping.candidate_lines(self._snap_sources())
+        return self._snap_lines
+
+    def _snap_move(
+        self, world_dx: float, world_dy: float
+    ) -> tuple[float, float]:
+        """
+        Snaps a move, each axis on its own: to an edge or centre of
+        another object or the bed within SNAP_DISTANCE_PX on screen,
+        else to the grid with Ctrl. Alt (Cmd on macOS) turns both off.
+        Records the snap for the haptic hook, and its guides.
+        """
+        self._snap_guides = []
+        origin = self._moving_box()
+        if origin is None or self._snap_override:
+            self._snapped(None)
+            return world_dx, world_dy
+        x, y, w, h = origin
+        rect = (x + world_dx, y + world_dy, w, h)
+        lines = self._object_snap_lines()
+        scale = self.view_transform.get_abs_scale()
+        move = [world_dx, world_dy]
+        keys: list[tuple | None] = [None, None]
+        matches: list[snapping.SnapMatch | None] = [None, None]
+        for axis in (0, 1):
+            if lines is not None:
+                matches[axis] = snapping.nearest(
+                    snapping.features(rect, axis),
+                    lines[axis],
+                    snapping.SNAP_DISTANCE_PX / scale[axis],
+                )
+            match = matches[axis]
+            if match:
+                move[axis] += match.offset
+                keys[axis] = ("object", round(match.line.value, 6))
+            elif self._ctrl_pressed:
+                offset = self._calculate_snap_offset(
+                    rect[axis], rect[axis + 2], self.grid_size
+                )
+                move[axis] += offset
+                keys[axis] = ("grid", round(rect[axis] + offset, 6))
+        snapped = (x + move[0], y + move[1], w, h)
+        for axis, match in enumerate(matches):
+            if match:
+                self._snap_guides.append(
+                    snapping.guide(axis, match.line, snapped)
+                )
+        self._snapped(tuple(keys) if any(keys) else None)
+        return move[0], move[1]
+
+    def snap_nudge(self, dx: float, dy: float) -> tuple[float, float]:
+        """
+        A keyboard nudge of the selection by (dx, dy), snapped on the
+        nudged axis to an edge or centre of another object or the bed
+        within SNAP_DISTANCE_PX on screen, ahead of where it starts.
+        """
+        selected = self.get_selected_elements()
+        if not selected or not self.object_snap_enabled:
+            return dx, dy
+        boxes = [elem.get_world_bounding_box() for elem in selected]
+        left = min(b[0] for b in boxes)
+        bottom = min(b[1] for b in boxes)
+        rect = (
+            left,
+            bottom,
+            max(b[0] + b[2] for b in boxes) - left,
+            max(b[1] + b[3] for b in boxes) - bottom,
+        )
+        lines = snapping.candidate_lines(self._snap_sources())
+        scale = self.view_transform.get_abs_scale()
+        move = [dx, dy]
+        for axis in (0, 1):
+            if move[axis]:
+                move[axis] = snapping.nudge(
+                    snapping.features(rect, axis),
+                    lines[axis],
+                    snapping.SNAP_DISTANCE_PX / scale[axis],
+                    move[axis],
+                )
+        return move[0], move[1]
+
     def _snapped(self, key: tuple | None) -> None:
         """
         Records the snap a drag frame landed on, None for no snap, and
@@ -1134,6 +1231,8 @@ class Canvas(Gtk.DrawingArea):
         Handles the end of a drag operation, finalizing transforms.
         """
         self._last_snap = None
+        self._snap_guides = []
+        self._snap_lines = None
         if self.edit_context:
             was_dragging = self._edit_dragging
             ok, start_x, start_y = self._drag_gesture.get_start_point()
@@ -1396,6 +1495,8 @@ class Canvas(Gtk.DrawingArea):
         if keyval == Gdk.KEY_Escape and self.edit_context:
             self.leave_edit_mode()
             return True
+        if is_snap_override_keyval(keyval):
+            self._snap_override = True
         if keyval in (Gdk.KEY_Shift_L, Gdk.KEY_Shift_R):
             self._shift_pressed = True
             # Allow propagation for accelerators
@@ -1417,6 +1518,8 @@ class Canvas(Gtk.DrawingArea):
         self, controller, keyval: int, keycode: int, state: Gdk.ModifierType
     ):
         """Handles key release events for modifiers."""
+        if is_snap_override_keyval(keyval):
+            self._snap_override = False
         if keyval in (Gdk.KEY_Shift_L, Gdk.KEY_Shift_R):
             self._shift_pressed = False
         elif is_primary_keyval(keyval):

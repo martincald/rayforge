@@ -19,7 +19,7 @@ from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
 from ...shared.units.formatter import get_preferred_unit_factor
 from ..canvas import Canvas, CanvasElement, WorldSurface
-from ..shared.keyboard import is_primary_modifier
+from ..shared.keyboard import SNAP_OVERRIDE_MASK, is_primary_modifier
 from . import context_menu
 from .elements.axis_extent_frame import (
     AxisExtentFrameElement,
@@ -448,6 +448,10 @@ class WorkSurface(WorldSurface):
         logger.debug(f"_on_doc_structure_changed fired: sender={sender}")
         self._update_pipeline_view_context()
 
+    def _on_doc_objects_changed(self, sender, **kwargs):
+        """Objects came, went or moved: the snap lines rebuild."""
+        self.invalidate_snap_candidates()
+
     def _on_document_changed(self, sender, **kwargs):
         """Reconnect all doc signals when a new doc is loaded."""
         self._disconnect_doc_signals()
@@ -468,6 +472,13 @@ class WorkSurface(WorldSurface):
         doc.descendant_transform_changed.connect(
             self._update_start_corner_element
         )
+        for signal in (
+            doc.descendant_added,
+            doc.descendant_removed,
+            doc.descendant_updated,
+            doc.descendant_transform_changed,
+        ):
+            signal.connect(self._on_doc_objects_changed)
         self._connect_active_layer_wcs()
         self._connected_doc = doc
         self._update_start_corner_element()
@@ -487,6 +498,13 @@ class WorkSurface(WorldSurface):
             doc.descendant_transform_changed.disconnect(
                 self._update_start_corner_element
             )
+            for signal in (
+                doc.descendant_added,
+                doc.descendant_removed,
+                doc.descendant_updated,
+                doc.descendant_transform_changed,
+            ):
+                signal.disconnect(self._on_doc_objects_changed)
             self._connected_doc = None
 
     def _on_any_transform_begin(
@@ -1484,6 +1502,8 @@ class WorkSurface(WorldSurface):
             if not selected_items:
                 return True  # Consume event but do nothing
 
+            if not is_primary and not state & SNAP_OVERRIDE_MASK:
+                move_x, move_y = self.snap_nudge(move_x, move_y)
             self.transform_initiated.send(self)
             self.editor.transform.nudge_items(selected_items, move_x, move_y)
             return True
