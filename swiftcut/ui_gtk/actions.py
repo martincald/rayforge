@@ -272,6 +272,11 @@ class ActionManager:
             GLib.Variant.new_boolean(cv.show_grid),
         )
         self._add_stateful_action(
+            "haptics",
+            self.win.on_haptics_state_change,
+            GLib.Variant.new_boolean(cv.haptics_enabled),
+        )
+        self._add_stateful_action(
             "show_models",
             self.win.on_show_models_state_change,
             GLib.Variant.new_boolean(cv.show_models),

@@ -29,6 +29,8 @@ if os.path.isdir(os.path.join(sys.prefix, 'conda-meta')):
     _gi_hooks.findSystemLibrary = _find_in_env
 
 hiddenimports = ['gi._gi_cairo', 'cairosvg']
+# PyObjC, for the trackpad haptics in swiftcut/ui_gtk/haptics.py.
+hiddenimports += ['AppKit', 'Foundation', 'objc']
 hiddenimports += collect_submodules('swiftcut.ui_gtk.canvas2d')
 hiddenimports += collect_submodules('swiftcut.ui_gtk.canvas2d.elements')
 hiddenimports += collect_submodules('swiftcut.ui_gtk.shared')

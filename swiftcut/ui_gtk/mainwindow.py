@@ -49,6 +49,7 @@ from .doceditor.item_properties import DocItemPropertiesWidget
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
+from .haptics import haptics
 from .layout import (
     OVERLAY_PANEL_HEIGHT_FRACTION,
     OVERLAY_PANEL_WIDTH,
@@ -300,6 +301,8 @@ class MainWindow(Adw.ApplicationWindow):
             cam_visible=True,  # Will be set by action state
         )
         self.surface.set_hexpand(True)
+        self.surface.haptic_hook = haptics.perform
+        haptics.enabled = config.canvas_view.haptics_enabled
 
         # Initialize drag-and-drop command for the surface
         self.drag_drop_cmd = DragDropCmd(self, self.surface)
@@ -937,6 +940,16 @@ class MainWindow(Adw.ApplicationWindow):
         action.set_state(value)
         config = get_context().config
         config.canvas_view.show_grid = is_visible
+        config.changed.send(config)
+
+    def on_haptics_state_change(
+        self, action: Gio.SimpleAction, value: GLib.Variant
+    ):
+        is_enabled = value.get_boolean()
+        action.set_state(value)
+        haptics.enabled = is_enabled
+        config = get_context().config
+        config.canvas_view.haptics_enabled = is_enabled
         config.changed.send(config)
 
     def _initialize_document(self):

@@ -40,6 +40,7 @@ class CanvasViewState:
     show_tabs: bool = True
     perspective_mode: bool = False
     pan_inertia_enabled: bool = True
+    haptics_enabled: bool = True
 
     def to_dict(self) -> dict[str, bool]:
         return {f.name: getattr(self, f.name) for f in fields(self)}

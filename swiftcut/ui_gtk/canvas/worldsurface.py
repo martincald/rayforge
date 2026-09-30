@@ -429,6 +429,8 @@ class WorldSurface(Canvas):
         """
         self._update_zoom_bounds()
         self._start_camera_animation(1.0, 0.0, 0.0)
+        if self.haptic_hook is not None:
+            self.haptic_hook("generic")
 
     def zoom_to_actual_size(self) -> None:
         """

@@ -4,6 +4,7 @@ from gi.repository import Gio, GLib, Gtk
 
 from ..machine.models.macro import Macro
 from .action_registry import action_registry
+from .haptics import haptics
 
 
 class MainMenu(Gio.Menu):
@@ -88,6 +89,8 @@ class MainMenu(Gio.Menu):
         visibility_group.append(
             _("Trackpad-Flick Inertia"), "win.toggle_pan_inertia"
         )
+        if haptics.available:
+            visibility_group.append(_("Trackpad Haptics"), "win.haptics")
         view_menu.append_section(None, visibility_group)
 
         self._view_addon_group = visibility_group

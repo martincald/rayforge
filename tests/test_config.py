@@ -19,6 +19,7 @@ from swiftcut.config import (
     import_legacy_config,
     should_offer_legacy_import,
 )
+from swiftcut.core.config import Config
 
 
 def test_migrates_when_old_dir_exists_and_new_dir_does_not(tmp_path):
@@ -225,3 +226,15 @@ def test_import_legacy_config_is_offered_and_performed_exactly_once(
     assert should_offer_legacy_import(old_dir, new_dir) is False
     second_copy = import_legacy_config(old_dir, new_dir)
     assert second_copy == []
+
+
+def test_haptics_are_on_by_default_and_survive_the_config_file():
+    assert Config().canvas_view.haptics_enabled is True
+    blank = Config.from_dict({}, lambda _id: None)
+    assert blank.canvas_view.haptics_enabled is True
+
+    config = Config()
+    config.canvas_view.haptics_enabled = False
+    restored = Config.from_dict(config.to_dict(), lambda _id: None)
+
+    assert restored.canvas_view.haptics_enabled is False

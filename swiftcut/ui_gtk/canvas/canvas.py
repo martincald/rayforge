@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from enum import Enum, auto
 from typing import (
     TYPE_CHECKING,
@@ -125,6 +125,13 @@ class Canvas(Gtk.DrawingArea):
         # The live readout while rotating: the angle, and the pointer's
         # position on screen.
         self._rotation_readout: tuple[float, Point] | None = None
+
+        # --- Haptics ---
+        # Called with a pattern name, "alignment" when a drag lands on
+        # a new snap, "generic" on zoom-to-fit.
+        self.haptic_hook: Callable[[str], None] | None = None
+        # The snap the current drag sits on, None when unsnapped.
+        self._last_snap: tuple | None = None
 
         # --- Signals ---
         self.move_begin = Signal()
@@ -851,6 +858,7 @@ class Canvas(Gtk.DrawingArea):
         world_dx = current_world_x - start_world_x
         world_dy = current_world_y - start_world_y
 
+        snap_key = None
         if self._ctrl_pressed and self._moving:
             if self._selection_group and self._active_origin:
                 # Snap group move to grid using its AABB
@@ -867,6 +875,10 @@ class Canvas(Gtk.DrawingArea):
 
                 world_dx += snap_offset_x
                 world_dy += snap_offset_y
+                snap_key = (
+                    round(target_x + snap_offset_x, 6),
+                    round(target_y + snap_offset_y, 6),
+                )
 
             elif self._drag_target and self._initial_world_transform:
                 # Snap single element move using its world AABB
@@ -895,6 +907,13 @@ class Canvas(Gtk.DrawingArea):
 
                 world_dx += snap_offset_x
                 world_dy += snap_offset_y
+                snap_key = (
+                    round(min_x + snap_offset_x, 6),
+                    round(min_y + snap_offset_y, 6),
+                )
+
+        if self._moving:
+            self._snapped(snap_key)
 
         if self._rotating and self._rotation_pivot:
             angle, (current_world_x, current_world_y) = self._rotate_pointer(
@@ -1095,13 +1114,26 @@ class Canvas(Gtk.DrawingArea):
             dist = math.hypot(x - pivot_x, y - pivot_y)
             x = pivot_x + dist * math.cos(snapped_mouse_angle_rad)
             y = pivot_y + dist * math.sin(snapped_mouse_angle_rad)
+        self._snapped(("angle", target_angle_deg) if step else None)
 
         return -((target_angle_deg + 180) % 360 - 180), (x, y)
+
+    def _snapped(self, key: tuple | None) -> None:
+        """
+        Records the snap a drag frame landed on, None for no snap, and
+        fires the haptic hook once each time it lands on a new one.
+        """
+        if key == self._last_snap:
+            return
+        self._last_snap = key
+        if key is not None and self.haptic_hook is not None:
+            self.haptic_hook("alignment")
 
     def on_drag_end(self, gesture, offset_x: float, offset_y: float):
         """
         Handles the end of a drag operation, finalizing transforms.
         """
+        self._last_snap = None
         if self.edit_context:
             was_dragging = self._edit_dragging
             ok, start_x, start_y = self._drag_gesture.get_start_point()
