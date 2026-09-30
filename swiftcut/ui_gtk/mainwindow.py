@@ -401,6 +401,8 @@ class MainWindow(Adw.ApplicationWindow):
         self._right_pane.set_valign(Gtk.Align.START)
         self._right_pane.set_propagate_natural_height(True)
         self._canvas_overlay.add_overlay(self._right_pane)
+        # The last height cap given to the floating panels.
+        self._panel_height_cap: int | None = None
         self._canvas_overlay.connect(
             "get-child-position", self._on_canvas_overlay_child_position
         )
@@ -1781,22 +1783,32 @@ class MainWindow(Adw.ApplicationWindow):
         self, overlay: Gtk.Overlay, child: Gtk.Widget, allocation
     ) -> bool:
         """
-        Cap the sidebar at a share of the canvas height.
+        Cap each floating panel at a share of the canvas height.
 
-        The sidebar gets the whole canvas less the height past the cap,
-        and its own alignment places it at the top right at its natural
-        size inside that. Taller than the cap, it scrolls inside
-        itself. Every other overlay keeps the default placement.
+        The sidebar gets the whole canvas, and its own alignment places
+        it at the top right at its natural size inside that. Each panel
+        in it is capped at the share and scrolls inside its own card
+        past it; the sidebar scrolls only when the two capped panels
+        together still overrun the canvas. Every other overlay keeps
+        the default placement.
         """
         if child is not self._right_pane:
             return False
         allocation.x = 0
         allocation.y = 0
         allocation.width = overlay.get_width()
-        allocation.height = round(
-            overlay.get_height() * OVERLAY_PANEL_HEIGHT_FRACTION
-        )
+        allocation.height = overlay.get_height()
+        cap = round(overlay.get_height() * OVERLAY_PANEL_HEIGHT_FRACTION)
+        if cap != self._panel_height_cap:
+            self._panel_height_cap = cap
+            # This runs inside layout: resize the panels after it.
+            GLib.idle_add(self._set_panel_height_cap, cap)
         return True
+
+    def _set_panel_height_cap(self, cap: int) -> bool:
+        self.workflowview.set_max_height(cap)
+        self.item_props_widget.set_max_height(cap)
+        return GLib.SOURCE_REMOVE
 
     def on_toggle_right_panel_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant

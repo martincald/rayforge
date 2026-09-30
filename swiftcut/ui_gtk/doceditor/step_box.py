@@ -2,7 +2,7 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING
 
 from blinker import Signal
-from gi.repository import Gtk, Pango
+from gi.repository import Adw, Gtk, Pango
 
 from ...context import get_context
 from ...core.step import Step
@@ -23,69 +23,80 @@ class StepBox(Gtk.Box):
         step: Step,
         step_number: int = 0,
     ):
-        super(
-            ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=COMPACT_SPACE_CONTROL,
-        )
+        # The head line is one compact row and the summary sits under
+        # it: the row's own height already leaves air below the name.
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.editor = editor
         self.doc = editor.doc
         self.step = step
         self.step_number = step_number
         self.delete_clicked = Signal()
 
+        # The name and its mode at the start, the step's controls at the
+        # end. Too narrow for both, the controls wrap onto a line of
+        # their own instead of cutting the name short.
+        self.head = Adw.WrapBox(
+            child_spacing=COMPACT_SPACE_CONTROL,
+            line_spacing=COMPACT_SPACE_CONTROL,
+            justify=Adw.JustifyMode.SPREAD,
+            justify_last_line=True,
+        )
+        self.append(self.head)
+
+        self.label_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
+        )
+        self.label_box.set_valign(Gtk.Align.CENTER)
+        self.head.append(self.label_box)
+
         self.badge = NumberBadge(step_number)
         self.badge.set_valign(Gtk.Align.CENTER)
-        self.append(self.badge)
+        self.label_box.append(self.badge)
 
-        # One line, like a row in the dock: the name, its mode, then the
-        # summary in the room that is left.
-        content = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=COMPACT_SPACE_CONTROL,
-        )
-        content.set_hexpand(True)
-        content.set_valign(Gtk.Align.CENTER)
-        self.append(content)
-
-        title_row = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=COMPACT_SPACE_CONTROL,
-        )
-        content.append(title_row)
-
+        # A renamed step can be long: it wraps rather than overflow.
         self.title_label = Gtk.Label(xalign=0)
-        self.title_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.title_label.set_max_width_chars(40)
-        title_row.append(self.title_label)
+        self.title_label.set_wrap(True)
+        self.title_label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.label_box.append(self.title_label)
 
         self.mode_tag = TagWidget(active=False)
+        self.mode_tag.set_valign(Gtk.Align.CENTER)
         self.mode_tag_label = Gtk.Label()
         self.mode_tag.append(self.mode_tag_label)
-        title_row.append(self.mode_tag)
+        self.label_box.append(self.mode_tag)
 
-        # The summary asks for no room of its own and takes what is left,
-        # so the name and mode are never the ones cut short. Cut short
-        # itself, it is whole in its tooltip.
-        self.subtitle_label = Gtk.Label(xalign=0)
-        self.subtitle_label.add_css_class("sc-caption")
-        self.subtitle_label.set_ellipsize(Pango.EllipsizeMode.END)
-        self.subtitle_label.set_max_width_chars(1)
-        self.subtitle_label.set_hexpand(True)
-        content.append(self.subtitle_label)
+        # On a line of its own, the controls stay at the end, in the
+        # same column as every other step's.
+        self.actions = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
+        )
+        self.actions.set_halign(Gtk.Align.END)
+        self.head.append(self.actions)
 
         self.visibility_switch = Gtk.Switch()
         self.visibility_switch.set_active(step.visible)
         self.visibility_switch.set_valign(Gtk.Align.CENTER)
-        self.append(self.visibility_switch)
+        self.actions.append(self.visibility_switch)
         self.visibility_switch.connect("state-set", self.on_switch_state_set)
 
         button = icon_button("settings-symbolic", _("Step settings"))
-        self.append(button)
+        self.actions.append(button)
         button.connect("clicked", self.on_button_properties_clicked)
 
         button = icon_button("delete-symbolic", _("Delete this step"))
-        self.append(button)
+        self.actions.append(button)
         button.connect("clicked", self.on_button_delete_clicked)
+
+        # The summary has the row's whole width, and wraps rather than
+        # being cut short.
+        self.subtitle_label = Gtk.Label(xalign=0)
+        self.subtitle_label.add_css_class("sc-caption")
+        self.subtitle_label.set_hexpand(True)
+        self.subtitle_label.set_wrap(True)
+        self.subtitle_label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+        self.append(self.subtitle_label)
 
         self.step.updated.connect(self.on_step_changed)
         self.step.visibility_changed.connect(self.on_step_changed)
@@ -104,9 +115,7 @@ class StepBox(Gtk.Box):
 
     def on_step_changed(self, sender, **kwargs):
         self.title_label.set_text(self.step.name)
-        summary = self.step.get_summary()
-        self.subtitle_label.set_text(summary)
-        self.subtitle_label.set_tooltip_text(summary)
+        self.subtitle_label.set_text(self.step.get_summary())
 
         mode = self.step.get_operation_mode_short()
         if mode:

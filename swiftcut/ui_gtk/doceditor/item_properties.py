@@ -10,7 +10,11 @@ from ...core.group import Group
 from ...core.item import DocItem
 from ...core.stock import StockItem
 from ...core.workpiece import WorkPiece
-from ..layout import SPACE_CONTROL, compact_spin_button
+from ..layout import (
+    ROW_MIN_HEIGHT_COMPACT,
+    SPACE_CONTROL,
+    compact_spin_button,
+)
 from ..shared.expander import Expander
 from ..shared.pref_rows.base import SpinRow
 from .property_providers import (
@@ -58,7 +62,16 @@ class DocItemPropertiesWidget(Gtk.Box):
 
         self._rows_container = Gtk.ListBox()
         self._rows_container.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._main_expander.set_child(self._rows_container)
+        # Past its cap the list scrolls inside the card, under a header
+        # that stays put.
+        self.scroller = Gtk.ScrolledWindow()
+        self.scroller.set_policy(
+            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
+        )
+        self.scroller.set_propagate_natural_height(True)
+        self.scroller.set_propagate_natural_width(True)
+        self.scroller.set_child(self._rows_container)
+        self._main_expander.set_child(self.scroller)
 
         self.providers: list[PropertyProvider] = (
             property_provider_registry.create_instances()
@@ -75,6 +88,15 @@ class DocItemPropertiesWidget(Gtk.Box):
         self._connect_signals()
 
         self.set_items(items)
+
+    def set_max_height(self, cap: int):
+        """Hold the main card, header included, to cap pixels tall."""
+        header = (
+            self._main_expander.header.get_height() or ROW_MIN_HEIGHT_COMPACT
+        )
+        self.scroller.set_max_content_height(
+            max(ROW_MIN_HEIGHT_COMPACT, cap - header)
+        )
 
     def _connect_signals(self):
         """Connect to config and machine signals."""

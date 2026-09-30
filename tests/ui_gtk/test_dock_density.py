@@ -233,7 +233,9 @@ def test_the_properties_panel_is_at_the_compact_density(
 
 
 @pytest.mark.ui
-def test_a_step_is_one_compact_row(ui_context_initializer, ui_task_mgr):
+def test_a_step_is_one_compact_row_and_a_caption_line(
+    ui_context_initializer, ui_task_mgr
+):
     from gi.repository import Gtk
 
     from swiftcut.core.step import Step
@@ -249,86 +251,22 @@ def test_a_step_is_one_compact_row(ui_context_initializer, ui_task_mgr):
         step = Step(typelabel="Contour")
         step.name = "Contour"
         box = StepBox(editor, step, 1)
-        box.subtitle_label.set_text("1000 mm/s, 80% power")
-        window = Gtk.Window(child=box)
-        window.present()
-
-        _, natural, _, _ = box.measure(Gtk.Orientation.VERTICAL, -1)
-
-        assert natural <= layout.ROW_MIN_HEIGHT_COMPACT
-        window.destroy()
-    finally:
-        editor.cleanup()
-
-
-@pytest.mark.ui
-def test_a_narrow_step_row_cuts_the_summary_not_the_name(
-    ui_context_initializer, ui_task_mgr
-):
-    from gi.repository import Gtk
-
-    from swiftcut.core.step import Step
-    from swiftcut.doceditor.editor import DocEditor
-    from swiftcut.ui_gtk.doceditor.step_box import StepBox
-
-    editor = DocEditor(
-        task_manager=ui_task_mgr, context=ui_context_initializer
-    )
-    try:
-        step = Step(typelabel="Contour")
-        step.name = "Contour"
-        box = StepBox(editor, step, 1)
         box.mode_tag_label.set_text("Centerline")
         box.mode_tag.set_visible(True)
         box.subtitle_label.set_text("100% power, 8.3 mm/s")
+        window = Gtk.Window(child=box)
+        window.present()
 
-        def shortfall(widget):
-            low, high, _, _ = widget.measure(Gtk.Orientation.HORIZONTAL, -1)
-            return high - low
+        # At the width it would take on one line, as in the panel.
+        width = box.measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+        head = box.head.measure(Gtk.Orientation.VERTICAL, width)[1]
+        row = box.measure(Gtk.Orientation.VERTICAL, width)[1]
+        caption_line = box.subtitle_label.measure(
+            Gtk.Orientation.VERTICAL, -1
+        )[1]
 
-        # Room for the name and the mode in full, and little more.
-        width = (
-            box.measure(Gtk.Orientation.HORIZONTAL, -1)[0]
-            + shortfall(box.title_label)
-            + shortfall(box.mode_tag)
-            + 4
-        )
-        box.allocate(width, layout.ROW_MIN_HEIGHT_COMPACT, -1, None)
-
-        assert not box.title_label.get_layout().is_ellipsized()
-        assert box.subtitle_label.get_layout().is_ellipsized()
-        assert box.subtitle_label.get_tooltip_text() == step.get_summary()
+        assert head <= layout.ROW_MIN_HEIGHT_COMPACT
+        assert row <= layout.ROW_MIN_HEIGHT_COMPACT + caption_line
+        window.destroy()
     finally:
         editor.cleanup()
-
-
-@pytest.mark.ui
-def test_the_sidebar_is_capped_at_a_share_of_the_canvas():
-    from gi.repository import Gdk
-
-    from swiftcut.ui_gtk.mainwindow import MainWindow
-
-    pane, other = MagicMock(), MagicMock()
-    window = MagicMock(_right_pane=pane)
-    overlay = MagicMock()
-    overlay.get_width.return_value = 1100
-    overlay.get_height.return_value = 800
-
-    allocation = Gdk.Rectangle()
-    placed = MainWindow._on_canvas_overlay_child_position(
-        window, overlay, pane, allocation
-    )
-
-    assert placed is True
-    assert (allocation.x, allocation.y) == (0, 0)
-    assert allocation.width == 1100
-    assert allocation.height == round(
-        800 * layout.OVERLAY_PANEL_HEIGHT_FRACTION
-    )
-    # Every other overlay keeps GTK's own placement.
-    assert (
-        MainWindow._on_canvas_overlay_child_position(
-            window, overlay, other, Gdk.Rectangle()
-        )
-        is False
-    )

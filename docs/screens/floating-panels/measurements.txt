@@ -1,0 +1,36 @@
+1440x900 light
+  canvas overlay  591px tall
+  panel cap       355px (60% of the canvas)
+  sidebar         332x415px allocated of 415px natural
+  workflow        card 116px; list 85px allocated of 85px natural (max 325px)
+  properties      card 278px; list 240px allocated of 240px natural (max 325px)
+  rows: 10 fully inside, 0 cut, 0 scrolled away
+    'step Contour': 38-81 in view 38-123: inside
+    'step Contour': 81-123 in view 38-123: inside
+    'X Position': 168-198 in view 168-408: inside
+    'Y Position': 198-228 in view 168-408: inside
+    'Fixed Ratio': 228-258 in view 168-408: inside
+    'Width': 258-288 in view 168-408: inside
+    'Height': 288-318 in view 168-408: inside
+    'Angle': 318-348 in view 168-408: inside
+    'Shear': 348-378 in view 168-408: inside
+    'Source File': 378-408 in view 168-408: inside
+  ellipsized labels: none
+1440x900 dark
+  canvas overlay  591px tall
+  panel cap       355px (60% of the canvas)
+  sidebar         332x415px allocated of 415px natural
+  workflow        card 116px; list 85px allocated of 85px natural (max 325px)
+  properties      card 278px; list 240px allocated of 240px natural (max 325px)
+  rows: 10 fully inside, 0 cut, 0 scrolled away
+    'step Contour': 38-81 in view 38-123: inside
+    'step Contour': 81-123 in view 38-123: inside
+    'X Position': 168-198 in view 168-408: inside
+    'Y Position': 198-228 in view 168-408: inside
+    'Fixed Ratio': 228-258 in view 168-408: inside
+    'Width': 258-288 in view 168-408: inside
+    'Height': 288-318 in view 168-408: inside
+    'Angle': 318-348 in view 168-408: inside
+    'Shear': 348-378 in view 168-408: inside
+    'Source File': 378-408 in view 168-408: inside
+  ellipsized labels: none

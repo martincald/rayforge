@@ -7,6 +7,7 @@ from gi.repository import Gtk
 from ...core.step_registry import step_registry
 from ...core.undo.list_cmd import ListItemCommand, ReorderListCommand
 from ...core.workflow import Workflow
+from ..layout import ROW_MIN_HEIGHT_COMPACT
 from ..shared.draglist import DragListBox
 from ..shared.expander import ExpanderWithButton
 from ..shared.popover_menu import PopoverMenu
@@ -38,11 +39,27 @@ class WorkflowView(ExpanderWithButton):
 
         self.draglist = DragListBox()
         self.draglist.reordered.connect(self.on_workflow_reordered)
-        self.append_content(self.draglist)
+        # Past its cap the list scrolls inside the card, under a header
+        # that stays put.
+        self.scroller = Gtk.ScrolledWindow()
+        self.scroller.set_policy(
+            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
+        )
+        self.scroller.set_propagate_natural_height(True)
+        self.scroller.set_propagate_natural_width(True)
+        self.scroller.set_child(self.draglist)
+        self.append_content(self.scroller)
 
         self.add_button.connect("clicked", self.on_button_add_clicked)
 
         self.set_workflow(workflow)
+
+    def set_max_height(self, cap: int):
+        """Hold the card, header included, to cap pixels tall."""
+        header = self.header.get_height() or ROW_MIN_HEIGHT_COMPACT
+        self.scroller.set_max_content_height(
+            max(ROW_MIN_HEIGHT_COMPACT, cap - header)
+        )
 
     def set_workflow(self, workflow: Workflow | None):
         """Sets the view to display a different workflow."""
