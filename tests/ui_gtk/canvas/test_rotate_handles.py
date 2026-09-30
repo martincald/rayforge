@@ -1,11 +1,11 @@
 """The rotate zones of a selection: a ring 6 to 14 screen pixels outside
-each corner of the frame, offered on a fresh selection, drawn where
-they are hit at any display scale factor, rotating about the center,
-snapping with Shift, and making one undo step.
+each corner of the frame, offered on a fresh selection, found by the
+cursor rather than drawn, rotating about the center with an arc and
+the angle drawn while dragging, snapping with Shift, and making one
+undo step.
 
 Hit-testing takes the widget's logical coordinates, as GTK delivers
-them; the display's scale factor only enters when drawing, so the
-drawing tests paint at 1x and 2x and hit-test what they painted.
+them; the display's scale factor only enters when drawing.
 """
 
 import math
@@ -28,6 +28,7 @@ from swiftcut.ui_gtk.canvas.region import (
     ElementRegion,
 )
 from swiftcut.ui_gtk.canvas2d.surface import WorkSurface
+from swiftcut.ui_gtk.layout import ROTATION_ARC_RADIUS
 
 pytestmark = pytest.mark.ui
 
@@ -141,9 +142,12 @@ class TestRotateZoneHits:
         s.set_zoom(zoom)
         elem = _selected(s)
 
-        for distance in (ROTATE_ZONE_INNER - 2, ROTATE_ZONE_OUTER + 1):
-            point = _ring_point(s, elem, region, distance)
-            assert _hover(s, *point) == ElementRegion.NONE, distance
+        # Inside the ring is the corner's resize handle, which straddles
+        # the corner; outside it is nothing.
+        inside = _ring_point(s, elem, region, ROTATE_ZONE_INNER - 2)
+        assert _hover(s, *inside) == RESIZE_CORNER[region]
+        outside = _ring_point(s, elem, region, ROTATE_ZONE_OUTER + 1)
+        assert _hover(s, *outside) == ElementRegion.NONE
 
     @pytest.mark.parametrize("region", sorted(ROTATE_HANDLES, key=str))
     def test_inside_the_corner_still_resizes(
@@ -203,48 +207,24 @@ def _paint_overlays(s, scale):
     )[:, :, 3]
 
 
+def _painted_at_radius(alpha, center, radius):
+    """How many pixels are painted within 1.5 pixels of a circle."""
+    rows, cols = np.indices(alpha.shape)
+    distance = np.hypot(cols + 0.5 - center[0], rows + 0.5 - center[1])
+    return int(((np.abs(distance - radius) <= 1.5) & (alpha > 0)).sum())
+
+
 class TestRotateHandlesDrawn:
-    @pytest.mark.parametrize("scale", [1, 2])
-    @pytest.mark.parametrize("region", sorted(ROTATE_HANDLES, key=str))
-    def test_drawn_on_a_fresh_selection_where_they_are_hit(
-        self, world_surface_factory, scale, region
-    ):
-        s = world_surface_factory()
-        elem = _selected(s)
-        alpha = _paint_overlays(s, scale)
-        frame = _screen_frame(s, elem)
-        left, top, right, bottom = frame
-        cx, cy = _corner(frame, region)
-        dx, dy = OUTWARD[region]
-
-        painted = hits = 0
-        for row, col in zip(*np.nonzero(alpha > 128)):
-            # The device pixel's center, in the widget's logical pixels:
-            # what GTK reports for a pointer over it.
-            x, y = (col + 0.5) / scale, (row + 0.5) / scale
-            # Only this corner's outward quadrant, clear of the frame's
-            # own stroke.
-            if (x - cx) * dx < -1.5 or (y - cy) * dy < -1.5:
-                continue
-            if (
-                left - 1.5 <= x <= right + 1.5
-                and top - 1.5 <= y <= bottom + 1.5
-            ):
-                continue
-            if math.hypot(x - cx, y - cy) > 20:
-                continue
-            painted += 1
-            hits += _hover(s, x, y) == region
-
-        assert painted >= 20 * scale * scale
-        # The arrowheads may poke past the ring; the arc lies in it.
-        assert hits >= 0.8 * painted
-
     def test_hidden_while_rotating_with_the_angle_beside_the_pointer(
         self, world_surface_factory
     ):
         s = world_surface_factory()
         elem = _selected(s)
+        pivot = s.view_transform.transform_point(elem.get_world_center())
+        # Idle, nothing is drawn around the centre.
+        idle = _paint_overlays(s, 1)
+        assert _painted_at_radius(idle, pivot, ROTATION_ARC_RADIUS) == 0
+
         x, y = _ring_point(s, elem, ElementRegion.ROTATE_TOP_RIGHT, 10)
         gesture = _gesture(x, y)
         s._drag_gesture = gesture
@@ -257,6 +237,8 @@ class TestRotateHandlesDrawn:
         # The readout's tag sits below and right of the pointer.
         tag = alpha[int(ty) + 16 : int(ty) + 30, int(tx) + 16 : int(tx) + 40]
         assert (tag > 128).sum() > 100
+        # The arc about the centre, from the press to the pointer.
+        assert _painted_at_radius(alpha, pivot, ROTATION_ARC_RADIUS) > 10
 
 
 class TestRotateDrag:

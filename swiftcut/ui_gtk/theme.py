@@ -70,12 +70,16 @@ _DARK_TOKENS = """
 @define-color sc_shadow rgba(0, 0, 0, 0.40);
 """
 
+#: blue-brand (``docs/design/swift-cut-tokens.md``). The stylesheet's
+#: sc_accent, and the canvas draws its selection handles in it.
+ACCENT_HEX = "#2F7BFF"
+
 # Blue is the selection and focus colour and the colour of the one
 # primary action, nothing else. Red belongs to Stop and to the no-go
 # zones. Spark is the laser-live indicator only. Layer magenta is
 # left exactly as the document defines it.
-_SHARED_TOKENS = """
-@define-color sc_accent #2F7BFF;
+_SHARED_TOKENS = f"""
+@define-color sc_accent {ACCENT_HEX};
 @define-color sc_danger #FF3B30;
 @define-color sc_ok #34C759;
 @define-color sc_spark_top #FFF6DC;

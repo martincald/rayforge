@@ -15,6 +15,7 @@ import numpy as np
 from gi.repository import GLib
 from raygeo.geo import Matrix
 
+from ..layout import HANDLE_HIT_SIZE
 from .hittest import check_pixel_hit
 from .region import ElementRegion, check_region_hit, get_region_rect
 
@@ -546,10 +547,13 @@ class CanvasElement:
 
         # Use the single source of truth from the canvas for handle size.
         # Fallback to a default if the element is not on a canvas.
-        base_hit_size = self.canvas.BASE_HANDLE_SIZE if self.canvas else 15.0
+        base_hit_size = (
+            self.canvas.BASE_HANDLE_SIZE if self.canvas else HANDLE_HIT_SIZE
+        )
 
-        # This MUST match the calculation in Canvas._render_handles_overlay
-        # to ensure the hit-test geometry aligns with the rendered geometry.
+        # This MUST match the scale render_selection_handles derives from
+        # the same screen transform, so the hit-test geometry lines up
+        # with the drawn handles.
         if self.canvas:
             transform_to_screen = self.canvas.view_transform @ world_transform
         else:

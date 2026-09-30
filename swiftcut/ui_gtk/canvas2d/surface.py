@@ -7,7 +7,6 @@ from blinker import Signal
 from gi.repository import Gdk, GLib, Graphene, Gtk
 
 from ...context import get_context
-from ...core.color import ColorRGBA, hex_to_rgba
 from ...core.group import Group
 from ...core.item import DocItem
 from ...core.layer import Layer
@@ -15,7 +14,7 @@ from ...core.stock import StockItem
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
 from ...doceditor.transform_cmd import TransformCmd
-from ...machine.models.machine import Machine
+from ...machine.models.machine import Machine, StartCorner
 from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
 from ...shared.units.formatter import get_preferred_unit_factor
@@ -140,6 +139,8 @@ class WorkSurface(WorldSurface):
         # Where the head is when the job starts, on the job's outline
         self._start_corner_element = StartCornerElement()
         self.root.add(self._start_corner_element)
+        # The corner last shown, so only a change flashes the overlay.
+        self._start_corner_seen: StartCorner | None = None
 
         # Add the Workarea Background element (gray background for workarea)
         self._workarea_bg_element = WorkareaBackgroundElement()
@@ -976,16 +977,6 @@ class WorkSurface(WorldSurface):
         )
         self.editor.view_manager.update_render_context(context)
 
-    def _get_handle_color(self, elem: CanvasElement) -> ColorRGBA | None:
-        """Returns the layer color for the element's selection handles."""
-        data = getattr(elem, "data", None)
-        if data is None:
-            return None
-        layer = getattr(data, "layer", None)
-        if layer is None:
-            return None
-        return hex_to_rgba(layer.color)
-
     def _create_and_add_layer_element(self, layer: "Layer"):
         """Creates a new LayerElement and adds it to the canvas root."""
         logger.debug(f"Adding new LayerElement for '{layer.name}'")
@@ -1185,21 +1176,33 @@ class WorkSurface(WorldSurface):
     def _update_start_corner_element(self, sender=None, **kwargs):
         """
         Put the start-corner overlay on the job's bounding box: the head
-        marker on the selected corner, the arrow toward the opposite one.
+        marker on the selected corner, the tick toward the opposite one.
+        It shows only when the corner changes or its selector is
+        hovered.
         """
         workpieces: list[DocItem] = (
             list(self.doc.all_workpieces) if self.doc else []
         )
         if not self.machine or not workpieces:
-            self._start_corner_element.set_visible(False)
+            self._start_corner_element.clear_job()
             self.queue_draw()
             return
         min_x, min_y, max_x, max_y = TransformCmd.group_bbox_world(workpieces)
+        corner = self.machine.start_corner
         self._start_corner_element.set_job(
-            (min_x, min_y, max_x - min_x, max_y - min_y),
-            self.machine.start_corner,
+            (min_x, min_y, max_x - min_x, max_y - min_y), corner
         )
+        if (
+            self._start_corner_seen is not None
+            and self._start_corner_seen != corner
+        ):
+            self._start_corner_element.flash()
+        self._start_corner_seen = corner
         self.queue_draw()
+
+    def set_start_corner_hovered(self, hovered: bool):
+        """Show the start-corner overlay while its selector is hovered."""
+        self._start_corner_element.set_hovered(hovered)
 
     def reset_view(self):
         """

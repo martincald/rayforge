@@ -199,6 +199,30 @@ EMPTY_STATE_ICON = scaled(64)
 LAYER_CARD_MAX_WIDTH = scaled(400)
 
 
+# --- Canvas selection ------------------------------------------------
+# Fixed logical pixels, like a hairline: a handle is a pointer target,
+# and the canvas overlay draws in the widget's logical pixels.
+
+#: A resize handle as drawn: a square on a corner or an edge midpoint.
+HANDLE_SIZE = 8
+
+#: A handle's outline, and every line the selection overlay draws.
+HANDLE_STROKE = 1
+
+#: The pointer target around a corner or an edge, larger than the
+#: square it is drawn as.
+HANDLE_HIT_SIZE = 20
+
+#: The arc a rotate drag draws around the selection's centre.
+ROTATION_ARC_RADIUS = 24
+
+#: The crosshair on the start corner of the job.
+START_CORNER_MARKER = 12
+
+#: The dashed tick from the start corner toward the opposite one.
+START_CORNER_TICK = 24
+
+
 # --- Stylesheet lengths ----------------------------------------------
 # Every length a stylesheet in ui_gtk may write, by role. Sizes follow
 # the system font (rem); hairlines, strokes, radii and shadows are the

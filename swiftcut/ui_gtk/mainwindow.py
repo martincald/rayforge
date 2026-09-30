@@ -495,6 +495,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel.select_items_requested.connect(
             self._on_select_items_requested
         )
+        self.bottom_panel.start_corner_hovered.connect(
+            self._on_start_corner_hovered
+        )
 
         config = get_context().config
         if config.bottom_panel:
@@ -704,6 +707,9 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_select_items_requested(self, sender, *, items, **kwargs):
         self.surface.select_items(items)
+
+    def _on_start_corner_hovered(self, sender, *, hovered: bool):
+        self.surface.set_start_corner_hovered(hovered)
 
     def load_project(self, file_path: Path):
         """Public method to load a project from a given path."""

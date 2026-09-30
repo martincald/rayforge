@@ -7,150 +7,51 @@ from typing import (
 )
 
 import cairo
-from gi.repository import Gdk
 from raygeo.geo import Matrix
 
-from ...core.color import ColorRGBA
-from ..icons import get_icon_pixbuf
+from ...core.color import hex_to_rgba
+from ..layout import HANDLE_SIZE, HANDLE_STROKE
+from ..theme import ACCENT_HEX
 from .region import (
     CORNER_RESIZE_HANDLES,
     MIDDLE_RESIZE_HANDLES,
-    MOVE_HANDLES,
     RESIZE_HANDLES,
-    ROTATE_HANDLES,
     ROTATE_SHEAR_HANDLES,
+    SHEAR_HANDLES,
     ElementRegion,
+    handle_anchor,
 )
 
 if TYPE_CHECKING:
     from .canvas import CanvasElement, MultiSelectionGroup, SelectionMode
 
-_DEFAULT_HANDLE_COLOR: ColorRGBA = (0.2, 0.5, 0.8, 1.0)
-_DEFAULT_HANDLE_COLOR_HOVER: ColorRGBA = (0.3, 0.6, 0.9, 1.0)
-
-_move_gizmo_pixbuf = None
+#: The selection's ink: blue-brand, the stylesheet's sc_accent.
+ACCENT_RGB = hex_to_rgba(ACCENT_HEX)[:3]
 
 
-def _get_move_gizmo_pixbuf(size: int = 24):
-    """Returns a cached pixbuf for the move-symbolic icon."""
-    global _move_gizmo_pixbuf
-    if _move_gizmo_pixbuf is None:
-        _move_gizmo_pixbuf = get_icon_pixbuf("move-symbolic", size)
-    return _move_gizmo_pixbuf
-
-
-def _handle_colors(
-    base_color: ColorRGBA | None,
-    is_hovered: bool,
-) -> ColorRGBA:
-    if base_color:
-        r, g, b, _ = base_color
-        if is_hovered:
-            return (
-                min(r + 0.15, 1.0),
-                min(g + 0.15, 1.0),
-                min(b + 0.15, 1.0),
-                0.9,
-            )
-        return (r, g, b, 0.7)
-    if is_hovered:
-        return (*_DEFAULT_HANDLE_COLOR_HOVER[:3], 0.9)
-    return (*_DEFAULT_HANDLE_COLOR[:3], 0.7)
-
-
-def _draw_quad_handle(
-    ctx: cairo.Context,
-    p1: tuple[float, float],
-    p2: tuple[float, float],
-    p3: tuple[float, float],
-    p4: tuple[float, float],
-    is_hovered: bool,
-    color: ColorRGBA | None = None,
+def _draw_handle_square(
+    ctx: cairo.Context, sx: float, sy: float, hovered: bool
 ):
-    """Draws a quadrilateral handle given four screen-space points."""
-    ctx.set_source_rgba(*_handle_colors(color, is_hovered))
-
-    ctx.move_to(*p1)
-    ctx.line_to(*p2)
-    ctx.line_to(*p3)
-    ctx.line_to(*p4)
-    ctx.close_path()
-    ctx.fill()
-
-
-def _draw_square_handle(
-    ctx: cairo.Context,
-    width: float,
-    height: float,
-    is_hovered: bool,
-    color: ColorRGBA | None = None,
-):
-    """Draws a square handle. Uses the smaller of width/height for size."""
-    size = min(width, height)
-    ctx.set_source_rgba(*_handle_colors(color, is_hovered))
-
-    half_size = size / 2
-    ctx.rectangle(-half_size, -half_size, size, size)
-    ctx.fill()
-
-
-def _draw_rectangle_handle(
-    ctx: cairo.Context,
-    width: float,
-    height: float,
-    is_hovered: bool,
-    color: ColorRGBA | None = None,
-):
-    """Draws a rectangular handle, perfect for stretched edge handles."""
-    ctx.set_source_rgba(*_handle_colors(color, is_hovered))
-
-    ctx.rectangle(-width / 2, -height / 2, width, height)
-    ctx.fill()
-
-
-def _draw_arc_handle(
-    ctx: cairo.Context,
-    width: float,
-    height: float,
-    is_hovered: bool,
-    color: ColorRGBA | None = None,
-):
-    """Draws a rotation arc handle. Uses average of width/height for size."""
-    size = (width + height) / 2.0
-    c = _handle_colors(color, is_hovered)
-    if not color:
-        c = (*c[:3], 0.95 if is_hovered else 0.8)
-
-    ctx.set_source_rgba(*c)
-    ctx.set_line_width(2.0)
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    radius = size * 0.5
-    start_angle, end_angle = math.radians(45), math.radians(-45)
-    ctx.arc_negative(0, 0, radius, start_angle, end_angle)
-
-    def draw_arrowhead(point_angle: float, is_start_arrow: bool):
-        arrow_len, arrow_width = size * 0.18, size * 0.2
-        ctx.save()
-        px = radius * math.cos(point_angle)
-        py = radius * math.sin(point_angle)
-        ctx.translate(px, py)
-        tangent = point_angle - math.pi / 2.0
-        ctx.rotate(tangent + (math.pi if is_start_arrow else 0))
-        ctx.move_to(0, 0)
-
-        if is_start_arrow:
-            ctx.line_to(-arrow_len, -arrow_width * 0.9)
-            ctx.move_to(0, 0)
-            ctx.line_to(-arrow_len * 0.9, arrow_width * 1.2)
-        else:
-            ctx.line_to(-arrow_len * 0.9, -arrow_width * 1.2)
-            ctx.move_to(0, 0)
-            ctx.line_to(-arrow_width, arrow_len * 0.9)
-        ctx.restore()
-
-    draw_arrowhead(start_angle, True)
-    draw_arrowhead(end_angle, False)
+    """
+    Draws a resize handle: a HANDLE_SIZE square centred on the screen
+    point (sx, sy), white with an accent outline, or accent filled
+    while hovered. The outline lies on the pixel grid so it is crisp,
+    and the square's outer edge is HANDLE_SIZE across.
+    """
+    side = HANDLE_SIZE - HANDLE_STROKE
+    x = round(sx - HANDLE_SIZE / 2) + HANDLE_STROKE / 2
+    y = round(sy - HANDLE_SIZE / 2) + HANDLE_STROKE / 2
+    ctx.save()
+    ctx.rectangle(x, y, side, side)
+    if hovered:
+        ctx.set_source_rgb(*ACCENT_RGB)
+    else:
+        ctx.set_source_rgb(1.0, 1.0, 1.0)
+    ctx.fill_preserve()
+    ctx.set_source_rgb(*ACCENT_RGB)
+    ctx.set_line_width(HANDLE_STROKE)
     ctx.stroke()
+    ctx.restore()
 
 
 def _draw_arrow_handle(
@@ -158,63 +59,35 @@ def _draw_arrow_handle(
     width: float,
     height: float,
     is_hovered: bool,
-    color: ColorRGBA | None = None,
 ):
-    """Draws a bidirectional arrow. Uses average of width/height for size."""
+    """
+    Draws a bidirectional arrow, white with an accent outline like the
+    resize squares. Uses average of width/height for size.
+    """
     size = (width + height) / 2.0
-    ctx.set_source_rgba(*_handle_colors(color, is_hovered))
-
-    ctx.set_line_width(2.0)
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    length, arrow_size = size * 0.4, size * 0.25
+    length, head = size * 0.4, size * 0.25
+    barb, shaft = head * 0.7, size * 0.06
 
     ctx.move_to(-length, 0)
+    ctx.line_to(-length + head, -barb)
+    ctx.line_to(-length + head, -shaft)
+    ctx.line_to(length - head, -shaft)
+    ctx.line_to(length - head, -barb)
     ctx.line_to(length, 0)
-    ctx.move_to(length, 0)
-    ctx.line_to(length - arrow_size, -arrow_size * 0.7)
-    ctx.move_to(length, 0)
-    ctx.line_to(length - arrow_size, arrow_size * 0.7)
-    ctx.move_to(-length, 0)
-    ctx.line_to(-length + arrow_size, -arrow_size * 0.7)
-    ctx.move_to(-length, 0)
-    ctx.line_to(-length + arrow_size, arrow_size * 0.7)
+    ctx.line_to(length - head, barb)
+    ctx.line_to(length - head, shaft)
+    ctx.line_to(-length + head, shaft)
+    ctx.line_to(-length + head, barb)
+    ctx.close_path()
+    if is_hovered:
+        ctx.set_source_rgb(*ACCENT_RGB)
+    else:
+        ctx.set_source_rgb(1.0, 1.0, 1.0)
+    ctx.fill_preserve()
+    ctx.set_source_rgb(*ACCENT_RGB)
+    ctx.set_line_width(HANDLE_STROKE)
+    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.stroke()
-
-
-def _draw_move_gizmo(
-    ctx: cairo.Context,
-    width: float,
-    height: float,
-    is_hovered: bool,
-    color: ColorRGBA | None = None,
-):
-    """Draws a rounded square rotated 45 degrees (diamond) with the
-    move-symbolic icon centered on it, axis-aligned."""
-    size = min(width, height)
-    diamond_side = size / math.sqrt(2)
-    radius = diamond_side * 0.2
-
-    ctx.save()
-    ctx.rotate(math.radians(45))
-    ctx.set_source_rgba(*_handle_colors(color, is_hovered))
-    half = diamond_side / 2
-    path_rounded_square(ctx, -half, -half, diamond_side, diamond_side, radius)
-    ctx.fill()
-    ctx.restore()
-
-    pixbuf = _get_move_gizmo_pixbuf()
-    if pixbuf is not None:
-        icon_size = size * 0.65
-        pb_w = pixbuf.get_width()
-        pb_h = pixbuf.get_height()
-        ctx.save()
-        ctx.scale(icon_size / pb_w, icon_size / pb_h)
-        Gdk.cairo_set_source_pixbuf(ctx, pixbuf, -pb_w / 2, -pb_h / 2)
-        ctx.get_source().set_filter(cairo.FILTER_BILINEAR)
-        ctx.set_operator(cairo.OPERATOR_DEST_OUT)
-        ctx.paint()
-        ctx.restore()
 
 
 def path_rounded_square(
@@ -234,79 +107,26 @@ def path_rounded_square(
     ctx.close_path()
 
 
-_ARC_HANDLE_BASE_ANGLES_DEG = {
-    ElementRegion.ROTATE_TOP_RIGHT: 315,
-    ElementRegion.ROTATE_TOP_LEFT: 225,
-    ElementRegion.ROTATE_BOTTOM_LEFT: 135,
-    ElementRegion.ROTATE_BOTTOM_RIGHT: 45,
-}
-
 HANDLE_DRAW_INFO: dict[ElementRegion, dict[str, Any]] = {
-    region: {
-        "draw": _draw_square_handle,
+    ElementRegion.SHEAR_TOP: {
+        "draw": _draw_arrow_handle,
         "get_angle": lambda t, r: t.get_x_axis_angle(),
-    }
-    for region in CORNER_RESIZE_HANDLES
+    },
+    ElementRegion.SHEAR_BOTTOM: {
+        "draw": _draw_arrow_handle,
+        "get_angle": lambda t, r: t.get_x_axis_angle(),
+    },
+    ElementRegion.SHEAR_LEFT: {
+        "draw": _draw_arrow_handle,
+        "get_angle": lambda t, r: t.get_y_axis_angle(),
+        "swap_dims": True,
+    },
+    ElementRegion.SHEAR_RIGHT: {
+        "draw": _draw_arrow_handle,
+        "get_angle": lambda t, r: t.get_y_axis_angle(),
+        "swap_dims": True,
+    },
 }
-HANDLE_DRAW_INFO.update(
-    {
-        ElementRegion.TOP_MIDDLE: {
-            "draw": _draw_rectangle_handle,
-            "get_angle": lambda t, r: t.get_x_axis_angle(),
-        },
-        ElementRegion.BOTTOM_MIDDLE: {
-            "draw": _draw_rectangle_handle,
-            "get_angle": lambda t, r: t.get_x_axis_angle(),
-        },
-        ElementRegion.MIDDLE_LEFT: {
-            "draw": _draw_rectangle_handle,
-            "get_angle": lambda t, r: t.get_y_axis_angle(),
-            "swap_dims": True,
-        },
-        ElementRegion.MIDDLE_RIGHT: {
-            "draw": _draw_rectangle_handle,
-            "get_angle": lambda t, r: t.get_y_axis_angle(),
-            "swap_dims": True,
-        },
-    }
-)
-HANDLE_DRAW_INFO.update(
-    {
-        region: {
-            "draw": _draw_arc_handle,
-            "get_angle": lambda t, r: (
-                t.get_rotation() + _ARC_HANDLE_BASE_ANGLES_DEG[r]
-            ),
-        }
-        for region in ROTATE_HANDLES
-    }
-)
-HANDLE_DRAW_INFO.update(
-    {
-        ElementRegion.SHEAR_TOP: {
-            "draw": _draw_arrow_handle,
-            "get_angle": lambda t, r: t.get_x_axis_angle(),
-        },
-        ElementRegion.SHEAR_BOTTOM: {
-            "draw": _draw_arrow_handle,
-            "get_angle": lambda t, r: t.get_x_axis_angle(),
-        },
-        ElementRegion.SHEAR_LEFT: {
-            "draw": _draw_arrow_handle,
-            "get_angle": lambda t, r: t.get_y_axis_angle(),
-            "swap_dims": True,
-        },
-        ElementRegion.SHEAR_RIGHT: {
-            "draw": _draw_arrow_handle,
-            "get_angle": lambda t, r: t.get_y_axis_angle(),
-            "swap_dims": True,
-        },
-        ElementRegion.MOVE: {
-            "draw": _draw_move_gizmo,
-            "get_angle": lambda t, r: 0.0,
-        },
-    }
-)
 
 
 def render_selection_frame(
@@ -352,39 +172,23 @@ def _render_handles(
     hovered_region: ElementRegion,
     base_handle_size: float,
     scale_compensation: tuple[float, float],
-    color: ColorRGBA | None = None,
 ):
     sx_abs, sy_abs = transform_to_screen.get_abs_scale()
+    is_flipped_y = scale_compensation[1] < 0
 
     for region in regions:
-        # Resize handles must be drawn as transformed quads to
-        # account for shear. Rotate/Shear handles are glyphs that are only
-        # rotated to align with the frame.
+        # A resize handle is a square on screen, on its corner or edge
+        # midpoint, whatever the frame's rotation or shear. Shear
+        # handles are glyphs rotated to align with the frame.
         if region in RESIZE_HANDLES:
-            lx, ly, lw, lh = target.get_region_rect(
-                region, base_handle_size, scale_compensation
+            anchor = handle_anchor(
+                region, target.width, target.height, is_flipped_y
             )
-            if lw <= 0 or lh <= 0:
-                continue
-
-            # Get the 4 corners of the handle's rectangle in local space
-            corners_local = [
-                (lx, ly),
-                (lx + lw, ly),
-                (lx + lw, ly + lh),
-                (lx, ly + lh),
-            ]
-            # Transform them to screen space to get the final skewed quad
-            corners_screen = [
-                transform_to_screen.transform_point(p) for p in corners_local
-            ]
-            _draw_quad_handle(
-                ctx,
-                *corners_screen,
-                is_hovered=(region == hovered_region),
-                color=color,
+            screen_x, screen_y = transform_to_screen.transform_point(anchor)
+            _draw_handle_square(
+                ctx, screen_x, screen_y, region == hovered_region
             )
-        else:  # Rotate or Shear handles
+        else:  # Shear handles
             draw_info = HANDLE_DRAW_INFO.get(region)
             if not draw_info:
                 continue
@@ -418,7 +222,6 @@ def _render_handles(
                 draw_w,
                 draw_h,
                 is_hovered=(region == hovered_region),
-                color=color,
             )
             ctx.restore()
 
@@ -431,11 +234,15 @@ def render_selection_handles(
     hovered_region: ElementRegion,
     base_handle_size: float,
     with_labels: bool = False,
-    color: ColorRGBA | None = None,
 ):
     """
     Renders selection handles for a target based on the current interaction
     mode.
+
+    In RESIZE mode that is the eight resize squares, on the corners and
+    the edge midpoints. The rotate zones outside the corners are not
+    drawn; the pointer finds them by the cursor. In ROTATE_SHEAR mode it
+    is the four shear arrows.
 
     This function understands the application logic (modes, regions) but is
     "dumb" regarding transformations; it requires a pre-computed matrix to
@@ -447,9 +254,9 @@ def render_selection_handles(
         transform_to_screen: The matrix to transform from local to screen.
         mode: The current SelectionMode.
         hovered_region: The currently hovered region, for hover effects.
-        base_handle_size: The base pixel size for the handles.
+        base_handle_size: The pointer target's size in screen pixels,
+            which sizes and places the shear arrows.
         with_labels: If True, draws debug text labels on the handles.
-        color: Optional ColorRGBA to color handles. Defaults to blue.
     """
     from .canvas import SelectionMode  # Avoid circular import at module level
 
@@ -460,22 +267,14 @@ def render_selection_handles(
     is_view_flipped = transform_to_screen.is_flipped()
     scale_compensation = (sx_abs, -sy_abs if is_view_flipped else sy_abs)
 
-    # Determine regions to draw
+    # Determine regions to draw. The corners go last, so on a small
+    # selection they sit on top of the edge squares.
     regions_to_draw = []
     if mode == SelectionMode.RESIZE:
+        regions_to_draw.extend(MIDDLE_RESIZE_HANDLES)
         regions_to_draw.extend(CORNER_RESIZE_HANDLES)
-        # A selection can be rotated from its corners without first
-        # switching mode.
-        regions_to_draw.extend(ROTATE_HANDLES)
-        if hovered_region in MIDDLE_RESIZE_HANDLES:
-            regions_to_draw.append(hovered_region)
-
     elif mode == SelectionMode.ROTATE_SHEAR:
-        regions_to_draw.extend(ROTATE_SHEAR_HANDLES)
-
-    # The move gizmo is always drawn regardless of the selection mode.
-    if mode != SelectionMode.NONE:
-        regions_to_draw.extend(MOVE_HANDLES)
+        regions_to_draw.extend(SHEAR_HANDLES)
 
     if regions_to_draw:
         _render_handles(
@@ -486,7 +285,6 @@ def render_selection_handles(
             hovered_region,
             base_handle_size,
             scale_compensation,
-            color=color,
         )
 
     if with_labels:
@@ -528,6 +326,44 @@ def render_angle_readout(
     ctx.set_source_rgb(1.0, 1.0, 1.0)
     ctx.move_to(left + pad, top + pad - extents.y_bearing)
     ctx.show_text(text)
+    ctx.restore()
+
+
+def render_rotation_arc(
+    ctx: cairo.Context,
+    pivot: tuple[float, float],
+    start: tuple[float, float],
+    pointer: tuple[float, float],
+    radius: float,
+):
+    """
+    Draws a rotate drag in screen space: a dot on the pivot, a hairline
+    from it to the pointer, and an arc of `radius` about it from where
+    the drag started to where the pointer is, the short way round, as
+    the angle readout counts it.
+    """
+    px, py = pivot
+    start_angle = math.atan2(start[1] - py, start[0] - px)
+    end_angle = math.atan2(pointer[1] - py, pointer[0] - px)
+    # Wrapped to (-pi, pi]: positive is clockwise on screen, as the
+    # readout's positive angle is.
+    delta = math.pi - (math.pi - (end_angle - start_angle)) % (2 * math.pi)
+
+    ctx.save()
+    ctx.set_source_rgb(*ACCENT_RGB)
+    ctx.set_line_width(HANDLE_STROKE)
+    ctx.move_to(px, py)
+    ctx.line_to(*pointer)
+    ctx.stroke()
+    ctx.new_sub_path()
+    if delta >= 0:
+        ctx.arc(px, py, radius, start_angle, start_angle + delta)
+    else:
+        ctx.arc_negative(px, py, radius, start_angle, start_angle + delta)
+    ctx.stroke()
+    # A dot two logical pixels in radius on the pivot.
+    ctx.arc(px, py, 2.0, 0.0, 2 * math.pi)
+    ctx.fill()
     ctx.restore()
 
 

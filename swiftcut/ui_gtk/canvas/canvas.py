@@ -15,7 +15,7 @@ from blinker import Signal
 from gi.repository import Gdk, Graphene, Gtk
 from raygeo.geo import Matrix
 
-from ...core.color import ColorRGBA
+from ..layout import HANDLE_HIT_SIZE, ROTATION_ARC_RADIUS
 from ..shared.keyboard import is_primary_keyval
 from . import transform
 from .cursor import get_cursor_for_region
@@ -24,12 +24,12 @@ from .intersect import obb_intersects_aabb
 from .multiselect import MultiSelectionGroup
 from .overlays import (
     render_angle_readout,
+    render_rotation_arc,
     render_selection_frame,
     render_selection_handles,
 )
 from .region import (
     BBOX_REGIONS,
-    MOVE_HANDLES,
     RESIZE_HANDLES,
     ROTATE_HANDLES,
     ROTATE_SHEAR_HANDLES,
@@ -63,7 +63,7 @@ class Canvas(Gtk.DrawingArea):
     and framing).
     """
 
-    BASE_HANDLE_SIZE = 20.0
+    BASE_HANDLE_SIZE = HANDLE_HIT_SIZE
     # Rotation snaps with Ctrl to the fine step, with Shift to the coarse.
     SNAP_ANGLE_DEGREES = 5.0
     SHIFT_SNAP_ANGLE_DEGREES = 15.0
@@ -120,6 +120,8 @@ class Canvas(Gtk.DrawingArea):
         # --- Rotation State ---
         self._drag_start_angle: float = 0.0
         self._rotation_pivot: Point | None = None
+        # Where the rotate press was, on screen: the arc starts there.
+        self._rotation_start_screen: Point | None = None
         # The live readout while rotating: the angle, and the pointer's
         # position on screen.
         self._rotation_readout: tuple[float, Point] | None = None
@@ -287,6 +289,14 @@ class Canvas(Gtk.DrawingArea):
 
         if self._rotating and self._rotation_readout:
             angle, (x, y) = self._rotation_readout
+            if self._rotation_pivot and self._rotation_start_screen:
+                render_rotation_arc(
+                    ctx,
+                    self.view_transform.transform_point(self._rotation_pivot),
+                    self._rotation_start_screen,
+                    (x, y),
+                    ROTATION_ARC_RADIUS,
+                )
             render_angle_readout(ctx, angle, x, y)
 
     def _render_selection_overlay(
@@ -321,14 +331,6 @@ class Canvas(Gtk.DrawingArea):
         screen_transform = self.view_transform @ elem.get_world_transform()
         render_selection_frame(ctx, elem, screen_transform)
 
-    def _get_handle_color(self, elem: CanvasElement) -> ColorRGBA | None:
-        """Returns an optional color for selection handles.
-
-        Override in subclasses to provide element-specific handle colors.
-        Returns None to use the default blue.
-        """
-        return None
-
     def _render_single_selection_overlay(
         self, ctx: cairo.Context, elem: CanvasElement
     ):
@@ -352,7 +354,6 @@ class Canvas(Gtk.DrawingArea):
             hovered_region=self._hovered_region,
             base_handle_size=self.BASE_HANDLE_SIZE,
             with_labels=False,  # Set to True to debug
-            color=self._get_handle_color(elem),
         )
 
     def _render_multi_selection_overlay(
@@ -372,8 +373,6 @@ class Canvas(Gtk.DrawingArea):
         if not (
             self._moving or self._resizing or self._rotating or self._shearing
         ):
-            colors = {self._get_handle_color(e) for e in group.elements}
-            color = colors.pop() if len(colors) == 1 else None
             render_selection_handles(
                 ctx,
                 target=group,
@@ -382,7 +381,6 @@ class Canvas(Gtk.DrawingArea):
                 hovered_region=self._hovered_region,
                 base_handle_size=self.BASE_HANDLE_SIZE,
                 with_labels=False,  # Set to True to debug
-                color=color,
             )
 
     def _update_hover_state(self, x: float, y: float) -> bool:
@@ -411,9 +409,9 @@ class Canvas(Gtk.DrawingArea):
         # We build a set of candidate regions based on the current mode.
         handle_candidates: set[ElementRegion] | None = None
         if self._selection_mode == SelectionMode.RESIZE:
-            handle_candidates = RESIZE_HANDLES | ROTATE_HANDLES | MOVE_HANDLES
+            handle_candidates = RESIZE_HANDLES | ROTATE_HANDLES
         elif self._selection_mode == SelectionMode.ROTATE_SHEAR:
-            handle_candidates = ROTATE_SHEAR_HANDLES | MOVE_HANDLES
+            handle_candidates = ROTATE_SHEAR_HANDLES
 
         if handle_candidates:
             target: CanvasElement | MultiSelectionGroup | None = None
@@ -454,10 +452,7 @@ class Canvas(Gtk.DrawingArea):
         if self._selection_group:
             # Check for body or any handle to set the general group hover flag
             all_group_regions = (
-                RESIZE_HANDLES
-                | ROTATE_SHEAR_HANDLES
-                | MOVE_HANDLES
-                | {ElementRegion.BODY}
+                RESIZE_HANDLES | ROTATE_SHEAR_HANDLES | {ElementRegion.BODY}
             )
             if (
                 self._selection_group.check_region_hit(
@@ -818,10 +813,7 @@ class Canvas(Gtk.DrawingArea):
             if not elements_to_transform:
                 return
 
-            if self._active_region in (
-                ElementRegion.BODY,
-                ElementRegion.MOVE,
-            ):
+            if self._active_region == ElementRegion.BODY:
                 self._moving = True
                 self.move_begin.send(
                     self,
@@ -1053,6 +1045,10 @@ class Canvas(Gtk.DrawingArea):
 
         # The pivot is always the center of the selection.
         self._rotation_pivot = (center_x, center_y)
+        # The press point back on screen, where the drawn arc starts.
+        self._rotation_start_screen = self.view_transform.transform_point(
+            (x, y)
+        )
 
         self._drag_start_angle = math.degrees(
             math.atan2(
@@ -1175,6 +1171,7 @@ class Canvas(Gtk.DrawingArea):
         self._initial_transform = None
         self._initial_world_transform = None
         self._rotation_pivot = None
+        self._rotation_start_screen = None
         self._rotation_readout = None
         self._drag_target = None
 

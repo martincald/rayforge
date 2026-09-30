@@ -20,7 +20,6 @@ import pytest
 from swiftcut.ui_gtk.canvas.element import CanvasElement
 from swiftcut.ui_gtk.canvas.multiselect import MultiSelectionGroup
 from swiftcut.ui_gtk.canvas.region import (
-    MOVE_HANDLES,
     RESIZE_HANDLES,
     ElementRegion,
     get_region_rect,
@@ -210,11 +209,17 @@ class TestGetRegionRectFlipCompensation:
         )
 
         # Handle dimensions: effective_hw = min(20/2, 100/3) = 10.0;
-        # effective_hh = min(20/3, 80/3) = 6.666...
-        assert flipped == pytest.approx((0.0, 80.0 - 20.0 / 3.0, 10.0,
-                                          20.0 / 3.0))
-        # Unflipped, TOP_LEFT stays at the local origin.
-        assert unflipped == pytest.approx((0.0, 0.0, 10.0, 20.0 / 3.0))
+        # effective_hh = min(20/3, 80/3) = 6.666... The rect is centred
+        # on its corner, so it starts half of each before it:
+        # x = 0 - 10/2 = -5, y = corner_y - (20/3)/2 = corner_y - 10/3.
+        # Flipped, the visual top-left corner is (0, h) = (0, 80).
+        assert flipped == pytest.approx(
+            (-5.0, 80.0 - 10.0 / 3.0, 10.0, 20.0 / 3.0)
+        )
+        # Unflipped, TOP_LEFT's corner is the local origin.
+        assert unflipped == pytest.approx(
+            (-5.0, -10.0 / 3.0, 10.0, 20.0 / 3.0)
+        )
 
     def test_bottom_left_handle_moves_to_the_top_when_y_is_flipped(self):
         base_handle_size = 20.0
@@ -224,16 +229,17 @@ class TestGetRegionRectFlipCompensation:
             ElementRegion.BOTTOM_LEFT, w, h, base_handle_size, (2.0, -3.0)
         )
 
-        assert flipped == pytest.approx((0.0, 0.0, 10.0, 20.0 / 3.0))
+        # Flipped, the visual bottom-left corner is the local origin;
+        # centred on it: (0 - 10/2, 0 - (20/3)/2, 10, 20/3).
+        assert flipped == pytest.approx((-5.0, -10.0 / 3.0, 10.0, 20.0 / 3.0))
 
 
 class TestMultiSelectionCheckRegionHit:
     """
     Integration test proving MultiSelectionGroup.check_region_hit wires
     the real canvas.view_transform's flip into get_region_rect's
-    scale_compensation (multiselect.py:170), using the same candidates
-    on_motion's hover detection actually passes (RESIZE_HANDLES |
-    MOVE_HANDLES, i.e. never BODY alongside handles).
+    scale_compensation (multiselect.py:170), using the resize candidates
+    on_motion's hover detection passes (never BODY alongside handles).
     """
 
     def test_hit_test_respects_the_mandatory_view_flip(
@@ -265,6 +271,6 @@ class TestMultiSelectionCheckRegionHit:
         world_y = min_y + ry + rh / 2
 
         hit = group.check_region_hit(
-            world_x, world_y, candidates=RESIZE_HANDLES | MOVE_HANDLES
+            world_x, world_y, candidates=RESIZE_HANDLES
         )
         assert hit == ElementRegion.TOP_LEFT

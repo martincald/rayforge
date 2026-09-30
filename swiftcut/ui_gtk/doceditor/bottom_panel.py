@@ -96,6 +96,8 @@ class BottomPanel(Gtk.Box):
         self.layout_changed = Signal()
         self.edit_item_requested = Signal()
         self.select_items_requested = Signal()
+        # The pointer entering or leaving the start corner toggles.
+        self.start_corner_hovered = Signal()
         self.machine = machine
         self.machine_cmd = machine_cmd
         self.doc = None
@@ -519,7 +521,19 @@ class BottomPanel(Gtk.Box):
             button.connect("toggled", self._on_start_corner_toggled, corner)
             corner_buttons.append(button)
             self._start_corner_buttons[corner] = button
-        self.start_corner_row.add_suffix(suffix_box(*corner_buttons))
+        corner_box = suffix_box(*corner_buttons)
+        # Hovering the toggles shows the corner on the canvas.
+        self._start_corner_motion = Gtk.EventControllerMotion()
+        self._start_corner_motion.connect(
+            "enter",
+            lambda *_: self.start_corner_hovered.send(self, hovered=True),
+        )
+        self._start_corner_motion.connect(
+            "leave",
+            lambda *_: self.start_corner_hovered.send(self, hovered=False),
+        )
+        corner_box.add_controller(self._start_corner_motion)
+        self.start_corner_row.add_suffix(corner_box)
 
         self._update_start_corner_buttons()
 

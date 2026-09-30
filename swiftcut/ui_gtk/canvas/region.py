@@ -19,7 +19,7 @@ class ElementRegion(Enum):
 
     NONE = auto()
     BODY = auto()
-    # Resize handles (inside)
+    # Resize handles (on the corners and the edges)
     TOP_LEFT = auto()
     TOP_MIDDLE = auto()
     TOP_RIGHT = auto()
@@ -37,8 +37,6 @@ class ElementRegion(Enum):
     SHEAR_RIGHT = auto()
     SHEAR_BOTTOM = auto()
     SHEAR_LEFT = auto()
-    # Move gizmo (outside, below the selection frame)
-    MOVE = auto()
 
 
 RESIZE_HANDLES: set[ElementRegion] = {
@@ -69,8 +67,6 @@ SHEAR_HANDLES: set[ElementRegion] = {
 }
 
 ROTATE_SHEAR_HANDLES: set[ElementRegion] = ROTATE_HANDLES | SHEAR_HANDLES
-
-MOVE_HANDLES: set[ElementRegion] = {ElementRegion.MOVE}
 
 LEFT_HANDLES: set[ElementRegion] = {
     ElementRegion.TOP_LEFT,
@@ -121,6 +117,29 @@ def _rotate_corner(
     return 0.0 if left else width, height if top == is_flipped_y else 0.0
 
 
+def handle_anchor(
+    region: ElementRegion, width: float, height: float, is_flipped_y: bool
+) -> tuple[float, float]:
+    """
+    The point, in local coordinates, a resize handle is drawn on: its
+    corner of the frame, or the midpoint of its edge.
+    """
+    if region in LEFT_HANDLES:
+        x = 0.0
+    elif region in RIGHT_HANDLES:
+        x = width
+    else:
+        x = width / 2.0
+    # In a flipped system the visual top is at y=h.
+    if region in TOP_HANDLES:
+        y = height if is_flipped_y else 0.0
+    elif region in BOTTOM_HANDLES:
+        y = 0.0 if is_flipped_y else height
+    else:
+        y = height / 2.0
+    return x, y
+
+
 def _in_rotate_zone(
     region: ElementRegion,
     local_x: float,
@@ -154,7 +173,8 @@ def get_region_rect(
 ) -> Rect:
     """
     A generic function to calculate the rectangle (x, y, w, h) for a given
-    region, relative to a bounding box of a given width and height.
+    region, relative to a bounding box of a given width and height. For
+    a handle it is the pointer target, not the square drawn on it.
 
     It compensates for scale to keep handle sizes visually consistent and
     adapts to flipped coordinate systems by checking the sign of the
@@ -164,7 +184,7 @@ def get_region_rect(
         region: The ElementRegion to calculate.
         width: The width of the bounding box.
         height: The height of the bounding box.
-        base_handle_size: The desired base size of the handles in pixels.
+        base_handle_size: The pointer target's size in screen pixels.
         scale_compensation: The signed scale factor(s) of the context.
                             A negative y-scale indicates a flipped axis.
     """
@@ -211,39 +231,33 @@ def get_region_rect(
         # And the visual "bottom" is at y=h.
         y_start_bottom = h - effective_hh
 
-    # Side handles always start below the top corner handle's space.
-    y_start_middle = effective_hh
-    middle_height = h - 2.0 * effective_hh
-    middle_height = max(middle_height, 0)
-
-    # Resize handles
-    if region == ElementRegion.TOP_LEFT:
-        return 0.0, y_start_top, effective_hw, effective_hh
-    if region == ElementRegion.TOP_RIGHT:
-        return w - effective_hw, y_start_top, effective_hw, effective_hh
-    if region == ElementRegion.BOTTOM_LEFT:
-        return 0.0, y_start_bottom, effective_hw, effective_hh
-    if region == ElementRegion.BOTTOM_RIGHT:
-        return w - effective_hw, y_start_bottom, effective_hw, effective_hh
-
-    if region == ElementRegion.TOP_MIDDLE:
-        return effective_hw, y_start_top, w - 2.0 * effective_hw, effective_hh
-    if region == ElementRegion.BOTTOM_MIDDLE:
+    # Resize handles. A corner's rect is centred on its corner, where
+    # its square is drawn; an edge's is a band inside the frame, between
+    # the corner rects.
+    if region in CORNER_RESIZE_HANDLES:
+        corner_x, corner_y = handle_anchor(region, w, h, is_flipped_y)
         return (
+            corner_x - effective_hw / 2,
+            corner_y - effective_hh / 2,
             effective_hw,
-            y_start_bottom,
-            w - 2.0 * effective_hw,
             effective_hh,
         )
+
+    edge_width = max(w - effective_hw, 0)
+    edge_height = max(h - effective_hh, 0)
+    if region == ElementRegion.TOP_MIDDLE:
+        return effective_hw / 2, y_start_top, edge_width, effective_hh
+    if region == ElementRegion.BOTTOM_MIDDLE:
+        return effective_hw / 2, y_start_bottom, edge_width, effective_hh
     if region == ElementRegion.MIDDLE_LEFT:
-        return 0.0, y_start_middle, effective_hw, middle_height
+        return 0.0, effective_hh / 2, effective_hw, edge_height
     if region == ElementRegion.MIDDLE_RIGHT:
-        return w - effective_hw, y_start_middle, effective_hw, middle_height
+        return w - effective_hw, effective_hh / 2, effective_hw, edge_height
 
     # Rotate/Shear handles (external)
     if region in ROTATE_HANDLES:
-        # Centered on the corner, so the arc drawn in it runs along the
-        # middle of the corner's rotate zone.
+        # Centered on the corner, through the middle of its rotate zone.
+        # Nothing is drawn in it; the zone itself is hit as a ring.
         radius = (ROTATE_ZONE_INNER + ROTATE_ZONE_OUTER) / 2.0
         rot_w = 2.0 * radius / abs_scale_x
         rot_h = 2.0 * radius / abs_scale_y
@@ -266,20 +280,6 @@ def get_region_rect(
     if region == ElementRegion.SHEAR_RIGHT:
         y_pos = h / 2 - effective_hh / 2
         return w + handle_dist, y_pos, effective_hw, effective_hh
-    # Move gizmo: centered horizontally below the bottom edge.
-    # It is ~95% larger than the standard resize handles for easier
-    # grabbing on workpieces with little geometry.
-    if region == ElementRegion.MOVE:
-        move_hw = effective_hw * 1.95
-        move_hh = effective_hh * 1.95
-        move_margin = 5.0 / avg_abs_scale
-        y_pos = (
-            -move_hh - handle_dist - move_margin
-            if is_flipped_y
-            else h + handle_dist + move_margin
-        )
-        x_pos = w / 2 - move_hw / 2
-        return x_pos, y_pos, move_hw, move_hh
     if region == ElementRegion.BODY:
         return 0.0, 0.0, w, h
 
