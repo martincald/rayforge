@@ -884,24 +884,16 @@ class WorldSurface(Canvas):
         Shared by middle-drag (on_pan_update) and Space+drag
         (on_mouse_drag) so their math cannot drift apart.
         """
-        widget_w, widget_h = self.get_width(), self.get_height()
-        if widget_w <= 0 or widget_h <= 0:
+        scale_x, scale_y = self.get_view_scale()
+        if scale_x <= 0 or scale_y <= 0:
             return
-
-        _, _, content_w, content_h = self._axis_renderer.get_content_layout(
-            widget_w, widget_h
-        )
-
-        base_scale_x = content_w / self.width_mm if self.width_mm > 0 else 1
-        base_scale_y = content_h / self.height_mm if self.height_mm > 0 else 1
-
         new_pan_x, new_pan_y = self._camera.pan_by_pixel_offset(
             self._pan_start[0],
             self._pan_start[1],
             offset_x_px,
             offset_y_px,
-            base_scale_x * self.zoom_level,
-            base_scale_y * self.zoom_level,
+            scale_x,
+            scale_y,
         )
         self._set_camera_live(self.zoom_level, new_pan_x, new_pan_y)
 

@@ -250,6 +250,36 @@ class TestPanEquivalence:
         assert s1.pan_x_mm == s2.pan_x_mm
         assert s1.pan_y_mm == s2.pan_y_mm
 
+    def test_drag_pan_uses_the_effective_height_like_scroll_pan(
+        self, world_surface_factory, monkeypatch
+    ):
+        """
+        When the effective height differs from height_mm (the rotary
+        case), a drag pan must move the view exactly as far as a
+        scroll pan of the same pixel offset: both take their scale
+        from get_view_scale, which uses the effective height.
+        """
+        surfaces = []
+        for _ in range(2):
+            s = world_surface_factory()
+            # Half of the 150 mm bed, as a rotary axis would report.
+            monkeypatch.setattr(
+                s._axis_renderer, "get_effective_height", lambda: 75.0
+            )
+            s.set_zoom(1.3)
+            s.set_pan(5.0, -3.0)
+            surfaces.append(s)
+        drag, scroll = surfaces
+
+        drag._pan_start = (drag.pan_x_mm, drag.pan_y_mm)
+        drag._pan_by_drag_offset(37.0, -21.0)
+        # Scroll pan negates its delta ("natural" scrolling).
+        scroll._pan_by_scroll_delta(-37.0, 21.0)
+
+        assert drag.pan_x_mm == pytest.approx(scroll.pan_x_mm)
+        assert drag.pan_y_mm == pytest.approx(scroll.pan_y_mm)
+        assert drag.view_transform.is_close(scroll.view_transform, tol=1e-9)
+
 
 class TestScreenWorldRoundTrip:
     """Pins Canvas._get_world_coords for several zoom/pan states."""
