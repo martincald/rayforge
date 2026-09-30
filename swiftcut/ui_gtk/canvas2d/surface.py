@@ -94,7 +94,10 @@ class WorkSurface(WorldSurface):
         # Ops rendering suppression for lazy ops rendering (Idea 5).
         # During pan/zoom/drag, ops drawing and pipeline context updates
         # are suppressed. They are restored after ~200ms of idle time.
+        # A pan/zoom hides every element's ops; a drag only those of the
+        # elements it transforms, so every other object stays visible.
         self._ops_suppressed: bool = False
+        self._ops_suppressed_elements: set[CanvasElement] = set()
         self._ops_restore_timer_id: int | None = None
 
         self._nogo_zone_elements: dict[str, NogoZoneElement] = {}
@@ -242,9 +245,16 @@ class WorkSurface(WorldSurface):
         """Returns True if ops rendering is suppressed during interaction."""
         return self._ops_suppressed
 
-    def _suppress_ops(self):
-        """Suppresses ops rendering during pan/zoom/drag interactions."""
-        if not self._ops_suppressed:
+    def ops_suppressed_for(self, elem: CanvasElement) -> bool:
+        """Returns True if the element's ops are hidden right now."""
+        return self._ops_suppressed or elem in self._ops_suppressed_elements
+
+    def _suppress_ops(self, elements: set[CanvasElement] | None = None):
+        """Suppresses ops rendering during pan/zoom/drag interactions:
+        of every element, or of the given elements only."""
+        if elements is not None:
+            self._ops_suppressed_elements |= elements
+        elif not self._ops_suppressed:
             logger.debug("Suppressing ops rendering during interaction")
             self._ops_suppressed = True
         if self._ops_restore_timer_id is not None:
@@ -264,6 +274,7 @@ class WorkSurface(WorldSurface):
         self._ops_restore_timer_id = None
         logger.debug("Restoring ops rendering after idle")
         self._ops_suppressed = False
+        self._ops_suppressed_elements.clear()
 
         self._update_pipeline_view_context()
 
@@ -490,18 +501,23 @@ class WorkSurface(WorldSurface):
             f"Transform begin for {len(elements)} element(s). "
             f"Drag target: {drag_target}"
         )
-        self._suppress_ops()
         self.transform_initiated.send(self)
         self._transform_start_states.clear()
 
-        # 1. Collect all unique elements and their group ancestors
+        # 1. Collect all unique elements and their group ancestors, and
+        #    the transformed elements with their children: only their ops
+        #    hide while they move.
         items_to_capture = set()
+        moving = set()
         for element in elements:
             items_to_capture.add(element)
+            moving.add(element)
+            moving.update(element.get_all_children_recursive())
             parent = element.parent
             while isinstance(parent, GroupElement):
                 items_to_capture.add(parent)
                 parent = parent.parent
+        self._suppress_ops(moving)
 
         # 2. Store the initial matrix for each captured item
         for element in items_to_capture:

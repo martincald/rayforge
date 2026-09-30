@@ -1243,9 +1243,13 @@ class WorkPieceElement(CanvasElement):
         if not worksurface:
             return
 
-        if worksurface.ops_suppressed:
+        if worksurface.ops_suppressed_for(self):
             return
 
+        self._draw_ops(ctx)
+
+    def _draw_ops(self, ctx: cairo.Context):
+        """Draws the ops overlay, in the element's local 1x1 Y-UP space."""
         # Draw view artifacts (complete, pre-rendered bitmaps)
         world_w, world_h = self.data.size
 
