@@ -1,6 +1,8 @@
-"""While a selection is moved, only its own ops hide: every other
-object on the canvas keeps drawing its ops. A pan or zoom still hides
-them all, and the restore after idle brings every one back.
+"""Nothing vanishes while the canvas is worked: a moved selection and
+every other object keep drawing the ops composite they have, and so
+does everything during a pan or zoom. What waits for idle is only
+rebuilding that composite, for the moved elements during a drag and
+for every element during a pan or zoom.
 """
 
 from unittest.mock import MagicMock
@@ -102,21 +104,65 @@ def test_a_move_drag_suppresses_only_the_moving_element(dragging):
     assert s.ops_suppressed is False
 
 
-def test_every_other_element_still_reaches_its_ops_stage_mid_drag(
-    dragging, monkeypatch
-):
-    s, elem_a, elem_b, _ = dragging
-    ops_a, ops_b = MagicMock(), MagicMock()
-    monkeypatch.setattr(elem_a, "_draw_ops", ops_a)
-    monkeypatch.setattr(elem_b, "_draw_ops", ops_b)
-
+def _render(s):
     target = cairo.ImageSurface(cairo.FORMAT_ARGB32, 800, 600)
     ctx = cairo.Context(target)
     ctx.transform(cairo.Matrix(*s.view_transform.for_cairo()))
     s.root.render(ctx)
 
+
+def test_every_element_draws_its_ops_mid_drag_and_only_the_moved_one_waits(
+    dragging, monkeypatch
+):
+    """Both reach the ops stage; the moved one skips rebuilding."""
+    s, elem_a, elem_b, _ = dragging
+    ops_a, ops_b = MagicMock(), MagicMock()
+    monkeypatch.setattr(elem_a, "_draw_ops", ops_a)
+    monkeypatch.setattr(elem_b, "_draw_ops", ops_b)
+
+    _render(s)
+
+    ops_a.assert_called_once()
+    assert ops_a.call_args.kwargs == {"rebuild": False}
     ops_b.assert_called_once()
-    ops_a.assert_not_called()
+    assert ops_b.call_args.kwargs == {"rebuild": True}
+
+
+def test_every_element_still_draws_its_ops_mid_pan(surface, monkeypatch):
+    _, s, add = surface
+    _, elem_a = add(_square(), (20, 20), (40, 30))
+    _, elem_b = add(_square(), (120, 100), (40, 30))
+    ops_a, ops_b = MagicMock(), MagicMock()
+    monkeypatch.setattr(elem_a, "_draw_ops", ops_a)
+    monkeypatch.setattr(elem_b, "_draw_ops", ops_b)
+    s.on_pan_begin(MagicMock(), 400, 300)
+
+    _render(s)
+
+    assert ops_a.call_args.kwargs == {"rebuild": False}
+    assert ops_b.call_args.kwargs == {"rebuild": False}
+
+
+def test_a_stale_composite_is_painted_as_it_is_while_rebuilding_waits(
+    surface, monkeypatch
+):
+    _, _, add = surface
+    _, elem = add(_square(), (20, 20), (40, 30))
+    rebuild = MagicMock()
+    monkeypatch.setattr(elem, "_rebuild_composited_surface", rebuild)
+    elem._composited_dirty = True
+    elem._composited_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 8, 6)
+    elem._composited_bbox_mm = (0.0, 0.0, 40.0, 30.0)
+    ctx = MagicMock()
+
+    elem._draw_ops(ctx, rebuild=False)
+
+    rebuild.assert_not_called()
+    ctx.paint.assert_called_once()
+
+    elem._draw_ops(ctx, rebuild=True)
+
+    rebuild.assert_called_once()
 
 
 def test_after_the_drag_ends_nothing_is_suppressed(dragging):
@@ -134,7 +180,7 @@ def test_after_the_drag_ends_nothing_is_suppressed(dragging):
     assert s.ops_suppressed_for(elem_b) is False
 
 
-def test_pan_still_suppresses_every_element(surface):
+def test_pan_holds_every_element_from_rebuilding(surface):
     _, s, add = surface
     _, elem_a = add(_square(), (20, 20), (40, 30))
     _, elem_b = add(_square(), (120, 100), (40, 30))

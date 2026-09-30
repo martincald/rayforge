@@ -1230,13 +1230,17 @@ class WorkPieceElement(CanvasElement):
         if not worksurface:
             return
 
-        if worksurface.ops_suppressed_for(self):
-            return
+        # While it is dragged, or the view pans or zooms, the composite
+        # already built keeps drawing (it follows the element's and the
+        # view's transform); only rebuilding it waits for idle.
+        self._draw_ops(ctx, rebuild=not worksurface.ops_suppressed_for(self))
 
-        self._draw_ops(ctx)
-
-    def _draw_ops(self, ctx: cairo.Context):
-        """Draws the ops overlay, in the element's local 1x1 Y-UP space."""
+    def _draw_ops(self, ctx: cairo.Context, rebuild: bool = True):
+        """
+        Draws the ops overlay, in the element's local 1x1 Y-UP space.
+        With ``rebuild`` off a stale composite is drawn as it is, and a
+        missing one draws nothing.
+        """
         # Draw view artifacts (complete, pre-rendered bitmaps)
         world_w, world_h = self.data.size
 
@@ -1246,7 +1250,7 @@ class WorkPieceElement(CanvasElement):
         if self.data.layer and self.data.layer.workflow:
             registry.touch(self.data.uid)
 
-            if self._composited_dirty:
+            if self._composited_dirty and rebuild:
                 self._rebuild_composited_surface()
 
             comp_surf = self._composited_surface

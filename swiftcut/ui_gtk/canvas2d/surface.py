@@ -93,8 +93,9 @@ class WorkSurface(WorldSurface):
         # Ops rendering suppression for lazy ops rendering (Idea 5).
         # During pan/zoom/drag, ops drawing and pipeline context updates
         # are suppressed. They are restored after ~200ms of idle time.
-        # A pan/zoom hides every element's ops; a drag only those of the
-        # elements it transforms, so every other object stays visible.
+        # A pan/zoom stops every element rebuilding its ops; a drag only
+        # the elements it transforms. Each keeps drawing the composite
+        # it has, so nothing vanishes during the interaction.
         self._ops_suppressed: bool = False
         self._ops_suppressed_elements: set[CanvasElement] = set()
         self._ops_restore_timer_id: int | None = None
@@ -247,7 +248,10 @@ class WorkSurface(WorldSurface):
         return self._ops_suppressed
 
     def ops_suppressed_for(self, elem: CanvasElement) -> bool:
-        """Returns True if the element's ops are hidden right now."""
+        """
+        Returns True while the element must not rebuild its ops: it
+        keeps drawing the composite it has, stale or not, until idle.
+        """
         return self._ops_suppressed or elem in self._ops_suppressed_elements
 
     def _suppress_ops(self, elements: set[CanvasElement] | None = None):
