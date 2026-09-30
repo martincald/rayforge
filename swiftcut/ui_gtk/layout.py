@@ -335,9 +335,7 @@ def icon_button(
     icon-only buttons with none, and every one of them was built by
     hand from a bare ``Gtk.Button``.
     """
-    button: Gtk.Button = (
-        Gtk.ToggleButton() if toggle else Gtk.Button()
-    )
+    button: Gtk.Button = Gtk.ToggleButton() if toggle else Gtk.Button()
     button.set_child(get_icon(icon_name))
     button.set_tooltip_text(tooltip)
     button.set_valign(Gtk.Align.CENTER)

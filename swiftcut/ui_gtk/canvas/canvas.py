@@ -1203,7 +1203,7 @@ class Canvas(Gtk.DrawingArea):
 
         # Check for mode switch on simple click
         world_x, world_y = self._get_world_coords(x, y)
-        hit = self.root.get_elem_hit(world_x, world_y, selectable=True)
+        hit = self._get_body_hit(world_x, world_y)
         hover_region = ElementRegion.NONE
         if hit and hit.selected:
             # Re-check region hit to be sure, testing against ALL handles
@@ -1211,6 +1211,13 @@ class Canvas(Gtk.DrawingArea):
             # etc.
             target = self._selection_group if self._selection_group else hit
             hover_region = target.check_region_hit(world_x, world_y)
+            # Outside the box only the stroke is hit. If the press grabbed
+            # it as the body, the release counts it as the body too.
+            if (
+                hover_region == ElementRegion.NONE
+                and self._active_region == ElementRegion.BODY
+            ):
+                hover_region = ElementRegion.BODY
 
         # ONLY toggle mode if selection did NOT just change in this click
         if hit and hit.selected and not self._selection_just_changed:

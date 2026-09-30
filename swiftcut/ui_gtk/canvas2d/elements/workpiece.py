@@ -660,8 +660,10 @@ class WorkPieceElement(CanvasElement):
 
         Returns:
             A dictionary with location info
-              `{'segment_index': int, 't': float}`
-            if the point is within the threshold, otherwise None.
+              `{'segment_index': int, 'pos': float}`
+            (`pos` is the normalized position along that segment, as a
+            Tab stores it) if the point is within the threshold,
+            otherwise None.
         """
         if not self.data.boundaries or not self.canvas:
             return None
@@ -674,7 +676,8 @@ class WorkPieceElement(CanvasElement):
             return None
         threshold_mm = threshold_px / ppm_x
 
-        # 2. Transform click coordinates to local, natural millimeter space
+        # 2. Transform click coordinates to the local unit square, where
+        #    the normalized boundaries live
         try:
             inv_world_transform = self.get_world_transform().invert()
             local_x_norm, local_y_norm = inv_world_transform.transform_point(
@@ -683,36 +686,20 @@ class WorkPieceElement(CanvasElement):
         except np.linalg.LinAlgError:
             return None  # Transform not invertible
 
-        natural_size = self.data.natural_size
-        if natural_size and None not in natural_size:
-            natural_w, natural_h = cast(tuple[float, float], natural_size)
-        else:
-            natural_w, natural_h = self.data.get_local_size()
-
-        if natural_w <= 1e-9 or natural_h <= 1e-9:
-            return None
-
-        local_x_mm = local_x_norm * natural_w
-        local_y_mm = local_y_norm * natural_h
-
-        # 3. Find closest point on path in local mm space
+        # 3. Find closest point on path in the same unit space
         closest = self.data.boundaries.find_closest_point(
-            local_x_mm, local_y_mm
+            local_x_norm, local_y_norm
         )
         if not closest:
             return None
 
-        segment_index, t, closest_point_local_mm = closest
+        segment_index, pos, closest_point_norm = closest
 
         # 4. Transform local closest point back to world space
-        closest_point_norm_x = closest_point_local_mm[0] / natural_w
-        closest_point_norm_y = closest_point_local_mm[1] / natural_h
         (
             closest_point_world_x,
             closest_point_world_y,
-        ) = self.get_world_transform().transform_point(
-            (closest_point_norm_x, closest_point_norm_y)
-        )
+        ) = self.get_world_transform().transform_point(closest_point_norm[:2])
 
         # 5. Perform distance check in world space
         dist_sq_world = (world_x - closest_point_world_x) ** 2 + (
@@ -723,7 +710,7 @@ class WorkPieceElement(CanvasElement):
             return None
 
         # 6. Return location info if within threshold
-        return {"segment_index": segment_index, "t": t}
+        return {"segment_index": segment_index, "pos": pos}
 
     def is_near_stroke(self, world_x: float, world_y: float) -> bool:
         """

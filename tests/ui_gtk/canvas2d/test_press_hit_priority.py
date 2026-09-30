@@ -14,6 +14,7 @@ from raygeo.geo import Geometry
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 from swiftcut.machine.models.machine import Machine
+from swiftcut.ui_gtk.canvas.canvas import SelectionMode
 from swiftcut.ui_gtk.canvas.element import CanvasElement
 from swiftcut.ui_gtk.canvas.hittest import STROKE_HIT_DISTANCE
 from swiftcut.ui_gtk.canvas.region import ElementRegion
@@ -98,6 +99,65 @@ def _press(s, x, y):
     s._drag_gesture = gesture
     s.on_button_press(gesture, 1, x, y)
     return gesture
+
+
+def _click(s, x, y):
+    """A press and a release at screen (x, y), with no drag between."""
+    gesture = _press(s, x, y)
+    s.on_click_released(gesture, 1, x, y)
+
+
+class TestClickTogglesTheMode:
+    def test_a_click_on_the_stroke_outside_the_box_toggles(self, surface):
+        _, s, add = surface
+        _, elem = add(_square(), (60, 50), (60, 40))
+        x, y = _screen(s, elem, 0.0, 0.25)  # On the left edge.
+
+        # The first click selects; only a click on the selection toggles.
+        _click(s, x - 5, y)
+        assert elem.selected
+        assert s._selection_mode == SelectionMode.RESIZE
+
+        _click(s, x - 5, y)
+        assert s._selection_mode == SelectionMode.ROTATE_SHEAR
+
+        corner_x, corner_y = _screen(s, elem, 0.0, 1.0)
+        _click(s, corner_x + 2, corner_y + 2)  # The top-left handle.
+        assert s._selection_mode == SelectionMode.RESIZE
+
+    def test_a_release_off_the_stroke_outside_the_box_does_not_toggle(
+        self, surface
+    ):
+        _, s, add = surface
+        _, elem = add(_square(), (60, 50), (60, 40))
+        _select(s, elem)
+        x, y = _screen(s, elem, 0.0, 1.0)  # The top-left corner.
+
+        # 20 pixels out along the diagonal: beyond the rotate zone and
+        # the stroke's reach. A press there starts a rubber band, so the
+        # release alone is what reaches the toggle.
+        d = 20 / math.sqrt(2)
+        s.on_click_released(MagicMock(), 1, x - d, y - d)
+
+        assert s._selection_mode == SelectionMode.RESIZE
+
+    def test_a_click_in_the_rotate_zone_on_the_stroke_does_not_toggle(
+        self, surface
+    ):
+        _, s, add = surface
+        _, elem = add(_square(), (60, 50), (60, 40))
+        _select(s, elem)
+        x, y = _screen(s, elem, 0.0, 1.0)  # The top-left corner.
+
+        # 5 pixels left of the left edge, 12 below the corner: on the
+        # stroke, but in the rotate zone, which the press grabs.
+        assert _hover(s, x - 5, y + 12) == (
+            ElementRegion.ROTATE_TOP_LEFT,
+            elem,
+        )
+        _click(s, x - 5, y + 12)
+
+        assert s._selection_mode == SelectionMode.RESIZE
 
 
 class TestHitPriority:

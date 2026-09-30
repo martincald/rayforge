@@ -76,7 +76,7 @@ class TestIlab614DefaultProfile:
         RuidaDriver via the driver registry, not silently fall back
         to the no-device driver.
         """
-        machine = list(lite_context.machine_mgr.machines.values())[0]
+        machine = next(iter(lite_context.machine_mgr.machines.values()))
 
         assert get_driver_cls(machine.driver_name) is RuidaDriver
 
