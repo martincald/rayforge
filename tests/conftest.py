@@ -94,25 +94,28 @@ if TYPE_CHECKING:
 
 def _seed_inert_machine(machine_dir: Path, context) -> None:
     """
-    Pre-seeds an isolated, empty machine directory with a driverless
+    Pre-seeds an isolated, empty machine directory with an inert
     placeholder machine.
 
     Fixtures that point MachineManager at a fresh temp directory would
-    otherwise leave it empty, triggering
-    MachineManager.create_default_machine() and silently loading the
+    otherwise give it no machine with a driver, triggering
+    MachineManager.ensure_default_machine() and silently loading the
     bundled ilab-614 profile -- a real, network-reachable Ruida machine
     with auto_connect enabled. That is unsafe in tests (it schedules a
-    real connection attempt), so fixtures call this first to make the
-    directory non-empty with a driverless machine instead, matching
-    Machine's own built-in defaults (bare 200x200mm, no driver).
+    real connection attempt), so fixtures call this first to seed a
+    machine on the NoDeviceDriver instead: a resolvable driver, so the
+    seed stays off, that never touches hardware. Otherwise it matches
+    Machine's own built-in defaults (bare 200x200mm).
     """
     import yaml
 
+    from swiftcut.machine.driver import NoDeviceDriver
     from swiftcut.machine.models.machine import Machine
 
     machine_dir.mkdir(parents=True, exist_ok=True)
     placeholder = machine_dir / "00000000-0000-0000-0000-000000000000.yaml"
     machine = Machine(context)
+    machine.driver_name = NoDeviceDriver.__name__
     data = machine.to_dict(include_frozen_dialect=False)
     context.dialect_mgr.dialects_changed.disconnect(
         machine._on_dialects_changed

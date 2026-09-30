@@ -36,8 +36,8 @@ machine:
     - 0.0
     - 0.0
     - 0.0
-  cut_scale_power_pct: 1.0
-  cut_scale_speed_mm_s: 500.0
+  cut_scale_power_pct: 30.0
+  cut_scale_speed_mm_s: 20.0
   default_rotary_module_uid: null
   dialect_uid: null
   driver: RuidaDriver

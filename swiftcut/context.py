@@ -196,8 +196,7 @@ class RayforgeContext:
 
             logger.info("Lazy loading machine manager")
             self._machine_mgr = MachineManager(MACHINE_DIR)
-            if not self._machine_mgr.machines:
-                self._machine_mgr.create_default_machine()
+            self._machine_mgr.ensure_default_machine()
         return self._machine_mgr
 
     @property
@@ -210,11 +209,11 @@ class RayforgeContext:
             logger.info("Lazy loading config manager")
             self._config_mgr = CoreConfigManager(CONFIG_FILE, self.machine_mgr)
             self._config = self._config_mgr.config
-            if not self._config.machine:
-                machine = min(
-                    self.machine_mgr.machines.values(), key=lambda m: m.id
-                )
-                self._config.set_machine(machine)
+            # A driverless profile is never auto-selected.
+            mgr = self.machine_mgr
+            active = self._config.machine
+            if active is None or not mgr.has_driver(active):
+                self._config.set_machine(mgr.pick_auto_machine())
             # Sync the context language with the configured preference.
             # This overrides the system-detected language if the user has
             # explicitly chosen one in settings.
@@ -341,18 +340,15 @@ class RayforgeContext:
 
         self._headless = True
         self._machine_mgr = MachineManager(machine_dir)
-
-        if not self._machine_mgr.machines:
-            self._machine_mgr.create_default_machine()
+        self._machine_mgr.ensure_default_machine()
 
         config_file = Path(machine_dir) / ".." / "config.yaml"
         self._config_mgr = CoreConfigManager(config_file, self._machine_mgr)
         self._config = self._config_mgr.config
-        if not self._config.machine:
-            machine = min(
-                self._machine_mgr.machines.values(), key=lambda m: m.id
-            )
-            self._config.set_machine(machine)
+        # A driverless profile is never auto-selected.
+        active = self._config.machine
+        if active is None or not self._machine_mgr.has_driver(active):
+            self._config.set_machine(self._machine_mgr.pick_auto_machine())
 
     async def shutdown(self):
         """

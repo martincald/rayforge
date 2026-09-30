@@ -337,14 +337,11 @@ class ConfigManager:
             logger.info(msg)
             # Clear the machine reference
             self.config.set_machine(None)
-            # If there are other machines available, select the first one
-            if self.machine_mgr.machines:
-                # Sort by ID for deterministic selection
-                first_machine = min(
-                    self.machine_mgr.machines.values(), key=lambda m: m.id
-                )
-                self.config.set_machine(first_machine)
-                logger.info(f"Selected new machine {first_machine.id}")
+            # Pick the min-by-id machine that has a driver, if any
+            new_machine = self.machine_mgr.pick_auto_machine()
+            self.config.set_machine(new_machine)
+            if new_machine is not None:
+                logger.info(f"Selected new machine {new_machine.id}")
 
     def save(self):
         if not self.config:

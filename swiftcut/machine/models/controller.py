@@ -73,8 +73,12 @@ class MachineController:
         self.machine.changed.connect(self._on_machine_changed)
 
         # If the machine already has a driver_name configured, rebuild
-        # the driver instance to match
-        if self.machine.driver_name:
+        # the driver instance to match. A NoDeviceDriver machine already
+        # holds the driver it names, so it schedules nothing.
+        if (
+            self.machine.driver_name
+            and get_driver_cls(self.machine.driver_name) is not NoDeviceDriver
+        ):
             task_mgr.add_coroutine(
                 self.rebuild_driver,
                 key=(self.machine.id, "rebuild-driver-on-init"),

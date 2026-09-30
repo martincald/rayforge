@@ -8,7 +8,7 @@ from blinker import Signal
 
 from ...context import get_context
 from ...shared.tasker import task_mgr
-from ..driver import RuidaDriver
+from ..driver import RuidaDriver, get_driver_cls
 from ..driver.driver import ResourceBusyError
 from .controller import MachineController
 from .default_profile import ILAB_614_PROFILE
@@ -211,6 +211,34 @@ class MachineManager:
         machine = Machine.from_dict(ILAB_614_PROFILE, context=get_context())
         self.add_machine(machine)
         return machine
+
+    @staticmethod
+    def has_driver(machine) -> bool:
+        name = machine.driver_name or ""
+        return get_driver_cls(name, default=None) is not None
+
+    def ensure_default_machine(self) -> Machine | None:
+        """
+        Seeds the bundled default unless a profile with a resolvable
+        driver exists. Driverless profiles are left on disk untouched.
+        """
+        for m in self.machines.values():
+            if not self.has_driver(m):
+                logger.warning(
+                    "Machine '%s' (%s) has no resolvable driver %r; "
+                    "kept, never auto-selected",
+                    m.name,
+                    m.id,
+                    m.driver_name,
+                )
+        if any(self.has_driver(m) for m in self.machines.values()):
+            return None
+        return self.create_default_machine()
+
+    def pick_auto_machine(self) -> Machine | None:
+        """Returns the min-by-id machine with a driver, or None."""
+        candidates = [m for m in self.machines.values() if self.has_driver(m)]
+        return min(candidates, key=lambda m: m.id, default=None)
 
     def save_machine(self, machine):
         logger.debug(f"Saving machine {machine.id}")

@@ -8,6 +8,7 @@ canonical profile it embeds verbatim.
 """
 
 import hashlib
+import logging
 import os
 import subprocess
 import sys
@@ -23,7 +24,7 @@ from swiftcut.machine.models.default_profile import (
     ILAB_614_PROFILE,
     PROFILE_FILE,
 )
-from swiftcut.machine.models.machine import Origin, StartCorner
+from swiftcut.machine.models.machine import Machine, Origin, StartCorner
 from swiftcut.machine.models.manager import MachineManager
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -60,8 +61,8 @@ class TestIlab614DefaultProfile:
         z_axis = machine.axes.get(Axis.Z)
         assert z_axis is not None
         assert z_axis.extents == (-50, 50)
-        assert machine.cut_scale_speed_mm_s == 500.0
-        assert machine.cut_scale_power_pct == 1.0
+        assert machine.cut_scale_speed_mm_s == 20.0
+        assert machine.cut_scale_power_pct == 30.0
 
         # Laser head power is stored 0-100 in YAML but 0-1 in memory.
         head = machine.heads[0]
@@ -113,11 +114,10 @@ class TestIlab614DefaultProfile:
 
         before_hash = hashlib.sha256(existing_file.read_bytes()).hexdigest()
 
-        # This mirrors the exact "silent seed on empty dir" gate used by
-        # both RayforgeContext.machine_mgr and initialize_lite_context.
+        # The same seed gate RayforgeContext.machine_mgr and
+        # initialize_lite_context run.
         manager = MachineManager(machine_dir)
-        if not manager.machines:
-            manager.create_default_machine()
+        assert manager.ensure_default_machine() is None
 
         after_hash = hashlib.sha256(existing_file.read_bytes()).hexdigest()
 
@@ -176,3 +176,89 @@ def test_fresh_macos_install_seeds_the_committed_profile(tmp_path):
     assert seeded["machine"].pop("name") == "ilab-614"
     committed["machine"].pop("name")
     assert seeded == committed
+
+
+LEGACY_ID = "3c1aed0c-0000-4000-8000-000000000001"
+
+
+def test_migrated_dir_with_only_driverless_profile_seeds_ilab_614(
+    tmp_path, task_mgr, monkeypatch, caplog
+):
+    """
+    A legacy Rayforge config migrated in brings a driverless "Default
+    Machine" that config.yaml selects. Launch still seeds ilab-614 and
+    makes it active; the legacy file stays on disk byte-identical.
+    """
+    from swiftcut import config
+    from swiftcut import context as context_module
+    from swiftcut.context import get_context
+    from swiftcut.machine.models.dialect import GRBL_DIALECT
+    from swiftcut.machine.models.dialect_manager import DialectManager
+    from swiftcut.shared import tasker
+
+    config_dir = tmp_path / "config"
+    dialect_dir = config_dir / "dialects"
+    machine_dir = config_dir / "machines"
+    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(config, "DIALECT_DIR", dialect_dir)
+    monkeypatch.setattr(config, "MACHINE_DIR", machine_dir)
+    monkeypatch.setattr(tasker.task_mgr, "_instance", task_mgr)
+
+    # Like the real migrated profile, it points at its own dialect
+    # copy, so loading it runs no dialect migration (which would
+    # rewrite the file).
+    dialect = GRBL_DIALECT.copy_as_custom(new_label="Legacy")
+    DialectManager(dialect_dir).add_dialect(dialect)
+    machine_dir.mkdir(parents=True)
+    legacy_file = machine_dir / f"{LEGACY_ID}.yaml"
+    legacy_bytes = (
+        "machine:\n"
+        "  name: Default Machine\n"
+        "  driver: null\n"
+        "  driver_args: {}\n"
+        f"  dialect_uid: {dialect.uid}\n"
+    ).encode()
+    legacy_file.write_bytes(legacy_bytes)
+    (config_dir / "config.yaml").write_text(f"machine: {LEGACY_ID}\n")
+
+    try:
+        with caplog.at_level(logging.WARNING):
+            context = get_context()
+            context.initialize_lite_context(machine_dir)
+
+        assert len(list(machine_dir.glob("*.yaml"))) == 2
+        assert legacy_file.read_bytes() == legacy_bytes
+        assert len(context.machine_mgr.machines) == 2
+        assert context.config.machine.name == "ilab-614"
+        assert context.config.machine.driver_name == "RuidaDriver"
+        assert any(
+            r.levelno == logging.WARNING and "Default Machine" in r.message
+            for r in caplog.records
+        )
+    finally:
+        context_module._context_instance = None
+
+
+def test_committed_default_cut_scale_is_a_gentle_test_cut():
+    """
+    The Cut Scale must never ship as a full-power or full-speed cut:
+    the committed default is a gentle 20 mm/s at 30 % power.
+    """
+    machine = ILAB_614_PROFILE["machine"]
+    speed = machine["cut_scale_speed_mm_s"]
+    power = machine["cut_scale_power_pct"]
+
+    assert speed == 20.0
+    assert power == 30.0
+    assert power <= 50
+    assert speed <= 100
+
+
+def test_active_machine_is_never_a_driverless_profile(lite_context):
+    manager = lite_context.machine_mgr
+    driverless = Machine(lite_context)
+    driverless.name = "Driverless"
+    manager.add_machine(driverless)
+
+    assert manager.pick_auto_machine().name == "ilab-614"
+    assert manager.has_driver(driverless) is False
