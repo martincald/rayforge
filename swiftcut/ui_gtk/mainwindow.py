@@ -27,6 +27,7 @@ from ..machine.transport import TransportStatus
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder import MachineCodeOpMap
+from ..pipeline.pipeline import NoVisibleStepsError
 from ..shared.tasker import task_mgr
 from ..shared.util.time_format import format_hours_to_hm
 from . import window_geometry
@@ -1310,10 +1311,14 @@ class MainWindow(Adw.ApplicationWindow):
     ):
         """Callback for when the job assembly for previews is complete."""
         if error:
-            logger.error(
-                "Failed to aggregate ops for preview",
-                exc_info=error,
-            )
+            if isinstance(error, NoVisibleStepsError):
+                # Every preview of an empty document ends here.
+                logger.debug(str(error))
+            else:
+                logger.error(
+                    "Failed to aggregate ops for preview",
+                    exc_info=error,
+                )
             # Release handle on error if it exists
             if handle:
                 self.doc_editor.pipeline.artifact_store.release(handle)

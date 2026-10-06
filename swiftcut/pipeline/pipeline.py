@@ -35,6 +35,11 @@ def _encode_error(error: str) -> RuntimeError:
     return RuntimeError(f"Job encoding failed: {error}")
 
 
+class NoVisibleStepsError(RuntimeError):
+    """The document has nothing to assemble: an empty document, not a
+    failed generation."""
+
+
 class Pipeline:
     """
     Public facade over the raygeo-backed intent pipeline.
@@ -479,7 +484,7 @@ class Pipeline:
         if not self._can_generate_job():
             when_done(
                 None,
-                RuntimeError(
+                NoVisibleStepsError(
                     "The document has no visible steps with workpieces "
                     "to assemble."
                 ),

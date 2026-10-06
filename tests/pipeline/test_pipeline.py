@@ -13,7 +13,7 @@ from swiftcut.core.vectorization_spec import PassthroughSpec
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.image import SVG_RENDERER
 from swiftcut.pipeline.artifact import WorkPieceArtifactHandle
-from swiftcut.pipeline.pipeline import Pipeline
+from swiftcut.pipeline.pipeline import NoVisibleStepsError, Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,7 @@ class TestPipeline:
         callback_mock.assert_called_once()
         handle, error = callback_mock.call_args[0]
         assert handle is None
-        assert isinstance(error, RuntimeError)
+        assert isinstance(error, NoVisibleStepsError)
         assert len(mock_task_mgr.created_tasks) == tasks_before
 
     @pytest.mark.asyncio
