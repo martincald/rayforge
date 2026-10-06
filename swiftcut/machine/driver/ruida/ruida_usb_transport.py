@@ -815,6 +815,8 @@ class RuidaUsbTransport:
 
         self._codec = RuidaCodec(magic)
         self._rx_buffer = bytearray()
+        # Whether this connection has seen its first ACK yet.
+        self._handshake_ok = False
 
         self.decoded_received = Signal()
         self.status_changed = Signal()
@@ -832,6 +834,7 @@ class RuidaUsbTransport:
         return self._raw.device
 
     async def connect(self) -> None:
+        self._handshake_ok = False
         await self._raw.connect()
 
     async def disconnect(self) -> None:
@@ -843,6 +846,14 @@ class RuidaUsbTransport:
 
     async def send(self, data: bytes) -> None:
         """Send already-encoded bytes without framing/swizzling."""
+        logger.debug(
+            f"TX (raw): {data!r}",
+            extra={
+                "log_category": "RAW_IO",
+                "direction": "TX",
+                "data": data,
+            },
+        )
         await self._raw.send(data)
 
     async def send_command(self, command: bytes) -> None:
@@ -857,6 +868,14 @@ class RuidaUsbTransport:
         Args:
             command: Unswizzled command bytes.
         """
+        logger.debug(
+            f"TX: {command!r}",
+            extra={
+                "log_category": "RAW_IO",
+                "direction": "TX",
+                "data": command,
+            },
+        )
         swizzled = self._codec.swizzle(command)
         await self._raw.send(swizzled)
 
@@ -888,6 +907,9 @@ class RuidaUsbTransport:
                     "data": unswizzled,
                 },
             )
+            if not self._handshake_ok and unswizzled in (b"\xcc", b"\xc6"):
+                self._handshake_ok = True
+                logger.info("USB handshake ok")
             self.decoded_received.send(self, data=unswizzled)
 
     def _on_status_changed(

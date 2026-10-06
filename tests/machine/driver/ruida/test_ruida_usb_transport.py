@@ -444,6 +444,66 @@ async def test_keepalive_enq_ack(mock_serial):
         await client.disconnect()
 
 
+def _raw_io(caplog, direction: str) -> list[bytes]:
+    return [
+        r.data
+        for r in caplog.records
+        if getattr(r, "log_category", None) == "RAW_IO"
+        and r.direction == direction
+    ]
+
+
+@pytest.mark.asyncio
+async def test_raw_io_logs_tx_and_rx_like_the_udp_wrapper(mock_serial, caplog):
+    """
+    Both directions are logged at DEBUG under RAW_IO, unswizzled, the
+    way RuidaTransport logs UDP, so a session log shows what crossed
+    the USB wire.
+    """
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        with caplog.at_level(logging.DEBUG):
+            await client.keep_alive()
+            await transport.send(b"\x01\x02")
+            mock_serial.feed_data(_device_reply(0xCC))
+            assert await _wait_until(lambda: _raw_io(caplog, "RX"))
+    finally:
+        await client.disconnect()
+
+    assert _raw_io(caplog, "TX") == [b"\xce", b"\x01\x02"]
+    assert _raw_io(caplog, "RX") == [b"\xcc"]
+    messages = [r.message for r in caplog.records]
+    assert "TX: b'\\xce'" in messages
+    assert "TX (raw): b'\\x01\\x02'" in messages
+    assert "RX: b'\\xcc'" in messages
+
+
+@pytest.mark.asyncio
+async def test_first_ack_of_each_connection_logs_the_handshake(
+    mock_serial, caplog
+):
+    received: list[bytes] = []
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    transport.decoded_received.connect(
+        lambda sender, data: received.append(data), weak=False
+    )
+
+    with caplog.at_level(logging.INFO):
+        for connection in range(1, 3):
+            await transport.connect()
+            mock_serial.feed_data(_device_reply(0xCC))
+            mock_serial.feed_data(_device_reply(0xCC))
+            expected = 2 * connection
+            assert await _wait_until(lambda n=expected: len(received) == n)
+            await transport.disconnect()
+
+    handshakes = [r for r in caplog.records if r.message == "USB handshake ok"]
+    assert len(handshakes) == 2
+    assert all(r.levelno == logging.INFO for r in handshakes)
+
+
 @pytest.mark.asyncio
 async def test_disconnect_joins_reader_thread_before_closing(mock_serial):
     """
