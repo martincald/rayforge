@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from gettext import gettext as _
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -83,6 +84,159 @@ def _on_import_dialog_response(
         win.item_revealer.set_reveal_child(False)
 
 
+def fix_macos_file_uri(gfile: Gio.File) -> Gio.File:
+    """
+    GTK 4 on macOS percent-encodes the whole dropped URI, including the
+    scheme colon ("file%3A///..."), which GLib cannot resolve to a path.
+    Restore the colon; any other file is returned unchanged.
+    """
+    uri = gfile.get_uri()
+    if uri.lower().startswith("file%3a"):
+        return Gio.File.new_for_uri("file:" + uri[len("file%3a") :])
+    return gfile
+
+
+def _get_file_infos(
+    editor: DocEditor, files: list[Gio.File]
+) -> list[tuple[Path, str]]:
+    """Get path and MIME type of the files an importer supports."""
+    file_infos = []
+    for gfile in files:
+        gfile = fix_macos_file_uri(gfile)
+        path_str = gfile.get_path()
+        if not path_str:
+            logger.warning(
+                f"File has no path, skipping (uri={gfile.get_uri()!r})"
+            )
+            continue
+
+        file_path = Path(path_str)
+        try:
+            file_info = gfile.query_info(
+                Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+                Gio.FileQueryInfoFlags.NONE,
+                None,
+            )
+        except GLib.Error as e:
+            logger.warning(f"Could not query file info for {file_path}: {e}")
+            continue
+        # The raw content type: the registered extension picks the
+        # importer; a type macOS converts to application/octet-stream
+        # would hand files of unknown suffix to the Ruida importer.
+        mime_type = file_info.get_content_type()
+
+        # Check if we support this file by asking the backend.
+        importer_cls, __ = editor.file.get_importer_info(
+            file_path, mime_type
+        )
+        if not importer_cls:
+            logger.warning(
+                f"Unsupported file type: {mime_type} for {file_path}"
+            )
+            continue
+
+        file_infos.append((file_path, mime_type))
+
+    return file_infos
+
+
+def import_files(
+    win: MainWindow,
+    editor: DocEditor,
+    files: list[Gio.File],
+    position_mm: tuple[float, float] | None = None,
+) -> bool:
+    """
+    The one import entry of the file dialog and the canvas drop.
+
+    Skips files no importer supports, opens the import dialog for files
+    that need configuration and loads the others directly (several of
+    them as one batch).
+
+    Args:
+        win: MainWindow instance
+        editor: DocEditor instance
+        files: The chosen or dropped files
+        position_mm: Optional (x, y) tuple in world coordinates (mm)
+            to center the imported items
+
+    Returns:
+        True if any file is imported.
+    """
+    file_infos = _get_file_infos(editor, files)
+    files_for_batch_import: list[tuple[Path, str]] = []
+
+    for file_path, mime_type in file_infos:
+        action = editor.file.analyze_import_target(file_path, mime_type)
+
+        if action == ImportAction.INTERACTIVE_CONFIG:
+            # These files need their own dialog, so handle them one by one.
+            logger.info(
+                f"Routing for individual import: {file_path.name} at "
+                f"{position_mm}"
+            )
+            import_file_at_position(
+                win, editor, file_path, mime_type, position_mm
+            )
+        else:
+            # These files can be batched together for a single
+            # import command.
+            files_for_batch_import.append((file_path, mime_type))
+
+    # Handle any files that were collected for batch import.
+    if len(files_for_batch_import) == 1:
+        file_path, mime_type = files_for_batch_import[0]
+        logger.info(f"Importing direct-load file: {file_path.name}")
+        import_file_at_position(win, editor, file_path, mime_type, position_mm)
+    elif files_for_batch_import:
+        logger.info(
+            f"Batch importing {len(files_for_batch_import)} "
+            "direct-load files."
+        )
+        import_multiple_files_at_position(
+            win, editor, files_for_batch_import, position_mm
+        )
+
+    return bool(file_infos)
+
+
+def ask_scale_to_fit(
+    win: MainWindow,
+    file_path: Path,
+    size_mm: tuple[float, float],
+    bed_mm: tuple[float, float],
+    answer: Callable[[bool], None],
+):
+    """
+    The UI's oversize policy: asks whether an import larger than the
+    bed is scaled to fit or cancelled. Returns at once; the answer
+    follows the dialog's response.
+    """
+    dialog = Adw.MessageDialog(
+        transient_for=win,
+        modal=True,
+        heading=_("Larger Than the Bed"),
+        body=_(
+            "{name} is {width:.0f} x {height:.0f} mm, larger than the "
+            "{bed_width:.0f} x {bed_height:.0f} mm bed."
+        ).format(
+            name=file_path.name,
+            width=size_mm[0],
+            height=size_mm[1],
+            bed_width=bed_mm[0],
+            bed_height=bed_mm[1],
+        ),
+    )
+    dialog.add_response("cancel", _("Cancel"))
+    dialog.add_response("scale", _("Scale to fit"))
+    dialog.set_default_response("scale")
+    dialog.set_close_response("cancel")
+    dialog.connect(
+        "response", lambda _dialog, response: answer(response == "scale")
+    )
+    dialog.present()
+
+
 def _on_file_selected(dialog, result, user_data):
     """Callback for when the user selects a file from the dialog."""
     win, editor = user_data
@@ -93,35 +247,7 @@ def _on_file_selected(dialog, result, user_data):
     except GLib.Error:
         return
 
-    try:
-        file_path = Path(file.get_path())
-
-        # Get MIME type from Gio for accuracy
-        file_info = file.query_info(
-            Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
-            Gio.FileQueryInfoFlags.NONE,
-            None,
-        )
-        mime_type = (
-            Gio.content_type_get_mime_type(file_info.get_content_type())
-            or file_info.get_content_type()
-        )
-
-        # Ask the backend what to do with this file
-        action = editor.file.analyze_import_target(file_path, mime_type)
-
-        if action == ImportAction.INTERACTIVE_CONFIG:
-            _start_interactive_import(win, editor, file_path, mime_type)
-        elif action == ImportAction.DIRECT_LOAD:
-            editor.file.load_file_from_path(file_path, mime_type, None)
-            win.item_revealer.set_reveal_child(False)
-        else:  # UNSUPPORTED
-            logger.warning(
-                f"Unsupported file type: {mime_type} for {file_path}"
-            )
-
-    except (OSError, ValueError, KeyError):
-        logger.exception("Error opening file")
+    import_files(win, editor, [file])
 
 
 def start_interactive_import(win: MainWindow, editor: DocEditor):

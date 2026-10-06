@@ -1,3 +1,5 @@
+import asyncio
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +13,7 @@ from swiftcut.core.layer import Layer
 from swiftcut.core.source_asset import SourceAsset
 from swiftcut.core.step import Step
 from swiftcut.core.stock_asset import StockAsset
-from swiftcut.core.vectorization_spec import TraceSpec
+from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 from swiftcut.doceditor.file_cmd import (
@@ -28,6 +30,10 @@ from swiftcut.image import (
     LayerInfo,
     ParsingResult,
 )
+from swiftcut.image.dxf.importer import DxfImporter
+from swiftcut.image.lightburn.importer import LightBurnImporter
+from swiftcut.image.ruida.importer import RuidaImporter
+from swiftcut.image.svg.importer import SvgImporter
 from swiftcut.image.svg.renderer import SVG_RENDERER
 from swiftcut.machine.models.coordspace import (
     AxisDirection,
@@ -37,6 +43,12 @@ from swiftcut.machine.models.coordspace import (
 from swiftcut.machine.models.machine import Machine
 from swiftcut.machine.models.spindle import SpindleHead
 from swiftcut.shared.tasker.manager import TaskManager
+
+TESTS_DIR = Path(__file__).parent.parent
+LARGE_DXF = TESTS_DIR / "perf" / "large.dxf"
+SWITCH_PLATE = (
+    TESTS_DIR / "image" / "lightburn" / "assets" / "switch_plate.lbrn2"
+)
 
 
 @pytest.fixture
@@ -190,7 +202,7 @@ class TestScanImportFile:
         mock_importer_class.return_value = mock_importer_instance
 
         with patch(
-            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_extension",
             return_value=mock_importer_class,
         ):
             result = file_cmd.scan_import_file(svg_bytes, file_path, mime_type)
@@ -245,7 +257,7 @@ class TestScanImportFile:
         mock_importer_class.return_value = mock_importer_instance
 
         with patch(
-            "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
+            "swiftcut.doceditor.file_cmd.importer_registry.get_by_extension",
             return_value=mock_importer_class,
         ):
             result = file_cmd.scan_import_file(svg_bytes, file_path, mime_type)
@@ -412,10 +424,18 @@ class TestFitAndPositionAtReferenceOrigin:
             file_cmd._position_at_reference_origin([sample_workpiece])
 
     def test_fit_and_position_scale_down(self, file_cmd):
-        """Test scaling down items that are too large."""
+        """
+        Test scaling down items that are too large. Without an oversize
+        policy (headless) it scales silently: there is no "Reset" toast
+        that could restore a piece larger than the bed.
+        """
         wp = WorkPiece(name="Large Item")
         wp.set_size(300.0, 200.0)
         wp.pos = (0.0, 0.0)
+        notifications = []
+        file_cmd._editor.notification_requested.connect(
+            lambda sender, **kwargs: notifications.append(kwargs), weak=False
+        )
 
         with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_machine = MagicMock()
@@ -439,6 +459,7 @@ class TestFitAndPositionAtReferenceOrigin:
             bbox = wp.bbox
             assert bbox[2] <= 200
             assert bbox[3] <= 150
+            assert notifications == []
 
     def test_fit_and_position_at_origin(self, file_cmd):
         """Test positioning items at reference origin."""
@@ -663,6 +684,122 @@ class TestLoadFileFromPath:
         file_cmd._task_manager.add_coroutine.assert_called()
 
 
+def _svg_mm(path: Path, width: float, height: float) -> Path:
+    """Writes an SVG holding one width x height mm rectangle."""
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width}mm" height="{height}mm" '
+        f'viewBox="0 0 {width} {height}">'
+        f'<rect width="{width}" height="{height}" fill="none" '
+        'stroke="black" stroke-width="0.1"/></svg>'
+    )
+    return path
+
+
+async def _wait_for_import(editor, task_mgr, timeout=30.0):
+    """Waits until the import task and the pipeline are done."""
+    deadline = time.monotonic() + timeout
+    while task_mgr.has_tasks():
+        assert time.monotonic() < deadline, "import did not finish"
+        await asyncio.sleep(0.01)
+    await editor.wait_until_settled()
+
+
+class TestOversizePolicy:
+    """
+    load_file_from_path asks the oversize policy, after loading, when
+    the content is larger than the bed: Scale to fit or Cancel.
+    """
+
+    @pytest.fixture
+    def bed(self, test_machine_and_config):
+        """The ilab-614 bed: 1400 x 900 mm."""
+        machine, _config = test_machine_and_config
+        machine.set_axis_extents(1400, 900)
+        return machine
+
+    @pytest.mark.asyncio
+    async def test_cancel_adds_nothing(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _svg_mm(tmp_path / "big.svg", 2000, 1000)
+        asked = []
+
+        def policy(file_path, size_mm, bed_mm, answer):
+            asked.append((file_path, size_mm, bed_mm))
+            answer(False)
+
+        doc_editor.file.oversize_policy = policy
+        doc_editor.file.load_file_from_path(
+            path, "image/svg+xml", PassthroughSpec()
+        )
+        await _wait_for_import(doc_editor, task_mgr)
+
+        ((file_path, size_mm, bed_mm),) = asked
+        assert file_path == path
+        assert size_mm[0] > 1400
+        assert bed_mm == (1400, 900)
+        assert doc_editor.doc.all_workpieces == []
+        assert doc_editor.doc.get_all_assets() == []
+
+    @pytest.mark.asyncio
+    async def test_scale_to_fit_fits_the_bed(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _svg_mm(tmp_path / "big.svg", 2000, 1000)
+        answers = []
+        doc_editor.file.oversize_policy = (
+            lambda file_path, size_mm, bed_mm, answer: answers.append(answer)
+        )
+        doc_editor.file.load_file_from_path(
+            path, "image/svg+xml", PassthroughSpec()
+        )
+
+        # The question stays open while the loop runs on; nothing is
+        # added until the answer comes.
+        deadline = time.monotonic() + 30
+        while not answers:
+            assert time.monotonic() < deadline, "policy was not asked"
+            await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
+        assert doc_editor.doc.all_workpieces == []
+
+        answers[0](True)
+        await _wait_for_import(doc_editor, task_mgr)
+
+        (wp,) = doc_editor.doc.all_workpieces
+        width, height = wp.size
+        assert width <= 1400 + 1e-6
+        assert height <= 900 + 1e-6
+        assert max(width / 1400, height / 900) == pytest.approx(1.0)
+
+    @pytest.mark.asyncio
+    async def test_content_that_fits_is_never_asked_nor_scaled(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _svg_mm(tmp_path / "fits.svg", 1000, 800)
+        result = SvgImporter(path.read_bytes(), path).get_doc_items(
+            PassthroughSpec()
+        )
+        assert result and result.payload
+        content = doc_editor.file._get_positionable_content(
+            result.payload.items
+        )
+        bbox = doc_editor.file._calculate_items_bbox(content)
+        assert bbox
+        policy = MagicMock()
+        doc_editor.file.oversize_policy = policy
+
+        doc_editor.file.load_file_from_path(
+            path, "image/svg+xml", PassthroughSpec()
+        )
+        await _wait_for_import(doc_editor, task_mgr)
+
+        policy.assert_not_called()
+        (wp,) = doc_editor.doc.all_workpieces
+        assert wp.size == pytest.approx(bbox[2:])
+
+
 class TestExportGcodeToPath:
     """Tests for export_gcode_to_path method."""
 
@@ -694,8 +831,10 @@ class TestGetImporterInfo:
             "swiftcut.doceditor.file_cmd.importer_registry.get_by_mime_type",
             return_value=mock_importer,
         ):
+            # A registered extension wins over the MIME type, so the
+            # MIME lookup only decides for an unregistered suffix.
             cls, features = file_cmd.get_importer_info(
-                Path("f.dxf"), "image/vnd.dxf"
+                Path("f.unknown"), "image/vnd.dxf"
             )
             assert cls is mock_importer
             assert features == {ImporterFeature.DIRECT_VECTOR}
@@ -739,6 +878,34 @@ class TestGetImporterInfo:
             )
             assert cls is None
             assert features == set()
+
+
+class TestImporterForRealFiles:
+    """
+    get_importer_info against the real importer registry. macOS reports
+    .dxf and .lbrn2 as application/octet-stream (file dialog) or as a
+    dyn.* type (drop); the extension must still pick the importer.
+    """
+
+    @pytest.mark.parametrize(
+        "path, mime_type, expected",
+        [
+            (LARGE_DXF, "application/octet-stream", DxfImporter),
+            (LARGE_DXF, "dyn.age80k8dg", DxfImporter),
+            (SWITCH_PLATE, "application/octet-stream", LightBurnImporter),
+            (Path("job.rd"), "application/octet-stream", RuidaImporter),
+        ],
+        ids=["dxf-octet-stream", "dxf-uti", "lbrn2-octet-stream", "rd"],
+    )
+    def test_extension_picks_the_importer(
+        self, file_cmd, path, mime_type, expected
+    ):
+        cls, _ = file_cmd.get_importer_info(path, mime_type)
+        assert cls is expected
+
+    def test_mime_type_decides_without_extension(self, file_cmd):
+        cls, _ = file_cmd.get_importer_info(Path("drawing"), "image/svg+xml")
+        assert cls is SvgImporter
 
 
 class TestAnalyzeImportTarget:

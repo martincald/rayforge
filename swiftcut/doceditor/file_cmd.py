@@ -24,6 +24,7 @@ from raygeo.geo.types import Point, Rect
 from raygeo.ops.state import CoolantMode
 
 from ..context import get_context
+from ..core.bed_bounds import bed_rect, fits
 from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.source_asset import SourceAsset
@@ -109,6 +110,16 @@ class ImportAction(Enum):
     UNSUPPORTED = auto()
 
 
+# Asks on the main thread whether imported content larger than the bed
+# is scaled to fit: (file, content size mm, bed size mm, answer). It
+# must not block; it calls answer(True) to scale to fit, answer(False)
+# to cancel the import.
+OversizePolicy = Callable[
+    [Path, tuple[float, float], tuple[float, float], Callable[[bool], None]],
+    None,
+]
+
+
 class FileCmd:
     """Handles file import and export operations."""
 
@@ -119,24 +130,31 @@ class FileCmd:
     ):
         self._editor = editor
         self._task_manager = task_manager
+        # Set by the UI. Without a policy (headless), oversized imports
+        # are scaled to fit.
+        self.oversize_policy: OversizePolicy | None = None
 
     def get_importer_info(
         self, file_path: Path, mime_type: str | None
     ) -> tuple[type[Importer] | None, set[ImporterFeature]]:
         """
         Finds the importer for a file and returns its class and feature set.
+
+        A registered extension wins; the MIME type is only the fallback.
+        Platforms report generic types (macOS gives .dxf and .lbrn2 as
+        application/octet-stream), which would pick the wrong importer.
         """
-        if not mime_type:
-            mime_type, _ = mimetypes.guess_type(file_path)
-
         importer_cls = None
-        if mime_type:
-            importer_cls = importer_registry.get_by_mime_type(mime_type)
-
-        if not importer_cls and file_path.suffix:
+        if file_path.suffix:
             importer_cls = importer_registry.get_by_extension(
                 file_path.suffix.lower()
             )
+
+        if not importer_cls:
+            if not mime_type:
+                mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type:
+                importer_cls = importer_registry.get_by_mime_type(mime_type)
 
         if importer_cls:
             return importer_cls, importer_cls.features
@@ -423,7 +441,7 @@ class FileCmd:
         if not content_to_transform:
             return
 
-        scale_factor = self._scale_to_fit_if_oversized(content_to_transform)
+        self._scale_to_fit_if_oversized(content_to_transform)
 
         if position_mm:
             # Note: PositionAtStrategy needs the top-level items to calculate
@@ -444,11 +462,6 @@ class FileCmd:
                 )
         else:
             self._position_at_reference_origin(content_to_transform)
-
-        if scale_factor < 1.0:
-            self._show_scale_down_notification(
-                content_to_transform, scale_factor
-            )
 
     @staticmethod
     def _unwrap_item(item: DocItem) -> list[DocItem]:
@@ -651,19 +664,36 @@ class FileCmd:
 
                 # 3. Schedule finalization on main thread and wait for it to
                 #    signal completion back to this (background) thread.
+                #    Content larger than the bed first asks the oversize
+                #    policy, which calls back with its answer later; the
+                #    future then holds whether the items were added.
                 loop = asyncio.get_running_loop()
                 main_thread_done = loop.create_future()
 
-                def finalizer_and_callback():
-                    """Wraps finalizer to signal future on completion/error."""
+                def finalizer_and_callback(accepted: bool | None = None):
+                    """
+                    Wraps finalizer to signal future on completion/error.
+                    The oversize policy calls it again with its answer.
+                    """
+                    if main_thread_done.done():
+                        return  # Task replaced while the policy asked.
                     try:
                         assert import_result.payload, "Missing import payload"
-                        self._finalize_import_on_main_thread(
-                            import_result.payload, fn, pos_mm, vec_spec
-                        )
+                        if accepted is None and self.oversize_policy:
+                            sizes = self._oversize(import_result.payload.items)
+                            if sizes:
+                                self.oversize_policy(
+                                    fn, *sizes, finalizer_and_callback
+                                )
+                                return
+                        if accepted is not False:
+                            self._finalize_import_on_main_thread(
+                                import_result.payload, fn, pos_mm, vec_spec
+                            )
                         if not main_thread_done.done():
                             loop.call_soon_threadsafe(
-                                main_thread_done.set_result, True
+                                main_thread_done.set_result,
+                                accepted is not False,
                             )
                     except Exception as e:
                         logger.exception(
@@ -679,7 +709,9 @@ class FileCmd:
                 )
 
                 # Wait here until the main thread signals completion or error.
-                await main_thread_done
+                if not await main_thread_done:
+                    ctx.set_message(_("Import cancelled."))
+                    return
 
                 ctx.set_message(_("Import complete!"))
             except Exception as e:
@@ -780,10 +812,31 @@ class FileCmd:
 
         return min_x, min_y, max_x - min_x, max_y - min_y
 
+    def _oversize(
+        self, items: list[DocItem]
+    ) -> tuple[tuple[float, float], tuple[float, float]] | None:
+        """
+        The content size and the bed size in mm when the content of
+        newly imported items does not fit the bed, else None.
+        """
+        config = get_context().config
+        if not config or not config.machine:
+            return None
+        bbox = self._calculate_items_bbox(
+            self._get_positionable_content(items)
+        )
+        if not bbox:
+            return None
+        bed = bed_rect(config.machine)
+        size = (bbox[2], bbox[3])
+        if fits(size, bed):
+            return None
+        return size, (bed[2], bed[3])
+
     def _scale_to_fit_if_oversized(self, items: list[DocItem]) -> float:
         """
-        Scales items to fit within machine work area if they are too
-        large, preserving aspect ratio.
+        Scales items to fit within the bed if they are too large,
+        preserving aspect ratio.
 
         Returns the scale factor applied (1.0 if no scaling was needed).
         """
@@ -811,20 +864,25 @@ class FileCmd:
             return 1.0
 
         bbox_x, bbox_y, bbox_w, bbox_h = bbox
-        area_x, area_y, area_w, area_h = config.machine.work_area
+        bed = bed_rect(config.machine)
+        area_x, area_y, area_w, area_h = bed
         logger.debug(
-            f"_fit_and_position_at_reference_origin: bbox=({bbox_x:.2f}, "
+            f"_scale_to_fit_if_oversized: bbox=({bbox_x:.2f}, "
             f"{bbox_y:.2f}, {bbox_w:.2f}, {bbox_h:.2f}), "
-            f"work_area="
+            f"bed="
             f"({area_x:.2f}, {area_y:.2f}, {area_w:.2f}, {area_h:.2f})"
         )
 
         # Scale to fit if necessary, preserving aspect ratio
         scale_factor = 1.0
-        if bbox_w > area_w or bbox_h > area_h:
+        if not fits((bbox_w, bbox_h), bed):
             scale_w = area_w / bbox_w if bbox_w > 1e-9 else 1.0
             scale_h = area_h / bbox_h if bbox_h > 1e-9 else 1.0
             scale_factor = min(scale_w, scale_h)
+            logger.info(
+                f"Imported content scaled by {scale_factor:.4f} to fit "
+                "the bed."
+            )
 
         if scale_factor < 1.0:
             # The pivot for scaling should be the center of the bounding box
@@ -887,60 +945,6 @@ class FileCmd:
             # Apply the group transform to each piece of content.
             for item in content_items:
                 item.matrix = translation_matrix @ item.matrix
-
-    def _show_scale_down_notification(
-        self, content_items: list[DocItem], scale_factor: float
-    ):
-        """
-        Shows a persistent notification that the imported item was scaled
-        down, with an undo action that reverts the scaling.
-        """
-        # Notification with Undo logic
-        # We define this after centering so the callback can handle the
-        # final position correctly.
-
-        def _undo_scaling_callback():
-            """
-            Reverts the auto-scaling applied during import.
-            It scales the items back up around their CURRENT center.
-            """
-            # Use the content items for calculation and transformation
-            current_bbox = self._calculate_items_bbox(content_items)
-            if not current_bbox:
-                return
-
-            cur_x, cur_y, cur_w, cur_h = current_bbox
-            cur_cx = cur_x + cur_w / 2
-            cur_cy = cur_y + cur_h / 2
-
-            inv_scale = 1.0 / scale_factor
-
-            # Create a matrix that scales by 1/factor around the current
-            # center
-            undo_matrix = Matrix.scale(
-                inv_scale, inv_scale, center=(cur_cx, cur_cy)
-            )
-
-            changes = []
-            for item in content_items:
-                current = item.matrix
-                new_m = undo_matrix @ current
-                changes.append((item, current, new_m))
-
-            self._editor.transform.create_transform_transaction(changes)
-
-        msg = _(
-            "⚠️ Imported item was larger than the work area and has been "
-            "scaled down to fit."
-        )
-        logger.info(msg)
-        self._editor.notification_requested.send(
-            self,
-            message=msg,
-            persistent=True,
-            action_label=_("Reset"),
-            action_callback=_undo_scaling_callback,
-        )
 
     def assemble_job_in_background(
         self,

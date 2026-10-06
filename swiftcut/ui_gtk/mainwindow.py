@@ -3,6 +3,7 @@ import logging
 import webbrowser
 from collections.abc import Callable, Coroutine
 from concurrent.futures import Future
+from functools import partial
 from gettext import gettext as _
 from pathlib import Path
 
@@ -45,7 +46,10 @@ from .canvas2d.surface import WorkSurface
 from .debug_log_dialog import DebugLogDialog
 from .doceditor import file_dialogs
 from .doceditor.bottom_panel import BottomPanel
-from .doceditor.import_handler import start_interactive_import
+from .doceditor.import_handler import (
+    ask_scale_to_fit,
+    start_interactive_import,
+)
 from .doceditor.item_properties import DocItemPropertiesWidget
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
@@ -191,6 +195,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Pipeline.
         context = get_context()
         self.doc_editor = DocEditor(task_mgr, context)
+        self.doc_editor.file.oversize_policy = partial(ask_scale_to_fit, self)
         context.addon_mgr.addon_state_changed.connect(
             self._on_addon_state_changed
         )

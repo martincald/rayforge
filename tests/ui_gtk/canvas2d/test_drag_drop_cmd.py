@@ -1,6 +1,6 @@
 from gi.repository import Gio
 
-from swiftcut.ui_gtk.canvas2d.drag_drop_cmd import fix_macos_file_uri
+from swiftcut.ui_gtk.doceditor.import_handler import fix_macos_file_uri
 
 
 def test_escaped_scheme_resolves_to_local_path():

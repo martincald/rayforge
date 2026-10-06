@@ -23,7 +23,6 @@ from ...core.stock_asset import StockAsset
 from ...core.undo import ListItemCommand
 from ...core.vectorization_spec import PassthroughSpec
 from ...core.workpiece import WorkPiece
-from ...doceditor.file_cmd import ImportAction
 from ...image import ImporterFeature
 from ...image.registry import importer_registry
 from ..doceditor import import_handler
@@ -34,18 +33,6 @@ if TYPE_CHECKING:
     from .surface import WorkSurface
 
 logger = logging.getLogger(__name__)
-
-
-def fix_macos_file_uri(gfile: Gio.File) -> Gio.File:
-    """
-    GTK 4 on macOS percent-encodes the whole dropped URI, including the
-    scheme colon ("file%3A///..."), which GLib cannot resolve to a path.
-    Restore the colon; any other file is returned unchanged.
-    """
-    uri = gfile.get_uri()
-    if uri.lower().startswith("file%3a"):
-        return Gio.File.new_for_uri("file:" + uri[len("file%3a") :])
-    return gfile
 
 
 class DragDropCmd:
@@ -141,9 +128,12 @@ class DragDropCmd:
                 f"Processing file drop at world coords "
                 f"({world_x_mm:.2f}, {world_y_mm:.2f}) mm"
             )
-            file_infos = self._get_file_infos(files)
-            self._import_dropped_files(file_infos, (world_x_mm, world_y_mm))
-            return bool(file_infos)
+            return import_handler.import_files(
+                self.main_window,
+                self.main_window.doc_editor,
+                files,
+                (world_x_mm, world_y_mm),
+            )
 
         return False
 
@@ -377,107 +367,6 @@ class DragDropCmd:
             return []
 
         return files
-
-    def _get_file_infos(self, files: list[Gio.File]) -> list[tuple[Path, str]]:
-        """Get file path and MIME type information for dropped files."""
-        editor = self.main_window.doc_editor
-        file_infos = []
-        for gfile in files:
-            gfile = fix_macos_file_uri(gfile)
-            path_str = gfile.get_path()
-            if not path_str:
-                logger.warning(
-                    f"File has no path, skipping (uri={gfile.get_uri()!r})"
-                )
-                continue
-
-            file_path = Path(path_str)
-            try:
-                file_info = gfile.query_info(
-                    Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
-                    Gio.FileQueryInfoFlags.NONE,
-                    None,
-                )
-                mime_type = file_info.get_content_type()
-            except GLib.Error as e:
-                logger.warning(
-                    f"Could not query file info for {file_path}: {e}"
-                )
-                continue
-
-            # Check if we support this file by asking the backend.
-            importer_cls, _ = editor.file.get_importer_info(
-                file_path, mime_type
-            )
-            if not importer_cls:
-                logger.warning(
-                    f"Unsupported file type: {mime_type} for {file_path}"
-                )
-                continue
-
-            file_infos.append((file_path, mime_type))
-
-        return file_infos
-
-    def _import_dropped_files(
-        self,
-        file_infos: list[tuple[Path, str]],
-        position_mm: tuple[float, float],
-    ):
-        """
-        Import dropped files, routing them to individual or batch import
-        handlers based on their capabilities.
-
-        Args:
-            file_infos: List of (file_path, mime_type) tuples
-            position_mm: (x, y) tuple in world coordinates
-        """
-        editor = self.main_window.doc_editor
-        files_for_batch_import: list[tuple[Path, str]] = []
-
-        for file_path, mime_type in file_infos:
-            action = editor.file.analyze_import_target(file_path, mime_type)
-
-            if action == ImportAction.INTERACTIVE_CONFIG:
-                # These files need their own dialog, so handle them one by one.
-                logger.info(
-                    f"Routing for individual import: {file_path.name} at "
-                    f"{position_mm}"
-                )
-                import_handler.import_file_at_position(
-                    self.main_window, editor, file_path, mime_type, position_mm
-                )
-            elif action == ImportAction.DIRECT_LOAD:
-                # These files can be batched together for a single
-                # import command.
-                files_for_batch_import.append((file_path, mime_type))
-            else:
-                # Unsupported files are already filtered out, but handle
-                # just in case.
-                logger.warning(f"Skipping unsupported file: {file_path.name}")
-
-        # Handle any files that were collected for batch import.
-        if files_for_batch_import:
-            if len(files_for_batch_import) == 1:
-                # If only one direct-load file, just import it.
-                file_path, mime_type = files_for_batch_import[0]
-                logger.info(f"Importing direct-load file: {file_path.name}")
-                editor.file.load_file_from_path(
-                    file_path, mime_type, None, position_mm
-                )
-            else:
-                # If multiple direct-load files, use the batch handler.
-                logger.info(
-                    f"Batch importing {len(files_for_batch_import)} "
-                    "direct-load files."
-                )
-                # Note: The batch handler will show a confirmation dialog.
-                import_handler.import_multiple_files_at_position(
-                    self.main_window,
-                    editor,
-                    files_for_batch_import,
-                    position_mm,
-                )
 
     def handle_clipboard_paste(self):
         """
