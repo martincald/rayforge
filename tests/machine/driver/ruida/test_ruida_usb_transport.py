@@ -19,12 +19,15 @@ Two groups:
 """
 
 import asyncio
+import errno
 import logging
+import os
 import queue
 import threading
 from types import SimpleNamespace
 
 import pytest
+import serial
 
 from swiftcut.machine.driver.ruida import ruida_client
 from swiftcut.machine.driver.ruida.ruida_client import RuidaClient
@@ -680,6 +683,50 @@ async def test_vcp_connect_without_an_ftdi_port_fails_clearly(
     with pytest.raises(ConnectionError, match="No FTDI USB device"):
         await transport.connect()
     serial_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [errno.EBUSY, errno.EACCES])
+async def test_vcp_port_held_elsewhere_is_reported_as_in_use(
+    comports, mocker, error
+):
+    """A port that enumerates but will not open is not a missing
+    device: busy or permission denied names the port as in use."""
+    comports.return_value = [_ftdi_port("/dev/cu.usbserial-AAA", "AAA")]
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport.serial.Serial",
+        side_effect=serial.SerialException(
+            error, f"could not open port: {os.strerror(error)}"
+        ),
+    )
+    transport = RuidaUsbTransport(backend="vcp")
+
+    with pytest.raises(ConnectionError) as raised:
+        await transport.connect()
+
+    assert str(raised.value) == (
+        "USB port in use (another app or a stale connection): "
+        "/dev/cu.usbserial-AAA"
+    )
+    assert not transport.is_connected
+
+
+@pytest.mark.asyncio
+async def test_vcp_other_open_failures_keep_their_own_error(comports, mocker):
+    comports.return_value = [_ftdi_port("/dev/cu.usbserial-AAA", "AAA")]
+    failure = serial.SerialException(
+        errno.ENOENT, "could not open port: No such file or directory"
+    )
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport.serial.Serial",
+        side_effect=failure,
+    )
+    transport = RuidaUsbTransport(backend="vcp")
+
+    with pytest.raises(serial.SerialException) as raised:
+        await transport.connect()
+
+    assert raised.value is failure
 
 
 # --------------------------------------------------------------------

@@ -56,6 +56,7 @@ PyPI ftd2xx package cannot be used in this environment).
 
 import asyncio
 import ctypes
+import errno
 import glob
 import logging
 import sys
@@ -641,17 +642,27 @@ class _VcpBackend(_UsbBackendBase):
             f"description={self.device.description!r} "
             f"serial={self.device.serial!r}"
         )
-        port = serial.Serial(
-            port=self.device.port,
-            baudrate=self._baudrate,
-            bytesize=serial.EIGHTBITS,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            timeout=self._READ_TIMEOUT_S,
-            write_timeout=self._WRITE_TIMEOUT_S,
-            rtscts=False,
-            dsrdtr=False,
-        )
+        try:
+            port = serial.Serial(
+                port=self.device.port,
+                baudrate=self._baudrate,
+                bytesize=serial.EIGHTBITS,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                timeout=self._READ_TIMEOUT_S,
+                write_timeout=self._WRITE_TIMEOUT_S,
+                rtscts=False,
+                dsrdtr=False,
+            )
+        except serial.SerialException as e:
+            # Busy or denied on a port that enumerated is not a
+            # missing device; say the port is held.
+            if e.errno in (errno.EBUSY, errno.EACCES):
+                raise ConnectionError(
+                    f"USB port in use (another app or a stale "
+                    f"connection): {self.device.port}"
+                ) from e
+            raise
         port.rts = False
         port.dtr = False
         port.reset_input_buffer()
