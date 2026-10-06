@@ -335,6 +335,7 @@ async def test_the_handshake_card_id_shows_in_diagnostics(
         diagnostics = driver.get_diagnostics()
         assert diagnostics.usb_handshake_ok is True
         assert diagnostics.card_id == 0x72107210
+        assert diagnostics.model_name == "RDC644x (card 0x7210)"
     finally:
         await driver.cleanup()
 

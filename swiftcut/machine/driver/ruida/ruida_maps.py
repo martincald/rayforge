@@ -678,4 +678,7 @@ CARD_ID_ADDRESS = 0x057E
 
 CARD_ID_TO_MODEL: dict[int, str] = {
     0x65106510: "RDC6442S",
+    # Answered the card-ID read over USB on the owner's machine
+    # (2026-10-06 probe).
+    0x72107210: "RDC644x (card 0x7210)",
 }
