@@ -45,6 +45,7 @@ from swiftcut.machine.driver.ruida.ruida_usb_transport import (
 )
 from swiftcut.machine.driver.ruida.ruida_util import (
     build_swizzle_lut,
+    encode35,
     frame_packet,
 )
 
@@ -669,6 +670,101 @@ def test_a_read_error_after_a_requested_stop_logs_at_debug(
     assert running == [
         (logging.ERROR, "USB read error: [Errno 6] Device not configured")
     ]
+
+
+# --------------------------------------------------------------------
+# Reply reassembly
+# --------------------------------------------------------------------
+
+# The probe's card-ID reply on the owner's machine (2026-10-06): card
+# 0x72107210, read off the port as one byte (DA), then eight.
+_CARD_ID_REPLY = b"\xda\x01\x05\x7e" + encode35(0x72107210)
+
+
+def _swizzled(plain: bytes) -> bytes:
+    return bytes(_SWIZZLE[b] for b in plain)
+
+
+@pytest.mark.asyncio
+async def test_a_reply_read_as_one_byte_then_eight_is_one_reply(mock_serial):
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    received: list[bytes] = []
+    transport.decoded_received.connect(
+        lambda sender, data: received.append(data), weak=False
+    )
+    wire = _swizzled(_CARD_ID_REPLY)
+    reads: list[int] = []
+    orig_read = mock_serial.read
+    orig_write = mock_serial.write
+
+    def spy_read(size=1):
+        data = orig_read(size)
+        if data:
+            reads.append(len(data))
+        return data
+
+    def answer(data):
+        written = orig_write(data)
+        mock_serial.feed_data(wire[:1])
+        mock_serial.feed_data(wire[1:])
+        return written
+
+    mock_serial.read = spy_read
+    mock_serial.write = answer
+    await client.connect()
+    try:
+        assert await client.get_card_id() == 0x72107210
+    finally:
+        await client.disconnect()
+
+    assert reads == [1, 8]
+    assert received == [_CARD_ID_REPLY]
+
+
+def _decoded(chunks: list[bytes]) -> list[bytes]:
+    """What the transport emits for these plain chunks, each one
+    swizzled and handed over as one read."""
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    received: list[bytes] = []
+    transport.decoded_received.connect(
+        lambda sender, data: received.append(data), weak=False
+    )
+    for chunk in chunks:
+        transport._on_raw_received(None, _swizzled(chunk))
+    return received
+
+
+@pytest.mark.parametrize(
+    "chunks, expected",
+    [
+        pytest.param(
+            [_CARD_ID_REPLY[:8]], [], id="a DA reply waits for byte 9"
+        ),
+        pytest.param(
+            [bytes([b]) for b in _CARD_ID_REPLY],
+            [_CARD_ID_REPLY],
+            id="a DA reply read byte by byte",
+        ),
+        pytest.param(
+            [b"\xcc" + _CARD_ID_REPLY + b"\xcc"],
+            [b"\xcc", _CARD_ID_REPLY, b"\xcc"],
+            id="replies sharing one read",
+        ),
+        pytest.param(
+            [b"\x10\x41\xcc"],
+            [b"\xcc"],
+            id="payload bytes with no opcode are dropped",
+        ),
+        pytest.param(
+            [_CARD_ID_REPLY[:5], b"\xcc", _CARD_ID_REPLY],
+            [b"\xcc", _CARD_ID_REPLY],
+            id="a DA reply cut short by an opcode is dropped",
+        ),
+    ],
+)
+def test_replies_split_on_opcodes(chunks, expected):
+    assert _decoded(chunks) == expected
 
 
 # --------------------------------------------------------------------

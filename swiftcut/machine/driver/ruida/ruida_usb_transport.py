@@ -921,22 +921,41 @@ class RuidaUsbTransport:
         """
         Buffer incoming bytes and emit whole, unswizzled replies.
 
-        A USB read() boundary is not a message boundary, so bytes are
-        accumulated until a complete reply -- one status byte, or a
-        9-byte DA 01 memory-read reply -- is available.
+        A USB read() boundary is not a message boundary: the
+        controller's DA 01 reply has arrived as a 1-byte read, then an
+        8-byte one. Bytes are unswizzled on arrival (the swizzle is
+        per byte) and split on MSB-set opcodes, as split_commands
+        splits a job. A DA 01 reply is emitted once all 9 bytes are
+        in; any other opcode is a 1-byte status reply. Payload bytes
+        with no opcode before them, and a DA reply cut short by the
+        next opcode, are dropped.
         """
-        self._rx_buffer.extend(data)
+        self._rx_buffer.extend(self._codec.unswizzle(data))
         while self._rx_buffer:
-            first = self._codec.unswizzle(bytes([self._rx_buffer[0]]))[0]
-            if first == 0xDA:
+            start = next(
+                (i for i, b in enumerate(self._rx_buffer) if b >= 0x80),
+                len(self._rx_buffer),
+            )
+            if start == 0 and self._rx_buffer[0] == 0xDA:
+                body = self._rx_buffer[1 : self._DA01_REPLY_LEN]
+                start = next(
+                    (i for i, b in enumerate(body, 1) if b >= 0x80), 0
+                )
+            if start:
+                logger.debug(
+                    f"RX dropped, not a whole reply: "
+                    f"{bytes(self._rx_buffer[:start])!r}"
+                )
+                del self._rx_buffer[:start]
+                continue
+            if self._rx_buffer[0] == 0xDA:
                 if len(self._rx_buffer) < self._DA01_REPLY_LEN:
                     return  # wait for the rest of the reply
                 msg_len = self._DA01_REPLY_LEN
             else:
                 msg_len = 1
-            raw_msg = bytes(self._rx_buffer[:msg_len])
+            unswizzled = bytes(self._rx_buffer[:msg_len])
             del self._rx_buffer[:msg_len]
-            unswizzled = self._codec.unswizzle(raw_msg)
             logger.debug(
                 f"RX: {unswizzled!r}",
                 extra={
