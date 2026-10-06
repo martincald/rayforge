@@ -21,9 +21,9 @@ anywhere in the app by design and would be exempted here via
     `_migrate_legacy_config_dir` / `_get_config_dir`, covered by
     tests/test_config.py) - it is not under ui_gtk/ or resources/, so
     it never trips this gate;
-  - the MIT copyright/attribution notice, which names the original
-    author "Samuel Abels" (see swiftcut/ui_gtk/about.py) rather than
-    the word "Rayforge" itself, so it also never trips this gate;
+  - the MIT attribution in the About dialog (see
+    swiftcut/ui_gtk/about.py), which must name Rayforge and its author
+    because the MIT license requires the attribution to stay;
   - the one-time "Import settings from Rayforge" action in Device
     Settings (see swiftcut/ui_gtk/machine/device_settings_page.py,
     `import_legacy_banner`), which must name "Rayforge" so the user
@@ -78,6 +78,8 @@ ALLOWLIST: set[str] = {
     "A Rayforge configuration from before the rename was found. Import"
     " its device settings?",
     "Import settings from Rayforge",
+    # The MIT license requires us to keep the attribution to Rayforge.
+    "Based on Rayforge by Samuel Abels, used under the MIT License.",
 }
 
 

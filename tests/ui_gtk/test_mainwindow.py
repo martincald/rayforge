@@ -562,3 +562,31 @@ def test_clear_alarm_says_it_is_not_supported(app_and_window):
 
     assert not action.get_enabled()
     assert button.get_tooltip_text() == "Clear machine alarm (unlock)"
+
+
+def _menu_actions(menu) -> list[str]:
+    """Every action name in a menu model, including submenus/sections."""
+    actions = []
+    for i in range(menu.get_n_items()):
+        action = menu.get_item_attribute_value(
+            i, "action", GLib.VariantType.new("s")
+        )
+        if action is not None:
+            actions.append(action.get_string())
+        for link in ("submenu", "section"):
+            child = menu.get_item_link(i, link)
+            if child is not None:
+                actions.extend(_menu_actions(child))
+    return actions
+
+
+@pytest.mark.ui
+def test_help_menu_has_no_donate_entry(app_and_window):
+    _app, win = app_and_window
+
+    actions = _menu_actions(win.menu_model)
+    assert "win.about" in actions
+    assert "win.donate" not in actions
+
+    assert win.lookup_action("about") is not None
+    assert win.lookup_action("donate") is None

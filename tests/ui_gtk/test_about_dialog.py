@@ -10,10 +10,14 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Gtk
+from gi.repository import Adw, Gtk
 
 from swiftcut import const
 from swiftcut.ui_gtk.about import AboutDialog
+
+ATTRIBUTION = (
+    "Based on Rayforge by Samuel Abels, used under the MIT License."
+)
 
 
 def _iter_widgets(widget):
@@ -41,5 +45,34 @@ def test_about_dialog_shows_swiftcut_and_keeps_mit_attribution():
         texts = _label_texts(dialog)
         assert any(const.APP_NAME in text for text in texts)
         assert "© 2025 Samuel Abels" in texts
+    finally:
+        dialog.destroy()
+
+
+@pytest.mark.ui
+def test_about_dialog_shows_the_rayforge_attribution_as_plain_text():
+    dialog = AboutDialog()
+    try:
+        assert ATTRIBUTION in _label_texts(dialog)
+    finally:
+        dialog.destroy()
+
+
+@pytest.mark.ui
+def test_about_dialog_has_no_link_rows_and_no_supporters():
+    dialog = AboutDialog()
+    try:
+        rows = [
+            w for w in _iter_widgets(dialog) if isinstance(w, Adw.ActionRow)
+        ]
+        activatable = [r.get_title() for r in rows if r.get_activatable()]
+        # The only clickable row navigates inside the dialog.
+        assert activatable == ["System Information"]
+
+        license_row = next(r for r in rows if r.get_title() == "License")
+        assert license_row.get_subtitle() == "MIT X11"
+
+        assert dialog.view_stack.get_child_by_name("supporters") is None
+        assert "Supporters" not in _label_texts(dialog)
     finally:
         dialog.destroy()

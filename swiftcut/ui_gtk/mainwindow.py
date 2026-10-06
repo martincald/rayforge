@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import webbrowser
 from collections.abc import Callable, Coroutine
 from concurrent.futures import Future
 from functools import partial
@@ -2380,9 +2379,6 @@ class MainWindow(Adw.ApplicationWindow):
     def show_about_dialog(self, action, param):
         dialog = AboutDialog(transient_for=self)
         dialog.present()
-
-    def on_donate_clicked(self, action, param):
-        webbrowser.open("https://www.patreon.com/c/knipknap")
 
     def on_save_debug_log(self, action, param):
         DebugLogDialog(

@@ -1,6 +1,5 @@
 import logging
 import threading
-import webbrowser
 from collections.abc import Callable
 from gettext import gettext as _
 from typing import cast
@@ -125,20 +124,18 @@ class LicenseRequiredDialog(Adw.MessageDialog):
     """
     Dialog shown when trying to install/use a premium addon without license.
 
-    Provides options to buy or enter a license key.
+    Provides an option to enter a license key.
     """
 
     def __init__(
         self,
         addon_name: str,
         product_ids: list[str],
-        purchase_url: str | None,
         on_license_added: Callable[[], None] | None = None,
     ):
         super().__init__()
 
         self.product_ids = product_ids
-        self.purchase_url = purchase_url
         self.addon_name = addon_name
         self.on_license_added = on_license_added
 
@@ -152,29 +149,18 @@ class LicenseRequiredDialog(Adw.MessageDialog):
         )
 
         self.add_response("cancel", _("Cancel"))
-        if purchase_url:
-            self.add_response("buy", _("Buy License"))
-            self.set_response_appearance(
-                "buy", Adw.ResponseAppearance.SUGGESTED
-            )
         self.add_response("enter", _("Enter License Key"))
 
         self.connect("response", self._on_response)
 
     def _on_response(self, dialog, response_id):
         handlers = {
-            "buy": self._handle_buy,
             "enter": self._show_license_entry_dialog,
         }
 
         handler = handlers.get(response_id)
         if handler:
             handler()
-
-    def _handle_buy(self):
-        if self.purchase_url:
-            webbrowser.open(self.purchase_url)
-            self._show_license_entry_dialog()
 
     def _show_license_entry_dialog(self):
         parent = self.get_transient_for()

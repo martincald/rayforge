@@ -89,7 +89,6 @@ APP_PAGES = (
     "recipes",
     "color_presets",
     "addons",
-    "licenses",
 )
 
 

@@ -20,7 +20,7 @@ Access all Rayforge functions through organized menus:
 - **View**: Zoom, grid, rulers, panels, and view modes
 - **Object**: Add, edit, and manage operations
 - **Machine**: Connect, jog, home, start/stop jobs
-- **Help**: About, Donate, Save Debug Log
+- **Help**: About, Save Debug Log
 
 ### 2. Toolbar
 

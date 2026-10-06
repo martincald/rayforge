@@ -10,7 +10,6 @@ from ..shared.patched_dialog_window import PatchedDialogWindow
 from .addon_manager_page import AddonManagerPage
 from .color_presets_page import ColorPresetPage
 from .general_preferences_page import GeneralPreferencesPage
-from .license_settings_page import LicenseSettingsPage
 from .material_manager_page import MaterialManagerPage
 from .recipe_manager_page import RecipeManagerPage
 
@@ -33,12 +32,11 @@ class SettingsWindow(PatchedDialogWindow):
         "recipes": 2,
         "color_presets": 3,
         "addons": 4,
-        "licenses": 5,
     }
 
     # Number of built-in (non-addon) pages, kept in sync with the
     # _add_page calls in __init__.
-    _BUILTIN_PAGE_COUNT = 6
+    _BUILTIN_PAGE_COUNT = 5
 
     def __init__(self, initial_page: str = "general", **kwargs):
         super().__init__(**kwargs)
@@ -83,7 +81,6 @@ class SettingsWindow(PatchedDialogWindow):
         self._add_page(RecipeManagerPage)
         self._add_page(ColorPresetPage)
         self._add_page(AddonManagerPage)
-        self._add_page(LicenseSettingsPage)
 
         # Addon-contributed pages (registered via the
         # register_settings_pages hook).

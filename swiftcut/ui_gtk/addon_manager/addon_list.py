@@ -424,7 +424,6 @@ class AddonListWidget(PreferencesGroupWithButton):
             return
 
         product_ids = license_config.get_all_product_ids()
-        purchase_url = license_config.purchase_url
         display_name = addon.metadata.display_name or addon.metadata.name
         addon_name = addon.metadata.name
 
@@ -437,7 +436,6 @@ class AddonListWidget(PreferencesGroupWithButton):
         dialog = LicenseRequiredDialog(
             addon_name=display_name,
             product_ids=product_ids,
-            purchase_url=purchase_url,
             on_license_added=on_license_added,
         )
         if root:

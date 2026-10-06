@@ -236,9 +236,6 @@ class AddonRegistryDialog(PatchedDialogWindow):
     def _on_unlock_clicked(self, btn, addon_meta: AddonMetadata):
         """Handle click on Unlock button for premium addon."""
         product_ids = self._get_product_ids(addon_meta)
-        purchase_url = None
-        if addon_meta.license:
-            purchase_url = addon_meta.license.purchase_url
 
         display_name = addon_meta.display_name or addon_meta.name
 
@@ -249,7 +246,6 @@ class AddonRegistryDialog(PatchedDialogWindow):
         dialog = LicenseRequiredDialog(
             addon_name=display_name,
             product_ids=product_ids,
-            purchase_url=purchase_url,
             on_license_added=on_license_added,
         )
         dialog.set_transient_for(self)

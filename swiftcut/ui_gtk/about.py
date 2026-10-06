@@ -3,7 +3,6 @@ import logging
 import os
 import platform
 import sys
-import webbrowser
 from gettext import gettext as _
 from importlib.metadata import PackageNotFoundError, distribution, version
 
@@ -174,17 +173,6 @@ def get_dependency_info() -> dict:
     return {k: v for k, v in info.items() if v}
 
 
-def get_supporters() -> list[tuple[str, str | None]]:
-    """
-    Returns a list of supporters who donated to the app.
-    Each entry is a tuple of (name, optional_url).
-    """
-    return [
-        ("starlynx.dev", None),
-        ("Anonymous Supporter", None),
-    ]
-
-
 class AboutDialog(PatchedDialogWindow):
     """
     A custom 'About' dialog that uses a ViewStack to navigate between
@@ -274,6 +262,16 @@ class AboutDialog(PatchedDialogWindow):
         copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
         hero_box.append(copyright_label)
 
+        attribution_label = Gtk.Label(
+            label=_(
+                "Based on Rayforge by Samuel Abels, used under the MIT "
+                "License."
+            )
+        )
+        attribution_label.set_wrap(True)
+        attribution_label.set_justify(Gtk.Justification.CENTER)
+        hero_box.append(attribution_label)
+
         prefgroup = Adw.PreferencesGroup()
         content_box.append(prefgroup)
 
@@ -296,12 +294,6 @@ class AboutDialog(PatchedDialogWindow):
         prefgroup.add(dev_row)
 
         license_row = Adw.ActionRow(title=_("License"), subtitle="MIT X11")
-        license_row.set_activatable(True)
-        license_row.add_suffix(get_icon("open-in-new-symbolic"))
-        license_row.connect(
-            "activated",
-            lambda _: webbrowser.open("https://opensource.org/license/mit"),
-        )
         prefgroup.add(license_row)
 
         sys_info_row = Adw.ActionRow(
@@ -323,20 +315,6 @@ class AboutDialog(PatchedDialogWindow):
             lambda w: self.view_stack.set_visible_child_name("sysinfo"),
         )
         prefgroup.add(sys_info_row)
-
-        supporters = get_supporters()
-        if supporters:
-            supporters_row = Adw.ActionRow(
-                title=_("Supporters"),
-                subtitle=_("People who donated to the project"),
-            )
-            supporters_row.set_activatable(True)
-            supporters_row.add_suffix(get_icon("go-next-symbolic"))
-            supporters_row.connect(
-                "activated",
-                lambda w: self.view_stack.set_visible_child_name("supporters"),
-            )
-            prefgroup.add(supporters_row)
 
         return content_box
 
@@ -369,51 +347,6 @@ class AboutDialog(PatchedDialogWindow):
 
         return scrolled_window
 
-    def _build_supporters_page(self):
-        scrolled_window = Gtk.ScrolledWindow()
-        scrolled_window.set_policy(
-            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
-        )
-
-        content_box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=SPACE_GROUP,
-        )
-        content_box.set_margin_start(SPACE_PAGE)
-        content_box.set_margin_end(SPACE_PAGE)
-        content_box.set_margin_top(SPACE_GROUP)
-        content_box.set_margin_bottom(SPACE_PAGE)
-        scrolled_window.set_child(content_box)
-
-        thank_you_label = Gtk.Label()
-        thank_you_label.set_markup(
-            "<i>"
-            + _(
-                "Special thanks go to everyone who has donated to support "
-                "SwiftCut! You keep the coffee and the AI tokens flowing!"
-            )
-            + "</i>"
-        )
-        thank_you_label.set_margin_top(SPACE_CONTROL)
-        thank_you_label.set_margin_bottom(SPACE_CONTROL)
-        thank_you_label.set_wrap(True)
-        thank_you_label.set_max_width_chars(60)
-        content_box.append(thank_you_label)
-
-        supporters_group = Adw.PreferencesGroup()
-        supporters_group.set_title(_("Supporters"))
-        content_box.append(supporters_group)
-
-        for name, url in get_supporters():
-            row = Adw.ActionRow(title=name)
-            if url:
-                row.set_activatable(True)
-                row.add_suffix(get_icon("open-in-new-symbolic"))
-                row.connect("activated", lambda _, u=url: webbrowser.open(u))
-            supporters_group.add(row)
-
-        return scrolled_window
-
     def _on_view_changed(self, stack, param):
         visible_page = stack.get_visible_child_name()
         is_main = visible_page == "main"
@@ -421,9 +354,7 @@ class AboutDialog(PatchedDialogWindow):
         self.back_button.set_visible(not is_main)
         self.header_copy_button.set_visible(visible_page == "sysinfo")
 
-        if visible_page == "supporters":
-            self.header_bar.set_title_widget(self.supporters_title)
-        elif visible_page == "sysinfo":
+        if visible_page == "sysinfo":
             self.header_bar.set_title_widget(self.sysinfo_title)
         else:
             self.header_bar.set_title_widget(self.main_title)
@@ -434,7 +365,6 @@ class AboutDialog(PatchedDialogWindow):
             title=_("About {app_name}").format(app_name=const.APP_NAME)
         )
         self.sysinfo_title = Adw.WindowTitle(title=_("System Information"))
-        self.supporters_title = Adw.WindowTitle(title=_("Supporters"))
 
         self.back_button = Gtk.Button(child=get_icon("go-previous-symbolic"))
         self.back_button.connect(
@@ -450,7 +380,6 @@ class AboutDialog(PatchedDialogWindow):
         self.view_stack = Adw.ViewStack()
         self.view_stack.add_named(self._build_main_page(), "main")
         self.view_stack.add_named(self._build_sysinfo_page(), "sysinfo")
-        self.view_stack.add_named(self._build_supporters_page(), "supporters")
         self.view_stack.connect(
             "notify::visible-child-name", self._on_view_changed
         )
