@@ -136,6 +136,23 @@ class TestRecipeManager:
         assert restored is not None
         assert restored.transformer_dicts == recipe.transformer_dicts
 
+    def test_save_load_color_round_trip(self, recipes_dir: Path):
+        """The color survives a save + reload through the manager."""
+        manager = RecipeManager(recipes_dir)
+        manager.add_recipe(Recipe(uid="colored", color="#ff6600"))
+        manager.add_recipe(Recipe(uid="plain"))
+
+        with open(recipes_dir / "colored.yaml", "r") as f:
+            assert yaml.safe_load(f)["color"] == "#ff6600"
+
+        reloaded = RecipeManager(recipes_dir)
+        colored = reloaded.get_recipe_by_id("colored")
+        plain = reloaded.get_recipe_by_id("plain")
+        assert colored is not None and plain is not None
+        assert colored.color == "#ff6600"
+        assert "color" not in colored.extra
+        assert plain.color is None
+
     def test_add_recipe(self, recipes_dir: Path):
         """Test adding a recipe, which should also save it."""
         manager = RecipeManager(recipes_dir)

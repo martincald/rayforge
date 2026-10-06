@@ -10,6 +10,7 @@ from ..core.undo import ChangePropertyCommand, DictItemCommand
 from ..core.vectorization_spec import LayerSource, PassthroughSpec
 
 if TYPE_CHECKING:
+    from ..core.layer import Layer
     from ..core.recipe import Recipe
     from ..core.step import Step
     from .editor import DocEditor
@@ -66,12 +67,17 @@ class StepCmd:
         )
         self._editor.history_manager.execute(command)
 
-    def apply_best_recipe_to_step(self, step: Step):
+    def apply_best_recipe_to_step(
+        self, step: Step, layer: Layer | None = None
+    ):
         """
         Finds the best matching recipe for a given step and applies its
         settings. This modifies the step object directly and is not undoable
         by itself; it should be called before the step is added to the
         document via an undoable command.
+
+        If a layer is given and the recipe has a color, the layer takes
+        that color through an undoable command.
         """
         # Get the stock items from the document
         stock_items = self._doc.stock_items
@@ -104,6 +110,21 @@ class StepCmd:
 
             # Store a reference to the applied recipe
             step.applied_recipe_uid = best_recipe.uid
+
+            if (
+                layer is not None
+                and best_recipe.color
+                and best_recipe.color != layer.color
+            ):
+                self._editor.history_manager.execute(
+                    ChangePropertyCommand(
+                        target=layer,
+                        property_name="color",
+                        new_value=best_recipe.color,
+                        setter_method_name="set_color",
+                        name=_("Set layer color"),
+                    )
+                )
 
     @staticmethod
     def _apply_recipe_transformers_to_step(step: Step, recipe: Recipe) -> None:

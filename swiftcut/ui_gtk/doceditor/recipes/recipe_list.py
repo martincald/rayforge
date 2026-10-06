@@ -148,6 +148,7 @@ class RecipeListWidget(PreferencesGroupWithButton):
                     new_recipe = Recipe(
                         name=data["name"],
                         description=data["description"],
+                        color=data["color"],
                         target_step_types=data["target_step_types"],
                         target_machine_id=data["target_machine_id"],
                         material_uid=data["material_uid"],
@@ -177,6 +178,7 @@ class RecipeListWidget(PreferencesGroupWithButton):
                 if data["name"]:
                     recipe.name = data["name"]
                     recipe.description = data["description"]
+                    recipe.color = data["color"]
                     recipe.target_step_types = data["target_step_types"]
                     recipe.target_machine_id = data["target_machine_id"]
                     recipe.material_uid = data["material_uid"]

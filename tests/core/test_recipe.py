@@ -693,6 +693,43 @@ class TestRecipe:
         assert recipe.settings == {}
         assert recipe.extra == {}
 
+    def test_color_round_trips_through_dict(self):
+        """The color is a top-level field that survives to/from_dict."""
+        recipe = Recipe(name="Red", color="#ff0000", settings={"power": 1.0})
+
+        data = recipe.to_dict()
+        assert data["color"] == "#ff0000"
+        assert "color" not in data["settings"]
+
+        restored = Recipe.from_dict(data)
+        assert restored.color == "#ff0000"
+        assert "color" not in restored.extra
+        assert "color" not in restored.settings
+
+    def test_missing_color_loads_as_none(self):
+        """A legacy recipe without a color loads with color None."""
+        recipe = Recipe.from_dict({"name": "Old Recipe"})
+
+        assert recipe.color is None
+        assert "color" not in recipe.extra
+
+    @pytest.mark.parametrize(
+        "raw, expected",
+        [
+            ("#FF0000", "#ff0000"),
+            ("#f00", "#ff0000"),
+            ("red", "#ff0000"),
+            ("FF0000", None),
+            ("", None),
+        ],
+    )
+    def test_color_is_normalized_on_load(self, raw, expected):
+        """from_dict normalizes the color with normalize_color."""
+        recipe = Recipe.from_dict({"name": "C", "color": raw})
+
+        assert recipe.color == expected
+        assert "color" not in recipe.extra
+
     # --- MULTIPLE STOCK ITEMS TESTS ---
 
     def test_matches_multiple_stocks_any_match(

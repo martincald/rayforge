@@ -54,6 +54,36 @@ def test_applying_recipe_uses_setters(editor, step):
 
 
 @pytest.mark.ui
+def test_applying_recipe_colors_the_layer_undoably(editor, step):
+    layer = editor.doc.layers[0]
+    layer.workflow.add_step(step)
+    old_color = layer.color
+    page = StepSettingsPage(editor, step)
+    recipe = Recipe(name="Red", color="#ff0000", settings={"count": 5})
+
+    page.recipe_control._apply_recipe(recipe)
+
+    assert layer.color == "#ff0000"
+    assert step.count == 5
+    editor.doc.history_manager.undo()
+    assert layer.color == old_color
+    assert step.count == 3
+
+
+@pytest.mark.ui
+def test_applying_recipe_without_color_leaves_layer(editor, step):
+    layer = editor.doc.layers[0]
+    layer.workflow.add_step(step)
+    old_color = layer.color
+    page = StepSettingsPage(editor, step)
+
+    page.recipe_control._apply_recipe(Recipe(settings={"count": 5}))
+
+    assert step.count == 5
+    assert layer.color == old_color
+
+
+@pytest.mark.ui
 def test_resync_overrides_pending_edit(editor, step):
     row = SpinRow(
         editor, step, "count", "Count", None, 1, 10, 1, 0, is_int=True

@@ -7,15 +7,19 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk
 
+from swiftcut.core.color import COLOR_PALETTE
 from swiftcut.core.recipe import Recipe
+from swiftcut.core.recipe_manager import RecipeManager
 from swiftcut.machine.models.laser import Laser
 from swiftcut.machine.models.machine import Machine
 from swiftcut.ui_gtk.doceditor.recipes.edit_recipe_dialog import (
     AddEditRecipeDialog,
 )
+from swiftcut.ui_gtk.doceditor.recipes.recipe_list import RecipeListWidget
 
 pytestmark = pytest.mark.ui
 
@@ -39,6 +43,14 @@ def laser_machine(ui_context_initializer):
     context.machine_mgr.add_machine(machine)
     context.config.set_machine(machine)
     return machine
+
+
+@pytest.fixture
+def recipe_mgr(ui_context_initializer, tmp_path, monkeypatch):
+    """A RecipeManager on a private directory, used by the context."""
+    mgr = RecipeManager(tmp_path / "recipes")
+    monkeypatch.setattr(ui_context_initializer, "_recipe_mgr", mgr)
+    return mgr
 
 
 def _settings_keys(dialog):
@@ -265,6 +277,76 @@ def test_post_processing_tab_rebuilds_with_selection(laser_machine):
     assert dialog._post_processing_page is None
 
     dialog.close()
+
+
+def test_new_recipe_gets_an_unused_palette_color(laser_machine, recipe_mgr):
+    """A new recipe defaults to the first palette color not yet used."""
+    recipe_mgr.add_recipe(Recipe(name="Taken", color=COLOR_PALETTE[0]))
+    dialog = AddEditRecipeDialog(parent=None, recipe=None)
+
+    assert dialog.get_recipe_data()["color"] == COLOR_PALETTE[1]
+
+    dialog.close()
+
+
+def test_recipe_color_is_prefilled_and_picked(laser_machine, recipe_mgr):
+    """The editor shows the recipe color and returns the picked one."""
+    recipe = Recipe(name="Red", color="#ff0000")
+    dialog = AddEditRecipeDialog(parent=None, recipe=recipe)
+    assert dialog.get_recipe_data()["color"] == "#ff0000"
+
+    rgba = Gdk.RGBA()
+    rgba.parse("#123456")
+    dialog.general_page.color_button.set_rgba(rgba)
+
+    assert dialog.get_recipe_data()["color"] == "#123456"
+
+    dialog.close()
+
+
+def test_edited_recipe_keeps_its_color(
+    laser_machine, recipe_mgr, monkeypatch
+):
+    """Saving an edit stores the color shown in the editor."""
+    dialogs = []
+    monkeypatch.setattr(
+        AddEditRecipeDialog, "present", lambda d: dialogs.append(d)
+    )
+    kept = Recipe(name="Kept", color="#ff0000")
+    picked = Recipe(name="Picked", color="#ff0000")
+    recipe_mgr.add_recipe(kept)
+    recipe_mgr.add_recipe(picked)
+    widget = RecipeListWidget()
+
+    widget._on_edit_recipe(kept)
+    dialogs[-1]._send_response("save")
+    widget._on_edit_recipe(picked)
+    rgba = Gdk.RGBA()
+    rgba.parse("#123456")
+    dialogs[-1].general_page.color_button.set_rgba(rgba)
+    dialogs[-1]._send_response("save")
+
+    reloaded = RecipeManager(recipe_mgr.base_dir)
+    assert reloaded.recipes[kept.uid].color == "#ff0000"
+    assert reloaded.recipes[picked.uid].color == "#123456"
+
+
+def test_added_recipe_stores_its_color(
+    laser_machine, recipe_mgr, monkeypatch
+):
+    """Adding a recipe from the list stores the editor's color."""
+    dialogs = []
+    monkeypatch.setattr(
+        AddEditRecipeDialog, "present", lambda d: dialogs.append(d)
+    )
+    widget = RecipeListWidget()
+
+    widget._on_add_clicked(Gtk.Button())
+    dialogs[-1].general_page.name_row.set_text("New")
+    dialogs[-1]._send_response("add")
+
+    (added,) = RecipeManager(recipe_mgr.base_dir).get_all_recipes()
+    assert added.color == COLOR_PALETTE[0]
 
 
 def _group_for_transformer(page, name):

@@ -15,6 +15,7 @@ from .step_box import StepBox
 from .step_settings.dialog import StepSettingsDialog
 
 if TYPE_CHECKING:
+    from ...core.layer import Layer
     from ...doceditor.editor import DocEditor
 
 logger = logging.getLogger(__name__)
@@ -166,18 +167,23 @@ class WorkflowView(ExpanderWithButton):
         if popup.selected_item:
             step_factory = popup.selected_item
             new_step = step_factory(self.editor.context)
+            name = _("Add step '{name}'").format(name=new_step.name)
 
-            # Apply best recipe using helper method
-            self.editor.step.apply_best_recipe_to_step(new_step)
+            # One undo entry for the step and its layer's recipe color.
+            with self.workflow.doc.history_manager.transaction(name):
+                # Apply best recipe using helper method
+                self.editor.step.apply_best_recipe_to_step(
+                    new_step, layer=cast("Layer", self.workflow.parent)
+                )
 
-            command = ListItemCommand(
-                owner_obj=self.workflow,
-                item=new_step,
-                undo_command="remove_step",
-                redo_command="add_step",
-                name=_("Add step '{name}'").format(name=new_step.name),
-            )
-            self.workflow.doc.history_manager.execute(command)
+                command = ListItemCommand(
+                    owner_obj=self.workflow,
+                    item=new_step,
+                    undo_command="remove_step",
+                    redo_command="add_step",
+                    name=name,
+                )
+                self.workflow.doc.history_manager.execute(command)
 
             # Open the step settings dialog for the new step
             StepSettingsDialog.present_for_step(

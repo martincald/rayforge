@@ -164,6 +164,17 @@ class RecipeControlWidget(Adw.ActionRow):
             # recipe_apply=True, find the step's matching dict by name and
             # overwrite its params with undoable commands.
             self._apply_recipe_transformers(t, recipe.transformer_dicts)
+            # The step's layer takes the recipe color, if it has one.
+            layer = self.step.layer
+            if recipe.color and layer is not None:
+                t.execute(
+                    ChangePropertyCommand(
+                        target=layer,
+                        property_name="color",
+                        new_value=recipe.color,
+                        setter_method_name="set_color",
+                    )
+                )
         # Signal to the parent dialog that its widgets need to be synced
         self.recipe_applied.send(self)
         self._update_ui(self.step)
@@ -224,12 +235,14 @@ class RecipeControlWidget(Adw.ActionRow):
         stock_items = self.editor.doc.stock_items
         stock_item = stock_items[0] if stock_items else None
         step_class = type(self.step)
+        layer = self.step.layer
 
         # 2. Create a template Recipe object to pre-fill the dialog
         template_recipe = Recipe(
             name=_("New {label} Recipe").format(
                 label=step_class.TYPELABEL or step_class.__name__
             ),
+            color=layer.color if layer else None,
             settings=self._get_step_settings(),
             transformer_dicts=self._get_step_transformers(),
             target_step_types=[step_class.__name__],

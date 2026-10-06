@@ -4,6 +4,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 
+from .color import normalize_color
 from .step import Step
 from .step_registry import step_registry
 
@@ -45,6 +46,9 @@ class Recipe:
     uid: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = "New Recipe"
     description: str = ""
+    # "#rrggbb" given to the layer of a step the recipe is applied to;
+    # None (legacy recipes) leaves the layer color alone.
+    color: str | None = None
 
     # --- Applicability Criteria ---
     target_step_types: list[str] = field(default_factory=list)
@@ -331,6 +335,7 @@ class Recipe:
             "uid",
             "name",
             "description",
+            "color",
             "target_step_types",
             "target_machine_id",
             "material_uid",
@@ -367,6 +372,7 @@ class Recipe:
             uid=data.get("uid", str(uuid.uuid4())),
             name=data.get("name", "Unnamed Recipe"),
             description=data.get("description", ""),
+            color=normalize_color(data.get("color")),
             target_step_types=target_step_types,
             target_machine_id=data.get("target_machine_id"),
             material_uid=data.get("material_uid"),

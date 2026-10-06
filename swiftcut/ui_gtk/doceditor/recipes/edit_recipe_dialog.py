@@ -330,6 +330,7 @@ class AddEditRecipeDialog(PatchedDialogWindow):
         return {
             "name": self.general_page.get_name(),
             "description": self.general_page.get_description(),
+            "color": self.general_page.get_recipe_color(),
             "target_machine_id": self.applicability_page.get_machine_id(),
             "target_step_types": self.applicability_page.get_step_types(),
             "material_uid": self.applicability_page.get_material_uid(),

@@ -397,15 +397,20 @@ class WorkflowRow(Gtk.Box):
         if popup.selected_item:
             step_factory = popup.selected_item
             new_step = step_factory(self.editor.context)
-            self.editor.step.apply_best_recipe_to_step(new_step)
-            command = ListItemCommand(
-                owner_obj=workflow,
-                item=new_step,
-                undo_command="remove_step",
-                redo_command="add_step",
-                name=_("Add step '{name}'").format(name=new_step.name),
-            )
-            workflow.doc.history_manager.execute(command)
+            name = _("Add step '{name}'").format(name=new_step.name)
+            # One undo entry for the step and its layer's recipe color.
+            with workflow.doc.history_manager.transaction(name):
+                self.editor.step.apply_best_recipe_to_step(
+                    new_step, layer=self.layer
+                )
+                command = ListItemCommand(
+                    owner_obj=workflow,
+                    item=new_step,
+                    undo_command="remove_step",
+                    redo_command="add_step",
+                    name=name,
+                )
+                workflow.doc.history_manager.execute(command)
             StepSettingsDialog.present_for_step(
                 self.editor, new_step, self.get_root()
             )
