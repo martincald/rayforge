@@ -358,8 +358,9 @@ def _select_device_index(
     Pick a device index, better than RDWorks' FT_Open(0).
 
     Every detected device's description and serial is logged at INFO
-    so the owner can pin one. A profile-pinned serial wins outright;
-    otherwise index 0 is used, with a WARNING listing any other
+    so the owner can pin one. A profile-pinned serial is the only
+    device opened: when it is absent, no other device stands in.
+    Otherwise index 0 is used, with a WARNING listing any other
     devices found (so a wrong-default connection is never silent).
     """
     for d in devices:
@@ -372,11 +373,13 @@ def _select_device_index(
         for d in devices:
             if d.serial == pinned_serial:
                 return d.index
-        logger.warning(
-            f"Pinned usb_serial {pinned_serial!r} not found among "
-            f"detected D2XX devices; falling back to index 0."
+        found = ", ".join(
+            f"{d.index}:{d.description!r}/{d.serial!r}" for d in devices
         )
-        return 0
+        raise ConnectionError(
+            f"Pinned USB device {pinned_serial!r} not found. D2XX "
+            f"devices present: {found or 'none'}"
+        )
 
     others = [d for d in devices if d.index != 0]
     if others:
@@ -434,9 +437,10 @@ def _select_vcp_device(
     """
     Pick the FTDI port to open, better than RDWorks' FT_Open(0).
 
-    A profile-pinned serial wins; otherwise the only FTDI port; and
-    with several, the first, with a WARNING listing the others so a
-    wrong-default connection is never silent.
+    A profile-pinned serial is the only port opened: when it is
+    absent, no other port stands in. Otherwise the only FTDI port;
+    and with several, the first, with a WARNING listing the others
+    so a wrong-default connection is never silent.
     """
     if not devices:
         raise ConnectionError(
@@ -451,9 +455,9 @@ def _select_vcp_device(
         for d in devices:
             if d.serial == pinned_serial:
                 return d
-        logger.warning(
-            f"Pinned usb_serial {pinned_serial!r} not found among FTDI "
-            f"devices: {listing}"
+        raise ConnectionError(
+            f"Pinned USB device {pinned_serial!r} not found. FTDI "
+            f"devices present: {listing}"
         )
 
     if len(devices) > 1:
@@ -812,9 +816,10 @@ class RuidaUsbTransport:
             baudrate: Baud rate for backend="vcp" (nominal 19200; an
                 FT245 FIFO ignores it). backend="d2xx" always uses a
                 fixed 19200, per step 8 of the open sequence.
-            usb_serial: FTDI serial number to pin. When unset, the
-                only FTDI device is used, or with several the first,
-                and the others are logged as a warning.
+            usb_serial: FTDI serial number to pin. When set, only
+                that device is opened. When unset, the only FTDI
+                device is used, or with several the first, and the
+                others are logged as a warning.
             magic: Swizzle magic key. Magic auto-detection, which
                 RuidaTransport performs for UDP multi-controller
                 discovery, is out of scope here.

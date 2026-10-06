@@ -686,6 +686,34 @@ async def test_vcp_connect_without_an_ftdi_port_fails_clearly(
 
 
 @pytest.mark.asyncio
+async def test_vcp_connect_opens_the_pinned_device(serial_cls, comports):
+    comports.return_value = [
+        _ftdi_port("/dev/cu.usbserial-AAA", "AAA"),
+        _ftdi_port("/dev/cu.usbserial-AR0K2H18", "AR0K2H18"),
+    ]
+    transport = RuidaUsbTransport(backend="vcp", usb_serial="AR0K2H18")
+
+    await transport.connect()
+    try:
+        port = serial_cls.call_args.kwargs["port"]
+        assert port == "/dev/cu.usbserial-AR0K2H18"
+    finally:
+        await transport.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_vcp_connect_without_its_pinned_device_opens_nothing(
+    serial_cls, comports
+):
+    comports.return_value = [_ftdi_port("/dev/cu.usbserial-AAA", "AAA")]
+    transport = RuidaUsbTransport(backend="vcp", usb_serial="AR0K2H18")
+
+    with pytest.raises(ConnectionError, match="'AR0K2H18' not found"):
+        await transport.connect()
+    serial_cls.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("error", [errno.EBUSY, errno.EACCES])
 async def test_vcp_port_held_elsewhere_is_reported_as_in_use(
     comports, mocker, error
@@ -832,6 +860,13 @@ def test_device_selection_falls_back_to_index0_with_warning(caplog):
     assert any("BBB" in w and "Ruida B" in w for w in warnings)
 
 
+def test_device_selection_missing_pin_opens_nothing_in_its_place():
+    devices = [D2xxDeviceInfo(index=0, description="Ruida A", serial="AAA")]
+    with pytest.raises(ConnectionError, match="'ZZZ' not found") as raised:
+        _select_device_index(devices, "ZZZ")
+    assert "AAA" in str(raised.value)
+
+
 @pytest.mark.asyncio
 async def test_d2xx_records_the_opened_device(monkeypatch):
     import swiftcut.machine.driver.ruida.ruida_usb_transport as mod
@@ -895,10 +930,17 @@ def test_vcp_selection_first_of_several_warns_with_the_others(caplog):
     )
 
 
-def test_vcp_selection_missing_pin_warns_and_falls_back(caplog):
-    with caplog.at_level(logging.WARNING):
-        assert _select_vcp_device([_PORT_A], "ZZZ") is _PORT_A
-    assert any("ZZZ" in w for w in _warnings(caplog))
+def test_vcp_selection_missing_pin_opens_nothing_in_its_place():
+    """A pinned serial is honored: no other FTDI port stands in for
+    it, and the error names the pin and what is plugged in."""
+    with pytest.raises(ConnectionError, match="'ZZZ' not found") as raised:
+        _select_vcp_device([_PORT_A], "ZZZ")
+    assert "/dev/cu.usbserial-AAA" in str(raised.value)
+
+
+def test_vcp_selection_with_no_devices_and_a_pin_reports_none_found():
+    with pytest.raises(ConnectionError, match="No FTDI USB device"):
+        _select_vcp_device([], "ZZZ")
 
 
 def test_vcp_selection_with_no_devices_raises():
