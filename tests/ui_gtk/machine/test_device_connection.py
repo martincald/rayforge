@@ -8,6 +8,7 @@ import pytest
 
 from swiftcut.machine.driver.ruida.ruida_usb_transport import VcpDeviceInfo
 from swiftcut.machine.models.controller import MachineController
+from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
 from swiftcut.machine.models.machine import Machine
 from swiftcut.ui_gtk.machine import device_settings_page as dsp_module
 
@@ -109,6 +110,34 @@ def test_a_usb_profile_lists_ftdi_devices_and_selects_the_pin(
         "FT232R USB UART (BBB)",
     ]
     assert page.usb_device_row.get_selected() == 2
+
+
+@pytest.mark.ui
+def test_the_seeded_profile_shows_usb_and_ethernet_stays_selectable(
+    ui_context_initializer, monkeypatch, usb_devices
+):
+    seeded_args = ILAB_614_PROFILE["machine"]["driver_args"]
+    page, machine = _page(
+        ui_context_initializer, monkeypatch, "RuidaDriver", seeded_args
+    )
+
+    assert page.connection_row.get_selected() == 1
+    assert page.usb_device_row.get_visible()
+    assert _labels(page.connection_row) == ["Ethernet", "USB"]
+
+    page.connection_row.set_selected(0)
+
+    assert machine.driver_args["connection"] == "udp"
+    assert machine.driver_args["host"] == "192.168.1.100"
+    assert not page.usb_device_row.get_visible()
+
+    # A profile without the key is still Ethernet, as the driver
+    # falls back to UDP.
+    keyless_args = {k: v for k, v in seeded_args.items() if k != "connection"}
+    page, _machine = _page(
+        ui_context_initializer, monkeypatch, "RuidaDriver", keyless_args
+    )
+    assert page.connection_row.get_selected() == 0
 
 
 @pytest.mark.ui

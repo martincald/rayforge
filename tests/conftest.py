@@ -1,4 +1,5 @@
 # flake8: noqa: E402
+import errno
 import multiprocessing
 import os
 import sys
@@ -194,6 +195,50 @@ def block_glib_event_loop(request):
         yield
 
 
+_serial_open_attempts: list[str] = []
+
+
+@pytest.fixture(scope="session", autouse=True)
+def refuse_serial_port_opens():
+    """
+    Tests must never open a serial port: the owner's Ruida is an FTDI
+    USB device, and opening it resets and purges a live connection.
+    For the whole session, background threads included, every real
+    pyserial or D2XX open is refused with the error a denied device
+    gives, and recorded for fail_on_serial_port_open. Transport tests
+    patch serial.Serial or inject a fake D2XX library, so their fakes
+    never reach this.
+    """
+    import serial
+
+    from swiftcut.machine.driver.ruida.ruida_usb_transport import (
+        D2xxLibrary,
+    )
+
+    def refuse(self, *args, **kwargs):
+        test = os.environ.get("PYTEST_CURRENT_TEST", "between tests")
+        _serial_open_attempts.append(test)
+        raise serial.SerialException(
+            errno.EPERM, "Tests must not open serial ports"
+        )
+
+    with (
+        patch.object(serial.Serial, "open", refuse),
+        patch.object(D2xxLibrary, "open", refuse),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def fail_on_serial_port_open(refuse_serial_port_opens):
+    """Fails the test during which a serial port open was attempted."""
+    yield
+    attempts = list(_serial_open_attempts)
+    _serial_open_attempts.clear()
+    if attempts:
+        pytest.fail(f"Serial port open attempted in: {attempts}")
+
+
 @pytest.fixture(autouse=True)
 def clean_context_singleton():
     """
@@ -356,6 +401,7 @@ def lite_context(tmp_path, task_mgr, monkeypatch):
     monkeypatch.setattr(tasker.task_mgr, "_instance", task_mgr)
 
     context = get_context()
+    _seed_inert_machine(temp_machine_dir, context)
     context.initialize_lite_context(temp_machine_dir)
     context._dialect_mgr = DialectManager(temp_dialect_dir)
     yield context

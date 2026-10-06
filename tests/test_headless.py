@@ -22,6 +22,7 @@ from swiftcut.core.doc import Doc
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 from swiftcut.shared.tasker.manager import TaskManager
+from tests.conftest import _seed_inert_machine
 
 
 def _direct_scheduler(callback: Callable, *args: Any, **kwargs: Any):
@@ -51,6 +52,7 @@ def headless_context(tmp_path, task_mgr, monkeypatch):
 
     context = get_context()
     context._headless = True
+    _seed_inert_machine(temp_machine_dir, context)
     context.initialize_lite_context(temp_machine_dir)
     yield context
 

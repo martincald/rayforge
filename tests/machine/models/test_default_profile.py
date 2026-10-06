@@ -31,18 +31,31 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILE_YAML = REPO_ROOT / "docs" / "profiles" / "ilab-614.yaml"
 
 
+@pytest.fixture
+def seeded_machine_mgr(lite_context, tmp_path):
+    """
+    A MachineManager on an empty machines directory, seeded the way a
+    fresh install is. lite_context pre-seeds an inert machine instead,
+    so tests never get the auto-connecting ilab-614 by accident.
+    """
+    manager = MachineManager(tmp_path / "fresh_machines")
+    manager.ensure_default_machine()
+    return manager
+
+
 @pytest.mark.usefixtures("lite_context")
 class TestIlab614DefaultProfile:
     """An empty config dir is silently seeded with the ilab-614 profile."""
 
-    def test_empty_config_dir_seeds_ilab_614(self, lite_context):
-        machines = list(lite_context.machine_mgr.machines.values())
+    def test_empty_config_dir_seeds_ilab_614(self, seeded_machine_mgr):
+        machines = list(seeded_machine_mgr.machines.values())
         assert len(machines) == 1
         machine = machines[0]
 
         assert machine.name == "ilab-614"
         assert machine.driver_name == "RuidaDriver"
         assert machine.driver_args == {
+            "connection": "usb",
             "host": "192.168.1.100",
             "port": 50200,
             "jog_port": 50207,
@@ -69,14 +82,14 @@ class TestIlab614DefaultProfile:
         assert head.focus_power_percent == 0.2
 
     def test_ilab_614_driver_name_resolves_to_ruida_driver(
-        self, lite_context
+        self, seeded_machine_mgr
     ):
         """
         The profile's declared driver must actually resolve to
         RuidaDriver via the driver registry, not silently fall back
         to the no-device driver.
         """
-        machine = next(iter(lite_context.machine_mgr.machines.values()))
+        machine = next(iter(seeded_machine_mgr.machines.values()))
 
         assert get_driver_cls(machine.driver_name) is RuidaDriver
 
@@ -92,12 +105,32 @@ class TestIlab614DefaultProfile:
         driver_args = ILAB_614_PROFILE["machine"]["driver_args"]
 
         assert driver_args == {
+            "connection": "usb",
             "host": "192.168.1.100",
             "port": 50200,
             "jog_port": 50207,
         }
         assert "response_port" not in driver_args
         assert RuidaDriver.RESPONSE_PORT == 40200
+
+    def test_fresh_machines_dir_seeds_a_usb_connection(self, tmp_path):
+        """
+        Seeding an empty machines directory gives ilab-614 a USB
+        connection, in memory and in the file written, and keeps the
+        host and ports so Ethernet can still be chosen.
+        """
+        machine_dir = tmp_path / "fresh_machines"
+        manager = MachineManager(machine_dir)
+
+        machine = manager.ensure_default_machine()
+
+        assert machine is not None
+        assert machine.driver_args["connection"] == "usb"
+        assert machine.driver_args["host"] == "192.168.1.100"
+        [seeded_file] = machine_dir.glob("*.yaml")
+        with open(seeded_file) as f:
+            seeded = yaml.safe_load(f)
+        assert seeded["machine"]["driver_args"]["connection"] == "usb"
 
     def test_preexisting_profile_dir_is_untouched(self, tmp_path):
         """
@@ -254,8 +287,10 @@ def test_committed_default_cut_scale_is_a_gentle_test_cut():
     assert speed <= 100
 
 
-def test_active_machine_is_never_a_driverless_profile(lite_context):
-    manager = lite_context.machine_mgr
+def test_active_machine_is_never_a_driverless_profile(
+    lite_context, seeded_machine_mgr
+):
+    manager = seeded_machine_mgr
     driverless = Machine(lite_context)
     driverless.name = "Driverless"
     manager.add_machine(driverless)
