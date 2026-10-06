@@ -322,6 +322,7 @@ def _usb_diagnostics(
     bytes_sent=10,
     bytes_received=20,
     port=None,
+    **fields,
 ):
     return RuidaDiagnostics(
         driver_class="RuidaDriver",
@@ -339,6 +340,7 @@ def _usb_diagnostics(
         usb_device=device,
         usb_bytes_sent=bytes_sent,
         usb_bytes_received=bytes_received,
+        **fields,
     )
 
 
@@ -371,10 +373,44 @@ def test_diagnostics_group_shows_usb_fields_when_on_usb(
         assert row.get_visible()
     for row in page._udp_only_diag_rows:
         assert not row.get_visible()
-    # ENQ/ACK are transport-agnostic (RuidaClient-level), so they stay
-    # shown for USB too, not just for UDP.
-    assert page.diag_enq_row.get_visible()
+    # ACK is transport-agnostic (RuidaClient-level), so it stays shown
+    # for USB too; ENQ is the UDP keepalive only.
+    assert not page.diag_enq_row.get_visible()
     assert page.diag_ack_row.get_visible()
+
+
+@pytest.mark.ui
+@pytest.mark.parametrize(
+    "fields, expected",
+    [
+        ({}, "Not yet attempted"),
+        ({"usb_handshake_ok": False}, "No reply to the card ID read"),
+        ({"usb_handshake_ok": True}, "Handshake ok (ACK, no card ID)"),
+        (
+            {"usb_handshake_ok": True, "card_id": 0x12345678},
+            "Handshake ok, card ID 0x12345678 (unknown model)",
+        ),
+        (
+            {
+                "usb_handshake_ok": True,
+                "card_id": 0x65106510,
+                "model_name": "RDC6442S",
+            },
+            "Handshake ok, card ID 0x65106510 (RDC6442S)",
+        ),
+    ],
+)
+def test_usb_handshake_row_shows_the_check_and_card_id(
+    ui_context_initializer, monkeypatch, fields, expected
+):
+    page, _machine = _page(
+        ui_context_initializer,
+        monkeypatch,
+        _FakeRuidaDriver(_usb_diagnostics(**fields)),
+    )
+
+    assert page.diag_usb_handshake_row.get_visible()
+    assert page.diag_usb_handshake_row.get_subtitle() == expected
 
 
 @pytest.mark.ui

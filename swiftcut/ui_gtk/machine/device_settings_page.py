@@ -227,11 +227,12 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         self.diag_enq_row = Adw.ActionRow(title=_("Last ENQ Sent"))
         self.diag_ack_row = Adw.ActionRow(title=_("Last ACK Received"))
         # USB fields (package U3): shown instead of the UDP endpoint
-        # rows above when the driver's connection is "usb". ENQ/ACK
-        # above are transport-agnostic and stay shown for USB too.
+        # rows above when the driver's connection is "usb". The ACK
+        # row stays shown for USB too; ENQ is the UDP keepalive only.
         self.diag_usb_backend_row = Adw.ActionRow(title=_("USB Backend"))
         self.diag_usb_port_row = Adw.ActionRow(title=_("USB Port"))
         self.diag_usb_device_row = Adw.ActionRow(title=_("USB Device"))
+        self.diag_usb_handshake_row = Adw.ActionRow(title=_("USB Handshake"))
         self.diag_usb_bytes_sent_row = Adw.ActionRow(title=_("Bytes Sent"))
         self.diag_usb_bytes_received_row = Adw.ActionRow(
             title=_("Bytes Received")
@@ -281,6 +282,7 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             self.diag_usb_backend_row,
             self.diag_usb_port_row,
             self.diag_usb_device_row,
+            self.diag_usb_handshake_row,
             self.diag_usb_bytes_sent_row,
             self.diag_usb_bytes_received_row,
         ]
@@ -486,6 +488,22 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             return _("Never")
         return datetime.fromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
 
+    @staticmethod
+    def _format_usb_handshake(diagnostics) -> str:
+        ok = getattr(diagnostics, "usb_handshake_ok", None)
+        if ok is None:
+            return _("Not yet attempted")
+        if not ok:
+            return _("No reply to the card ID read")
+        card_id = getattr(diagnostics, "card_id", None)
+        if card_id is None:
+            return _("Handshake ok (ACK, no card ID)")
+        return _("Handshake ok, card ID 0x{card_id:08X} ({model})").format(
+            card_id=card_id,
+            model=getattr(diagnostics, "model_name", None)
+            or _("unknown model"),
+        )
+
     def _update_diagnostics(self):
         """Refreshes the read-only Diagnostics group."""
         driver = self.machine.driver
@@ -503,8 +521,8 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             row.set_visible(is_udp)
         for row in self._usb_diag_rows:
             row.set_visible(is_usb)
-        for row in (self.diag_enq_row, self.diag_ack_row):
-            row.set_visible(diagnostics is not None)
+        self.diag_enq_row.set_visible(is_udp)
+        self.diag_ack_row.set_visible(diagnostics is not None)
 
         if diagnostics is not None:
             na = _("N/A")
@@ -543,6 +561,9 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             )
             self.diag_usb_device_row.set_subtitle(
                 getattr(diagnostics, "usb_device", None) or na
+            )
+            self.diag_usb_handshake_row.set_subtitle(
+                self._format_usb_handshake(diagnostics)
             )
             self.diag_usb_bytes_sent_row.set_subtitle(
                 str(getattr(diagnostics, "usb_bytes_sent", 0))

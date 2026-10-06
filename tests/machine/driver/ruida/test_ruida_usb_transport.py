@@ -428,28 +428,6 @@ async def test_chunking_respects_command_boundaries_and_cap(mock_serial):
     assert b"".join(chunks) == plain
 
 
-@pytest.mark.asyncio
-async def test_keepalive_enq_ack(mock_serial):
-    """Keepalive is ENQ (0xCE) out, ACK (0xCC) in, swizzle-only."""
-    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
-    client = RuidaClient(transport)
-    await client.connect()
-    try:
-        await client.keep_alive()
-        assert len(mock_serial._written) == 1
-        swizzled_enq = transport._codec.swizzle(b"\xce")
-        assert mock_serial._written[0] == swizzled_enq
-        assert mock_serial._written[0] != frame_packet(swizzled_enq)
-        assert client.last_enq_sent_at is not None
-
-        mock_serial.feed_data(_device_reply(0xCC))
-        assert await _wait_until(
-            lambda: client.last_ack_received_at is not None
-        )
-    finally:
-        await client.disconnect()
-
-
 def _raw_io(caplog, direction: str) -> list[bytes]:
     return [
         r.data
@@ -484,30 +462,6 @@ async def test_raw_io_logs_tx_and_rx_like_the_udp_wrapper(mock_serial, caplog):
     assert "TX: b'\\xce'" in messages
     assert "TX (raw): b'\\x01\\x02'" in messages
     assert "RX: b'\\xcc'" in messages
-
-
-@pytest.mark.asyncio
-async def test_first_ack_of_each_connection_logs_the_handshake(
-    mock_serial, caplog
-):
-    received: list[bytes] = []
-    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
-    transport.decoded_received.connect(
-        lambda sender, data: received.append(data), weak=False
-    )
-
-    with caplog.at_level(logging.INFO):
-        for connection in range(1, 3):
-            await transport.connect()
-            mock_serial.feed_data(_device_reply(0xCC))
-            mock_serial.feed_data(_device_reply(0xCC))
-            expected = 2 * connection
-            assert await _wait_until(lambda n=expected: len(received) == n)
-            await transport.disconnect()
-
-    handshakes = [r for r in caplog.records if r.message == "USB handshake ok"]
-    assert len(handshakes) == 2
-    assert all(r.levelno == logging.INFO for r in handshakes)
 
 
 @pytest.mark.asyncio
@@ -765,6 +719,110 @@ def _decoded(chunks: list[bytes]) -> list[bytes]:
 )
 def test_replies_split_on_opcodes(chunks, expected):
     assert _decoded(chunks) == expected
+
+
+# --------------------------------------------------------------------
+# The USB connection check, through RuidaClient
+# --------------------------------------------------------------------
+
+_CARD_ID_QUERY = b"\xda\x00\x05\x7e"
+
+
+def _answer_each_write(mock_serial, *replies: bytes) -> None:
+    """Every write is answered with these plain replies, each one
+    swizzled and read off the port on its own."""
+    write = mock_serial.write
+
+    def answer(data):
+        written = write(data)
+        for reply in replies:
+            mock_serial.feed_data(_swizzled(reply))
+        return written
+
+    mock_serial.write = answer
+
+
+async def _handshake(timeout: float = 1.0) -> int | None:
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        return await client.usb_handshake(timeout=timeout)
+    finally:
+        await client.disconnect()
+
+
+def _handshake_logs(caplog) -> list[tuple[int, str]]:
+    return [
+        (r.levelno, r.message)
+        for r in caplog.records
+        if r.message.startswith("USB handshake")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handshake_is_a_card_id_read_answered_by_its_reply(
+    mock_serial, caplog
+):
+    """The reply as the owner's controller sent it: card 0x72107210,
+    one byte, then eight. The query is swizzled, with no checksum."""
+    _answer_each_write(mock_serial, _CARD_ID_REPLY[:1], _CARD_ID_REPLY[1:])
+    with caplog.at_level(logging.INFO):
+        card_id = await _handshake()
+
+    assert card_id == 0x72107210
+    assert mock_serial._written == [_swizzled(_CARD_ID_QUERY)]
+    assert _handshake_logs(caplog) == [
+        (logging.INFO, "USB handshake ok, card id 0x72107210")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handshake_accepts_a_bare_ack(mock_serial, caplog):
+    _answer_each_write(mock_serial, b"\xcc")
+    with caplog.at_level(logging.INFO):
+        card_id = await _handshake()
+
+    assert card_id is None
+    assert _handshake_logs(caplog) == [
+        (logging.INFO, "USB handshake ok, ACK (no card id)")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_handshake_keeps_a_card_id_read_together_with_the_ack(
+    mock_serial, caplog
+):
+    """An ACK then the reply, in one read, the way the --mock ports
+    answer: the card ID still comes back."""
+    _answer_each_write(mock_serial, b"\xcc" + _CARD_ID_REPLY)
+    with caplog.at_level(logging.INFO):
+        card_id = await _handshake()
+
+    assert card_id == 0x72107210
+    assert _handshake_logs(caplog) == [
+        (logging.INFO, "USB handshake ok, card id 0x72107210")
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "replies",
+    [
+        pytest.param((), id="silence"),
+        pytest.param((b"\xcf",), id="a NAK"),
+        pytest.param(
+            (b"\xda\x01\x04\x21" + encode35(0),),
+            id="another register's reply",
+        ),
+    ],
+)
+async def test_handshake_rejects_anything_else(mock_serial, caplog, replies):
+    _answer_each_write(mock_serial, *replies)
+    with caplog.at_level(logging.INFO), pytest.raises(asyncio.TimeoutError):
+        await _handshake(timeout=0.3)
+
+    assert _handshake_logs(caplog) == []
 
 
 # --------------------------------------------------------------------

@@ -40,6 +40,10 @@ JOB_CHUNK_MAX_BYTES = 1000
 JOB_ACK_TIMEOUT = 4.0
 JOB_SEND_ATTEMPTS = 4
 
+# RDWorks' USB read loop gives a reply 5 s (FUN_100021B0,
+# docs/reference/rdcam_usb.md).
+USB_HANDSHAKE_TIMEOUT = 5.0
+
 # A single-byte job-chunk reply is an ACK when the byte, raw or
 # unswizzled, is 0xCC or 0xC6, and a NAK for 0xCF or 0xCD. The client
 # receives transport-unswizzled bytes, so the raw-byte cases map back
@@ -1075,6 +1079,55 @@ class RuidaClient:
             Card ID (e.g., 0x65106510) or None if read failed
         """
         return await self._read_memory_wait(CARD_ID_ADDRESS)
+
+    async def usb_handshake(
+        self, timeout: float = USB_HANDSHAKE_TIMEOUT
+    ) -> int | None:
+        """
+        Check a USB link with a card-ID read (DA 00 05 7E).
+
+        RDWorks' USB path never sends a bare ENQ, and the controller
+        does not answer one there; it answers commands. The app's
+        connection check and the macOS probe both run this, so a
+        probe success predicts an app success.
+
+        Args:
+            timeout: How long to wait for an answer, in seconds.
+
+        Returns:
+            The card ID from a DA 01 05 7E reply, or None when a bare
+            0xCC ACK answered with no such reply in the same read.
+
+        Raises:
+            asyncio.TimeoutError: Neither answer came within timeout.
+        """
+        query = self._build_read_memory(CARD_ID_ADDRESS)
+        reply_head = b"\xda\x01" + query[2:]
+        answered = asyncio.Event()
+        card_ids: list[int] = []
+
+        def on_reply(sender, data: bytes) -> None:
+            # An ACK and the reply read together both land before the
+            # wait below resumes, so the card ID is kept either way.
+            if len(data) == 9 and data[:4] == reply_head:
+                card_ids.append(decode35(data[4:9]))
+            elif data != b"\xcc":
+                return
+            answered.set()
+
+        # Armed before the send, so a fast reply is not missed.
+        self._transport.decoded_received.connect(on_reply, weak=False)
+        try:
+            await self.send_command(query)
+            await asyncio.wait_for(answered.wait(), timeout)
+        finally:
+            self._transport.decoded_received.disconnect(on_reply)
+        card_id = card_ids[0] if card_ids else None
+        if card_id is None:
+            logger.info("USB handshake ok, ACK (no card id)")
+        else:
+            logger.info(f"USB handshake ok, card id 0x{card_id:08X}")
+        return card_id
 
     async def get_model_name(self) -> str | None:
         """

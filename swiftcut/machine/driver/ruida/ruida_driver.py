@@ -32,8 +32,9 @@ from ..driver import (
     Pos,
     PWMParams,
 )
-from .ruida_client import RuidaClient
+from .ruida_client import USB_HANDSHAKE_TIMEOUT, RuidaClient
 from .ruida_encoder import RuidaEncoder, build_rd_bytes
+from .ruida_maps import CARD_ID_TO_MODEL
 from .ruida_transport import RuidaTransport
 from .ruida_usb_transport import RuidaUsbTransport, VcpDeviceInfo
 
@@ -140,6 +141,11 @@ class RuidaDiagnostics:
     usb_device: str | None = None
     usb_bytes_sent: int = 0
     usb_bytes_received: int = 0
+    # The USB connection check: None until one ran, then whether
+    # the card-ID read was answered.
+    usb_handshake_ok: bool | None = None
+    card_id: int | None = None
+    model_name: str | None = None
 
 
 class RuidaDriver(Driver):
@@ -161,6 +167,11 @@ class RuidaDriver(Driver):
     HOMING_TIMEOUT = 40.0
     RECONNECT_INTERVAL = 5.0
     KEEPALIVE_INTERVAL = 1.0
+    # Over USB the controller answers no bare ENQ: the connection
+    # check is a card-ID read and the keepalive a status read.
+    USB_HANDSHAKE_TIMEOUT = USB_HANDSHAKE_TIMEOUT
+    USB_KEEPALIVE_INTERVAL = 2.0
+    USB_KEEPALIVE_MISS_LIMIT = 3
     POSITION_POLL_INTERVAL = 0.5
     # The connection loop wakes on this tick and lets each activity
     # own its own deadline. Sleeping a whole keepalive interval made
@@ -216,6 +227,8 @@ class RuidaDriver(Driver):
         self._usb_serial: str | None = None
         self._usb_transport: RuidaUsbTransport | None = None
         self._usb_traffic: _UsbTrafficCounter | None = None
+        self._usb_handshake_ok: bool | None = None
+        self._card_id: int | None = None
         self._response_received = asyncio.Event()
         self._connection_task: asyncio.Task | None = None
         self._card_info_task: asyncio.Task | None = None
@@ -348,6 +361,9 @@ class RuidaDriver(Driver):
             usb_bytes_received=(
                 self._usb_traffic.bytes_received if self._usb_traffic else 0
             ),
+            usb_handshake_ok=self._usb_handshake_ok,
+            card_id=self._card_id,
+            model_name=CARD_ID_TO_MODEL.get(self._card_id),
         )
 
     @classmethod
@@ -625,15 +641,11 @@ class RuidaDriver(Driver):
 
                 await self._client.connect()
 
-                self._response_received.clear()
-                await self._client.keep_alive()
-
-                try:
-                    await asyncio.wait_for(
-                        self._response_received.wait(),
-                        timeout=self.CONNECTION_TIMEOUT,
-                    )
-                except asyncio.TimeoutError:
+                if self._connection == "usb":
+                    answered = await self._usb_handshake()
+                else:
+                    answered = await self._enq_answered()
+                if not answered:
                     self._update_connection_status(
                         TransportStatus.ERROR,
                         _("No response from controller"),
@@ -666,6 +678,7 @@ class RuidaDriver(Driver):
                 last_poll_time = 0.0
                 last_ref_poll_time = 0.0
                 last_keepalive = asyncio.get_event_loop().time()
+                keepalive_misses = 0
 
                 while self._keep_running and self._is_connected:
                     current_time = asyncio.get_event_loop().time()
@@ -674,7 +687,38 @@ class RuidaDriver(Driver):
                     # It used to be sent once, at connect, and never
                     # again: liveness rode entirely on the position
                     # poll, which a job upload suspends.
-                    if current_time - last_keepalive >= (
+                    if self._connection == "usb":
+                        # A status read. It pauses with polling: a
+                        # job, homing or move owns the wire then and
+                        # polls status itself.
+                        if (
+                            not self._suppress_polling
+                            and current_time - last_keepalive
+                            >= self.USB_KEEPALIVE_INTERVAL
+                        ):
+                            status = await self._client._read_memory_wait(
+                                self.MACHINE_STATUS_ADDRESS,
+                                timeout=self.CONNECTION_TIMEOUT,
+                            )
+                            last_keepalive = asyncio.get_event_loop().time()
+                            if status is not None:
+                                keepalive_misses = 0
+                            else:
+                                keepalive_misses += 1
+                            if (
+                                keepalive_misses
+                                >= self.USB_KEEPALIVE_MISS_LIMIT
+                            ):
+                                logger.warning(
+                                    f"Controller missed "
+                                    f"{keepalive_misses} status reads "
+                                    f"in a row, reconnecting",
+                                    extra=self._log_extra("MACHINE_EVENT"),
+                                )
+                                self._is_connected = False
+                                await self._disconnect_transports()
+                                break
+                    elif current_time - last_keepalive >= (
                         self.KEEPALIVE_INTERVAL
                     ):
                         await self._client.keep_alive()
@@ -722,6 +766,36 @@ class RuidaDriver(Driver):
                 await asyncio.sleep(self.RECONNECT_INTERVAL)
 
         logger.debug("Exiting Ruida connection loop")
+
+    async def _enq_answered(self) -> bool:
+        """The UDP connection check: an ENQ, answered by anything."""
+        self._response_received.clear()
+        await self._client.keep_alive()
+        try:
+            await asyncio.wait_for(
+                self._response_received.wait(),
+                timeout=self.CONNECTION_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            return False
+        return True
+
+    async def _usb_handshake(self) -> bool:
+        """
+        The USB connection check: a card-ID read, answered by its
+        DA 01 reply or a bare ACK (RuidaClient.usb_handshake).
+        """
+        try:
+            card_id = await self._client.usb_handshake(
+                timeout=self.USB_HANDSHAKE_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            self._usb_handshake_ok = False
+            return False
+        self._usb_handshake_ok = True
+        if card_id is not None:
+            self._card_id = card_id
+        return True
 
     async def _disconnect_transports(self) -> None:
         # Last chance to stop a held jog key; the socket may already be
@@ -1681,6 +1755,7 @@ class RuidaDriver(Driver):
             card_info = await self._client.get_card_info()
             if card_info:
                 card_id, model_name = card_info
+                self._card_id = card_id
                 device = (
                     f"{model_name or 'Ruida controller'} "
                     f"(Card ID: 0x{card_id:08X})"

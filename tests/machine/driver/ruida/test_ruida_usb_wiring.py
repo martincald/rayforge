@@ -28,7 +28,9 @@ from swiftcut.machine.driver.ruida.ruida_driver import (
 )
 from swiftcut.machine.driver.ruida.ruida_simulator import RuidaSimulator
 from swiftcut.machine.driver.ruida.ruida_usb_transport import VcpDeviceInfo
+from swiftcut.machine.driver.ruida.ruida_util import encode35
 from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.transport import TransportStatus
 from swiftcut.shared.tasker import task_mgr
 
 _USB = "swiftcut.machine.driver.ruida.ruida_usb_transport"
@@ -106,6 +108,12 @@ def _mock_usb_transport(mocker):
     return usb_transport_cls, instance
 
 
+_CARD_ID_READ = b"\xda\x00\x05\x7e"
+_STATUS_READ = b"\xda\x00\x04\x00"
+# The owner's controller's answer to the card-ID read (2026-10-06).
+_CARD_ID_REPLY = b"\xda\x01\x05\x7e" + encode35(0x72107210)
+
+
 class _SimulatedFtdiPort:
     """
     A pyserial-shaped FTDI port with the Ruida simulator behind it.
@@ -152,8 +160,8 @@ async def test_a_usb_profile_connects_to_the_controller(lite_context, mocker):
     """
     End to end below the UI: a USB profile with no host and no pin
     enumerates the FTDI port, opens it, and the connection loop's
-    ENQ/ACK brings the driver to connected, with Diagnostics naming
-    the port and device.
+    card-ID handshake brings the driver to connected, with
+    Diagnostics naming the port and device.
     """
     mocker.patch(f"{_USB}.serial.Serial", side_effect=_SimulatedFtdiPort)
     mocker.patch(
@@ -182,7 +190,8 @@ async def test_a_usb_profile_connects_to_the_controller(lite_context, mocker):
         diagnostics = driver.get_diagnostics()
         assert diagnostics.usb_port == "/dev/cu.usbserial-A10K3XYZ"
         assert diagnostics.usb_device == "FT245R USB FIFO (A10K3XYZ)"
-        assert diagnostics.last_enq_sent_at is not None
+        assert diagnostics.usb_handshake_ok is True
+        assert diagnostics.last_enq_sent_at is None
         assert diagnostics.last_ack_received_at is not None
         assert diagnostics.usb_bytes_sent > 0
         assert diagnostics.usb_bytes_received > 0
@@ -191,14 +200,16 @@ async def test_a_usb_profile_connects_to_the_controller(lite_context, mocker):
 
 
 @pytest.mark.asyncio
-async def test_usb_mode_sends_the_enq_over_usb_and_opens_no_udp_socket(
+async def test_usb_mode_checks_over_usb_and_opens_no_udp_socket(
     lite_context, mocker, monkeypatch
 ):
     """
     A USB profile still carries its UDP host and ports. None of them
-    may be used: the connection loop's ENQ goes out on the USB port,
-    no UdpTransport is built and no datagram socket is created.
+    may be used: the connection check, a card-ID read, goes out on
+    the USB port, the keepalive is a status read, no ENQ is ever
+    sent, no UdpTransport is built and no datagram socket is created.
     """
+    monkeypatch.setattr(RuidaDriver, "USB_KEEPALIVE_INTERVAL", 0.05)
     ports: list[_SimulatedFtdiPort] = []
 
     def open_port(*args, **kwargs):
@@ -248,13 +259,165 @@ async def test_usb_mode_sends_the_enq_over_usb_and_opens_no_udp_socket(
             await asyncio.sleep(0.05)
         assert driver.is_connected
 
+        codec = RuidaCodec(0x88)
+        assert await _wait_until(
+            lambda: codec.swizzle(_STATUS_READ) in ports[0].written
+        )
         assert len(ports) == 1
-        assert ports[0].written[0] == RuidaCodec(0x88).swizzle(b"\xce")
+        assert ports[0].written[0] == codec.swizzle(_CARD_ID_READ)
+        assert codec.swizzle(b"\xce") not in ports[0].written
     finally:
         await driver.cleanup()
 
     udp_transport_cls.assert_not_called()
     assert datagram_sockets == []
+
+
+class _ControllerPort(_SimulatedFtdiPort):
+    """
+    Answers a card-ID read with its DA 01 reply alone, as in the
+    2026-10-06 probe log. The n-th status read is answered when
+    status_answers[n] is true and dropped otherwise (all are answered
+    when it is None). Everything else is answered by the simulator.
+    """
+
+    def __init__(self, status_answers: list[bool] | None = None):
+        super().__init__()
+        self._status_answers = status_answers
+        self.status_reads = 0
+        self.status_reads_at_close: int | None = None
+
+    def write(self, data):
+        plain = self._codec.unswizzle(bytes(data))
+        if plain == _CARD_ID_READ:
+            self.written.append(bytes(data))
+            self._replies.put(self._codec.swizzle(_CARD_ID_REPLY))
+            return len(data)
+        if plain == _STATUS_READ:
+            n = self.status_reads
+            self.status_reads += 1
+            answers = self._status_answers
+            if answers is not None and not (n < len(answers) and answers[n]):
+                self.written.append(bytes(data))
+                return len(data)
+        return super().write(data)
+
+    def close(self):
+        if self.status_reads_at_close is None:
+            self.status_reads_at_close = self.status_reads
+
+
+class _SilentPort(_SimulatedFtdiPort):
+    """Opens, takes every write, and never answers."""
+
+    def write(self, data):
+        self.written.append(bytes(data))
+        return len(data)
+
+
+async def _connect_usb_driver(lite_context, mocker, port) -> RuidaDriver:
+    mocker.patch(f"{_USB}.serial.Serial", return_value=port)
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    driver = RuidaDriver(lite_context, Machine(lite_context))
+    driver._setup_implementation(connection="usb", usb_backend="vcp")
+    await driver._connect_implementation()
+    return driver
+
+
+@pytest.mark.asyncio
+async def test_the_handshake_card_id_shows_in_diagnostics(
+    lite_context, mocker
+):
+    driver = await _connect_usb_driver(lite_context, mocker, _ControllerPort())
+    try:
+        assert await _wait_until(lambda: driver.is_connected)
+
+        diagnostics = driver.get_diagnostics()
+        assert diagnostics.usb_handshake_ok is True
+        assert diagnostics.card_id == 0x72107210
+    finally:
+        await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_a_silent_controller_fails_the_handshake(
+    lite_context, mocker, monkeypatch
+):
+    """No answer to the card-ID read: not connected, the error says
+    so, and the read is all that was sent -- no ENQ."""
+    monkeypatch.setattr(RuidaDriver, "USB_HANDSHAKE_TIMEOUT", 0.2)
+    monkeypatch.setattr(RuidaDriver, "RECONNECT_INTERVAL", 30.0)
+    port = _SilentPort()
+    statuses: list[tuple] = []
+    driver = await _connect_usb_driver(lite_context, mocker, port)
+    driver.connection_status_changed.connect(
+        lambda sender, status, message="": statuses.append((status, message)),
+        weak=False,
+    )
+    try:
+        assert await _wait_until(
+            lambda: driver.get_diagnostics().usb_handshake_ok is False
+        )
+        assert not driver.is_connected
+        assert (
+            TransportStatus.ERROR,
+            "No response from controller",
+        ) in statuses
+        assert port.written == [RuidaCodec(0x88).swizzle(_CARD_ID_READ)]
+    finally:
+        await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_three_missed_status_reads_in_a_row_drop_the_connection(
+    lite_context, mocker, monkeypatch, caplog
+):
+    """
+    The USB keepalive is a status read. Two misses and then an answer
+    start the count over; the third miss in a row drops the
+    connection, on the sixth read.
+    """
+    monkeypatch.setattr(RuidaDriver, "USB_KEEPALIVE_INTERVAL", 0.05)
+    monkeypatch.setattr(RuidaDriver, "CONNECTION_TIMEOUT", 0.3)
+    monkeypatch.setattr(RuidaDriver, "RECONNECT_INTERVAL", 30.0)
+    port = _ControllerPort(
+        status_answers=[False, False, True, False, False, False]
+    )
+    driver = await _connect_usb_driver(lite_context, mocker, port)
+    try:
+        assert await _wait_until(
+            lambda: port.status_reads_at_close is not None, timeout=10.0
+        )
+        assert port.status_reads_at_close == 6
+        assert not driver.is_connected
+    finally:
+        await driver.cleanup()
+
+    assert (
+        "Controller missed 3 status reads in a row, reconnecting"
+        in caplog.messages
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_usb_keepalive_pauses_while_polling_is_suspended(
+    lite_context, mocker, monkeypatch
+):
+    """A job, homing or move owns the wire and polls status itself;
+    the keepalive leaves it alone until polling resumes."""
+    monkeypatch.setattr(RuidaDriver, "USB_KEEPALIVE_INTERVAL", 0.05)
+    port = _ControllerPort()
+    driver = await _connect_usb_driver(lite_context, mocker, port)
+    try:
+        assert await _wait_until(lambda: port.status_reads > 0)
+        with driver._polling_suspended():
+            await asyncio.sleep(0.1)  # a read already in flight lands
+            before = port.status_reads
+            await asyncio.sleep(0.5)
+            assert port.status_reads == before
+        assert await _wait_until(lambda: port.status_reads > before)
+    finally:
+        await driver.cleanup()
 
 
 class TestSetupUsb:
