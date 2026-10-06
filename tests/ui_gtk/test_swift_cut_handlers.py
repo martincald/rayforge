@@ -19,7 +19,8 @@ CASES = [
     ("swiftcut.ui_gtk.machine", "jog_widget.py", 20),
     ("swiftcut.ui_gtk.machine", "cut_scale_dialog.py", 1),
     ("swiftcut.ui_gtk.doceditor", "bottom_panel.py", 28),
-    ("swiftcut.ui_gtk", "toolbar.py", 5),
+    # 4, not 5: the focus button left the toolbar with its own handler.
+    ("swiftcut.ui_gtk", "toolbar.py", 4),
 ]
 
 

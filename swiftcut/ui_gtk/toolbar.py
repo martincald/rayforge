@@ -127,7 +127,7 @@ class MainToolbar(Gtk.Box):
         self.tab_menu_button.set_tooltip_text(_("Add Tabs to selection"))
         self.append(self.tab_menu_button)
 
-        # Control buttons: home, send, pause, stop
+        # Control buttons: home, go scale, cut scale, send, pause, stop
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         self.append(sep)
 
@@ -136,12 +136,21 @@ class MainToolbar(Gtk.Box):
         self.home_button.set_action_name("win.machine-home")
         self.append(self.home_button)
 
-        self.frame_button = Gtk.Button(child=get_icon("frame-symbolic"))
-        self.frame_button.set_tooltip_text(
-            _("Cycle laser head around the occupied area")
+        self.go_scale_button = Gtk.Button(child=get_icon("frame-symbolic"))
+        self.go_scale_button.set_tooltip_text(
+            _("Traverse the job outline with the laser off")
         )
-        self.frame_button.set_action_name("win.machine-frame")
-        self.append(self.frame_button)
+        self.go_scale_button.set_action_name("win.machine-go-scale")
+        self.append(self.go_scale_button)
+
+        self.cut_scale_button = Gtk.Button(
+            child=get_icon("laser-on-symbolic")
+        )
+        self.cut_scale_button.set_tooltip_text(
+            _("Cut a rectangle around the job outline")
+        )
+        self.cut_scale_button.set_action_name("win.machine-cut-scale")
+        self.append(self.cut_scale_button)
 
         self.send_button = Gtk.Button(child=get_icon("send-symbolic"))
         self.send_button.set_tooltip_text(_("Send to machine"))
@@ -169,16 +178,6 @@ class MainToolbar(Gtk.Box):
         )
         self.clear_alarm_button.set_action_name("win.machine-clear-alarm")
         self.append(self.clear_alarm_button)
-
-        self.focus_on_icon = get_icon("laser-on-symbolic")
-        self.focus_off_icon = get_icon("laser-off-symbolic")
-        self.focus_button = Gtk.ToggleButton()
-        self.focus_button.set_child(self.focus_on_icon)
-        self.focus_button.add_css_class("sc-laser-live")
-        self.focus_button.set_tooltip_text(_("Toggle focus laser"))
-        self.focus_button.set_action_name("win.toggle-focus")
-        self.focus_button.connect("toggled", self._on_focus_toggled)
-        self.append(self.focus_button)
 
         # Add clickable warning for misconfigured machine
         self.machine_warning_box = Gtk.Box(spacing=SPACE_CONTROL)
@@ -311,14 +310,6 @@ class MainToolbar(Gtk.Box):
         """Handle action registry changes by refreshing arrange menu."""
         self.arrange_actions = self._build_arrange_actions()
         self.arrange_menu_button.update_actions(self.arrange_actions)
-
-    def _on_focus_toggled(self, button: Gtk.ToggleButton):
-        """Callback to update the focus icon when the button's
-        state changes for any reason (user click or action state change)."""
-        if button.get_active():
-            button.set_child(self.focus_off_icon)
-        else:
-            button.set_child(self.focus_on_icon)
 
     def set_machine_warning(
         self, error_title: str, error_code: int, error_description: str

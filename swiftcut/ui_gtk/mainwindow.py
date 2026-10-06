@@ -532,6 +532,15 @@ class MainWindow(Adw.ApplicationWindow):
             self.surface.get_selection_bounds
         )
 
+        # The toolbar's Go Scale and Cut Scale press the jog panel's
+        # buttons, so they follow those buttons' state.
+        jog = self.bottom_panel.jog_widget
+        for button in (jog.go_scale_btn, jog.cut_scale_btn):
+            button.connect("notify::sensitive", self._update_scale_actions)
+            button.connect(
+                "notify::tooltip-text", self._update_scale_actions
+            )
+
         self.view_stack.connect(
             "notify::visible-child-name", self._on_view_stack_changed
         )
@@ -1630,14 +1639,6 @@ class MainWindow(Adw.ApplicationWindow):
                 and not is_job_or_task_active
             )
             am.get_action("machine-frame").set_enabled(can_frame)
-            if not active_machine.can_frame():
-                self.toolbar.frame_button.set_tooltip_text(
-                    _("Configure frame power to enable")
-                )
-            else:
-                self.toolbar.frame_button.set_tooltip_text(
-                    _("Cycle laser head around the occupied area")
-                )
 
             send_sensitive = (
                 not isinstance(active_driver, NoDeviceDriver)
@@ -1726,6 +1727,8 @@ class MainWindow(Adw.ApplicationWindow):
                 and not is_job_or_task_active
             )
             am.get_action("zero-here").set_enabled(can_zero)
+
+        self._update_scale_actions()
 
         # Update actions that don't depend on the machine state
         selected_elements = self.surface.get_selected_elements()
@@ -2145,6 +2148,52 @@ class MainWindow(Adw.ApplicationWindow):
         # Run the job using the helper
         self._run_machine_job(job_coro)
 
+    def on_go_scale_clicked(self, action, param):
+        # The jog panel's button owns Go Scale, including the Stop it
+        # turns into while a scale runs.
+        self.bottom_panel.jog_widget.go_scale_btn.emit("clicked")
+
+    def on_cut_scale_clicked(self, action, param):
+        # Pressing the panel's button asks for confirmation there.
+        self.bottom_panel.jog_widget.cut_scale_btn.emit("clicked")
+
+    def _update_scale_actions(self, *args):
+        """
+        Enable the Go Scale and Cut Scale actions exactly when the jog
+        panel's buttons are, and say why when they are not.
+        """
+        jog = self.bottom_panel.jog_widget
+        if not jog.machine or not jog.machine.is_connected():
+            reason = _("{name}: connect to the machine first")
+        elif not self.machine_cmd.has_job_ops:
+            reason = _("{name}: the job has no operations")
+        elif jog.go_scale_btn.get_sensitive():
+            # Only a running scale, whose Go Scale is its Stop, leaves
+            # Go Scale enabled and Cut Scale not.
+            reason = _("{name}: a scale is already running")
+        else:
+            reason = _("{name}: not available right now")
+        for action_name, name, panel_button, button in (
+            (
+                "machine-go-scale",
+                _("Go Scale"),
+                jog.go_scale_btn,
+                self.toolbar.go_scale_button,
+            ),
+            (
+                "machine-cut-scale",
+                _("Cut Scale"),
+                jog.cut_scale_btn,
+                self.toolbar.cut_scale_button,
+            ),
+        ):
+            enabled = panel_button.get_sensitive()
+            self.action_manager.get_action(action_name).set_enabled(enabled)
+            if enabled:
+                button.set_tooltip_text(panel_button.get_tooltip_text())
+            else:
+                button.set_tooltip_text(reason.format(name=name))
+
     def on_send_clicked(self, action, param):
         config = get_context().config
         machine = config.machine
@@ -2213,12 +2262,6 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.machine_cmd.set_focus_power(head, 0)
         action.set_state(value)
-
-        # Update the toolbar button icon
-        if is_focus_on:
-            self.toolbar.focus_button.set_child(self.toolbar.focus_off_icon)
-        else:
-            self.toolbar.focus_button.set_child(self.toolbar.focus_on_icon)
 
     def _on_laser_power_changed(self, sender, *, head, percent):
         focus_action = self.action_manager.get_action("toggle-focus")
