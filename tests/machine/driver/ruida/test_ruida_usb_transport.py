@@ -24,6 +24,7 @@ import logging
 import os
 import queue
 import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -566,6 +567,108 @@ async def test_disconnect_joins_reader_thread_before_closing(mock_serial):
     await transport.disconnect()
 
     assert thread_alive_when_closed is False
+
+
+@pytest.mark.asyncio
+async def test_no_read_reaches_a_closed_port(mock_serial):
+    """
+    The 2026-10-06 log: "[Errno 6] Device not configured" from the
+    reader. Every read the reader makes, across connect, traffic and
+    disconnect, happens while the port is still open.
+    """
+    port_closed_at_read: list[bool] = []
+    orig_read = mock_serial.read
+
+    def spy_read(size=1):
+        port_closed_at_read.append(mock_serial._closed)
+        return orig_read(size)
+
+    mock_serial.read = spy_read
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    await transport.connect()
+    mock_serial.feed_data(_device_reply(0xCC))
+    assert await _wait_until(lambda: len(port_closed_at_read) >= 3)
+    await transport.disconnect()
+    reads_at_close = len(port_closed_at_read)
+    await asyncio.sleep(0.2)
+
+    assert True not in port_closed_at_read
+    assert len(port_closed_at_read) == reads_at_close
+
+
+@pytest.mark.asyncio
+async def test_a_reader_that_outlives_its_join_never_reads_the_next_port(
+    mock_serial, caplog
+):
+    """
+    A reader stuck in a read past the join is closed under, with a
+    WARNING. When its read returns it stops: it must not take up the
+    next connection's stop event and read the reopened port.
+    """
+    gate = threading.Event()
+
+    def stuck_read(size=1):
+        # Held until the test opens the gate, then a 0.01 s read.
+        gate.wait(2.0)
+        time.sleep(0.01)
+        return b""
+
+    mock_serial.read = stuck_read
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    await transport.connect()
+    first_reader = transport._raw._reader_thread
+    first_reader.join = lambda timeout=None: None
+    with caplog.at_level(logging.WARNING):
+        await transport.disconnect()
+    assert "USB reader did not stop before close" in caplog.messages
+
+    await transport.connect()
+    try:
+        gate.set()
+        assert await _wait_until(lambda: not first_reader.is_alive())
+        assert transport._raw._reader_thread.is_alive()
+    finally:
+        await transport.disconnect()
+
+
+def test_a_read_error_after_a_requested_stop_logs_at_debug(
+    mock_serial, caplog
+):
+    """
+    The port failing under a read that a disconnect already stopped
+    is logged at DEBUG; the same failure with no stop asked for is
+    still an ERROR.
+    """
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    transport._raw._serial = mock_serial
+    unplugged = OSError(errno.ENXIO, "Device not configured")
+    stop = threading.Event()
+
+    def read_during_disconnect(size=1):
+        stop.set()
+        raise unplugged
+
+    def read_while_running(size=1):
+        raise unplugged
+
+    with caplog.at_level(logging.DEBUG):
+        mock_serial.read = read_during_disconnect
+        transport._raw._reader_thread_func(stop)
+        stopped = [(r.levelno, r.message) for r in caplog.records]
+        caplog.clear()
+        mock_serial.read = read_while_running
+        transport._raw._reader_thread_func(threading.Event())
+        running = [(r.levelno, r.message) for r in caplog.records]
+
+    assert stopped == [
+        (
+            logging.DEBUG,
+            "USB read ended by disconnect: [Errno 6] Device not configured",
+        )
+    ]
+    assert running == [
+        (logging.ERROR, "USB read error: [Errno 6] Device not configured")
+    ]
 
 
 # --------------------------------------------------------------------

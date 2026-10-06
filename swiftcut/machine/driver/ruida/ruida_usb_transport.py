@@ -533,8 +533,14 @@ class _UsbBackendBase:
         self._loop = loop
         self._stop_event = threading.Event()
         self.status_changed.send(self, status=TransportStatus.CONNECTED)
+        # Each reader owns its stop event. Read through self, a reader
+        # that outlived its join took up the next connection's event
+        # and kept reading the next port.
         self._reader_thread = threading.Thread(
-            target=self._reader_thread_func, name="usb-reader", daemon=True
+            target=self._reader_thread_func,
+            args=(self._stop_event,),
+            name="usb-reader",
+            daemon=True,
         )
         self._reader_thread.start()
 
@@ -560,6 +566,11 @@ class _UsbBackendBase:
             await loop.run_in_executor(
                 None, self._reader_thread.join, 2.0
             )
+            # Closed anyway: holding the port open would be worse. The
+            # straggler's stop is already set, so its failing read
+            # only logs at DEBUG.
+            if self._reader_thread.is_alive():
+                logger.warning("USB reader did not stop before close")
         self._reader_thread = None
         try:
             await loop.run_in_executor(None, self._close)
@@ -584,13 +595,15 @@ class _UsbBackendBase:
             self, status=TransportStatus.ERROR, message=message
         )
 
-    def _reader_thread_func(self) -> None:
-        assert self._stop_event is not None
-        while not self._stop_event.is_set():
+    def _reader_thread_func(self, stop_event: threading.Event) -> None:
+        while not stop_event.is_set():
             try:
                 data = self._raw_read()
             except Exception as e:
-                if self._stop_event.is_set():
+                # A read that fails once a stop was asked for is the
+                # port going away under it, not a fault.
+                if stop_event.is_set():
+                    logger.debug(f"USB read ended by disconnect: {e}")
                     break
                 logger.error(f"USB read error: {e}")
                 if self._loop and not self._loop.is_closed():
