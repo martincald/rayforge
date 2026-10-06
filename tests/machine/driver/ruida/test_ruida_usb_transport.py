@@ -21,6 +21,7 @@ Two groups:
 import asyncio
 import logging
 import queue
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -502,6 +503,38 @@ async def test_first_ack_of_each_connection_logs_the_handshake(
     handshakes = [r for r in caplog.records if r.message == "USB handshake ok"]
     assert len(handshakes) == 2
     assert all(r.levelno == logging.INFO for r in handshakes)
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_connect_closes_the_port_its_open_returns(
+    mock_serial, monkeypatch
+):
+    """
+    Cancelling connect() does not stop _open in its executor thread.
+    The port that open goes on to return must still be closed, or it
+    stays open with no owner after a rebuild cancels the loop.
+    """
+    import swiftcut.machine.driver.ruida.ruida_usb_transport as mod
+
+    in_open = threading.Event()
+    release = threading.Event()
+
+    def settle(seconds):
+        in_open.set()
+        release.wait(2.0)
+
+    monkeypatch.setattr(mod.time, "sleep", settle)
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    task = asyncio.create_task(transport.connect())
+    assert await _wait_until(in_open.is_set)
+
+    task.cancel()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert mock_serial._closed
+    assert not transport.is_connected
 
 
 @pytest.mark.asyncio

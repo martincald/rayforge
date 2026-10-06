@@ -508,8 +508,17 @@ class _UsbBackendBase:
     async def connect(self) -> None:
         loop = asyncio.get_running_loop()
         self.status_changed.send(self, status=TransportStatus.CONNECTING)
+        opening = loop.run_in_executor(None, self._open)
         try:
-            await loop.run_in_executor(None, self._open)
+            await asyncio.shield(opening)
+        except asyncio.CancelledError:
+            # Cancelling the await does not stop _open in its thread.
+            # Wait for it, then close what it opened: a disconnect()
+            # that ran first found nothing to close, and the port
+            # stayed open with no owner.
+            await asyncio.wait([opening])
+            await loop.run_in_executor(None, self._close)
+            raise
         except Exception as e:
             self.status_changed.send(
                 self, status=TransportStatus.ERROR, message=str(e)

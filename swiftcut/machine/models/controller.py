@@ -59,6 +59,13 @@ class MachineController:
         self.driver: Driver = NoDeviceDriver(context, machine)
         self._connect_driver_signals()
 
+        # Rebuilds run one at a time, so a driver's connection loop is
+        # gone and its port closed before the next driver connects.
+        self._rebuild_lock = asyncio.Lock()
+        # The driver_name and driver_args the live driver was set up
+        # from, so a second request for the same settings is a no-op.
+        self._driver_config: tuple[str | None, dict[str, Any]] | None = None
+
         # Track the last driver configuration to detect changes
         self._last_driver_name = self.machine.driver_name
         self._last_driver_args = self.machine.driver_args.copy()
@@ -179,57 +186,76 @@ class MachineController:
         Instantiates and sets up the driver based on the machine's current
         configuration. Connects if auto_connect is enabled and the new driver
         is not NoDeviceDriver.
+
+        One settings change asks for two rebuilds: set_driver_args'
+        own and this controller's change listener. The second finds
+        the live driver already set up from those settings and leaves
+        it, and its open port, alone.
         """
-        logger.info(
-            f"Machine '{self.machine.name}' (id:{self.machine.id}) rebuilding "
-            f"driver to '{self.machine.driver_name}'"
-        )
+        async with self._rebuild_lock:
+            config = (self.machine.driver_name, self.machine.driver_args)
+            if self.driver.did_setup and config == self._driver_config:
+                logger.debug(
+                    f"Machine '{self.machine.name}' driver already runs "
+                    f"the current settings; not rebuilding"
+                )
+                return
 
-        old_driver = self.driver
-        self._disconnect_driver_signals()
-        self.machine.set_precheck_error(None)
-
-        if self.machine.driver_name:
-            driver_cls = get_driver_cls(self.machine.driver_name)
-        else:
-            driver_cls = NoDeviceDriver
-
-        logger.info(
-            f"Driver resolved: {driver_cls.__name__} for profile "
-            f"{self.machine.name}"
-        )
-
-        try:
-            driver_cls.precheck(**self.machine.driver_args)
-        except DriverPrecheckError as e:
-            logger.warning(
-                f"Precheck failed for driver {self.machine.driver_name}: {e}"
-            )
-            self.machine.set_precheck_error(str(e))
-
-        new_driver = driver_cls(self.context, self.machine)
-        new_driver.setup(**self.machine.driver_args)
-        new_driver.config = self.machine.driver_config.copy()
-
-        self.driver = new_driver
-        self._connect_driver_signals()
-
-        self._last_driver_name = self.machine.driver_name
-        self._last_driver_args = self.machine.driver_args.copy()
-
-        self._scheduler(self.machine.changed.send, self.machine)
-
-        if old_driver:
-            await old_driver.cleanup()
-
-        if self.machine.auto_connect and not isinstance(
-            new_driver, NoDeviceDriver
-        ):
             logger.info(
                 f"Machine '{self.machine.name}' (id:{self.machine.id}) "
-                f"connecting after driver rebuild"
+                f"rebuilding driver to '{self.machine.driver_name}'"
             )
-            await self.driver.connect()
+
+            old_driver = self.driver
+            self._disconnect_driver_signals()
+            self.machine.set_precheck_error(None)
+
+            if self.machine.driver_name:
+                driver_cls = get_driver_cls(self.machine.driver_name)
+            else:
+                driver_cls = NoDeviceDriver
+
+            logger.info(
+                f"Driver resolved: {driver_cls.__name__} for profile "
+                f"{self.machine.name}"
+            )
+
+            try:
+                driver_cls.precheck(**self.machine.driver_args)
+            except DriverPrecheckError as e:
+                logger.warning(
+                    f"Precheck failed for driver "
+                    f"{self.machine.driver_name}: {e}"
+                )
+                self.machine.set_precheck_error(str(e))
+
+            new_driver = driver_cls(self.context, self.machine)
+            new_driver.setup(**self.machine.driver_args)
+            new_driver.config = self.machine.driver_config.copy()
+
+            self.driver = new_driver
+            self._driver_config = (
+                self.machine.driver_name,
+                self.machine.driver_args.copy(),
+            )
+            self._connect_driver_signals()
+
+            self._last_driver_name = self.machine.driver_name
+            self._last_driver_args = self.machine.driver_args.copy()
+
+            self._scheduler(self.machine.changed.send, self.machine)
+
+            if old_driver:
+                await old_driver.cleanup()
+
+            if self.machine.auto_connect and not isinstance(
+                new_driver, NoDeviceDriver
+            ):
+                logger.info(
+                    f"Machine '{self.machine.name}' (id:{self.machine.id}) "
+                    f"connecting after driver rebuild"
+                )
+                await self.driver.connect()
 
     def _reset_status(self):
         """Resets status to a disconnected/unknown state and signals it."""

@@ -13,6 +13,7 @@ precheck, and the diagnostics fields the Device settings page reads.
 import asyncio
 import queue
 import socket
+import threading
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -28,6 +29,7 @@ from swiftcut.machine.driver.ruida.ruida_driver import (
 from swiftcut.machine.driver.ruida.ruida_simulator import RuidaSimulator
 from swiftcut.machine.driver.ruida.ruida_usb_transport import VcpDeviceInfo
 from swiftcut.machine.models.machine import Machine
+from swiftcut.shared.tasker import task_mgr
 
 _USB = "swiftcut.machine.driver.ruida.ruida_usb_transport"
 
@@ -490,6 +492,9 @@ async def test_changing_connection_rebuilds_on_the_other_transport(
     """
     machine = Machine(lite_context)
     lite_context.machine_mgr.add_machine(machine)
+    # Created before the driver is named, so it schedules no rebuild
+    # of its own on the task manager's loop beside this test's.
+    controller = machine.controller
     machine.driver_name = "RuidaDriver"
     machine.driver_args = {
         "host": "192.168.1.100",
@@ -498,7 +503,6 @@ async def test_changing_connection_rebuilds_on_the_other_transport(
     }
     # Never let a test dial out to a real machine.
     machine.auto_connect = False
-    controller = machine.controller
 
     await controller.rebuild_driver()
     assert controller.driver._connection == "udp"
@@ -517,3 +521,203 @@ async def test_changing_connection_rebuilds_on_the_other_transport(
     assert controller.driver.host == "192.168.1.100"
 
     await machine.shutdown()
+
+
+_FTDI_PORT = SimpleNamespace(
+    device="/dev/cu.usbserial-A10K3XYZ",
+    vid=0x0403,
+    pid=0x6001,
+    description="FT245R USB FIFO",
+    serial_number="A10K3XYZ",
+)
+
+
+async def _wait_until(predicate, timeout: float = 2.0) -> bool:
+    for _ in range(int(timeout / 0.02)):
+        if predicate():
+            return True
+        await asyncio.sleep(0.02)
+    return predicate()
+
+
+def _on_task_loop(coro):
+    """
+    Runs coro on the task manager's loop, as the app runs every
+    rebuild: the connection loop a rebuild starts, and the sync tasks
+    a connection schedules, then share one event loop.
+    """
+    return asyncio.wrap_future(
+        asyncio.run_coroutine_threadsafe(coro, task_mgr.loop)
+    )
+
+
+def _usb_controller(lite_context):
+    """
+    A controller for a USB profile that connects on rebuild. It is
+    built before the driver is named, so it schedules no rebuild of
+    its own on the task manager's loop.
+    """
+    machine = Machine(lite_context)
+    lite_context.machine_mgr.add_machine(machine)
+    controller = machine.controller
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {"connection": "usb", "usb_backend": "vcp"}
+    # USB against a simulated port only: nothing here can dial out.
+    machine.auto_connect = True
+    return machine, controller
+
+
+@pytest.mark.asyncio
+async def test_a_repeated_rebuild_for_the_same_settings_keeps_the_port(
+    lite_context, mocker
+):
+    """
+    One settings change asks for two rebuilds, set_driver_args' own
+    and the controller's change listener, and the second can come
+    after the first driver has opened the port. It must leave that
+    driver alone: the port is opened exactly once.
+    """
+    serial_cls = mocker.patch(
+        f"{_USB}.serial.Serial", side_effect=_SimulatedFtdiPort
+    )
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    machine, controller = _usb_controller(lite_context)
+    try:
+        await _on_task_loop(controller.rebuild_driver())
+        first = controller.driver
+        assert await _wait_until(lambda: first.is_connected)
+
+        await _on_task_loop(controller.rebuild_driver())
+
+        assert controller.driver is first
+        assert first.is_connected
+        assert serial_cls.call_count == 1
+    finally:
+        await _on_task_loop(machine.shutdown())
+
+
+@pytest.mark.asyncio
+async def test_a_rebuild_closes_the_old_port_before_the_new_driver_opens(
+    lite_context, mocker, monkeypatch
+):
+    """
+    New settings while the first driver is still opening the port:
+    the rebuild cancels that driver's loop, waits for its open to
+    finish and closes it, and only then does the new driver open the
+    port. The port is never held twice.
+    """
+    events: list[str] = []
+
+    class _Port(_SimulatedFtdiPort):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            events.append("open")
+
+        def close(self):
+            events.append("close")
+
+    in_first_open = threading.Event()
+    release = threading.Event()
+
+    def settle(seconds):
+        if not in_first_open.is_set():
+            in_first_open.set()
+            release.wait(2.0)
+
+    monkeypatch.setattr(f"{_USB}.time.sleep", settle)
+    mocker.patch(f"{_USB}.serial.Serial", side_effect=_Port)
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    machine, controller = _usb_controller(lite_context)
+    try:
+        await _on_task_loop(controller.rebuild_driver())
+        first_loop = controller.driver._connection_task
+        assert await _wait_until(in_first_open.is_set)
+
+        machine.driver_args = {**machine.driver_args, "usb_serial": "A10K3XYZ"}
+        asyncio.get_running_loop().call_later(0.1, release.set)
+        await _on_task_loop(controller.rebuild_driver())
+
+        assert first_loop.cancelled()
+        assert await _wait_until(lambda: controller.driver.is_connected)
+        assert events == ["open", "close", "open"]
+    finally:
+        release.set()
+        await _on_task_loop(machine.shutdown())
+
+
+@pytest.mark.asyncio
+async def test_a_second_connect_keeps_the_one_running_loop(
+    lite_context, mocker
+):
+    _usb_transport_cls, instance = _mock_usb_transport(mocker)
+    instance.disconnect = AsyncMock()
+    driver = RuidaDriver(lite_context, Machine(lite_context))
+    driver._setup_implementation(connection="usb")
+    mocker.patch.object(
+        driver, "_connection_loop", new=lambda: asyncio.sleep(10)
+    )
+    try:
+        await driver._connect_implementation()
+        first_loop = driver._connection_task
+        await driver._connect_implementation()
+
+        assert driver._connection_task is first_loop
+        assert not first_loop.done()
+    finally:
+        await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_overlapping_rebuilds_never_hold_the_port_twice(
+    lite_context, mocker, monkeypatch
+):
+    """
+    A rebuild that starts while another is still closing the old
+    driver's port waits its turn, instead of connecting a third
+    driver beside a port that is still open.
+    """
+    held = 0
+    most_held = 0
+
+    class _Port(_SimulatedFtdiPort):
+        def __init__(self, *args, **kwargs):
+            nonlocal held, most_held
+            super().__init__(*args, **kwargs)
+            held += 1
+            most_held = max(most_held, held)
+
+        def close(self):
+            nonlocal held
+            held -= 1
+
+    in_first_open = threading.Event()
+    release = threading.Event()
+
+    def settle(seconds):
+        if not in_first_open.is_set():
+            in_first_open.set()
+            release.wait(2.0)
+
+    monkeypatch.setattr(f"{_USB}.time.sleep", settle)
+    mocker.patch(f"{_USB}.serial.Serial", side_effect=_Port)
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    machine, controller = _usb_controller(lite_context)
+    try:
+        await _on_task_loop(controller.rebuild_driver())
+        assert await _wait_until(in_first_open.is_set)
+
+        machine.driver_args = {**machine.driver_args, "usb_serial": "A10K3XYZ"}
+        second = _on_task_loop(controller.rebuild_driver())
+        await asyncio.sleep(0.05)
+        machine.driver_args = {**machine.driver_args, "usb_serial": ""}
+        third = _on_task_loop(controller.rebuild_driver())
+        await asyncio.sleep(0.05)
+        release.set()
+        await asyncio.gather(second, third)
+
+        assert await _wait_until(lambda: controller.driver.is_connected)
+        assert most_held == 1
+        assert held == 1
+    finally:
+        release.set()
+        await _on_task_loop(machine.shutdown())
