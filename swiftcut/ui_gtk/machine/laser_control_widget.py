@@ -124,6 +124,17 @@ class LaserControlWidget(Gtk.Box):
         )
         self._group.add(self._duration_row)
 
+        self._focus_btn = Gtk.Button(label=_("Focus"))
+        self._focus_btn.set_valign(Gtk.Align.CENTER)
+        self._focus_btn.set_tooltip_text(
+            _("Run the controller's Z focus routine")
+        )
+        self._focus_btn.set_action_name("win.machine-focus-z")
+        self._focus_row = Adw.ActionRow(title=_("Focus Z"))
+        self._focus_row.set_subtitle(_("The controller's own Z focus"))
+        self._focus_row.add_suffix(self._focus_btn)
+        self._group.add(self._focus_row)
+
         # This panel lives in the dock, so its fields are the dock's.
         for row in (
             self._frequency_row,
@@ -225,6 +236,7 @@ class LaserControlWidget(Gtk.Box):
             self._cancel_timer()
             self._is_on = is_on
             self._update_toggle_ui()
+            self._update_sensitivity()
 
     def _on_connection_status_changed(self, sender, **kwargs):
         if self.machine and not self.machine.is_connected() and self._is_on:
@@ -236,12 +248,28 @@ class LaserControlWidget(Gtk.Box):
     def _update_sensitivity(self):
         has_heads = self.machine is not None and len(self.machine.heads) > 0
         connected = self.machine is not None and self.machine.is_connected()
+        # Only a machine whose driver says so is "not supported". A
+        # removed machine reports its last disconnect after its
+        # controller is gone, and there is no driver left to ask.
+        can_pulse = (
+            self.machine is None
+            or not self.machine.has_controller
+            or self.machine.driver.can_pulse()
+        )
+        # Off stays available while something else has the laser on.
+        can_toggle = can_pulse or self._is_on
         self._head_row.set_sensitive(has_heads)
-        self._power_row.set_sensitive(has_heads)
+        self._power_row.set_sensitive(has_heads and can_pulse)
         self._frequency_row.set_sensitive(has_heads)
         self._pulse_width_row.set_sensitive(has_heads)
-        self._duration_row.set_sensitive(has_heads)
-        self._toggle_btn.set_sensitive(connected and has_heads)
+        self._duration_row.set_sensitive(has_heads and can_pulse)
+        self._toggle_btn.set_sensitive(connected and has_heads and can_toggle)
+        unsupported = _("Not supported on this controller")
+        self._toggle_btn.set_tooltip_text(
+            _("Toggle laser on/off") if can_toggle else unsupported
+        )
+        for row in (self._power_row, self._duration_row):
+            row.set_tooltip_text(None if can_pulse else unsupported)
 
     def _on_toggle_clicked(self, button):
         if self._is_on:

@@ -424,6 +424,11 @@ class MachineCmd:
             lambda ctx: driver.clear_alarm(), key="clear-alarm"
         )
 
+    def focus_z(self, machine: Machine):
+        """Adds a task to run the controller's Z focus routine."""
+        driver = machine.driver
+        self._editor.task_manager.add_coroutine(lambda ctx: driver.focus_z())
+
     def jog(self, machine: Machine, deltas: dict[Axis, float], speed: int):
         """
         Adds a task to jog the machine along specific axes.

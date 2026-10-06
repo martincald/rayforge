@@ -722,6 +722,23 @@ class TestMachine:
         select_tool_spy.assert_called_once_with(5)
 
     @pytest.mark.asyncio
+    async def test_focus_z_delegates_to_the_driver(
+        self,
+        machine: Machine,
+        mocker,
+        task_mgr: TaskManager,
+        doc_editor: DocEditor,
+    ):
+        await wait_for_tasks_to_finish(task_mgr)
+        machine_cmd = MachineCmd(doc_editor)
+        focus_z = mocker.patch.object(machine.driver, "focus_z")
+
+        machine_cmd.focus_z(machine)
+        await wait_for_tasks_to_finish(task_mgr)
+
+        focus_z.assert_awaited_once_with()
+
+    @pytest.mark.asyncio
     async def test_shutdown_cleans_up_driver(
         self, machine: Machine, mocker, task_mgr: TaskManager
     ):

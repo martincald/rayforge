@@ -6,7 +6,7 @@ import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 
@@ -28,7 +28,9 @@ gi.require_version("Adw", "1")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, GLib, Gtk
 
+from swiftcut.context import get_context
 from swiftcut.machine.cmd import MachineCmd
+from swiftcut.machine.driver.driver import DeviceState, DeviceStatus
 from swiftcut.machine.transport import TransportStatus
 from swiftcut.ui_gtk.mainwindow import MainWindow
 
@@ -333,3 +335,230 @@ def test_cut_scale_action_asks_for_confirmation_first(app_and_window):
 
         run_cut_scale.assert_called_once()
         assert run_cut_scale.call_args.args[:3] == (machine, 1200, 0.5)
+
+
+# Focus Z runs from the dock's Laser tab; pulse and clear alarm are
+# offered only by a driver that has a command for them.
+
+UNSUPPORTED = "Not supported on this controller"
+
+
+@pytest.mark.ui
+def test_laser_tab_focus_runs_only_when_connected_and_idle(app_and_window):
+    _app, win = app_and_window
+    action = win.action_manager.get_action("machine-focus-z")
+    laser = win.bottom_panel.laser_control
+    focus = laser._focus_btn
+    machine = laser.machine
+    assert focus.get_action_name() == "win.machine-focus-z"
+
+    with (
+        patch.object(type(machine.driver), "can_focus_z", return_value=True),
+        patch(
+            "swiftcut.ui_gtk.mainwindow.task_mgr.has_tasks",
+            return_value=False,
+        ),
+    ):
+        win._update_actions_and_ui()
+        assert not action.get_enabled()
+        assert not focus.get_sensitive()
+
+        idle = DeviceState(status=DeviceStatus.IDLE)
+        with (
+            _connected(machine, has_ops=False),
+            patch.object(machine, "device_state", idle),
+        ):
+            win._update_actions_and_ui()
+            assert action.get_enabled()
+            assert focus.get_sensitive()
+
+            with patch.object(
+                MachineCmd,
+                "is_job_running",
+                new_callable=PropertyMock,
+                return_value=True,
+            ):
+                win._update_actions_and_ui()
+                assert not action.get_enabled()
+                assert not focus.get_sensitive()
+
+            win._update_actions_and_ui()
+            with patch.object(win.machine_cmd, "focus_z") as focus_z:
+                focus.emit("clicked")
+            focus_z.assert_called_once_with(machine)
+
+
+@pytest.mark.ui
+def test_focus_z_turns_the_focus_laser_off_first(app_and_window):
+    _app, win = app_and_window
+    machine = win.bottom_panel.laser_control.machine
+    head = machine.get_default_laser_head()
+    toggle_focus = win.action_manager.get_action("toggle-focus")
+    sent = MagicMock()
+
+    with (
+        patch.object(
+            win.machine_cmd, "set_focus_power", sent.set_focus_power
+        ),
+        patch.object(win.machine_cmd, "focus_z", sent.focus_z),
+    ):
+        toggle_focus.set_state(GLib.Variant.new_boolean(True))
+        win.on_focus_z_clicked(
+            win.action_manager.get_action("machine-focus-z"), None
+        )
+
+    assert not toggle_focus.get_state().get_boolean()
+    assert sent.mock_calls == [
+        call.set_focus_power(head, 0),
+        call.focus_z(machine),
+    ]
+
+
+@pytest.mark.ui
+def test_laser_tab_focus_needs_a_driver_that_can_focus(app_and_window):
+    _app, win = app_and_window
+    machine = win.bottom_panel.laser_control.machine
+    idle = DeviceState(status=DeviceStatus.IDLE)
+
+    with (
+        patch.object(type(machine.driver), "can_focus_z", return_value=False),
+        _connected(machine, has_ops=False),
+        patch.object(machine, "device_state", idle),
+    ):
+        win._update_actions_and_ui()
+
+        assert not win.action_manager.get_action(
+            "machine-focus-z"
+        ).get_enabled()
+
+
+@pytest.mark.ui
+def test_laser_tab_pulse_says_it_is_not_supported(app_and_window):
+    _app, win = app_and_window
+    laser = win.bottom_panel.laser_control
+    machine = laser.machine
+    assert machine.heads
+    pulse_rows = (laser._power_row, laser._duration_row)
+
+    with _connected(machine, has_ops=False):
+        with patch.object(
+            type(machine.driver), "can_pulse", return_value=False
+        ):
+            laser._update_sensitivity()
+
+            assert not laser._toggle_btn.get_sensitive()
+            assert laser._toggle_btn.get_tooltip_text() == UNSUPPORTED
+            for row in pulse_rows:
+                assert not row.get_sensitive()
+                assert row.get_tooltip_text() == UNSUPPORTED
+
+        with patch.object(
+            type(machine.driver), "can_pulse", return_value=True
+        ):
+            laser._update_sensitivity()
+
+            assert laser._toggle_btn.get_sensitive()
+            assert laser._toggle_btn.get_tooltip_text() == (
+                "Toggle laser on/off"
+            )
+            for row in pulse_rows:
+                assert row.get_sensitive()
+                assert row.get_tooltip_text() is None
+
+
+@pytest.mark.ui
+def test_laser_tab_can_switch_off_a_laser_turned_on_elsewhere(
+    app_and_window,
+):
+    """Print-and-Cut's focus toggle turns it on; off stays available."""
+    _app, win = app_and_window
+    laser = win.bottom_panel.laser_control
+    machine = laser.machine
+    head = machine.heads[0]
+    controller = machine.controller
+
+    with (
+        _connected(machine, has_ops=False),
+        patch.object(type(machine.driver), "can_pulse", return_value=False),
+        patch.object(laser.machine_cmd, "set_focus_power") as set_power,
+    ):
+        controller.laser_power_changed.send(
+            controller, head=head, percent=0.2
+        )
+
+        assert laser._toggle_btn.get_active()
+        assert laser._toggle_btn.get_sensitive()
+
+        laser._toggle_btn.emit("clicked")
+
+        set_power.assert_called_once_with(head, 0, machine)
+        assert not laser._toggle_btn.get_sensitive()
+        assert laser._toggle_btn.get_tooltip_text() == UNSUPPORTED
+
+
+@pytest.mark.ui
+def test_laser_tab_survives_a_removed_machines_last_disconnect(
+    app_and_window,
+):
+    """Its controller is gone by then, so the driver cannot be asked."""
+    _app, win = app_and_window
+    laser = win.bottom_panel.laser_control
+    machine = laser.machine
+
+    with (
+        patch.object(
+            type(machine),
+            "has_controller",
+            new_callable=PropertyMock,
+            return_value=False,
+        ),
+        patch.object(
+            type(machine),
+            "driver",
+            new_callable=PropertyMock,
+            side_effect=ValueError("No machine found"),
+        ),
+    ):
+        laser._update_sensitivity()
+
+    assert not laser._toggle_btn.get_sensitive()
+
+
+@pytest.mark.ui
+def test_clear_alarm_says_it_is_not_supported(app_and_window):
+    _app, win = app_and_window
+    action = win.action_manager.get_action("machine-clear-alarm")
+    button = win.toolbar.clear_alarm_button
+    machine = win.bottom_panel.laser_control.machine
+    alarm = DeviceState(status=DeviceStatus.ALARM)
+
+    with patch.object(machine, "device_state", alarm):
+        with patch.object(
+            type(machine.driver), "can_clear_alarm", return_value=False
+        ):
+            win._update_actions_and_ui()
+
+            assert not action.get_enabled()
+            assert not button.get_sensitive()
+            assert button.get_tooltip_text() == UNSUPPORTED
+
+        with patch.object(
+            type(machine.driver), "can_clear_alarm", return_value=True
+        ):
+            win._update_actions_and_ui()
+
+            assert action.get_enabled()
+            assert button.get_tooltip_text() == (
+                "Clear machine alarm (unlock)"
+            )
+
+    # With no machine there is no controller to be unsupported.
+    with patch.object(
+        type(machine.driver), "can_clear_alarm", return_value=False
+    ):
+        win._update_actions_and_ui()
+        with patch.object(get_context().config, "machine", None):
+            win._update_actions_and_ui()
+
+    assert not action.get_enabled()
+    assert button.get_tooltip_text() == "Clear machine alarm (unlock)"

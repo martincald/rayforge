@@ -500,6 +500,16 @@ class RuidaClient:
         """Home the U axis."""
         await self.send_command(self._build_home_u())
 
+    async def focus_z(self) -> None:
+        """
+        Run the controller's Z focus (D8 2E).
+
+        UNVERIFIED. "Focus Z" is the ruida_maps name for D8 2E, which
+        is community provenance; there is no capture of it in this
+        repository, and the simulator treats it as a no-op.
+        """
+        await self.send_command(self._build_focus_z())
+
     async def start_process(self) -> None:
         """Start the laser cutting process."""
         await self.send_command(self._build_start_process())
@@ -732,6 +742,9 @@ class RuidaClient:
 
     def _build_home_u(self) -> bytes:
         return b"\xd8\x2d"
+
+    def _build_focus_z(self) -> bytes:
+        return b"\xd8\x2e"
 
     def _build_start_process(self) -> bytes:
         return b"\xd8\x00"

@@ -1122,6 +1122,40 @@ class RuidaDriver(Driver):
         await self._set_travel_speed(self._jog_speed_mm_min)
         await self._jog_move_to(*target)
 
+    def can_focus_z(self) -> bool:
+        return True
+
+    async def focus_z(self) -> None:
+        """
+        Run the controller's Z focus (D8 2E) and wait until it is idle.
+
+        Ignored while a job or any interactive motion is in flight, like
+        jog(). Otherwise it runs the way home() does: it holds the busy
+        interlock until the machine reports itself idle, and Stop ends
+        it with D8 01. What D8 2E moves is not known here, so the cached
+        position is dropped afterwards, as it is after a home.
+
+        UNVERIFIED on hardware: see RuidaClient.focus_z.
+        """
+        assert self._client
+        if self._jog_busy or self._job_running:
+            logger.info(
+                "Focus Z ignored: the machine is busy",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
+        logger.info("Focus Z", extra=self._log_extra("MACHINE_EVENT"))
+        self._response_timeout = self.HOMING_TIMEOUT
+        self._jog_busy = True
+        try:
+            with self._polling_suspended():
+                await self._client.focus_z()
+                await self._wait_for_status_idle("focus")
+        finally:
+            self._response_timeout = self.CONNECTION_TIMEOUT
+            self._jog_busy = False
+            self._last_known_pos = None
+
     def _top_left_corner(self) -> tuple[int, int]:
         """
         The bed's top-left corner in machine micrometres.

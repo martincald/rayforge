@@ -575,11 +575,49 @@ class Driver(ABC):
         Writes a single configuration setting to the device.
         """
 
+    def can_clear_alarm(self) -> bool:
+        """
+        Check if :meth:`clear_alarm` sends anything to this device.
+
+        Returns:
+            True if the device has a command that clears an alarm.
+        """
+        return False
+
     @abstractmethod
     async def clear_alarm(self) -> None:
         """
         Sends a command to clear any active alarm state.
         """
+
+    def can_focus_z(self) -> bool:
+        """
+        Check if this device runs a Z focus routine of its own.
+
+        Returns:
+            True if the device supports :meth:`focus_z`.
+        """
+        return False
+
+    async def focus_z(self) -> None:
+        """
+        Run the controller's own Z focus routine.
+
+        Drivers that report :meth:`can_focus_z` must override this.
+        """
+        raise NotImplementedError
+
+    def can_pulse(self) -> bool:
+        """
+        Check if this device fires the laser by hand, outside a job.
+
+        This is what the dock's Laser tab does through
+        :meth:`set_focus_power`.
+
+        Returns:
+            True if the device has a command that fires the laser.
+        """
+        return False
 
     @abstractmethod
     async def set_power(self, head: "Laser", percent: float) -> None:

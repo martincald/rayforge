@@ -1566,11 +1566,15 @@ class MainWindow(Adw.ApplicationWindow):
             am.get_action("machine-hold").set_enabled(False)
             am.get_action("machine-cancel").set_enabled(False)
             am.get_action("machine-clear-alarm").set_enabled(False)
+            am.get_action("machine-focus-z").set_enabled(False)
             am.get_action("execute-macro").set_enabled(False)
             am.get_action("zero-here").set_enabled(False)
 
             self.toolbar.export_button.set_tooltip_text(
                 _("Select a machine to enable G-code export")
+            )
+            self.toolbar.clear_alarm_button.set_tooltip_text(
+                _("Clear machine alarm (unlock)")
             )
             self.toolbar.machine_warning_box.set_visible(False)
             self.surface.set_laser_dot_visible(False)
@@ -1679,12 +1683,20 @@ class MainWindow(Adw.ApplicationWindow):
             cancel_sensitive = conn_status == TransportStatus.CONNECTED
             am.get_action("machine-cancel").set_enabled(cancel_sensitive)
 
-            clear_alarm_sensitive = bool(
+            can_clear_alarm = bool(
+                active_driver and active_driver.can_clear_alarm()
+            )
+            clear_alarm_sensitive = can_clear_alarm and bool(
                 device_status == DeviceStatus.ALARM
                 or (active_driver and active_driver.state.error)
             )
             am.get_action("machine-clear-alarm").set_enabled(
                 clear_alarm_sensitive
+            )
+            self.toolbar.clear_alarm_button.set_tooltip_text(
+                _("Clear machine alarm (unlock)")
+                if can_clear_alarm
+                else _("Not supported on this controller")
             )
             if clear_alarm_sensitive:
                 self.toolbar.clear_alarm_button.add_css_class(
@@ -1705,6 +1717,11 @@ class MainWindow(Adw.ApplicationWindow):
             am.get_action("toggle-focus").set_enabled(can_focus)
 
             connected = conn_status == TransportStatus.CONNECTED
+            am.get_action("machine-focus-z").set_enabled(
+                connected
+                and bool(active_driver and active_driver.can_focus_z())
+                and not is_job_or_task_active
+            )
             self.surface.set_laser_dot_visible(connected)
             if state and connected:
                 x, y = state.machine_pos[:2]
@@ -2239,6 +2256,19 @@ class MainWindow(Adw.ApplicationWindow):
         if not config.machine:
             return
         self.machine_cmd.clear_alarm(config.machine)
+
+    def on_focus_z_clicked(self, action, param):
+        config = get_context().config
+        if not config.machine:
+            return
+
+        # Disable focus mode when focusing, as Home does
+        focus_action = self.action_manager.get_action("toggle-focus")
+        focus_state = focus_action.get_state()
+        if focus_state and focus_state.get_boolean():
+            focus_action.change_state(GLib.Variant.new_boolean(False))
+
+        self.machine_cmd.focus_z(config.machine)
 
     def on_toggle_focus_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant

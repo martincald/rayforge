@@ -431,6 +431,7 @@ class ActionManager:
         self._add_action(
             "machine-clear-alarm", self.win.on_clear_alarm_clicked
         )
+        self._add_action("machine-focus-z", self.win.on_focus_z_clicked)
 
         # Stateful action for the hold/pause button
         self._add_stateful_action(
