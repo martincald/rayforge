@@ -65,17 +65,19 @@ def test_probe_reads_card_id_then_position_and_never_moves():
         "rtscts=False, dsrdtr=False, rts=False, dtr=False"
     ) in result.stdout
     writes = _tx(result.stdout)
+    # The app's own queries: handshake, position poll, keepalive.
     assert [plain for _wire, plain in writes] == [
         bytes.fromhex("da 00 05 7e"),
         bytes.fromhex("da 00 04 21"),
-        b"\xce",
+        bytes.fromhex("da 00 04 00"),
     ]
     for wire, plain in writes:
         assert wire == _CODEC.swizzle(plain)
         assert wire != frame_packet(_CODEC.swizzle(plain))
+    assert "USB handshake ok, card id 0x" in result.stderr
     assert "card_id=0x" in result.stdout
     assert "-> x=0 um" in result.stdout
-    assert "ENQ answered: YES (ACK)" in result.stdout
+    assert "-> status=0x" in result.stdout
 
 
 def test_jog_sends_exactly_one_relative_x_move():

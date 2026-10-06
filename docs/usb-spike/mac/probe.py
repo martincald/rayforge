@@ -3,17 +3,17 @@
 
 Opens the laser's FTDI port exactly as the app does
 (RuidaUsbTransport, vcp backend), prints the settings it opened with,
-then sends three commands, each printed byte for byte as written and
-as read back:
+then sends the app's own three queries, each printed byte for byte
+as written and as read back:
 
-1. card ID read      DA 00 05 7E
-2. X position read   DA 00 04 21
-3. keepalive ENQ     CE -- the byte the app sends every second. Its
-   ACK (CC) is what the app's connect and every ACK-paced job send
-   wait for, so a NO here means USB jobs cannot work yet.
+1. handshake         DA 00 05 7E -- the card-ID read the app connects
+   with (RuidaClient.usb_handshake: its DA 01 reply or a bare CC
+   within 5 s). A pass here predicts the app connects.
+2. X position read   DA 00 04 21 -- the app's position poll.
+3. status read       DA 00 04 00 -- the app's USB keepalive, every
+   2 s; three misses in a row drop the connection.
 
-Two memory reads and a keepalive: nothing here moves the head or
-fires the laser.
+Three memory reads: nothing here moves the head or fires the laser.
 
 Ladder: 1) enumerate.py  2) *probe.py*  3) jog.py  4) fixture.py
 
@@ -32,7 +32,7 @@ import sys
 from _mac_common import add_args, build_transport, print_port_settings, setup
 
 X_POSITION_ADDRESS = 0x0421
-ENQ_TIMEOUT_S = 1.0
+STATUS_ADDRESS = 0x0400
 
 
 async def run(args: argparse.Namespace) -> int:
@@ -45,13 +45,17 @@ async def run(args: argparse.Namespace) -> int:
     try:
         print_port_settings(transport)
 
-        print("--- 1. card ID: DA 00 05 7E ---")
-        card_id = await client.get_card_id()
-        if card_id is None:
-            print("  TIMEOUT: no reply to the card ID read.")
+        print("--- 1. handshake: card ID read DA 00 05 7E ---")
+        try:
+            card_id = await client.usb_handshake()
+        except asyncio.TimeoutError:
+            print("  TIMEOUT: no reply; the app cannot connect either.")
             return 1
-        model = CARD_ID_TO_MODEL.get(card_id, "unknown")
-        print(f"  -> card_id=0x{card_id:08X} model={model}\n")
+        if card_id is None:
+            print("  -> bare ACK (CC), no card ID\n")
+        else:
+            model = CARD_ID_TO_MODEL.get(card_id, "unknown")
+            print(f"  -> card_id=0x{card_id:08X} model={model}\n")
 
         print("--- 2. X position: DA 00 04 21 ---")
         x_um = await client._read_memory_wait(X_POSITION_ADDRESS)
@@ -60,14 +64,12 @@ async def run(args: argparse.Namespace) -> int:
             return 1
         print(f"  -> x={x_um} um\n")
 
-        print("--- 3. keepalive: ENQ CE ---")
-        ack = await client.send_command_wait_ack(
-            b"\xce", timeout=ENQ_TIMEOUT_S
-        )
-        if ack is None:
-            print(f"  -> ENQ answered: NO (nothing in {ENQ_TIMEOUT_S}s)")
+        print("--- 3. keepalive: status read DA 00 04 00 ---")
+        status = await client._read_memory_wait(STATUS_ADDRESS)
+        if status is None:
+            print("  TIMEOUT: no reply to the status read.")
             return 1
-        print(f"  -> ENQ answered: {'YES (ACK)' if ack else 'NO (NAK)'}")
+        print(f"  -> status=0x{status:08X}")
     finally:
         await client.disconnect()
 

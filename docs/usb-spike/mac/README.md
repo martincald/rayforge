@@ -22,7 +22,7 @@ full output.
 | # | script | moves? | what it does |
 |---|---|---|---|
 | 1 | `enumerate.py` | no | lists `/dev/cu.*` with VID:PID, description, serial; shows which FTDI port the app would open. Sends nothing. |
-| 2 | `probe.py` | no | card ID `DA 00 05 7E`, X position `DA 00 04 21`, keepalive `CE` (expects ACK `CC`) |
+| 2 | `probe.py` | no | the app's handshake (card ID `DA 00 05 7E`), X position `DA 00 04 21`, keepalive status read `DA 00 04 00` |
 | 3 | `jog.py` | **yes** | one rapid `D9 00`, X +1 mm; reads X before and after |
 | 4 | `fixture.py` | **yes** | the RDWorks reference job, every power command zeroed (incl. `C6 65`) |
 

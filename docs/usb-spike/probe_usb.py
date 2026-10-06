@@ -8,11 +8,11 @@ transport, chunking, and framing the driver uses in production.
 
 SAFE BY DESIGN: this script sends ONLY memory-read queries (the
 card-ID query DA 00 05 7E, the X/Y position queries DA 00 04 21 /
-DA 00 04 31) and one keepalive ENQ (0xCE) -- the exact byte the app
-sends every second, never a motion/cutting/job-start command. It never
-touches the network. Even so, treat any real connection to a laser
-controller as live hardware and keep the machine's E-stop within reach
-before running this against a real device - see
+DA 00 04 31) and one ENQ (0xCE) -- the UDP keepalive, which the app
+does not send over USB -- never a motion/cutting/job-start command.
+It never touches the network. Even so, treat any real connection to
+a laser controller as live hardware and keep the machine's E-stop
+within reach before running this against a real device - see
 tests/machine/driver/ruida/send_fixture_test.py for the same
 reminder on a script that (unlike this one) does move the gantry.
 
@@ -54,6 +54,7 @@ from _usb_common import (
 )
 
 from swiftcut.machine.driver.ruida.ruida_client import RuidaClient
+from swiftcut.machine.driver.ruida.ruida_maps import CARD_ID_TO_MODEL
 
 BANNER = """\
 ================================================================
@@ -84,15 +85,21 @@ async def run(args: argparse.Namespace) -> int:
 
     await client.connect()
     try:
+        # The app's USB connection check, so a pass here predicts the
+        # app connects.
         print("--- card ID query: DA 00 05 7E ---")
-        card_info = await client.get_card_info()
-        if card_info is None:
+        try:
+            card_id = await client.usb_handshake()
+        except asyncio.TimeoutError:
             sys.exit(
                 "TIMEOUT: no card ID reply. Check wiring/power, or "
                 "try --backend d2xx / --backend vcp explicitly."
             )
-        card_id, model_name = card_info
-        print(f"  -> card_id=0x{card_id:08x} model={model_name}")
+        if card_id is None:
+            print("  -> bare ACK (0xCC), no card ID")
+        else:
+            model_name = CARD_ID_TO_MODEL.get(card_id)
+            print(f"  -> card_id=0x{card_id:08x} model={model_name}")
 
         print()
         print("--- position query: DA 00 04 21 (X), DA 00 04 31 (Y) ---")
@@ -105,8 +112,8 @@ async def run(args: argparse.Namespace) -> int:
         print()
         print("--- keepalive probe: ENQ 0xCE (no checksum) ---")
         print(
-            "    (the same byte RuidaDriver sends every second; every "
-            "ACK-paced send in this repo depends on a reply to this)"
+            "    (the UDP keepalive; RuidaDriver checks USB with the card "
+            "ID read above, but ACK-paced job sends still wait on 0xCC)"
         )
         enq_ack = await client.send_command_wait_ack(
             b"\xce", timeout=ENQ_TIMEOUT_S
