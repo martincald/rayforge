@@ -12,6 +12,7 @@ precheck, and the diagnostics fields the Device settings page reads.
 
 import asyncio
 import queue
+import socket
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -117,6 +118,7 @@ class _SimulatedFtdiPort:
         self.in_waiting = 0
         self.rts = True
         self.dtr = True
+        self.written: list[bytes] = []
 
     def read(self, size=1):
         try:
@@ -125,6 +127,7 @@ class _SimulatedFtdiPort:
             return b""
 
     def write(self, data):
+        self.written.append(bytes(data))
         plain = self._codec.unswizzle(bytes(data))
         response = self._simulator.process_commands(plain)
         if response in (b"", b"\xcc"):
@@ -183,6 +186,73 @@ async def test_a_usb_profile_connects_to_the_controller(lite_context, mocker):
         assert diagnostics.usb_bytes_received > 0
     finally:
         await driver.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_usb_mode_sends_the_enq_over_usb_and_opens_no_udp_socket(
+    lite_context, mocker, monkeypatch
+):
+    """
+    A USB profile still carries its UDP host and ports. None of them
+    may be used: the connection loop's ENQ goes out on the USB port,
+    no UdpTransport is built and no datagram socket is created.
+    """
+    ports: list[_SimulatedFtdiPort] = []
+
+    def open_port(*args, **kwargs):
+        ports.append(_SimulatedFtdiPort())
+        return ports[-1]
+
+    mocker.patch(f"{_USB}.serial.Serial", side_effect=open_port)
+    mocker.patch(
+        f"{_USB}.list_ports.comports",
+        return_value=[
+            SimpleNamespace(
+                device="/dev/cu.usbserial-A10K3XYZ",
+                vid=0x0403,
+                pid=0x6001,
+                description="FT245R USB FIFO",
+                serial_number="A10K3XYZ",
+            )
+        ],
+    )
+    udp_transport_cls = mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_driver.UdpTransport"
+    )
+    datagram_sockets = []
+    real_socket = socket.socket
+
+    class _RecordingSocket(real_socket):
+        def __init__(self, family=-1, type=-1, *args, **kwargs):
+            super().__init__(family, type, *args, **kwargs)
+            if self.type == socket.SOCK_DGRAM:
+                datagram_sockets.append(self)
+
+    monkeypatch.setattr(socket, "socket", _RecordingSocket)
+    machine = Machine(lite_context)
+    driver = RuidaDriver(lite_context, machine)
+    driver._setup_implementation(
+        connection="usb",
+        usb_backend="vcp",
+        host="192.168.1.100",
+        port=50200,
+        jog_port=50207,
+    )
+    try:
+        await driver._connect_implementation()
+        for _ in range(100):
+            if driver.is_connected:
+                break
+            await asyncio.sleep(0.05)
+        assert driver.is_connected
+
+        assert len(ports) == 1
+        assert ports[0].written[0] == RuidaCodec(0x88).swizzle(b"\xce")
+    finally:
+        await driver.cleanup()
+
+    udp_transport_cls.assert_not_called()
+    assert datagram_sockets == []
 
 
 class TestSetupUsb:
