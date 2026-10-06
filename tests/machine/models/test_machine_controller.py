@@ -79,3 +79,79 @@ class TestMachineController:
             "Driver resolved: RuidaDriver for profile ilab-614"
             in caplog.text
         )
+
+
+def _ruida_controller(lite_context):
+    """
+    A controller for a UDP Ruida profile that never connects. It is
+    built before the driver is named, so it schedules no rebuild of
+    its own.
+    """
+    machine = Machine(lite_context)
+    lite_context.machine_mgr.add_machine(machine)
+    controller = MachineController(
+        machine, lite_context, task_mgr.schedule_on_main_thread
+    )
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {"host": "192.168.1.100"}
+    # Never let a test dial out to a real machine.
+    machine.auto_connect = False
+    return machine, controller
+
+
+class TestRebuildForTheLiveSettings:
+    """
+    One settings change asks for two rebuilds. The second finds the
+    live driver set up from those settings and keeps it; anything
+    that does need a new driver still gets one.
+    """
+
+    @pytest.mark.asyncio
+    async def test_the_same_settings_keep_the_live_driver(self, lite_context):
+        _machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+
+        await controller.rebuild_driver()
+
+        assert controller.driver is driver
+
+    @pytest.mark.asyncio
+    async def test_new_driver_args_build_a_new_driver(self, lite_context):
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+
+        machine.driver_args = {"host": "192.168.1.101"}
+        await controller.rebuild_driver()
+
+        assert controller.driver is not driver
+        assert controller.driver.host == "192.168.1.101"
+
+    @pytest.mark.asyncio
+    async def test_new_driver_config_builds_a_new_driver(self, lite_context):
+        """A profile applies driver_config after set_driver has
+        already asked for its rebuilds; the later one must apply it."""
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+
+        machine.driver_config = {"note": "from the profile"}
+        await controller.rebuild_driver()
+
+        assert controller.driver is not driver
+        assert controller.driver.config == {"note": "from the profile"}
+
+    @pytest.mark.asyncio
+    async def test_a_cleaned_up_driver_is_rebuilt(self, lite_context):
+        """disconnect() cleans the driver up, then asks for a rebuild
+        with unchanged settings: that one must not be skipped."""
+        _machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+
+        await driver.cleanup()
+        await controller.rebuild_driver()
+
+        assert controller.driver is not driver
+        assert controller.driver.did_setup

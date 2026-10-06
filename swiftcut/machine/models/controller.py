@@ -62,9 +62,12 @@ class MachineController:
         # Rebuilds run one at a time, so a driver's connection loop is
         # gone and its port closed before the next driver connects.
         self._rebuild_lock = asyncio.Lock()
-        # The driver_name and driver_args the live driver was set up
-        # from, so a second request for the same settings is a no-op.
-        self._driver_config: tuple[str | None, dict[str, Any]] | None = None
+        # The driver_name, driver_args and driver_config the live
+        # driver was set up from: a second request for the same
+        # settings is a no-op.
+        self._driver_settings: (
+            tuple[str | None, dict[str, Any], dict[str, Any]] | None
+        ) = None
 
         # Track the last driver configuration to detect changes
         self._last_driver_name = self.machine.driver_name
@@ -193,8 +196,12 @@ class MachineController:
         it, and its open port, alone.
         """
         async with self._rebuild_lock:
-            config = (self.machine.driver_name, self.machine.driver_args)
-            if self.driver.did_setup and config == self._driver_config:
+            settings = (
+                self.machine.driver_name,
+                self.machine.driver_args,
+                self.machine.driver_config,
+            )
+            if self.driver.did_setup and settings == self._driver_settings:
                 logger.debug(
                     f"Machine '{self.machine.name}' driver already runs "
                     f"the current settings; not rebuilding"
@@ -234,9 +241,10 @@ class MachineController:
             new_driver.config = self.machine.driver_config.copy()
 
             self.driver = new_driver
-            self._driver_config = (
+            self._driver_settings = (
                 self.machine.driver_name,
                 self.machine.driver_args.copy(),
+                self.machine.driver_config.copy(),
             )
             self._connect_driver_signals()
 
