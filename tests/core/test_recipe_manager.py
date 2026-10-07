@@ -9,7 +9,11 @@ import yaml
 
 from swiftcut.core.doc import Doc
 from swiftcut.core.recipe import Recipe
-from swiftcut.core.recipe_manager import RecipeManager
+from swiftcut.core.recipe_manager import (
+    DEFAULTS_VERSION_FILE,
+    RecipeManager,
+    content_hash,
+)
 from swiftcut.core.stock import StockItem
 from swiftcut.core.stock_asset import StockAsset
 from swiftcut.machine.models.machine import Machine
@@ -441,3 +445,287 @@ class TestRecipeManager:
         # generic-cut (single ContourStep) outranks multi (two step types),
         # both having otherwise-generic machine/material/thickness.
         assert uids.index("generic-cut") < uids.index("multi")
+
+
+CUT = {
+    "uid": "builtin-cut",
+    "name": "Cut",
+    "color": "#ff0000",
+    "target_step_types": ["ContourStep"],
+    "settings": {"power": 0.5, "cut_speed": 600},
+}
+ENGRAVE = {
+    "uid": "builtin-engrave",
+    "name": "Engrave",
+    "color": "#0000ff",
+    "target_step_types": ["EngraveStep"],
+    "settings": {"power": 0.2, "cut_speed": 18000},
+}
+
+
+def _write_bundle(path: Path, version: int, recipes: list[dict]) -> Path:
+    with open(path, "w") as f:
+        yaml.safe_dump({"version": version, "recipes": recipes}, f)
+    return path
+
+
+def _edit_file(recipes_dir: Path, uid: str, **changes):
+    """Edits a recipe file on disk, outside the manager."""
+    path = recipes_dir / f"{uid}.yaml"
+    data = yaml.safe_load(path.read_text())
+    data.update(changes)
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def _snapshot(recipes_dir: Path) -> dict[str, tuple[int, bytes]]:
+    """mtime and content of every file in the recipe directory."""
+    return {
+        p.name: (p.stat().st_mtime_ns, p.read_bytes())
+        for p in recipes_dir.iterdir()
+    }
+
+
+class TestBuiltinSync:
+    """Syncing the bundled default recipes into a user store."""
+
+    @pytest.fixture
+    def recipes_dir(self, tmp_path: Path) -> Path:
+        return tmp_path / "recipes"
+
+    def test_fresh_store_gets_bundle(self, tmp_path, recipes_dir):
+        """An empty store gets every bundled recipe as a built-in."""
+        bundle = _write_bundle(tmp_path / "defaults.yaml", 1, [CUT, ENGRAVE])
+
+        manager = RecipeManager(recipes_dir, bundle)
+
+        assert set(manager.recipes) == {"builtin-cut", "builtin-engrave"}
+        cut = manager.recipes["builtin-cut"]
+        assert cut.builtin
+        on_disk = (recipes_dir / "builtin-cut.yaml").read_text()
+        assert cut.builtin_hash == content_hash(yaml.safe_load(on_disk))
+        assert cut.color == "#ff0000"
+        assert cut.settings == {"power": 0.5, "cut_speed": 600}
+        assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "1\n"
+
+    def test_newer_bundle_replaces_builtins(self, tmp_path, recipes_dir):
+        """v2 over v1: built-ins follow the bundle, user recipes stay."""
+        RecipeManager(
+            recipes_dir,
+            _write_bundle(tmp_path / "v1.yaml", 1, [CUT, ENGRAVE]),
+        ).add_recipe(Recipe(uid="mine", name="Mine", settings={"power": 1}))
+        user_file = (recipes_dir / "mine.yaml").read_bytes()
+        new_cut = {**CUT, "name": "Cut v2", "settings": {"power": 0.6}}
+        frame = {"uid": "builtin-frame", "name": "Frame"}
+
+        manager = RecipeManager(
+            recipes_dir,
+            _write_bundle(tmp_path / "v2.yaml", 2, [new_cut, frame]),
+        )
+
+        assert set(manager.recipes) == {
+            "builtin-cut",
+            "builtin-frame",
+            "mine",
+        }
+        cut = manager.recipes["builtin-cut"]
+        assert cut.builtin
+        assert cut.name == "Cut v2"
+        assert cut.settings == {"power": 0.6}
+        assert manager.recipes["builtin-frame"].builtin
+        assert not manager.recipes["mine"].builtin
+        assert (recipes_dir / "mine.yaml").read_bytes() == user_file
+        assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "2\n"
+
+    def test_edited_builtin_is_kept_as_modified_copy(
+        self, tmp_path, recipes_dir
+    ):
+        """An edited built-in survives as a user copy beside the fresh one."""
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+        _edit_file(recipes_dir, "builtin-cut", settings={"power": 0.9})
+
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [CUT])
+        )
+
+        fresh = manager.recipes["builtin-cut"]
+        assert fresh.builtin
+        assert fresh.settings == CUT["settings"]
+        (kept,) = [
+            r for r in manager.recipes.values() if r.uid != "builtin-cut"
+        ]
+        assert not kept.builtin
+        assert kept.builtin_hash is None
+        assert kept.modified_from == "builtin-cut"
+        assert kept.name == "Cut (modified)"
+        assert kept.settings == {"power": 0.9}
+        assert kept.color == "#ff0000"
+        assert (recipes_dir / f"{kept.uid}.yaml").exists()
+
+    def test_removed_builtin_disappears_unless_edited(
+        self, tmp_path, recipes_dir
+    ):
+        """A built-in dropped from the bundle goes; an edited one is kept."""
+        RecipeManager(
+            recipes_dir,
+            _write_bundle(tmp_path / "v1.yaml", 1, [CUT, ENGRAVE]),
+        )
+        _edit_file(recipes_dir, "builtin-engrave", description="mine now")
+
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [])
+        )
+
+        (kept,) = manager.get_all_recipes()
+        assert kept.name == "Engrave (modified)"
+        assert kept.modified_from == "builtin-engrave"
+        assert kept.description == "mine now"
+        assert not kept.builtin
+        assert not (recipes_dir / "builtin-cut.yaml").exists()
+        assert not (recipes_dir / "builtin-engrave.yaml").exists()
+
+    def test_unlocked_builtin_is_kept_as_modified_copy(
+        self, tmp_path, recipes_dir
+    ):
+        """A user recipe with a bundled uid is copied, not overwritten."""
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+        _edit_file(recipes_dir, "builtin-cut", builtin=False, name="Mine")
+
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [CUT])
+        )
+
+        assert manager.recipes["builtin-cut"].builtin
+        assert manager.recipes["builtin-cut"].name == "Cut"
+        (kept,) = [
+            r for r in manager.recipes.values() if r.uid != "builtin-cut"
+        ]
+        assert kept.name == "Mine (modified)"
+        assert kept.modified_from == "builtin-cut"
+        assert not kept.builtin
+
+    def test_schema_change_does_not_mark_builtins_modified(
+        self, tmp_path, recipes_dir, monkeypatch
+    ):
+        """An untouched built-in stays unedited when Recipe gains a field."""
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+        to_dict = Recipe.to_dict
+        monkeypatch.setattr(
+            Recipe, "to_dict", lambda self: {**to_dict(self), "new": 0}
+        )
+
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [CUT])
+        )
+
+        assert set(manager.recipes) == {"builtin-cut"}
+
+    def test_same_version_changes_nothing(self, tmp_path, recipes_dir):
+        """A bundle at the recorded version leaves every file alone."""
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+        _edit_file(recipes_dir, "builtin-cut", settings={"power": 0.9})
+        before = _snapshot(recipes_dir)
+
+        changed = {**CUT, "name": "Changed"}
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1b.yaml", 1, [changed])
+        )
+
+        assert _snapshot(recipes_dir) == before
+        assert manager.recipes["builtin-cut"].name == "Cut"
+
+    def test_older_bundle_changes_nothing(self, tmp_path, recipes_dir):
+        """A bundle older than the recorded version changes nothing."""
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [CUT])
+        )
+        before = _snapshot(recipes_dir)
+
+        RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [ENGRAVE])
+        )
+
+        assert _snapshot(recipes_dir) == before
+
+    def test_sync_is_idempotent(self, tmp_path, recipes_dir):
+        """Unedited built-ins are not copied, and a rerun is a no-op."""
+        RecipeManager(
+            recipes_dir,
+            _write_bundle(tmp_path / "v1.yaml", 1, [CUT, ENGRAVE]),
+        )
+        v2 = _write_bundle(tmp_path / "v2.yaml", 2, [CUT, ENGRAVE])
+        RecipeManager(recipes_dir, v2)
+        before = _snapshot(recipes_dir)
+
+        manager = RecipeManager(recipes_dir, v2)
+
+        assert _snapshot(recipes_dir) == before
+        assert set(manager.recipes) == {"builtin-cut", "builtin-engrave"}
+
+    def test_no_defaults_file_syncs_nothing(self, tmp_path, recipes_dir):
+        """Without a defaults file nothing is seeded or recorded."""
+        manager = RecipeManager(recipes_dir)
+
+        assert manager.recipes == {}
+        assert list(recipes_dir.iterdir()) == []
+
+    def test_unreadable_version_file_counts_as_unsynced(
+        self, tmp_path, recipes_dir
+    ):
+        """A damaged version file is treated like a missing one."""
+        RecipeManager(recipes_dir).add_recipe(Recipe(uid="mine"))
+        (recipes_dir / DEFAULTS_VERSION_FILE).write_text("garbage")
+
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+
+        assert set(manager.recipes) == {"mine", "builtin-cut"}
+        assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "1\n"
+
+    def test_broken_bundle_is_logged(self, tmp_path, recipes_dir):
+        """A defaults file without a version does not stop loading."""
+        RecipeManager(recipes_dir).add_recipe(Recipe(uid="mine"))
+        bundle = tmp_path / "defaults.yaml"
+        bundle.write_text("recipes: []\n")
+
+        manager = RecipeManager(recipes_dir, bundle)
+
+        assert set(manager.recipes) == {"mine"}
+
+    def test_duplicate_of_modified_copy_points_nowhere(
+        self, tmp_path, recipes_dir
+    ):
+        """A duplicate is not marked as made from a built-in."""
+        manager = RecipeManager(recipes_dir)
+        kept = Recipe(name="Cut (modified)", modified_from="builtin-cut")
+        manager.add_recipe(kept)
+
+        assert manager.duplicate_recipe(kept).modified_from is None
+
+    def test_duplicate_makes_editable_copy(self, tmp_path, recipes_dir):
+        """A duplicate of a built-in is a separate user recipe."""
+        manager = RecipeManager(
+            recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [CUT])
+        )
+        builtin = manager.recipes["builtin-cut"]
+
+        dup = manager.duplicate_recipe(builtin)
+        dup.settings["power"] = 0.1
+
+        assert dup.uid != builtin.uid
+        assert dup.name == "Cut (copy)"
+        assert not dup.builtin
+        assert dup.builtin_hash is None
+        assert dup.color == builtin.color
+        assert builtin.settings["power"] == 0.5
+        reloaded = RecipeManager(recipes_dir)
+        assert not reloaded.recipes[dup.uid].builtin
+        assert reloaded.recipes["builtin-cut"].builtin

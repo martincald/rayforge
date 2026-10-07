@@ -200,6 +200,9 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 # Material directories
 USER_MATERIALS_DIR = CONFIG_DIR / "materials"
 USER_RECIPES_DIR = CONFIG_DIR / "recipes"
+BUILTIN_RECIPES_FILE = (
+    Path(__file__).parent / "resources" / "recipes" / "defaults.yaml"
+)
 USER_COLOR_PRESETS_DIR = CONFIG_DIR / "color_presets"
 
 ADDON_REGISTRY_URL = (

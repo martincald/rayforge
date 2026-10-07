@@ -105,3 +105,26 @@ def test_set_step_param_float_tolerance(step_cmd):
     step_cmd.set_step_param(target_dict, key, new_value, name)
 
     assert target_dict[key] == 1.0
+
+
+def test_synced_builtin_color_reaches_the_layer(
+    step_cmd, doc_editor, tmp_path, monkeypatch
+):
+    """A bundled recipe's color survives the sync and colors the layer."""
+    bundle = tmp_path / "defaults.yaml"
+    bundle.write_text(
+        "version: 1\n"
+        "recipes:\n"
+        "- {uid: builtin-red, name: Red, color: '#FF0000'}\n"
+    )
+    RecipeManager(tmp_path / "recipes", bundle)
+    recipe_mgr = RecipeManager(tmp_path / "recipes")
+    monkeypatch.setattr(doc_editor.context, "_recipe_mgr", recipe_mgr)
+    layer = doc_editor.doc.layers[0]
+    step = Step(typelabel="Test")
+
+    step_cmd.apply_best_recipe_to_step(step, layer=layer)
+
+    assert recipe_mgr.recipes["builtin-red"].builtin
+    assert step.applied_recipe_uid == "builtin-red"
+    assert layer.color == "#ff0000"

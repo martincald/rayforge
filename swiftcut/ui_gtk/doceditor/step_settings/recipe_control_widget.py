@@ -114,7 +114,10 @@ class RecipeControlWidget(Adw.ActionRow):
         else:
             self.set_subtitle(_("Manual Settings"))
 
-        self.update_button.set_visible(is_modified)
+        # Built-ins are read-only, so the step cannot update them.
+        self.update_button.set_visible(
+            is_modified and not (current_recipe and current_recipe.builtin)
+        )
 
     def _on_choose_clicked(self, button: Gtk.Button):
         """Opens the recipe selector dialog."""

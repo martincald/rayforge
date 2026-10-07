@@ -50,6 +50,16 @@ class Recipe:
     # None (legacy recipes) leaves the layer color alone.
     color: str | None = None
 
+    # --- Built-in recipes ---
+    # True for a recipe synced from the bundled defaults; it is
+    # read-only in the UI and replaced when the bundled set changes.
+    builtin: bool = False
+    # Content hash the built-in was written with; a different current
+    # hash means the file was edited.
+    builtin_hash: str | None = None
+    # uid of the built-in an edited copy was made from.
+    modified_from: str | None = None
+
     # --- Applicability Criteria ---
     target_step_types: list[str] = field(default_factory=list)
     target_machine_id: str | None = None
@@ -336,6 +346,9 @@ class Recipe:
             "name",
             "description",
             "color",
+            "builtin",
+            "builtin_hash",
+            "modified_from",
             "target_step_types",
             "target_machine_id",
             "material_uid",
@@ -373,6 +386,9 @@ class Recipe:
             name=data.get("name", "Unnamed Recipe"),
             description=data.get("description", ""),
             color=normalize_color(data.get("color")),
+            builtin=bool(data.get("builtin", False)),
+            builtin_hash=data.get("builtin_hash"),
+            modified_from=data.get("modified_from"),
             target_step_types=target_step_types,
             target_machine_id=data.get("target_machine_id"),
             material_uid=data.get("material_uid"),

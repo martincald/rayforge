@@ -1,6 +1,7 @@
 """Tests for the recipe list row subtitle."""
 
 import pytest
+from gi.repository import Gtk
 
 from swiftcut.core.recipe import Recipe
 from swiftcut.ui_gtk.doceditor.recipes.recipe_list import RecipeRow
@@ -8,12 +9,26 @@ from swiftcut.ui_gtk.doceditor.recipes.recipe_list import RecipeRow
 pytestmark = pytest.mark.ui
 
 
-def _row_for(recipe: Recipe) -> RecipeRow:
+def _row_for(recipe: Recipe, on_duplicate=lambda recipe: None) -> RecipeRow:
     return RecipeRow(
         recipe,
         on_delete=lambda recipe: None,
         on_edit=lambda recipe: None,
+        on_duplicate=on_duplicate,
     )
+
+
+def _buttons(widget: Gtk.Widget) -> list[Gtk.Button]:
+    """Every button inside a widget, in tree order."""
+    found = []
+    child = widget.get_first_child()
+    while child is not None:
+        if isinstance(child, Gtk.Button):
+            found.append(child)
+        else:
+            found.extend(_buttons(child))
+        child = child.get_next_sibling()
+    return found
 
 
 def test_step_types_shown(ui_context_initializer):
@@ -43,3 +58,25 @@ def test_generic_recipe_shows_any(ui_context_initializer):
     recipe = Recipe(name="Generic", target_step_types=[])
     subtitle = _row_for(recipe)._get_subtitle()
     assert subtitle == "Any"
+
+
+def test_user_recipe_row_can_be_edited_and_deleted(ui_context_initializer):
+    """A user recipe row has Edit and Delete, and no Duplicate."""
+    row = _row_for(Recipe(name="Mine"))
+    assert [b.get_tooltip_text() for b in _buttons(row)] == [
+        "Edit this recipe",
+        "Delete this recipe",
+    ]
+
+
+def test_builtin_row_only_offers_duplicate(ui_context_initializer):
+    """A built-in row cannot be edited or deleted, only duplicated."""
+    recipe = Recipe(name="Shipped", builtin=True)
+    duplicated = []
+    row = _row_for(recipe, on_duplicate=duplicated.append)
+
+    (button,) = _buttons(row)
+    assert button.get_tooltip_text() == "Duplicate this recipe to customize it"
+    button.emit("clicked")
+    assert duplicated == [recipe]
+    assert row._get_subtitle().startswith("Built-in")

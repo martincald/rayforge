@@ -267,11 +267,13 @@ class RayforgeContext:
     def recipe_mgr(self) -> "RecipeManager":
         """Returns the recipe manager."""
         if self._recipe_mgr is None:
-            from .config import USER_RECIPES_DIR
+            from .config import BUILTIN_RECIPES_FILE, USER_RECIPES_DIR
             from .core.recipe_manager import RecipeManager
 
             logger.info("Lazy loading recipe manager")
-            self._recipe_mgr = RecipeManager(USER_RECIPES_DIR)
+            self._recipe_mgr = RecipeManager(
+                USER_RECIPES_DIR, BUILTIN_RECIPES_FILE
+            )
         return self._recipe_mgr
 
     @property

@@ -8,6 +8,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
 from swiftcut.core.recipe import Recipe
+from swiftcut.core.recipe_manager import RecipeManager
 from swiftcut.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
 from swiftcut.ui_gtk.doceditor.step_settings.rows import SliderRow, SpinRow
 
@@ -81,6 +82,24 @@ def test_applying_recipe_without_color_leaves_layer(editor, step):
 
     assert step.count == 5
     assert layer.color == old_color
+
+
+@pytest.mark.ui
+@pytest.mark.parametrize("builtin", [False, True])
+def test_update_is_offered_only_for_user_recipes(
+    editor, step, ui_context, tmp_path, monkeypatch, builtin
+):
+    """A step that diverged from a built-in cannot update it."""
+    recipe_mgr = RecipeManager(tmp_path / "recipes")
+    monkeypatch.setattr(ui_context, "_recipe_mgr", recipe_mgr)
+    recipe = Recipe(name="Nine", builtin=builtin, settings={"count": 9})
+    recipe_mgr.add_recipe(recipe)
+    step.applied_recipe_uid = recipe.uid
+
+    page = StepSettingsPage(editor, step)
+
+    assert step.count != 9
+    assert page.recipe_control.update_button.get_visible() is not builtin
 
 
 @pytest.mark.ui

@@ -349,6 +349,31 @@ def test_added_recipe_stores_its_color(
     assert added.color == COLOR_PALETTE[0]
 
 
+def test_duplicated_builtin_is_an_editable_copy(
+    laser_machine, recipe_mgr, monkeypatch
+):
+    """Duplicate makes a user copy that can be edited and saved."""
+    dialogs = []
+    monkeypatch.setattr(
+        AddEditRecipeDialog, "present", lambda d: dialogs.append(d)
+    )
+    builtin = Recipe(uid="shipped", name="Shipped", builtin=True)
+    recipe_mgr.add_recipe(builtin)
+    widget = RecipeListWidget()
+
+    widget._on_duplicate_recipe(builtin)
+    (dup,) = [r for r in recipe_mgr.get_all_recipes() if not r.builtin]
+    widget._on_edit_recipe(dup)
+    dialogs[-1].general_page.name_row.set_text("Mine")
+    dialogs[-1]._send_response("save")
+
+    reloaded = RecipeManager(recipe_mgr.base_dir)
+    assert reloaded.recipes[dup.uid].name == "Mine"
+    assert not reloaded.recipes[dup.uid].builtin
+    assert reloaded.recipes["shipped"].name == "Shipped"
+    assert reloaded.recipes["shipped"].builtin
+
+
 def _group_for_transformer(page, name):
     """The settings group backing the named transformer, if any."""
     for group, t_dict in page._group_dicts.items():

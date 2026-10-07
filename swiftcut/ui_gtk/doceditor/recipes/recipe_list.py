@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class RecipeRow(Gtk.Box):
     """A widget representing a single Recipe in a ListBox."""
 
-    def __init__(self, recipe: Recipe, on_delete, on_edit):
+    def __init__(self, recipe: Recipe, on_delete, on_edit, on_duplicate):
         super(
             ).__init__(orientation=Gtk.Orientation.HORIZONTAL,
             spacing=SPACE_GROUP,
@@ -56,6 +56,15 @@ class RecipeRow(Gtk.Box):
         suffix_box = Gtk.Box(spacing=SPACE_CONTROL, valign=Gtk.Align.CENTER)
         self.append(suffix_box)
 
+        # Built-ins are read-only; a duplicate can be customized.
+        if recipe.builtin:
+            duplicate_button = icon_button(
+                "copy-symbolic", _("Duplicate this recipe to customize it")
+            )
+            duplicate_button.connect("clicked", lambda w: on_duplicate(recipe))
+            suffix_box.append(duplicate_button)
+            return
+
         edit_button = icon_button("edit-symbolic", _("Edit this recipe"))
         edit_button.connect("clicked", lambda w: on_edit(recipe))
         suffix_box.append(edit_button)
@@ -67,6 +76,9 @@ class RecipeRow(Gtk.Box):
     def _get_subtitle(self) -> str:
         parts = []
         context = get_context()
+
+        if self.recipe.builtin:
+            parts.append(_("Built-in"))
 
         # 1. Machine
         if self.recipe.target_machine_id:
@@ -132,7 +144,12 @@ class RecipeListWidget(PreferencesGroupWithButton):
         self.set_items(recipes)
 
     def create_row_widget(self, item: Recipe) -> Gtk.Widget:
-        return RecipeRow(item, self._on_delete_recipe, self._on_edit_recipe)
+        return RecipeRow(
+            item,
+            self._on_delete_recipe,
+            self._on_edit_recipe,
+            self._on_duplicate_recipe,
+        )
 
     def _on_add_clicked(self, button):
         root = self.get_root()
@@ -193,6 +210,11 @@ class RecipeListWidget(PreferencesGroupWithButton):
 
         dialog.response.connect(on_response, weak=False)
         dialog.present()
+
+    def _on_duplicate_recipe(self, recipe: Recipe):
+        get_context().recipe_mgr.duplicate_recipe(recipe)
+        self.populate_recipes()
+        self.recipes_changed.send(self)
 
     def _on_delete_recipe(self, recipe: Recipe):
         root = self.get_root()
