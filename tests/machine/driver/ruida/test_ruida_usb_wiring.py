@@ -885,3 +885,141 @@ async def test_overlapping_rebuilds_never_hold_the_port_twice(
     finally:
         release.set()
         await _on_task_loop(machine.shutdown())
+
+
+class _StreamPort(_SilentPort):
+    """
+    A silent port that also logs the job stream's writes. Commands
+    arrive through write(), job chunks through write_some(), and both
+    land in .written in wire order, unswizzled in .plain.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.plain: list[bytes] = []
+        self.chunk_writes = 0
+        self.on_chunk = None
+
+    def write(self, data):
+        self.plain.append(self._codec.unswizzle(bytes(data)))
+        return super().write(data)
+
+    def write_some(self, data: bytes) -> int:
+        self.written.append(bytes(data))
+        self.plain.append(self._codec.unswizzle(bytes(data)))
+        self.chunk_writes += 1
+        if self.on_chunk:
+            self.on_chunk(self.chunk_writes)
+        return len(data)
+
+
+@pytest.mark.asyncio
+async def test_a_stop_mid_stream_ends_it_within_a_chunk_with_one_stop(
+    lite_context, mocker
+):
+    """
+    Over USB a job streams unacknowledged. A Stop pressed while chunk
+    3 of 17 is going out lets chunk 3 finish, writes nothing more of
+    the job, and sends exactly one D8 01 -- after the last chunk, so
+    never inside one.
+    """
+    from swiftcut.machine.driver.ruida import ruida_client
+
+    mocker.patch.object(ruida_client, "JOB_STREAM_REPLY_WINDOW", 0.2)
+    port = _StreamPort()
+    mocker.patch(f"{_USB}.serial.Serial", return_value=port)
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    mocker.patch(
+        f"{_USB}._VcpBackend._raw_write_some",
+        lambda self, data: port.write_some(data),
+    )
+    command = b"\xd9\x10" + b"\x00" * 11
+    plain_job = command * 1270  # 17 chunks
+    codec = RuidaCodec(0x88)
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_driver.build_rd_bytes",
+        return_value=codec.swizzle(plain_job),
+    )
+
+    driver = RuidaDriver(lite_context, Machine(lite_context))
+    driver._setup_implementation(connection="usb", usb_backend="vcp")
+    await driver._client.connect()
+    driver._move_to_start_corner = AsyncMock(return_value=True)
+    # Nothing answers the stop's position resync on this silent port.
+    driver._client.read_position = AsyncMock(return_value=None)
+    finished = []
+    driver.job_finished.connect(
+        lambda sender: finished.append(True), weak=False
+    )
+    loop = asyncio.get_running_loop()
+    stops = []
+
+    def press_stop(n):
+        if n == 3:
+            stops.append(
+                asyncio.run_coroutine_threadsafe(driver.cancel(), loop)
+            )
+
+    port.on_chunk = press_stop
+    try:
+        await asyncio.wait_for(
+            driver.run(
+                SimpleNamespace(op_map=None), None, SimpleNamespace()
+            ),
+            timeout=5.0,
+        )
+        await asyncio.wait_for(asyncio.wrap_future(stops[0]), 5.0)
+    finally:
+        await driver._client.disconnect()
+
+    job_writes = [p for p in port.plain if p.startswith(command)]
+    stop_writes = [p for p in port.plain if p == b"\xd8\x01"]
+    assert len(job_writes) == 3
+    assert b"".join(job_writes) == plain_job[: len(b"".join(job_writes))]
+    assert len(stop_writes) == 1
+    assert port.plain[-1] == b"\xd8\x01"
+    assert b"\xd8\x02" not in port.plain
+    assert finished == [True]
+    assert not driver._job_running
+
+
+@pytest.mark.asyncio
+async def test_a_usb_job_never_waits_for_a_chunk_ack(lite_context, mocker):
+    """All 17 chunks go out once each on a port that never answers."""
+    from swiftcut.machine.driver.ruida import ruida_client
+
+    mocker.patch.object(ruida_client, "JOB_STREAM_REPLY_WINDOW", 0.2)
+    port = _StreamPort()
+    mocker.patch(f"{_USB}.serial.Serial", return_value=port)
+    mocker.patch(f"{_USB}.list_ports.comports", return_value=[_FTDI_PORT])
+    mocker.patch(
+        f"{_USB}._VcpBackend._raw_write_some",
+        lambda self, data: port.write_some(data),
+    )
+    command = b"\xd9\x10" + b"\x00" * 11
+    plain_job = command * 1270
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_driver.build_rd_bytes",
+        return_value=RuidaCodec(0x88).swizzle(plain_job),
+    )
+
+    driver = RuidaDriver(lite_context, Machine(lite_context))
+    driver._setup_implementation(connection="usb", usb_backend="vcp")
+    await driver._client.connect()
+    driver._move_to_start_corner = AsyncMock(return_value=True)
+    driver._wait_for_job_completion = AsyncMock()
+    send_job = mocker.spy(driver._client, "send_job")
+    try:
+        await asyncio.wait_for(
+            driver.run(
+                SimpleNamespace(op_map=None), None, SimpleNamespace()
+            ),
+            timeout=5.0,
+        )
+    finally:
+        await driver._client.disconnect()
+
+    assert port.chunk_writes == 17
+    assert b"".join(port.plain) == plain_job
+    send_job.assert_not_called()
+    driver._wait_for_job_completion.assert_awaited_once()

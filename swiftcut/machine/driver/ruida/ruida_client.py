@@ -40,6 +40,13 @@ JOB_CHUNK_MAX_BYTES = 1000
 JOB_ACK_TIMEOUT = 4.0
 JOB_SEND_ATTEMPTS = 4
 
+# Over USB no job chunk is answered (session-2026-10-07_19-30-14.log:
+# no RX for chunk 1 in four attempts, yet the controller ran it). After
+# the last chunk the controller gets this long to reject the job; an
+# ACK is informational and silence is normal.
+JOB_STREAM_REPLY_WINDOW = 2.0
+JOB_STREAM_POLL_INTERVAL = 0.05
+
 # RDWorks' USB read loop gives a reply 5 s (FUN_100021B0,
 # docs/reference/rdcam_usb.md).
 USB_HANDSHAKE_TIMEOUT = 5.0
@@ -349,6 +356,90 @@ class RuidaClient:
                 f"nak 0x{reply:02x}"
             )
         return 0
+
+    async def stream_job(
+        self,
+        blob: bytes,
+        should_stop: Callable[[], bool],
+        on_start: Callable[[int, int], None] | None = None,
+    ) -> bool:
+        """
+        Stream a complete swizzled .rd job blob over USB, unacknowledged.
+
+        The chunks are send_job's, but each is written exactly once,
+        back to back, paced by the FTDI FIFO through the transport's
+        stream_command: the controller answers no chunk over USB, and
+        a re-sent chunk runs twice. The send lock is held for the
+        whole stream, so a stop's D8 01 goes out after it, never
+        inside it. The caller must suspend keepalive and polling.
+
+        After the last chunk the controller has JOB_STREAM_REPLY_WINDOW
+        seconds to reject the job; an ACK ends the wait early. The job
+        is then running, and completion is the caller's status poll.
+
+        Args:
+            blob: The complete job as final swizzled .rd file bytes.
+            should_stop: Asked between chunks and during every wait;
+                once it returns True nothing more is written.
+            on_start: Called once before the first chunk with
+                (blob_size, chunk_count).
+
+        Returns:
+            False if should_stop ended the stream or the wait after
+            it, True otherwise.
+
+        Raises:
+            RuntimeError: The controller rejected the job.
+        """
+        _, unswizzle_lut = build_swizzle_lut(JOB_MAGIC)
+        commands = split_commands(bytes(unswizzle_lut[b] for b in blob))
+        chunks = build_datagrams(commands, JOB_CHUNK_MAX_BYTES)
+        if on_start:
+            on_start(len(blob), len(chunks))
+
+        replies: list[int] = []
+
+        def on_reply(sender, data: bytes) -> None:
+            if len(data) == 1 and (
+                data[0] in _JOB_ACK_BYTES or data[0] in _JOB_NAK_BYTES
+            ):
+                replies.append(data[0])
+
+        # Armed before the first chunk, so a reject sent mid-stream
+        # is not missed either.
+        self._transport.decoded_received.connect(on_reply, weak=False)
+        try:
+            async with self._send_lock:
+                for i, chunk in enumerate(chunks):
+                    if should_stop():
+                        return False
+                    if not await self._transport.stream_command(
+                        chunk, should_stop
+                    ):
+                        return False
+                    logger.debug(
+                        f"job chunk {i + 1}/{len(chunks)}: "
+                        f"{len(chunk)} bytes sent"
+                    )
+            loop = asyncio.get_event_loop()
+            deadline = loop.time() + JOB_STREAM_REPLY_WINDOW
+            while not replies and loop.time() < deadline:
+                if should_stop():
+                    return False
+                await asyncio.sleep(JOB_STREAM_POLL_INTERVAL)
+        finally:
+            self._transport.decoded_received.disconnect(on_reply)
+
+        rejected = [r for r in replies if r in _JOB_NAK_BYTES]
+        if rejected:
+            raise RuntimeError(
+                f"Controller rejected the job (0x{rejected[0]:02x})"
+            )
+        if replies:
+            logger.info(
+                f"Controller acknowledged the job (0x{replies[0]:02x})"
+            )
+        return True
 
     async def send_jog_command(self, command: bytes) -> None:
         """

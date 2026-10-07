@@ -7,11 +7,10 @@ Two groups:
   wires RuidaTransport, wired instead to RuidaUsbTransport(backend=
   "vcp"). pyserial.Serial is mocked following the idiom established in
   tests/machine/transport/test_serial_transport.py. These prove that
-  RuidaClient's existing chunking (split_commands/build_datagrams) and
-  ACK-paced send loop (send_job/_send_job_chunk) work unmodified over
-  the new transport -- nothing here reimplements either. The vcp
-  open sequence, reads, and FTDI port enumeration/selection are
-  tested against the same mock.
+  a job streams over USB with no ACK wait (RuidaClient.stream_job):
+  every chunk once, paced by the FIFO, chunked by send_job's own
+  split_commands/build_datagrams. The vcp open sequence, reads, and
+  FTDI port enumeration/selection are tested against the same mock.
 
 - d2xx-backend tests inject a fake D2xxLibrary (no ctypes, no real
   DLL) to verify the FUN_10001C80 open-sequence call order and abort
@@ -298,134 +297,348 @@ async def test_send_command_has_no_checksum(mock_serial):
         await client.disconnect()
 
 
-@pytest.mark.asyncio
-async def test_second_chunk_waits_for_ack(mock_serial, monkeypatch):
-    """The sender must wait for 0xCC/0xC6 before sending the next chunk."""
-    monkeypatch.setattr(ruida_client, "JOB_ACK_TIMEOUT", 0.3)
-    monkeypatch.setattr(ruida_client, "JOB_CHUNK_MAX_BYTES", 2)
-
-    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
-    client = RuidaClient(transport)
-    await client.connect()
-    try:
-        # Two whole 2-byte commands; JOB_CHUNK_MAX_BYTES=2 forces them
-        # into separate chunks.
-        blob = b"\xd8\x2a" + b"\xd8\x00"
-        task = asyncio.create_task(client.send_job(blob))
-        try:
-            assert await _wait_until(lambda: len(mock_serial._written) == 1)
-
-            # No ack yet: the second chunk must not be sent.
-            await asyncio.sleep(0.1)
-            assert len(mock_serial._written) == 1
-
-            mock_serial.feed_data(_device_reply(0xCC))
-            assert await _wait_until(lambda: len(mock_serial._written) == 2)
-
-            mock_serial.feed_data(_device_reply(0xCC))
-            await asyncio.wait_for(task, timeout=1.0)
-        finally:
-            if not task.done():
-                task.cancel()
-    finally:
-        await client.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_nak_triggers_resend(mock_serial, monkeypatch):
-    """A NAK (0xCF/0xCD) must trigger a resend of the same chunk."""
-    monkeypatch.setattr(ruida_client, "JOB_ACK_TIMEOUT", 0.3)
-
-    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
-    client = RuidaClient(transport)
-    await client.connect()
-    try:
-        blob = b"\xd8\x2a"
-        task = asyncio.create_task(client.send_job(blob))
-        try:
-            assert await _wait_until(lambda: len(mock_serial._written) == 1)
-
-            # No NAK yet: the chunk must not be resent on its own.
-            await asyncio.sleep(0.1)
-            assert len(mock_serial._written) == 1
-
-            mock_serial.feed_data(_device_reply(0xCF))  # NAK
-            assert await _wait_until(lambda: len(mock_serial._written) == 2)
-            assert mock_serial._written[0] == mock_serial._written[1]
-
-            mock_serial.feed_data(_device_reply(0xCC))  # ACK
-            await asyncio.wait_for(task, timeout=1.0)
-        finally:
-            if not task.done():
-                task.cancel()
-    finally:
-        await client.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_no_ack_ever_raises_after_all_attempts(mock_serial, monkeypatch):
-    """If no ACK ever arrives, send_job must give up after the fixed
-    number of attempts, having tried to send once per attempt."""
-    monkeypatch.setattr(ruida_client, "JOB_ACK_TIMEOUT", 0.05)
-    monkeypatch.setattr(ruida_client, "JOB_SEND_ATTEMPTS", 2)
-
-    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
-    client = RuidaClient(transport)
-    await client.connect()
-    try:
-        blob = b"\xd8\x2a"
-        with pytest.raises(RuntimeError, match="did not acknowledge"):
-            await asyncio.wait_for(client.send_job(blob), timeout=2.0)
-
-        assert len(mock_serial._written) == 2
-    finally:
-        await client.disconnect()
-
-
-@pytest.mark.asyncio
-async def test_chunking_respects_command_boundaries_and_cap(mock_serial):
+class _StreamingSerial(MockSerial):
     """
-    Chunking (split_commands/build_datagrams) is owned by RuidaClient
-    and reused unmodified; this proves it still holds -- <=1000 bytes
-    per chunk, never splitting a command -- when driven over the USB
-    transport.
+    MockSerial with the vcp backend's write-some path: each write
+    takes what `accept` says (all of it by default), and every write
+    and read is recorded in order on .events.
     """
-    command = b"\xd9\x10" + b"\x00" * 11  # 13-byte whole command
-    assert len(command) == 13
-    plain = command * 90  # 1170 unswizzled bytes -> must split
-    blob = bytes(_SWIZZLE[b] for b in plain)
+
+    def __init__(self):
+        super().__init__()
+        self.events: list[tuple[str, bytes]] = []
+        self.accept = None
+
+    def read(self, size=1024):
+        data = super().read(size)
+        if data:
+            self.events.append(("read", data))
+        return data
+
+    def write_some(self, data: bytes) -> int:
+        taken = len(data) if self.accept is None else self.accept(data)
+        if taken:
+            self._written.append(bytes(data[:taken]))
+            self.events.append(("write", bytes(data[:taken])))
+        return taken
+
+
+@pytest.fixture
+def streaming_serial(mocker):
+    port = _StreamingSerial()
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport.serial.Serial",
+        return_value=port,
+    )
+    mocker.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport."
+        "_VcpBackend._raw_write_some",
+        lambda self, data: port.write_some(data),
+    )
+    return port
+
+
+def _job_blob(command_count: int) -> tuple[bytes, bytes]:
+    """A swizzled job of 13-byte commands, and its plain bytes."""
+    command = b"\xd9\x10" + b"\x00" * 11
+    plain = command * command_count
+    return bytes(_SWIZZLE[b] for b in plain), plain
+
+
+@pytest.fixture
+def quick_stream(monkeypatch):
+    monkeypatch.setattr(ruida_client, "JOB_STREAM_REPLY_WINDOW", 0.2)
+    monkeypatch.setattr(ruida_client, "JOB_STREAM_POLL_INTERVAL", 0.01)
+
+
+@pytest.mark.asyncio
+async def test_stream_writes_every_chunk_once_with_no_reads_between(
+    streaming_serial, quick_stream
+):
+    """
+    Over USB no chunk is acknowledged: all 17 chunks of a 16.5 kB job
+    go out back to back, each exactly once, with nothing read in
+    between, whole commands only.
+    """
+    blob, plain = _job_blob(1270)  # 16510 bytes -> 17 chunks
 
     transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
     client = RuidaClient(transport)
     await client.connect()
     try:
-        task = asyncio.create_task(client.send_job(blob))
-        try:
-            while not task.done():
-                written_before = len(mock_serial._written)
-                # Wait for either the next chunk to go out, or the job
-                # to finish -- feeding one ACK too many races the task
-                # completing on the final chunk.
-                assert await _wait_until(
-                    lambda: len(mock_serial._written) > written_before
-                    or task.done()
-                )
-                if task.done():
-                    break
-                mock_serial.feed_data(_device_reply(0xCC))
-            await asyncio.wait_for(task, timeout=1.0)
-        finally:
-            if not task.done():
-                task.cancel()
+        sent = await asyncio.wait_for(
+            client.stream_job(blob, should_stop=lambda: False), 2.0
+        )
     finally:
         await client.disconnect()
 
-    chunks = [transport._codec.unswizzle(w) for w in mock_serial._written]
-    assert len(chunks) >= 2
+    assert sent is True
+    chunks = [transport._codec.unswizzle(w) for w in streaming_serial._written]
+    assert len(chunks) == 17
     for chunk in chunks:
         assert len(chunk) <= ruida_client.JOB_CHUNK_MAX_BYTES
-        assert len(chunk) % 13 == 0  # never splits the 13-byte command
+        assert len(chunk) % 13 == 0
     assert b"".join(chunks) == plain
+    assert [kind for kind, _ in streaming_serial.events] == ["write"] * 17
+
+
+@pytest.mark.asyncio
+async def test_a_full_fifo_is_waited_out_and_nothing_is_resent(
+    streaming_serial, quick_stream
+):
+    """
+    A write that takes only part of a chunk, or none of it, is
+    continued from the first byte the device has not taken.
+    """
+    takes = iter([600, 0, 0, 400])
+    streaming_serial.accept = lambda data: min(len(data), next(takes, 10**6))
+    blob, plain = _job_blob(100)  # 1300 bytes -> 988 + 312
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        assert await client.stream_job(blob, should_stop=lambda: False)
+    finally:
+        await client.disconnect()
+
+    on_wire = b"".join(streaming_serial._written)
+    assert transport._codec.unswizzle(on_wire) == plain
+    assert [len(w) for w in streaming_serial._written] == [600, 388, 312]
+
+
+@pytest.mark.asyncio
+async def test_a_reject_after_the_stream_raises(
+    streaming_serial, quick_stream
+):
+    """0xCD after the last chunk means the controller refused the job."""
+    original = streaming_serial.write_some
+
+    def reject_after_last(data):
+        taken = original(data)
+        if len(streaming_serial._written) == 2:
+            streaming_serial.feed_data(_device_reply(0xCD))
+        return taken
+
+    streaming_serial.write_some = reject_after_last
+    blob, _ = _job_blob(100)
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        with pytest.raises(RuntimeError, match="rejected"):
+            await asyncio.wait_for(
+                client.stream_job(blob, should_stop=lambda: False), 2.0
+            )
+    finally:
+        await client.disconnect()
+    assert len(streaming_serial._written) == 2
+
+
+@pytest.mark.asyncio
+async def test_an_ack_after_the_stream_ends_the_wait(
+    streaming_serial, monkeypatch
+):
+    """0xCC is informational: the job is sent, without the full wait."""
+    monkeypatch.setattr(ruida_client, "JOB_STREAM_REPLY_WINDOW", 5.0)
+    original = streaming_serial.write_some
+
+    def ack_the_job(data):
+        taken = original(data)
+        streaming_serial.feed_data(_device_reply(0xCC))
+        return taken
+
+    streaming_serial.write_some = ack_the_job
+    blob, _ = _job_blob(10)
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        sent = await asyncio.wait_for(
+            client.stream_job(blob, should_stop=lambda: False), 2.0
+        )
+    finally:
+        await client.disconnect()
+    assert sent is True
+
+
+@pytest.mark.asyncio
+async def test_silence_after_the_stream_is_normal(
+    streaming_serial, quick_stream
+):
+    blob, _ = _job_blob(10)
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        assert await client.stream_job(blob, should_stop=lambda: False)
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_a_stop_ends_the_stream_after_the_chunk_in_flight(
+    streaming_serial, quick_stream
+):
+    """A stop asked for during chunk 3 lets chunk 3 finish, no more."""
+    stop = False
+    original = streaming_serial.write_some
+
+    def stop_during_third(data):
+        nonlocal stop
+        taken = original(data)
+        if len(streaming_serial._written) == 3:
+            stop = True
+        return taken
+
+    streaming_serial.write_some = stop_during_third
+    blob, _ = _job_blob(1270)
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        sent = await client.stream_job(blob, should_stop=lambda: stop)
+    finally:
+        await client.disconnect()
+    assert sent is False
+    assert len(streaming_serial._written) == 3
+
+
+@pytest.mark.asyncio
+async def test_a_stop_while_the_fifo_is_full_abandons_the_chunk(
+    streaming_serial, quick_stream
+):
+    """
+    With the FIFO taking nothing, the stop is not held up behind it:
+    the rest of the chunk is dropped and nothing more is written.
+    """
+    takes = iter([500])
+    streaming_serial.accept = lambda data: next(takes, 0)
+    stalls = 0
+
+    def stop_after_a_stall():
+        nonlocal stalls
+        stalls += 1
+        return stalls > 1
+
+    blob, _ = _job_blob(1270)
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        sent = await asyncio.wait_for(
+            client.stream_job(blob, should_stop=stop_after_a_stall), 2.0
+        )
+    finally:
+        await client.disconnect()
+    assert sent is False
+    assert [len(w) for w in streaming_serial._written] == [500]
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_the_reply_wait_ends_it(
+    streaming_serial, monkeypatch
+):
+    monkeypatch.setattr(ruida_client, "JOB_STREAM_REPLY_WINDOW", 5.0)
+    monkeypatch.setattr(ruida_client, "JOB_STREAM_POLL_INTERVAL", 0.01)
+    blob, _ = _job_blob(10)
+    stop = False
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    await client.connect()
+    try:
+        task = asyncio.create_task(
+            client.stream_job(blob, should_stop=lambda: stop)
+        )
+        assert await _wait_until(lambda: streaming_serial._written)
+        stop = True
+        assert await asyncio.wait_for(task, 1.0) is False
+    finally:
+        await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_the_stream_holds_the_wire_until_it_is_done(
+    streaming_serial, quick_stream
+):
+    """
+    A command sent while the stream runs -- a stop's D8 01 -- goes
+    out after the last chunk, never between two of them.
+    """
+    original = streaming_serial.write_some
+    client_ref: list[RuidaClient] = []
+    stop_task: list[asyncio.Task] = []
+
+    def queue_a_stop(data):
+        taken = original(data)
+        if len(streaming_serial._written) == 1:
+            stop_task.append(
+                asyncio.run_coroutine_threadsafe(
+                    client_ref[0].stop_process(), loop
+                )
+            )
+        return taken
+
+    streaming_serial.write_some = queue_a_stop
+    blob, _ = _job_blob(200)  # 3 chunks
+    loop = asyncio.get_running_loop()
+
+    transport = RuidaUsbTransport(backend="vcp", port="/dev/mock")
+    client = RuidaClient(transport)
+    client_ref.append(client)
+    await client.connect()
+    try:
+        await client.stream_job(blob, should_stop=lambda: False)
+        await asyncio.wrap_future(stop_task[0])
+    finally:
+        await client.disconnect()
+
+    plain = [transport._codec.unswizzle(w) for w in streaming_serial._written]
+    assert plain[-1] == b"\xd8\x01"
+    assert all(b"\xd8\x01" not in p for p in plain[:-1])
+    assert len(plain) == 4
+
+
+def test_vcp_write_some_returns_what_a_pty_takes():
+    """
+    The real vcp write-some path on a pty: an exact count when there
+    is room, and 0 -- not an exception -- after the write timeout
+    when there is none.
+    """
+    from swiftcut.machine.driver.ruida.ruida_usb_transport import _VcpBackend
+
+    if os.name != "posix":
+        pytest.skip("the vcp write-some path waits on a posix fd")
+    master, slave = os.openpty()
+    try:
+        # pyserial opens its posix port O_NONBLOCK; the conftest
+        # refuses a real open, so the pty's fd stands in for one.
+        os.set_blocking(slave, False)
+        backend = _VcpBackend(port=os.ttyname(slave))
+        backend._serial = SimpleNamespace(fileno=lambda: slave)
+        backend._WRITE_TIMEOUT_S = 0.1
+        assert backend._raw_write_some(b"\x01\x02\x03") == 3
+        assert os.read(master, 3) == b"\x01\x02\x03"
+        # Fill the pty until it takes nothing.
+        total = 0
+        while True:
+            taken = backend._raw_write_some(b"\x00" * 4096)
+            if not taken:
+                break
+            total += taken
+        assert total > 0
+        started = time.monotonic()
+        assert backend._raw_write_some(b"\x00") == 0
+        assert time.monotonic() - started >= 0.09
+    finally:
+        os.close(master)
+        os.close(slave)
 
 
 def _raw_io(caplog, direction: str) -> list[bytes]:

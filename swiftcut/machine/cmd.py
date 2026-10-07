@@ -45,6 +45,7 @@ class MachineCmd:
         # has no job on the driver to stop yet, so it is latched here
         # and the scale refuses to start.
         self._scale_cancelled = False
+        self._cancel_in_flight = False
 
     @property
     def is_job_running(self) -> bool:
@@ -410,11 +411,25 @@ class MachineCmd:
         )
 
     def cancel_job(self, machine: Machine):
-        """Adds a task to cancel the currently running job on the machine."""
+        """
+        Adds a task to cancel the currently running job on the machine.
+
+        Idempotent: the toolbar's Stop and the jog panel's both land
+        here, and while one cancel is still on its way, another press
+        adds nothing. A task per press used to replace the one before
+        it, cancelling it mid-flight.
+        """
         self._scale_cancelled = True
+        if self._cancel_in_flight:
+            return
+        self._cancel_in_flight = True
+
+        def when_done(task):
+            self._cancel_in_flight = False
+
         driver = machine.driver
         self._editor.task_manager.add_coroutine(
-            lambda ctx: driver.cancel(), key="cancel-job"
+            lambda ctx: driver.cancel(), key="cancel-job", when_done=when_done
         )
 
     def clear_alarm(self, machine: Machine):

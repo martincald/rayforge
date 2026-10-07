@@ -337,6 +337,30 @@ def test_cut_scale_action_asks_for_confirmation_first(app_and_window):
         assert run_cut_scale.call_args.args[:3] == (machine, 1200, 0.5)
 
 
+@pytest.mark.ui
+def test_both_stop_buttons_cancel_through_one_method(app_and_window):
+    """The toolbar's Stop and the jog panel's reach one cancel_job."""
+    _app, win = app_and_window
+    jog = win.bottom_panel.jog_widget
+    machine = jog.machine
+    assert jog.machine_cmd is win.machine_cmd
+
+    with (
+        _connected(machine, has_ops=True),
+        patch.object(win.machine_cmd, "cancel_job") as cancel_job,
+    ):
+        _refresh(win)
+        assert win.action_manager.get_action("machine-cancel").get_enabled()
+
+        win.toolbar.cancel_button.emit("clicked")
+        jog.stop_btn.emit("clicked")
+
+        assert cancel_job.call_args_list == [
+            ((machine,),),
+            ((machine,),),
+        ]
+
+
 # Focus Z runs from the dock's Laser tab; pulse and clear alarm are
 # offered only by a driver that has a command for them.
 

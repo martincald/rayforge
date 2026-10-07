@@ -35,9 +35,10 @@ USB byte stream has neither a checksum nor datagram boundaries:
    never arrive.
 
 Chunking (split_commands/build_datagrams, <=1000 bytes on command
-boundaries) and the ACK-paced send loop (send_job/_send_job_chunk,
-with NAK retry and timeout handling) both live in RuidaClient and are
-transport-agnostic already -- this module does not reimplement either.
+boundaries) lives in RuidaClient. A job does not use its ACK-paced
+send loop over USB: the controller answers no job chunk there, and a
+re-sent chunk runs twice. RuidaClient.stream_job writes every chunk
+once through stream_command() below, paced by the FTDI FIFO.
 Passing an instance of this class as the `transport` argument to
 RuidaClient(...) with no `jog_transport` (USB is a single stream; there
 is no jog port) is sufficient: RuidaClient only type-hints its
@@ -59,9 +60,12 @@ import ctypes
 import errno
 import glob
 import logging
+import os
+import select
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -507,6 +511,17 @@ class _UsbBackendBase:
     def _raw_write(self, data: bytes) -> None:
         raise NotImplementedError
 
+    def _raw_write_some(self, data: bytes) -> int:
+        """
+        Write what the device takes within the write timeout.
+
+        Returns how many bytes it took, 0 when it took none. Unlike
+        _raw_write, a timeout is not an error and the count is exact,
+        so a job stream can wait out a full FIFO and carry on from the
+        first byte not yet sent, never re-sending one.
+        """
+        raise NotImplementedError
+
     def _raw_purge(self) -> None:
         raise NotImplementedError
 
@@ -582,6 +597,10 @@ class _UsbBackendBase:
     async def send(self, data: bytes) -> None:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._raw_write, data)
+
+    async def send_some(self, data: bytes) -> int:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._raw_write_some, data)
 
     async def purge(self) -> None:
         loop = asyncio.get_running_loop()
@@ -709,6 +728,27 @@ class _VcpBackend(_UsbBackendBase):
             raise ConnectionError("USB serial port not open")
         self._serial.write(data)
 
+    def _raw_write_some(self, data: bytes) -> int:
+        # pyserial's write() raises on write_timeout without saying
+        # how much went in, so it cannot be continued. Its posix port
+        # is opened O_NONBLOCK, so waiting for room and then writing
+        # what fits gives the exact count.
+        if not self._serial:
+            raise ConnectionError("USB serial port not open")
+        if sys.platform == "win32":
+            # serialwin32 has no fd to wait on. A timeout raises, and
+            # the job fails rather than guess what the device took.
+            self._serial.write(data)
+            return len(data)
+        fd = self._serial.fileno()
+        _, writable, _ = select.select([], [fd], [], self._WRITE_TIMEOUT_S)
+        if not writable:
+            return 0
+        try:
+            return os.write(fd, data)
+        except BlockingIOError:
+            return 0
+
     def _raw_purge(self) -> None:
         if self._serial:
             self._serial.reset_input_buffer()
@@ -785,6 +825,13 @@ class _D2xxBackend(_UsbBackendBase):
         if self._handle is None or self._library is None:
             raise ConnectionError("D2XX device not open")
         self._library.write(self._handle, data)
+
+    def _raw_write_some(self, data: bytes) -> int:
+        # FT_Write returns, with what it wrote, once the write timeout
+        # of FT_SetTimeouts runs out.
+        if self._handle is None or self._library is None:
+            raise ConnectionError("D2XX device not open")
+        return self._library.write(self._handle, data)
 
     def _raw_purge(self) -> None:
         if self._handle is not None and self._library is not None:
@@ -913,6 +960,49 @@ class RuidaUsbTransport:
         )
         swizzled = self._codec.swizzle(command)
         await self._raw.send(swizzled)
+
+    async def stream_command(
+        self, command: bytes, should_stop: Callable[[], bool]
+    ) -> bool:
+        """
+        Swizzle a job chunk and write all of it, paced by the FIFO.
+
+        A full FIFO is waited out, one write timeout at a time, and
+        the write carries on from the first byte the device has not
+        taken: nothing is ever sent twice. The chunk is finished while
+        bytes still flow, so it never ends on half a command; it is
+        abandoned only when a stop is asked for while the FIFO takes
+        nothing, since then nothing reaches the controller anyway.
+
+        Args:
+            command: Unswizzled job chunk, whole commands only.
+            should_stop: Asked after every write that took nothing.
+
+        Returns:
+            True once every byte is in, False if abandoned.
+        """
+        logger.debug(
+            f"TX: {command!r}",
+            extra={
+                "log_category": "RAW_IO",
+                "direction": "TX",
+                "data": command,
+            },
+        )
+        swizzled = self._codec.swizzle(command)
+        sent = 0
+        while sent < len(swizzled):
+            taken = await self._raw.send_some(swizzled[sent:])
+            sent += taken
+            if taken:
+                continue
+            logger.debug(
+                f"USB FIFO full, {sent}/{len(swizzled)} bytes of the "
+                f"chunk in; waiting"
+            )
+            if should_stop():
+                return False
+        return True
 
     def _on_raw_received(self, sender, data: bytes) -> None:
         """

@@ -360,3 +360,42 @@ class TestBedOverrunWarning:
             extent = machine_cmd._job_motion_extent(ops, machine)
 
         assert (extent[0], extent[2]) == (-5.0, 25.0)
+
+
+class TestCancelJob:
+    """One cancel at a time, however many Stop presses."""
+
+    def _cmd(self):
+        editor = MagicMock()
+        return MachineCmd(editor), editor.task_manager.add_coroutine
+
+    def test_presses_while_a_cancel_is_on_its_way_add_nothing(self):
+        cmd, add_coroutine = self._cmd()
+        machine = MagicMock()
+
+        cmd.cancel_job(machine)
+        cmd.cancel_job(machine)
+        cmd.cancel_job(machine)
+
+        add_coroutine.assert_called_once()
+        assert add_coroutine.call_args.kwargs["key"] == "cancel-job"
+
+    def test_a_press_after_the_cancel_finished_cancels_again(self):
+        cmd, add_coroutine = self._cmd()
+        machine = MagicMock()
+
+        cmd.cancel_job(machine)
+        add_coroutine.call_args.kwargs["when_done"](MagicMock())
+        cmd.cancel_job(machine)
+
+        assert add_coroutine.call_count == 2
+
+    def test_every_press_still_latches_a_measuring_scale(self):
+        cmd, _ = self._cmd()
+        machine = MagicMock()
+        cmd.cancel_job(machine)
+        cmd._scale_cancelled = False
+
+        cmd.cancel_job(machine)
+
+        assert cmd._scale_cancelled

@@ -75,7 +75,8 @@ class _UsbTrafficCounter:
     that surface there, this thin duck-typed wrapper -- built entirely
     in this file -- forwards every call RuidaClient and RuidaDriver
     make on a transport (decoded_received, status_changed,
-    is_connected, connect, disconnect, send_command, send) and counts
+    is_connected, connect, disconnect, send_command, send,
+    stream_command) and counts
     bytes on the way through. decoded_received/status_changed are the
     SAME Signal objects the wrapped transport uses, so connecting to
     them here behaves identically to connecting to the transport
@@ -110,6 +111,12 @@ class _UsbTrafficCounter:
     async def send(self, data: bytes) -> None:
         self.bytes_sent += len(data)
         await self._transport.send(data)
+
+    async def stream_command(
+        self, command: bytes, should_stop: Callable[[], bool]
+    ) -> bool:
+        self.bytes_sent += len(command)
+        return await self._transport.stream_command(command, should_stop)
 
 
 @dataclass
@@ -896,6 +903,9 @@ class RuidaDriver(Driver):
 
         self._dump_job_blob(blob)
 
+        # Every stop bumps the epoch, so a Stop from here on -- during
+        # the pre-move, the settle below or the USB stream -- ends it.
+        epoch = self._frame_epoch
         if not await self._move_to_start_corner(ops):
             await self._report_ops_done(on_command_done, 0, num_ops)
             self.job_finished.send(self)
@@ -908,22 +918,37 @@ class RuidaDriver(Driver):
                 # keepalive and position polling stay suspended for
                 # the whole send.
                 await asyncio.sleep(0.2)
-                await self._client.send_job(
-                    blob,
-                    on_start=self._log_send_start,
-                    on_chunk=self._log_chunk_acked,
-                )
-                logger.info(
-                    "Upload complete, waiting for job to finish",
-                    extra=self._log_extra("USER_COMMAND"),
-                )
-                await self._report_ops_done(on_command_done, 0, num_ops)
-                await self._wait_for_job_completion()
+                if self._connection == "usb":
+                    sent = await self._client.stream_job(
+                        blob,
+                        should_stop=lambda: self._frame_epoch != epoch,
+                        on_start=self._log_send_start,
+                    )
+                else:
+                    await self._client.send_job(
+                        blob,
+                        on_start=self._log_send_start,
+                        on_chunk=self._log_chunk_acked,
+                    )
+                    sent = True
+                if sent:
+                    logger.info(
+                        "Upload complete, waiting for job to finish",
+                        extra=self._log_extra("USER_COMMAND"),
+                    )
+                    await self._report_ops_done(on_command_done, 0, num_ops)
+                    await self._wait_for_job_completion()
         finally:
             self._job_running = False
             self._last_known_pos = None
 
-        logger.info("Job finished", extra=self._log_extra("USER_COMMAND"))
+        if sent:
+            logger.info("Job finished", extra=self._log_extra("USER_COMMAND"))
+        else:
+            logger.info(
+                "Job stopped during upload",
+                extra=self._log_extra("USER_COMMAND"),
+            )
         self.job_finished.send(self)
 
     def _dump_job_blob(self, blob: bytes) -> None:
@@ -1031,9 +1056,11 @@ class RuidaDriver(Driver):
 
         The red Stop button is the one control the user reaches for
         when anything is moving, so it cannot be a job-only command.
-        Bumping the frame epoch aborts a start-corner move, dropping the
-        held keys stops a release from restarting a hold, and
-        _stop_jog_motion sends the same D8 01 a job cancel used to.
+        Bumping the frame epoch aborts a start-corner move and ends a
+        USB job stream after its chunk in flight, dropping the held
+        keys stops a release from restarting a hold, and
+        _stop_jog_motion sends the same D8 01 a job cancel used to --
+        once, after the stream lets go of the wire.
         """
         assert self._client
         self._frame_epoch += 1
