@@ -11,11 +11,8 @@ import pytest
 import pytest_asyncio
 from blinker import Signal
 
-from swiftcut.core.doc import Doc
-from swiftcut.machine.cmd import _go_scale_ops
 from swiftcut.machine.driver.driver import Axis
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
-from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
 from swiftcut.machine.models.machine import (
     JogDirection,
@@ -86,7 +83,7 @@ def moves_after_stop(commands: list[bytes]) -> list[bytes]:
 
 
 async def run_go_scale(driver) -> None:
-    """Run a Go Scale job whose start corner needs a pre-move."""
+    """Run a Go Scale whose outline lies away from the head."""
     machine = driver._machine
     machine.set_start_corner(
         next(
@@ -95,9 +92,7 @@ async def run_go_scale(driver) -> None:
             if all(machine.panel.start_corner_offset(corner, 100.0, 50.0))
         )
     )
-    doc = Doc()
-    ops = _go_scale_ops(machine, 100.0, 50.0, 2400)
-    await driver.run(RuidaEncoder().encode(ops, machine, doc), doc, ops)
+    await driver.go_scale(100.0, 50.0, 2400)
 
 
 @pytest_asyncio.fixture
@@ -121,11 +116,10 @@ class TestStopReachesEveryMotion:
 
     @pytest.mark.asyncio
     async def test_cancel_aborts_a_running_go_scale(self, driver):
-        """MOT-01: STOP during Go Scale's pre-move must end the run.
+        """MOT-01: STOP during Go Scale's first move must end the run.
 
-        Go Scale is a job; the only motion before its upload is the
-        start-corner pre-move, and a job sent after a halted pre-move
-        would traverse from wherever the stop caught the head.
+        Go Scale is five rapids; one sent after the stop would carry
+        the head on round the outline.
         """
         spy = MotionClientSpy(position=(200000, 150000))
         driver._client = spy
@@ -325,7 +319,7 @@ class TestOriginIsNeverInvented:
 
     @pytest.mark.asyncio
     async def test_go_scale_refuses_an_unknown_position(self, driver):
-        """MOT-08: a pre-move from a fabricated origin is not the job."""
+        """MOT-08: an outline round a fabricated origin is not the job."""
         spy = MotionClientSpy(position=None)
         driver._client = spy
         driver._last_known_pos = None

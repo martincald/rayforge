@@ -492,10 +492,10 @@ class MachineCmd:
         """
         Adds a task to traverse the job's bounding box, laser off.
 
-        The rectangle goes out as a normal job, so the controller
-        anchors it exactly where the real job would start and the
-        head is pre-moved to the start corner exactly as Cut Scale's
-        is. Being a job, it is subject to the door interlock.
+        Pure movement, not a job: the driver moves the head around the
+        outline with the jog primitive, from the start corner and back
+        to it, on the same anchor Start pre-moves to. With no job, the
+        door interlock does not apply and the lid may stay open.
 
         Args:
             machine: The machine to traverse on.
@@ -504,10 +504,10 @@ class MachineCmd:
                 traverse finishes, is cancelled, or fails.
         """
 
-        def build(width: float, height: float) -> Ops:
-            return _go_scale_ops(machine, width, height, speed)
+        async def trace(width: float, height: float) -> None:
+            await machine.driver.go_scale(width, height, speed)
 
-        self._run_scale_job(machine, build, "go scale", on_done)
+        self._run_scale(trace, "go scale", on_done)
 
     def run_cut_scale(
         self,
@@ -527,19 +527,21 @@ class MachineCmd:
                 cut finishes, is cancelled, or fails.
         """
 
-        def build(width: float, height: float) -> Ops:
-            return _cut_scale_ops(machine, width, height, speed, power)
+        async def cut(width: float, height: float) -> None:
+            ops = _cut_scale_ops(machine, width, height, speed, power)
+            encoder = _create_driver_encoder(machine)
+            encoded = encoder.encode(ops, machine, self._editor.doc)
+            await self._execute_monitored_job(ops, machine, encoded=encoded)
 
-        self._run_scale_job(machine, build, "cut scale", on_done)
+        self._run_scale(cut, "cut scale", on_done)
 
-    def _run_scale_job(
+    def _run_scale(
         self,
-        machine: Machine,
-        build_ops: Callable[[float, float], Ops],
+        run: Callable[[float, float], Coroutine],
         job_name: str,
         on_done: Callable[[], None] | None,
     ):
-        """Schedule a job built from the current job's bounding box."""
+        """Schedule a scale run over the current job's bounding box."""
 
         def when_done(task):
             if on_done is not None:
@@ -547,18 +549,17 @@ class MachineCmd:
 
         self._scale_cancelled = False
         self._editor.task_manager.add_coroutine(
-            lambda ctx: self._scale_job(machine, build_ops, job_name),
+            lambda ctx: self._scale(run, job_name),
             key=job_name.replace(" ", "-"),
             when_done=when_done,
         )
 
-    async def _scale_job(
+    async def _scale(
         self,
-        machine: Machine,
-        build_ops: Callable[[float, float], Ops],
+        run: Callable[[float, float], Coroutine],
         job_name: str,
     ):
-        """Measure the job outline, then run a job around it."""
+        """Measure the job outline, then run the scale around it."""
         handle = await self._editor.pipeline.generate_job_artifact_async()
         if not handle:
             logger.warning(f"{job_name.capitalize()} has no operations.")
@@ -574,10 +575,7 @@ class MachineCmd:
             logger.info(f"{job_name.capitalize()} cancelled before it started")
             return
 
-        ops = build_ops(max_x - min_x, max_y - min_y)
-        encoder = _create_driver_encoder(machine)
-        encoded = encoder.encode(ops, machine, self._editor.doc)
-        await self._execute_monitored_job(ops, machine, encoded=encoded)
+        await run(max_x - min_x, max_y - min_y)
 
     def jog_key_down(self, machine: Machine, axis: str, direction: int):
         """
@@ -711,32 +709,6 @@ def _rect_corners(width: float, height: float) -> list[tuple[float, float]]:
         (0.0, height),
         (0.0, 0.0),
     ]
-
-
-def _go_scale_ops(
-    machine: Machine, width: float, height: float, speed: int
-) -> Ops:
-    """
-    Build a one-layer job that only travels around the bounding box.
-
-    The layer's power is 0 and every corner is a travel move, so the
-    stream carries no cut command and the laser cannot fire. Both the
-    layer speed and its rapids are the given speed.
-    """
-    ops = Ops()
-    ops.job_start()
-    ops.layer_start("go-scale")
-    head = machine.get_default_laser_head()
-    if head is not None:
-        ops.set_head(head.uid)
-    ops.set_power(0.0)
-    ops.set_feed_rate(speed)
-    ops.set_rapid_rate(speed)
-    for x, y in _rect_corners(width, height):
-        ops.move_to(x, y, 0.0)
-    ops.layer_end("go-scale")
-    ops.job_end()
-    return ops
 
 
 def _cut_scale_ops(

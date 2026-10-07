@@ -4634,3 +4634,43 @@ Effect on earlier findings:
 
 The Phase 3 invariant "the busy interlock covers jog, step jog and
 trace alike" now reads: jog, step jog and the start-corner pre-move.
+
+## Go Scale is rapids again (2026-10-07)
+
+Over USB the controller answers no job chunk
+(`session-2026-10-07_19-30-14.log`), so a job-based Go Scale could
+not be paced by ACKs there. On the owner's request Go Scale is pure
+movement again, built on the `D9 10` jog primitive that is proven
+over USB, and the 2026-09-23 design above is superseded:
+
+- **It is not a job.** `MachineCmd.run_go_scale` measures the
+  outline and calls `RuidaDriver.go_scale`, which reads the head
+  (`DA 00 04 21/31`), sends one `C9 02` at the jog panel's speed and
+  five `D9 10` moves. Each move waits until the polled position is
+  within 0.5 mm of its target, or 15 s. No `D8 00`, no blob and no
+  cut opcode: the laser cannot fire, and the **door interlock does
+  not apply, so the lid may stay open**. `_go_scale_ops` is deleted.
+- **Placement.** The outline is Start's anchor
+  (`head + start_corner_offset`, as in `_move_to_start_corner`) plus
+  the job size. The five moves start and end on the start corner the
+  head is parked on, so a Start afterwards pre-moves from the right
+  place and cuts inside the traced outline. The job-based Go Scale
+  left the head on the anchor instead.
+- **Stop.** `cancel_job` -> `driver.cancel()` bumps the frame epoch,
+  which ends the trace before its next move or during a corner wait,
+  and `_stop_jog_motion` sends `D8 01` and resyncs the position. A
+  Stop pressed while the outline is measured is still latched in
+  `MachineCmd` (MOT-02). The busy interlock is held for the whole
+  trace: the Phase 3 invariant now reads jog, step jog, the
+  start-corner pre-move and Go Scale.
+
+Effect on earlier findings:
+
+| Finding | Now |
+| --- | --- |
+| MOT-01, MOT-04, MOT-08 | Tests drive `go_scale` directly (`test_motion_audit.py`) |
+| MOT-02 | Test moved to `test_ruida_scale_jobs.py::TestGoScaleIsMovement` |
+| MOT-24 | Still resolved: the outline is computed from the same anchor as the job's pre-move (`test_ruida_start_corner.py::TestGoScaleTracesTheJobOutline`) |
+| MOT-26 | Jog-panel speed is the one `C9 02`; tested in `TestGoScaleTracesTheJobOutline` |
+| MOT-05 | Still a hardware check: Stop relies on `D8 01` halting a `D9 10` rapid |
+| MOT-30, MOT-52 | Still TODO: `_jog_move_to` clamps an off-bed corner to the bed without a word |

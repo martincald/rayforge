@@ -831,8 +831,9 @@ class JogWidget(Gtk.Widget):
             return
 
         if self._scaling:
-            # Both scales are jobs, so the job cancel stops either,
-            # including one still measuring its outline.
+            # The one cancel stops either scale -- Go Scale's rapids
+            # or Cut Scale's job -- including one still measuring its
+            # outline.
             self.machine_cmd.cancel_job(self.machine)
             return
 

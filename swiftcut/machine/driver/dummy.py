@@ -219,6 +219,9 @@ class NoDeviceDriver(Driver):
     async def jog(self, speed: int, **deltas: float) -> None:
         pass
 
+    async def go_scale(self, width: float, height: float, speed: int) -> None:
+        pass
+
     async def set_wcs_offset(
         self, wcs_slot: str, x: float, y: float, z: float
     ) -> None:

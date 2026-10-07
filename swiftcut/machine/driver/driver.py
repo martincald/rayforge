@@ -607,6 +607,20 @@ class Driver(ABC):
         """
         raise NotImplementedError
 
+    async def go_scale(self, width: float, height: float, speed: int) -> None:
+        """
+        Trace the job's bounding box with rapids, laser off.
+
+        The head is on the machine's start corner of the job; it goes
+        around the outline the job will occupy and back to that corner.
+
+        Args:
+            width: The job's native X extent in mm.
+            height: The job's native Y extent in mm.
+            speed: Travel speed in mm/min.
+        """
+        raise NotImplementedError
+
     def can_pulse(self) -> bool:
         """
         Check if this device fires the laser by hand, outside a job.

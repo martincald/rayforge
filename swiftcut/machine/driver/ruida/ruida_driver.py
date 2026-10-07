@@ -203,6 +203,10 @@ class RuidaDriver(Driver):
     FRAME_CORNER_TOLERANCE_UM = 1000
     FRAME_CORNER_TIMEOUT = 15.0
     FRAME_POLL_INTERVAL = 0.2
+    # Go Scale waits at each corner until the head is this close, or
+    # for this long, before it sends the next one.
+    SCALE_CORNER_TOLERANCE_UM = 500
+    SCALE_CORNER_TIMEOUT = 15.0
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
     # Press-and-hold jog: one long move toward the bed limit, halted by
@@ -1309,6 +1313,121 @@ class RuidaDriver(Driver):
             extra=self._log_extra("USER_COMMAND"),
         )
         self._frame_epoch += 1
+
+    async def go_scale(self, width: float, height: float, speed: int) -> None:
+        """
+        Trace the job's outline with rapids: Go Scale.
+
+        No job: one C9 02 at the given speed, then five D9 10 moves,
+        each waited out on the polled position. Without D8 00 the door
+        interlock does not apply, and with no cut opcode the laser
+        cannot fire. The outline is the one Start would cut: anchored
+        where _move_to_start_corner puts the job, from the same
+        start_corner_offset. The loop starts and ends on the start
+        corner the head is parked on, so a Start afterwards cuts
+        inside the traced outline.
+
+        Ignored while a job or any interactive motion is in flight.
+        Stop ends it like a jog: D8 01 and a position resync.
+
+        Args:
+            width: The job's native X extent in mm.
+            height: The job's native Y extent in mm.
+            speed: Travel speed in mm/min, the jog panel's.
+        """
+        assert self._client
+        if self._jog_busy or self._job_running:
+            logger.info(
+                "Go Scale ignored: the machine is busy",
+                extra=self._log_extra("USER_COMMAND"),
+            )
+            return
+        dx_mm, dy_mm = self._machine.panel.start_corner_offset(
+            self._machine.start_corner, width, height
+        )
+        width_um, height_um = int(width * 1000), int(height * 1000)
+
+        epoch = self._frame_epoch
+        self._jog_busy = True
+        try:
+            with self._polling_suspended():
+                head = self._from_controller(
+                    await self._client.read_position()
+                )
+                if head is None:
+                    logger.warning(
+                        "Go Scale not run: the head position is unknown",
+                        extra=self._log_extra("USER_COMMAND"),
+                    )
+                    return
+                self._last_known_pos = head
+                # The job grows from its anchor toward +X and +Y, and
+                # the head is on one corner of that box.
+                anchor_x = head[0] + int(dx_mm * 1000)
+                anchor_y = head[1] + int(dy_mm * 1000)
+                far_x = anchor_x
+                if far_x == head[0]:
+                    far_x += width_um
+                far_y = anchor_y
+                if far_y == head[1]:
+                    far_y += height_um
+                corners = [
+                    head,
+                    (far_x, head[1]),
+                    (far_x, far_y),
+                    (head[0], far_y),
+                    head,
+                ]
+                logger.info(
+                    f"Go Scale: {width:.1f} x {height:.1f} mm from "
+                    f"({head[0] / 1000:.1f}, {head[1] / 1000:.1f}) at "
+                    f"{speed} mm/min",
+                    extra=self._log_extra("USER_COMMAND"),
+                )
+                await self._set_travel_speed(speed)
+                for corner in corners:
+                    if self._frame_epoch != epoch:
+                        break
+                    target = await self._jog_move_to(*corner)
+                    await self._wait_for_scale_corner(target, epoch)
+        finally:
+            self._jog_busy = False
+        if self._frame_epoch != epoch:
+            logger.info(
+                "Go Scale stopped", extra=self._log_extra("USER_COMMAND")
+            )
+
+    async def _wait_for_scale_corner(
+        self, target: tuple[int, int], epoch: int
+    ) -> None:
+        """
+        Poll until the head is on a Go Scale corner, or give up.
+
+        A corner not reached within SCALE_CORNER_TIMEOUT is logged and
+        the trace goes on to the next one: every target is absolute,
+        so the next move does not build on this one. A stop ends the
+        wait at once.
+        """
+        assert self._client
+        deadline = asyncio.get_event_loop().time() + self.SCALE_CORNER_TIMEOUT
+        while asyncio.get_event_loop().time() < deadline:
+            if self._frame_epoch != epoch:
+                return
+            pos = self._from_controller(await self._client.read_position())
+            if pos is not None:
+                self._last_known_pos = pos
+                if (
+                    abs(pos[0] - target[0]) <= self.SCALE_CORNER_TOLERANCE_UM
+                    and abs(pos[1] - target[1])
+                    <= self.SCALE_CORNER_TOLERANCE_UM
+                ):
+                    return
+            await asyncio.sleep(self.FRAME_POLL_INTERVAL)
+        logger.warning(
+            f"Go Scale corner ({target[0]}, {target[1]}) um not reached "
+            f"within {self.SCALE_CORNER_TIMEOUT}s",
+            extra=self._log_extra("USER_COMMAND"),
+        )
 
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         assert self._client

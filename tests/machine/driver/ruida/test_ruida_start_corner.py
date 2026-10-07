@@ -19,7 +19,7 @@ from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 
 from swiftcut.core.doc import Doc
-from swiftcut.machine.cmd import _cut_scale_ops, _go_scale_ops
+from swiftcut.machine.cmd import _cut_scale_ops
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
@@ -332,42 +332,234 @@ class TestCutScaleIsPlacedLikeAJob:
         assert _moves(spy.commands) == ([] if expected is None else [expected])
 
 
-class TestGoScaleUsesTheSamePlacement:
-    """The traversed outline is the outline the job would cut."""
+# Go Scale's five moves per corner: from the head round the outline
+# the job will occupy and back. The outline is the pre-move target
+# (the job's anchor) plus the job size, so Go Scale traces exactly
+# what Start then cuts.
+EXPECTED_TRACE = {
+    StartCorner.TOP_LEFT: [
+        HEAD,
+        (HEAD[0] - WIDTH_UM, HEAD[1]),
+        (HEAD[0] - WIDTH_UM, HEAD[1] + HEIGHT_UM),
+        (HEAD[0], HEAD[1] + HEIGHT_UM),
+        HEAD,
+    ],
+    StartCorner.TOP_RIGHT: [
+        HEAD,
+        (HEAD[0] + WIDTH_UM, HEAD[1]),
+        (HEAD[0] + WIDTH_UM, HEAD[1] + HEIGHT_UM),
+        (HEAD[0], HEAD[1] + HEIGHT_UM),
+        HEAD,
+    ],
+    StartCorner.BOTTOM_LEFT: [
+        HEAD,
+        (HEAD[0] - WIDTH_UM, HEAD[1]),
+        (HEAD[0] - WIDTH_UM, HEAD[1] - HEIGHT_UM),
+        (HEAD[0], HEAD[1] - HEIGHT_UM),
+        HEAD,
+    ],
+    StartCorner.BOTTOM_RIGHT: [
+        HEAD,
+        (HEAD[0] + WIDTH_UM, HEAD[1]),
+        (HEAD[0] + WIDTH_UM, HEAD[1] - HEIGHT_UM),
+        (HEAD[0], HEAD[1] - HEIGHT_UM),
+        HEAD,
+    ],
+}
+
+
+async def _run_go_scale(driver, speed: int = 2400) -> _ClientSpy:
+    """Run Go Scale through the driver and return what it sent."""
+    spy = _ClientSpy()
+    driver._client = spy
+    await driver.go_scale(WIDTH, HEIGHT, speed)
+    return spy
+
+
+class TestGoScaleTracesTheJobOutline:
+    """Go Scale is rapids around the outline the job would cut."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("corner", list(StartCorner))
-    async def test_go_scale_pre_moves_like_cut_scale(
+    async def test_one_speed_then_five_moves_round_the_outline(
         self, ruida_driver, machine, corner
     ):
-        """Same corner, same offset, measured from the same head."""
         machine.set_start_corner(corner)
-        cut = await _run_job(
-            ruida_driver, _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8)
-        )
 
-        go = await _run_job(
-            ruida_driver, _go_scale_ops(machine, WIDTH, HEIGHT, 2400)
-        )
+        spy = await _run_go_scale(ruida_driver, speed=2400)
 
-        expected = EXPECTED_PREMOVE[corner]
-        assert _moves(go.commands) == _moves(cut.commands)
-        assert _moves(go.commands) == ([] if expected is None else [expected])
-        assert len(go.blobs) == 1
+        assert spy.commands[0] == b"\xc9\x02" + encode35(40000)
+        assert [c[:2] for c in spy.commands] == [b"\xc9\x02"] + [
+            b"\xd9\x10"
+        ] * 5
+        assert _moves(spy.commands) == EXPECTED_TRACE[corner]
+
+    @pytest.mark.asyncio
+    async def test_it_sends_no_job(self, ruida_driver, machine):
+        """No D8 00, no blob: the door interlock does not apply."""
+        machine.set_start_corner(StartCorner.BOTTOM_LEFT)
+
+        spy = await _run_go_scale(ruida_driver)
+
+        assert spy.blobs == []
+        assert b"\xd8\x00" not in spy.commands
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("corner", list(StartCorner))
+    async def test_the_outline_starts_where_start_pre_moves(
+        self, ruida_driver, machine, corner
+    ):
+        """Its minimum corner is the job's anchor, for every corner."""
+        machine.set_start_corner(corner)
+        job = await _run_job(ruida_driver, _rect_job())
+
+        go = await _run_go_scale(ruida_driver)
+
+        anchor = (_moves(job.commands) or [HEAD])[-1]
+        trace = _moves(go.commands)
+        assert min(x for x, _ in trace) == anchor[0]
+        assert min(y for _, y in trace) == anchor[1]
+        assert max(x for x, _ in trace) == anchor[0] + WIDTH_UM
+        assert max(y for _, y in trace) == anchor[1] + HEIGHT_UM
+
+    @pytest.mark.asyncio
+    async def test_it_leaves_the_head_on_the_start_corner(
+        self, ruida_driver, machine
+    ):
+        """So a Start afterwards pre-moves from the right place."""
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+
+        spy = await _run_go_scale(ruida_driver)
+
+        assert spy.position == HEAD
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_position_moves_nothing(
+        self, ruida_driver, machine
+    ):
+        spy = _ClientSpy()
+        spy.read_position = _unknown_position
+        ruida_driver._client = spy
+
+        await ruida_driver.go_scale(WIDTH, HEIGHT, 2400)
+
+        assert spy.commands == []
+        assert ruida_driver._jog_busy is False
+
+    @pytest.mark.asyncio
+    async def test_it_waits_for_each_corner_before_the_next(
+        self, ruida_driver, machine
+    ):
+        """A move goes out only once the head reads as on the last one."""
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        ruida_driver.FRAME_POLL_INTERVAL = 0.01
+        spy = _ClientSpy()
+        ruida_driver._client = spy
+        events: list[tuple[str, tuple[int, int]]] = []
+        heading_to: list[tuple[int, int]] = []
+        plain_move = spy.rapid_move_xy
+
+        async def move(x_um, y_um, light=False):
+            events.append(("move", (x_um, y_um)))
+            heading_to[:] = [(x_um, y_um)] * 2
+
+        async def lagging_read(timeout: float = 2.0):
+            # The head gets there on the second poll after the move.
+            if heading_to:
+                target = heading_to.pop()
+                if not heading_to:
+                    await plain_move(*target)
+            events.append(("read", spy.position))
+            return spy.position
+
+        spy.rapid_move_xy = move
+        spy.read_position = lagging_read
+
+        await ruida_driver.go_scale(WIDTH, HEIGHT, 2400)
+
+        trace = EXPECTED_TRACE[StartCorner.TOP_LEFT]
+        moves_at = [i for i, (kind, _) in enumerate(events) if kind == "move"]
+        assert [events[i][1] for i in moves_at] == trace
+        for n, i in enumerate(moves_at[1:], start=1):
+            last_read = next(
+                pos for kind, pos in reversed(events[:i]) if kind == "read"
+            )
+            assert last_read == trace[n - 1]
+        assert events[-1] == ("read", trace[-1])
+
+    @pytest.mark.asyncio
+    async def test_a_corner_not_reached_in_time_goes_on_to_the_next(
+        self, ruida_driver, machine
+    ):
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        ruida_driver.SCALE_CORNER_TIMEOUT = 0.05
+        ruida_driver.FRAME_POLL_INTERVAL = 0.01
+        spy = _ClientSpy()
+        ruida_driver._client = spy
+        plain_move = spy.rapid_move_xy
+
+        async def stuck(x_um, y_um, light=False):
+            await plain_move(x_um, y_um, light=light)
+            spy.position = HEAD
+
+        spy.rapid_move_xy = stuck
+
+        await ruida_driver.go_scale(WIDTH, HEIGHT, 2400)
+
+        assert len(_moves(spy.commands)) == 5
+
+    @pytest.mark.asyncio
+    async def test_a_stop_mid_trace_halts_and_resyncs(
+        self, ruida_driver, machine
+    ):
+        """Stop is D8 01 once and a position read; no move after it."""
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        spy = _ClientSpy()
+        ruida_driver._client = spy
+        plain_move = spy.rapid_move_xy
+        plain_read = spy.read_position
+
+        async def move(x_um, y_um, light=False):
+            await plain_move(x_um, y_um, light=light)
+            if len(_moves(spy.commands)) == 2:
+                await ruida_driver.cancel()
+
+        async def read(timeout: float = 2.0):
+            spy.commands.append(b"read")
+            return await plain_read(timeout)
+
+        spy.rapid_move_xy = move
+        spy.read_position = read
+
+        await ruida_driver.go_scale(WIDTH, HEIGHT, 2400)
+
+        after_stop = spy.commands[spy.commands.index(b"\xd8\x01") :]
+        assert spy.commands.count(b"\xd8\x01") == 1
+        assert after_stop[1] == b"read"
+        assert _moves(after_stop) == []
+        assert _moves(spy.commands) == EXPECTED_TRACE[StartCorner.TOP_LEFT][:2]
+        assert ruida_driver._jog_busy is False
+
+    @pytest.mark.asyncio
+    async def test_a_busy_machine_ignores_it(self, ruida_driver, machine):
+        ruida_driver._jog_busy = True
+
+        spy = await _run_go_scale(ruida_driver)
+
+        assert spy.commands == []
 
 
 class TestOneCornerForEveryAction:
-    """Start, Go Scale and Cut Scale all place the head the same way."""
+    """Start and Cut Scale place the head the same way."""
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("corner", list(StartCorner))
-    async def test_job_go_scale_and_cut_scale_pre_move_alike(
+    async def test_job_and_cut_scale_pre_move_alike(
         self, ruida_driver, machine, corner
     ):
         machine.set_start_corner(corner)
         actions = {
             "job": _rect_job(),
-            "go scale": _go_scale_ops(machine, WIDTH, HEIGHT, 2400),
             "cut scale": _cut_scale_ops(machine, WIDTH, HEIGHT, 1200, 0.8),
         }
 
