@@ -7,8 +7,8 @@ from .align import (
     BboxAlignTopStrategy,
     PositionAtStrategy,
 )
-from .auto import PixelPerfectLayoutStrategy
 from .base import LayoutStrategy
+from .nest import NestLayoutStrategy
 from .spread import SpreadHorizontallyStrategy, SpreadVerticallyStrategy
 
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     "BboxAlignRightStrategy",
     "BboxAlignTopStrategy",
     "LayoutStrategy",
-    "PixelPerfectLayoutStrategy",
+    "NestLayoutStrategy",
     "PositionAtStrategy",
     "SpreadHorizontallyStrategy",
     "SpreadVerticallyStrategy",

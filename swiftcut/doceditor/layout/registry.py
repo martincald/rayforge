@@ -134,10 +134,10 @@ def register_builtin_layout_strategies():
     This function should be called during application initialization
     before addons register their own strategies.
     """
-    from .auto import PixelPerfectLayoutStrategy
+    from .nest import NestLayoutStrategy
 
     layout_registry.register(
-        PixelPerfectLayoutStrategy,
+        NestLayoutStrategy,
         name="pixel-perfect",
         addon_name="core",
     )

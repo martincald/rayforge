@@ -24,7 +24,7 @@ explicitly::
 
 The boundary is each benchmark's stock, centred on the bed. With
 PERF_LAYOUT_BOUNDARY=bed there is no stock, so the boundary is the
-whole bed (the 40-piece layout then takes minutes)::
+whole bed::
 
     PERF_LAYOUT_BOUNDARY=bed python -m pytest \\
         tests/perf/perf_auto_layout.py -q -s -k profile
@@ -43,7 +43,7 @@ import time
 
 import pytest
 
-from swiftcut.doceditor.layout import PixelPerfectLayoutStrategy
+from swiftcut.doceditor.layout import NestLayoutStrategy
 from tests.doceditor import layout_bench as bench
 
 BOUNDARY = os.environ.get("PERF_LAYOUT_BOUNDARY", "stock")
@@ -117,12 +117,7 @@ async def test_profile(doc_editor, task_mgr, bed, tmp_path):
         doc_editor, task_mgr, tmp_path, "forty-40"
     )
     # As DocEditor.layout.layout_pixel_perfect builds it.
-    strategy = PixelPerfectLayoutStrategy(
-        items=workpieces,
-        margin_mm=0.5,
-        resolution_px_per_mm=8.0,
-        allow_rotation=True,
-    )
+    strategy = NestLayoutStrategy(items=workpieces)
     profile = cProfile.Profile()
 
     start = time.perf_counter()
@@ -139,6 +134,5 @@ async def test_profile(doc_editor, task_mgr, bed, tmp_path):
     print(
         f"\nPROFILE forty-40 fill={FILL} boundary={BOUNDARY} "
         f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.1f}s "
-        f"moved={len(deltas)}/{len(workpieces)} "
-        f"unplaced={len(strategy.unplaced_items)}\n{out.getvalue()}"
+        f"moved={len(deltas)}/{len(workpieces)}\n{out.getvalue()}"
     )

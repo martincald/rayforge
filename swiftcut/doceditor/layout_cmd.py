@@ -14,7 +14,7 @@ from .layout import (
     BboxAlignRightStrategy,
     BboxAlignTopStrategy,
     LayoutStrategy,
-    PixelPerfectLayoutStrategy,
+    NestLayoutStrategy,
     PositionAtStrategy,
     SpreadHorizontallyStrategy,
     SpreadVerticallyStrategy,
@@ -216,18 +216,13 @@ class LayoutCmd:
         self.execute_layout(strategy, _("Position at Point"))
 
     def layout_pixel_perfect(self, selected_items: list[DocItem]):
-        """Action handler for the pixel-perfect packing layout."""
+        """Action handler for Auto Layout on true outlines."""
         items_to_layout = self.get_items_to_layout(selected_items)
 
         if not items_to_layout:
             return
 
-        strategy = PixelPerfectLayoutStrategy(
-            items=items_to_layout,
-            margin_mm=0.5,
-            resolution_px_per_mm=8.0,
-            allow_rotation=True,
-        )
+        strategy = NestLayoutStrategy(items=items_to_layout)
         self.execute_layout(strategy, _("Auto Layout"))
 
     def get_items_to_layout(
