@@ -45,6 +45,8 @@ _SLIDE_TOLERANCE_MM = 0.01
 # How many of the piece's vertices are tested for lying inside an
 # obstacle, which proves an overlap without the exact test.
 _SAMPLES = 8
+# Float slack in mm, so a piece scaled to the bed's size still fits.
+_EPSILON_MM = 1e-6
 
 
 class Placement(NamedTuple):
@@ -99,7 +101,7 @@ def find_position(
     lo_x, hi_x = bx + (x1 - x0) / 2, bx + bw - (x1 - x0) / 2
     lo_y, hi_y = by + (y1 - y0) / 2, by + bh - (y1 - y0) / 2
     goal = (_clamp(tx, lo_x, hi_x), _clamp(ty, lo_y, hi_y))
-    if lo_x > hi_x or lo_y > hi_y:
+    if lo_x > hi_x + _EPSILON_MM or lo_y > hi_y + _EPSILON_MM:
         return Placement(float(goal[0] - cx), float(goal[1] - cy), False)
 
     step = max(min(x1 - x0, y1 - y0) / 4, MIN_STEP_MM)

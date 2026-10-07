@@ -22,6 +22,7 @@ from swiftcut.doceditor.file_cmd import (
     PreviewResult,
     _unsupported_coolant_labels,
 )
+from swiftcut.doceditor.layout.outline import item_world_polygons
 from swiftcut.image import (
     ImporterFeature,
     ImportManifest,
@@ -42,6 +43,7 @@ from swiftcut.machine.models.coordspace import (
 )
 from swiftcut.machine.models.machine import Machine
 from swiftcut.machine.models.spindle import SpindleHead
+from swiftcut.shared.placement import engine
 from swiftcut.shared.tasker.manager import TaskManager
 
 TESTS_DIR = Path(__file__).parent.parent
@@ -390,38 +392,38 @@ class TestPositionNewlyImportedItems:
     def test_position_none_uses_fit_and_position(
         self, file_cmd, sample_workpiece
     ):
-        """Test that None position triggers fit and position at origin."""
+        """Test that None position places at the nearest free spot."""
         with patch.object(
-            file_cmd, "_position_at_reference_origin"
-        ) as mock_fit_position:
+            file_cmd, "_place_at_nearest_free_spot"
+        ) as mock_place:
             file_cmd._position_newly_imported_items([sample_workpiece], None)
 
-            mock_fit_position.assert_called_once_with([sample_workpiece])
+            mock_place.assert_called_once_with([sample_workpiece], None)
 
 
-class TestFitAndPositionAtReferenceOrigin:
-    """Tests for _position_at_reference_origin method."""
+class TestFitAndPlaceAtNearestFreeSpot:
+    """Tests for _place_at_nearest_free_spot method."""
 
     def test_fit_and_position_no_config(self, file_cmd, sample_workpiece):
         """Test that method returns early when no config is available."""
         with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_ctx.return_value.config = None
 
-            file_cmd._position_at_reference_origin([sample_workpiece])
+            file_cmd._place_at_nearest_free_spot([sample_workpiece], None)
 
     def test_fit_and_position_no_machine(self, file_cmd, sample_workpiece):
         """Test that method returns early when no machine is configured."""
         with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_ctx.return_value.config.machine = None
 
-            file_cmd._position_at_reference_origin([sample_workpiece])
+            file_cmd._place_at_nearest_free_spot([sample_workpiece], None)
 
     def test_fit_and_position_no_bbox(self, file_cmd, sample_workpiece):
         """Test that method returns early when bbox cannot be calculated."""
         with patch.object(
             file_cmd, "_calculate_items_bbox", return_value=None
         ):
-            file_cmd._position_at_reference_origin([sample_workpiece])
+            file_cmd._place_at_nearest_free_spot([sample_workpiece], None)
 
     def test_fit_and_position_scale_down(self, file_cmd):
         """
@@ -461,8 +463,8 @@ class TestFitAndPositionAtReferenceOrigin:
             assert bbox[3] <= 150
             assert notifications == []
 
-    def test_fit_and_position_at_origin(self, file_cmd):
-        """Test positioning items at reference origin."""
+    def test_fit_and_position_at_bed_centre(self, file_cmd):
+        """Test positioning items at the centre of an empty bed."""
         wp = WorkPiece(name="Item")
         wp.set_size(50.0, 50.0)
         wp.pos = (0.0, 0.0)
@@ -470,26 +472,53 @@ class TestFitAndPositionAtReferenceOrigin:
         with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
             mock_machine = MagicMock()
             mock_machine.axis_extents = (200, 150)
-            mock_machine.work_area = (0, 0, 200, 150)
-            mock_machine.panel.reference_position_world = (10, 20)
-            mock_machine.panel.world_position_from_origin.return_value = (
-                10,
-                20,
-            )
-            mock_machine.get_coordinate_space.return_value = MachineSpace(
-                origin=OriginCorner.BOTTOM_LEFT,
-                x_positive_direction=AxisDirection.POSITIVE_RIGHT,
-                y_positive_direction=AxisDirection.POSITIVE_UP,
-                extents=(200, 150),
-            )
             mock_ctx.return_value.config.machine = mock_machine
 
             file_cmd._position_newly_imported_items([wp], None)
 
             bbox = wp.bbox
-            # Item should be positioned at reference origin (10, 20)
-            assert abs(bbox[0] - 10) < 1e-6
-            assert abs(bbox[1] - 20) < 1e-6
+            # Item should be centred on the 200 x 150 bed
+            assert abs(bbox[0] - 75) < 1e-6
+            assert abs(bbox[1] - 50) < 1e-6
+
+    def test_large_dxf_beside_a_copy_tests_only_near_outlines(
+        self, file_cmd, monkeypatch
+    ):
+        """
+        large.dxf has 500 outlines. Placed beside a copy of itself, it
+        gets the exact test only for pairs of outlines whose boxes
+        overlap: testing every pair took over 200,000 exact tests and
+        seconds on the main thread.
+        """
+        exact_tests = []
+        real = engine.do_polygons_intersect
+        monkeypatch.setattr(
+            engine,
+            "do_polygons_intersect",
+            lambda a, b: exact_tests.append(1) or real(a, b),
+        )
+        notifications = []
+        file_cmd._editor.notification_requested.connect(
+            lambda sender, **kwargs: notifications.append(kwargs), weak=False
+        )
+
+        with patch("swiftcut.doceditor.file_cmd.get_context") as mock_ctx:
+            mock_ctx.return_value.config.machine.axis_extents = (1400, 900)
+            for _ in range(2):
+                result = DxfImporter(
+                    LARGE_DXF.read_bytes(), LARGE_DXF
+                ).get_doc_items(PassthroughSpec())
+                assert result and result.payload
+                items = file_cmd._get_positionable_content(
+                    result.payload.items
+                )
+                exact_tests.clear()
+                file_cmd._place_at_nearest_free_spot(items, None)
+                for item in items:
+                    file_cmd._editor.doc.active_layer.add_child(item)
+
+        assert notifications == []
+        assert 0 < len(exact_tests) < 10_000
 
 
 class TestCommitItemsToDocument:
@@ -798,6 +827,139 @@ class TestOversizePolicy:
         policy.assert_not_called()
         (wp,) = doc_editor.doc.all_workpieces
         assert wp.size == pytest.approx(bbox[2:])
+
+
+def _frame_centre(workpieces):
+    """The centre of the union of the workpieces' frames."""
+    x0 = min(wp.bbox[0] for wp in workpieces)
+    y0 = min(wp.bbox[1] for wp in workpieces)
+    x1 = max(wp.bbox[0] + wp.bbox[2] for wp in workpieces)
+    y1 = max(wp.bbox[1] + wp.bbox[3] for wp in workpieces)
+    return (x0 + x1) / 2, (y0 + y1) / 2
+
+
+class TestImportPlacement:
+    """
+    An import goes to the free spot nearest to its target (the bed
+    centre, or the drop point) as one piece, 1 mm clear of every
+    workpiece already in the document.
+    """
+
+    @pytest.fixture
+    def bed(self, test_machine_and_config):
+        """The ilab-614 bed: 1400 x 900 mm."""
+        machine, _config = test_machine_and_config
+        machine.set_axis_extents(1400, 900)
+        return machine
+
+    async def _import(self, editor, task_mgr, path, position_mm=None):
+        """Imports a file; returns the workpieces it added."""
+        before = {wp.uid for wp in editor.doc.all_workpieces}
+        editor.file.load_file_from_path(
+            path, None, PassthroughSpec(), position_mm
+        )
+        await _wait_for_import(editor, task_mgr)
+        return [wp for wp in editor.doc.all_workpieces if wp.uid not in before]
+
+    @pytest.mark.asyncio
+    async def test_same_file_twice_sits_next_to_the_first(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _svg_mm(tmp_path / "part.svg", 100, 60)
+
+        (first,) = await self._import(doc_editor, task_mgr, path)
+        (second,) = await self._import(doc_editor, task_mgr, path)
+
+        assert _frame_centre([first]) == pytest.approx((700, 450))
+        # Directly below the first (nearest; ties go lower), its outline
+        # 1 mm clear and touching that clearance. (The SVG frame pads
+        # the outline by 1 mm, so the frames may overlap.)
+        assert _frame_centre([second])[0] == pytest.approx(700)
+        (upper,) = item_world_polygons(first)
+        (lower,) = item_world_polygons(second)
+        gap = min(y for _x, y in upper) - max(y for _x, y in lower)
+        assert 1.0 <= gap < 1.2
+
+    @pytest.mark.asyncio
+    async def test_full_bed_overlaps_at_the_centre_with_a_notice(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        cover = WorkPiece(name="Cover")
+        cover.set_size(1400, 900)
+        cover.pos = (0, 0)
+        doc_editor.doc.add_workpiece(cover)
+        notices = []
+        doc_editor.notification_requested.connect(
+            lambda sender, **kwargs: notices.append(kwargs["message"]),
+            weak=False,
+        )
+        path = _svg_mm(tmp_path / "part.svg", 100, 60)
+
+        (wp,) = await self._import(doc_editor, task_mgr, path)
+
+        assert _frame_centre([wp]) == pytest.approx((700, 450))
+        assert notices == [
+            "No free space on the bed: the import overlaps other pieces."
+        ]
+
+    @pytest.mark.asyncio
+    async def test_free_target_is_kept_without_a_notice(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        notices = []
+        doc_editor.notification_requested.connect(
+            lambda sender, **kwargs: notices.append(kwargs["message"]),
+            weak=False,
+        )
+        path = _svg_mm(tmp_path / "part.svg", 100, 60)
+        await self._import(doc_editor, task_mgr, path)
+
+        (wp,) = await self._import(doc_editor, task_mgr, path, (200, 150))
+
+        assert _frame_centre([wp]) == pytest.approx((200, 150))
+        assert notices == []
+
+    @pytest.mark.asyncio
+    async def test_multi_item_file_keeps_its_layout(
+        self, doc_editor, task_mgr, bed
+    ):
+        result = LightBurnImporter(
+            SWITCH_PLATE.read_bytes(), SWITCH_PLATE
+        ).get_doc_items(PassthroughSpec())
+        assert result and result.payload
+        layout = {
+            wp.name: wp.pos
+            for wp in doc_editor.file._get_positionable_content(
+                result.payload.items
+            )
+        }
+        assert len(layout) == 2
+        block = WorkPiece(name="Block")
+        block.set_size(300, 300)
+        block.pos = (550, 300)
+        doc_editor.doc.add_workpiece(block)
+
+        added = await self._import(doc_editor, task_mgr, SWITCH_PLATE)
+
+        assert len(added) == 2
+        plate, holes = sorted(added, key=lambda wp: wp.name, reverse=True)
+        dx = holes.pos[0] - plate.pos[0]
+        dy = holes.pos[1] - plate.pos[1]
+        assert (dx, dy) == pytest.approx(
+            (
+                layout[holes.name][0] - layout[plate.name][0],
+                layout[holes.name][1] - layout[plate.name][1],
+            )
+        )
+        # Moved off the block, 1 mm clear, still on the bed.
+        x, y, w, h = plate.bbox
+        assert (
+            x + w <= 550 - 1.0
+            or x >= 850 + 1.0
+            or y + h <= 300 - 1.0
+            or y >= 600 + 1.0
+        )
+        assert 0 <= x and x + w <= 1400 and 0 <= y and y + h <= 900
 
 
 class TestExportGcodeToPath:

@@ -168,6 +168,17 @@ def test_piece_larger_than_the_bed_does_not_fit():
     assert np.allclose(centre_of(moved(piece, result)), (700, 100))
 
 
+def test_piece_as_large_as_the_bed_fits_despite_float_noise():
+    # Scaling to fit leaves the size a last bit above the bed's.
+    width = np.nextafter(1400.0, 2000.0)
+    piece = [(0, 0), (width, 0), (width, 900), (0, 900)]
+
+    result = find_position([piece], [], BED)
+
+    assert result.fits
+    assert np.allclose(centre_of(moved(piece, result)), CENTRE)
+
+
 def test_small_piece_fills_a_gap_in_the_pile():
     pile = []
     for _ in range(6):

@@ -131,6 +131,9 @@ async def test_import_svg_export_gcode(
 
     assert len(doc_editor.doc.all_workpieces) == 1
     assert doc_editor.doc.all_workpieces[0].name == "10x10_square"
+    # Imports land on the bed centre; the expected G-code has the square
+    # at the origin.
+    doc_editor.doc.all_workpieces[0].pos = (0.0, 0.0)
 
     # Wait for all background tasks to complete before proceeding
     await doc_editor.wait_until_settled()

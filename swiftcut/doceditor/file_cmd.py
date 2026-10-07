@@ -50,7 +50,8 @@ from ..image.svg.exporter import GeometrySvgExporter
 from ..machine.driver.ruida.ruida_encoder import export_rd
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
-from .layout.align import PositionAtStrategy
+from ..shared.placement import find_position
+from .layout.outline import OUTLINE_TOLERANCE_MM, item_world_polygons
 
 if TYPE_CHECKING:
     from ..core.asset import IAsset
@@ -427,8 +428,9 @@ class FileCmd:
         position_mm: Point | None,
     ):
         """
-        Applies transformations to newly imported items, either positioning
-        them at a specific point or fitting and centering them.
+        Applies transformations to newly imported items: content larger
+        than the bed is scaled to fit, then placed at the free spot
+        nearest to position_mm (the bed centre if None).
         This method modifies the items' matrices in-place.
         """
         logger.debug(
@@ -442,26 +444,7 @@ class FileCmd:
             return
 
         self._scale_to_fit_if_oversized(content_to_transform)
-
-        if position_mm:
-            # Note: PositionAtStrategy needs the top-level items to calculate
-            # the current group position correctly.
-            strategy = PositionAtStrategy(items=items, position_mm=position_mm)
-            deltas = strategy.calculate_deltas()
-            if deltas:
-                # All items get the same delta matrix to move the group
-                delta_matrix = next(iter(deltas.values()))
-                # Apply the delta to the actual content, not the containers.
-                for item in content_to_transform:
-                    item.matrix = delta_matrix @ item.matrix
-
-                target_x, target_y = position_mm
-                logger.info(
-                    f"Positioned {len(content_to_transform)} imported "
-                    f"item(s) at ({target_x:.2f}, {target_y:.2f}) mm"
-                )
-        else:
-            self._position_at_reference_origin(content_to_transform)
+        self._place_at_nearest_free_spot(content_to_transform, position_mm)
 
     @staticmethod
     def _unwrap_item(item: DocItem) -> list[DocItem]:
@@ -901,9 +884,15 @@ class FileCmd:
 
         return scale_factor
 
-    def _position_at_reference_origin(self, items: list[DocItem]):
+    def _place_at_nearest_free_spot(
+        self, items: list[DocItem], position_mm: Point | None
+    ):
         """
-        Positions items at the reference origin.
+        Moves items, as one rigid piece, so their frame sits at the spot
+        nearest to position_mm (the bed centre if None) where their
+        outlines keep 1 mm from every workpiece in the document and the
+        frame stays inside the bed. Without such a spot they go to the
+        position, overlapping, and a notice says so.
 
         The caller is responsible for calling _scale_to_fit_if_oversized()
         before this method.
@@ -916,35 +905,51 @@ class FileCmd:
             )
             return
 
-        content_items = self._get_positionable_content(items)
-        if not content_items:
+        frame = self._calculate_items_bbox(items)
+        piece = [p for item in items for p in item_world_polygons(item)]
+        if not frame or not piece:
             return
+        fx, fy, fw, fh = frame
+        bx, by, bw, bh = bed_rect(config.machine)
+        tx, ty = position_mm or (bx + bw / 2, by + bh / 2)
 
-        bbox = self._calculate_items_bbox(content_items)
-        if not bbox:
-            return  # Should not happen, but for safety
-        bbox_x, bbox_y, bbox_w, bbox_h = bbox
-
-        machine = config.machine
-        # Position at reference origin
-        # The reference origin is where the user expects (0,0) to be.
-        # The panel gives us the reference origin in world coords; we use
-        # world_position_from_origin to handle origin corner adjustment.
-        ref_x, ref_y = machine.panel.reference_position_world
-        target_x, target_y = machine.panel.world_position_from_origin(
-            ref_x, ref_y, (bbox_w, bbox_h)
+        # The engine places the outlines; their margins inside the frame
+        # move the target and the bed, so the frame is what is centred
+        # and kept inside the bed.
+        left = min(x for p in piece for x, _y in p) - fx
+        right = fx + fw - max(x for p in piece for x, _y in p)
+        bottom = min(y for p in piece for _x, y in p) - fy
+        top = fy + fh - max(y for p in piece for _x, y in p)
+        obstacles = [
+            p
+            for workpiece in self._editor.doc.all_workpieces
+            for p in item_world_polygons(workpiece)
+        ]
+        placement = find_position(
+            piece,
+            obstacles,
+            (bx + left, by + bottom, bw - left - right, bh - bottom - top),
+            (tx + (left - right) / 2, ty + (bottom - top) / 2),
+            # Both outlines may lie up to the tolerance inside the curves.
+            clearance=1.0 + 2 * OUTLINE_TOLERANCE_MM,
         )
 
-        # Calculate translation to move bbox top-left to the target position
-        delta_x = target_x - bbox_x
-        delta_y = target_y - bbox_y
-
-        # Apply the same translation to all top-level imported items
-        if abs(delta_x) > 1e-9 or abs(delta_y) > 1e-9:
-            translation_matrix = Matrix.translation(delta_x, delta_y)
-            # Apply the group transform to each piece of content.
-            for item in content_items:
-                item.matrix = translation_matrix @ item.matrix
+        translation_matrix = Matrix.translation(placement.dx, placement.dy)
+        for item in items:
+            item.matrix = translation_matrix @ item.matrix
+        logger.info(
+            f"Placed {len(items)} imported item(s) at frame "
+            f"({fx + placement.dx:.2f}, {fy + placement.dy:.2f}) mm, "
+            f"fits={placement.fits}"
+        )
+        if not placement.fits:
+            self._editor.notification_requested.send(
+                self,
+                message=_(
+                    "No free space on the bed: the import overlaps "
+                    "other pieces."
+                ),
+            )
 
     def assemble_job_in_background(
         self,
