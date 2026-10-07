@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from gettext import gettext as _
+from typing import TYPE_CHECKING
 
 from raygeo.geo import Matrix
 
@@ -20,6 +21,9 @@ from ...shared.placement import Piece, arrange
 from ...shared.tasker.context import ExecutionContext
 from .base import LayoutStrategy
 from .outline import OUTLINE_TOLERANCE_MM, item_world_polygons
+
+if TYPE_CHECKING:
+    from ...core.doc import Doc
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +39,9 @@ class NestLayoutStrategy(LayoutStrategy):
     they are, with a notice.
 
     The document is read when the strategy is built, which must be on
-    the main thread; calculate_deltas only computes from that.
+    the main thread; arrange_args hands that to arrange, which may run
+    anywhere, and deltas turns its result into the items' deltas.
+    changed tells whether the document has moved on meanwhile.
     """
 
     def __init__(self, items: Sequence[DocItem], **kwargs):
@@ -88,28 +94,68 @@ class NestLayoutStrategy(LayoutStrategy):
             if workpiece not in moving
             for polygon in item_world_polygons(workpiece)
         ]
+        # What the layout is worked out on (see changed).
+        self.doc = doc
+        self._read = self._positions()
+
+    def changed(self) -> bool:
+        """
+        Whether, since the strategy read the document, an item left it,
+        or an item, workpiece or stock in it moved, came or went.
+        """
+        return self._positions() != self._read
+
+    def _positions(self) -> list[tuple[DocItem, Doc | None, Matrix]]:
+        """
+        The items, workpieces and stocks, each with its document and
+        world transform.
+        """
+        return [
+            (item, item.doc, item.get_world_transform())
+            for item in (
+                *self.items,
+                *self.doc.all_workpieces,
+                *self.doc.stock_items,
+            )
+        ]
 
     def calculate_deltas(
         self, context: ExecutionContext | None = None
     ) -> dict[DocItem, Matrix]:
+        """Runs arrange here and gives its deltas (see deltas)."""
+        args = self.arrange_args()
+        if args is None:
+            return {}
+        return self.deltas(arrange(context or ExecutionContext(), *args))
+
+    def arrange_args(self) -> tuple | None:
         """
-        The delta for each item that fits: a turn about its frame's
-        centre and a move, in world space, expressed in its parent's
-        space (layout_cmd applies it as `delta @ item.matrix`).
+        What shared.placement.arrange takes after its progress context
+        (plain data, so a worker process can run it); None when there
+        is neither a stock nor a machine bed.
         """
         if self._boundary is None:
             logger.warning("Auto Layout: no stock and no machine bed.")
-            return {}
+            return None
         bx, by, bw, bh = self._boundary
-        placements = arrange(
-            context or ExecutionContext(),
+        return (
             self._pieces,
             self._obstacles,
             self._boundary,
             (bx + bw / 2, by + bh / 2),
             # Both outlines may lie up to the tolerance inside the curves.
-            clearance=1.0 + 2 * OUTLINE_TOLERANCE_MM,
+            1.0 + 2 * OUTLINE_TOLERANCE_MM,
         )
+
+    def deltas(
+        self, placements: dict[int, tuple[float, float, float, bool]]
+    ) -> dict[DocItem, Matrix]:
+        """
+        From arrange's result, the delta for each item that fits: a
+        turn about its frame's centre and a move, in world space,
+        expressed in its parent's space (layout_cmd applies it as
+        `delta @ item.matrix`). Items that do not fit get a notice.
+        """
         if not placements:
             return {}
 

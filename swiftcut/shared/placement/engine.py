@@ -37,6 +37,10 @@ Rect = tuple[float, float, float, float]
 #: The grid step is a quarter of the piece's smaller side, but no
 #: less than this, in mm.
 MIN_STEP_MM = 2.0
+#: At most this many grid positions get an exact test per call. The
+#: 40-piece benchmark needs at most 52; a bed-sized comb of 900
+#: vertices, where nothing fits, takes about 0.5 ms per test.
+MAX_TESTS = 1000
 # Round joins sag between their vertices by about 0.2 % of the offset;
 # growing by 1 % more keeps the true gap at or above the clearance.
 _ROUND_JOIN_GROWTH = 1.01
@@ -63,6 +67,7 @@ def find_position(
     bed: Rect,
     target: Point | None = None,
     clearance: float = 1.0,
+    max_tests: int = MAX_TESTS,
 ) -> Placement:
     """
     Where to move a piece so it sits closest to the target without
@@ -75,7 +80,9 @@ def find_position(
     the piece's outlines keep `clearance` from every obstacle and its
     bounding box stays inside the bed. The first free position then
     slides toward the target until it touches: along the line to it,
-    then along x, then along y.
+    then along x, then along y. Most positions are decided without an
+    exact outline test; after `max_tests` exact tests the nearest
+    position known to be free that way is taken, if there is one.
 
     Args:
         piece: Outer outlines of the piece, moved as one.
@@ -84,11 +91,14 @@ def find_position(
         target: Where the centre of the piece's bounding box should
             go; the bed centre if None.
         clearance: Minimum gap between outlines, in mm.
+        max_tests: The most grid positions tested exactly (the slides
+            add at most a bisection's worth each).
 
     Returns:
-        The move (dx, dy) and fits=True. If no position is free, the
-        move to the target, kept inside the bed (centred on an axis
-        where the piece is larger than the bed), and fits=False.
+        The move (dx, dy) and fits=True. If no position is free (or
+        none is found within `max_tests`), the move to the target,
+        kept inside the bed (centred on an axis where the piece is
+        larger than the bed), and fits=False.
     """
     raw = [np.asarray(p, dtype=float) for p in piece]
     x0, y0 = np.min([p.min(axis=0) for p in raw], axis=0)
@@ -118,11 +128,17 @@ def find_position(
     todo = ~blocked
     if clear.any():
         todo &= dist <= dist[clear].min()
+    # Past max_tests, only the positions known to be free are left.
     rows, cols = np.nonzero(todo)
+    tests = 0
     for k in np.lexsort((off_x[cols], off_y[rows], dist[rows, cols])):
         row, col = rows[k], cols[k]
-        if clear[row, col] or search.is_free(xs[col], ys[row]):
+        if clear[row, col]:
             break
+        if tests < max_tests:
+            tests += 1
+            if search.is_free(xs[col], ys[row]):
+                break
     else:
         return Placement(float(goal[0] - cx), float(goal[1] - cy), False)
 

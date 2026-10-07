@@ -8,7 +8,7 @@ from raygeo.geo.shape.polygon import (
     get_polygon_boundary_distance,
 )
 
-from swiftcut.shared.placement import Placement, find_position
+from swiftcut.shared.placement import Placement, engine, find_position
 
 # The ilab-614 bed: (x, y, width, height) in world mm.
 BED = (0.0, 0.0, 1400.0, 900.0)
@@ -255,3 +255,58 @@ def test_same_input_same_result():
     assert first == second
     assert pickle.loads(pickle.dumps(first)) == first
     assert isinstance(first, Placement)
+
+
+def comb(x, y, width, height):
+    """
+    A comb over the box: a 20 mm spine along its bottom, and teeth 3 mm
+    wide and 3 mm apart up to its top. Nothing of the L below fits
+    between them, and its concave outline leaves most positions over
+    the comb to an exact test.
+    """
+    points = [(x, y), (x + width, y), (x + width, y + height)]
+    right = x + width
+    while right - 6 > x:
+        points += [
+            (right - 3, y + height),
+            (right - 3, y + 20),
+            (right - 6, y + 20),
+            (right - 6, y + height),
+        ]
+        right -= 6
+    return points + [(x, y + height)]
+
+
+L_PIECE = [(0, 0), (30, 0), (30, 8), (8, 8), (8, 20), (0, 20)]
+
+
+def count_exact_tests(monkeypatch):
+    """The positions the engine tests exactly, from now on."""
+    calls = []
+    is_free = engine._Search.is_free
+
+    def counted(search, x, y):
+        calls.append((x, y))
+        return is_free(search, x, y)
+
+    monkeypatch.setattr(engine._Search, "is_free", counted)
+    return calls
+
+
+def test_exact_tests_stop_at_the_cap(monkeypatch):
+    # Uncapped, this takes about 8000 exact tests and 4 s.
+    calls = count_exact_tests(monkeypatch)
+
+    result = find_position([L_PIECE], [comb(0, 0, 1400, 900)], BED)
+
+    assert not result.fits
+    assert len(calls) == engine.MAX_TESTS
+
+
+def test_past_the_cap_the_nearest_position_known_free_is_taken():
+    # The bed centre is over a comb, with free bed all around it.
+    obstacles = [comb(500, 300, 400, 300)]
+
+    placed = place(L_PIECE, obstacles, max_tests=0)
+
+    assert distance_to_centre(placed) > 150

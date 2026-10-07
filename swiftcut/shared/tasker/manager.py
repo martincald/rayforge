@@ -63,6 +63,10 @@ class TaskManager:
         self._manager: Any = None
         self._shared_state: Any = None
         self._pool: Any = None
+        # Held while the pool starts, which happens off the caller's
+        # thread (see run_process), and while shutdown stops it.
+        self._pool_lock = threading.Lock()
+        self._closed = False
         self._pool_kwargs = {
             "initializer": worker_initializer,
             "initargs": worker_initargs,
@@ -79,8 +83,11 @@ class TaskManager:
         self._manager = get_context("spawn").Manager()
         self._shared_state = self._manager.dict()
         self._pool_kwargs["shared_state"] = self._shared_state
-        self._pool = WorkerPoolManager(**self._pool_kwargs)
-        self._connect_pool_signals()
+        # Connected before it is set: run_process on another thread
+        # submits to it as soon as it is.
+        pool = WorkerPoolManager(**self._pool_kwargs)
+        self._connect_pool_signals(pool)
+        self._pool = pool
 
     def restart_worker_pool(self) -> None:
         """
@@ -96,17 +103,17 @@ class TaskManager:
         with self._lock:
             self._pool.shutdown()
             self._pool = WorkerPoolManager(**self._pool_kwargs)
-            self._connect_pool_signals()
+            self._connect_pool_signals(self._pool)
         logger.info("Worker pool restarted.")
 
-    def _connect_pool_signals(self):
+    def _connect_pool_signals(self, pool: WorkerPoolManager):
         """Connects to signals emitted by the WorkerPoolManager."""
-        self._pool.task_completed.connect(self._on_pool_task_completed)
-        self._pool.task_failed.connect(self._on_pool_task_failed)
-        self._pool.task_progress_updated.connect(self._on_pool_task_progress)
-        self._pool.task_message_updated.connect(self._on_pool_task_message)
-        self._pool.task_event_received.connect(self._on_pool_task_event)
-        self._pool.worker_died.connect(self._on_pool_worker_died)
+        pool.task_completed.connect(self._on_pool_task_completed)
+        pool.task_failed.connect(self._on_pool_task_failed)
+        pool.task_progress_updated.connect(self._on_pool_task_progress)
+        pool.task_message_updated.connect(self._on_pool_task_message)
+        pool.task_event_received.connect(self._on_pool_task_event)
+        pool.worker_died.connect(self._on_pool_worker_died)
 
     def __len__(self) -> int:
         """Return the number of active tasks."""
@@ -413,11 +420,52 @@ class TaskManager:
         if visible:
             task._emit_status_changed()
 
-        # Submit the actual work to the pool (creates it lazily if needed)
-        self._ensure_pool()
-        self._pool.submit(task.key, task.id, func, *args, **kwargs)
+        # Submit the actual work to the pool. Starting the pool spawns
+        # its processes and waits for them (about 0.2 s), so the first
+        # submission starts it on a helper thread rather than block the
+        # caller, usually the main thread.
+        if self._pool is not None:
+            self._pool.submit(task.key, task.id, func, *args, **kwargs)
+        else:
+            threading.Thread(
+                target=self._start_pool_and_submit,
+                args=(task, func, args, kwargs),
+                daemon=True,
+            ).start()
 
         return task
+
+    def _start_pool_and_submit(
+        self,
+        task: Task,
+        func: Callable[..., Any],
+        args: tuple,
+        kwargs: dict[str, Any],
+    ) -> None:
+        """
+        Starts the pool if needed, then submits the task to it; if that
+        fails, so does the task.
+        """
+        try:
+            with self._pool_lock:
+                if self._closed:
+                    return
+                self._ensure_pool()
+                if task.is_cancelled():
+                    # Cancelled before the pool existed to be told: the
+                    # worker now skips it, and its final message
+                    # finalizes it.
+                    self._pool.cancel(task.key, task.id)
+                self._pool.submit(task.key, task.id, func, *args, **kwargs)
+        except Exception as e:
+            logger.exception(f"Could not submit task '{task.key}'.")
+            self._main_thread_scheduler(
+                self._finalize_pooled_task,
+                task.key,
+                task.id,
+                "failed",
+                error=str(e),
+            )
 
     def cancel_task(self, key: Any) -> None:
         """
@@ -438,9 +486,11 @@ class TaskManager:
             # For asyncio tasks, this will also cancel the underlying future.
             task.cancel()
 
-            # For pooled tasks, we just notify the pool.
+            # For pooled tasks, we just notify the pool (if it has
+            # started; else _start_pool_and_submit does).
             if task.task_type == "process":
-                self._pool.cancel(key, task.id)
+                if self._pool is not None:
+                    self._pool.cancel(key, task.id)
                 if task.get_status() != "canceled":
                     task._status = "canceled"
                     if task._visible:
@@ -493,7 +543,8 @@ class TaskManager:
                     f"'{task.key}' (id: {task_id})."
                 )
                 task.cancel()
-                self._pool.cancel(task.key, task.id)
+                if self._pool is not None:
+                    self._pool.cancel(task.key, task.id)
                 task._status = "canceled"
                 del self._invisible_tasks[task_id]
                 self._zombie_tasks[task_id] = task
@@ -889,11 +940,14 @@ class TaskManager:
                 )
                 self.cancel_task(task.key)
 
-            # Shut down the worker pool (only if it was ever started).
-            if self._pool is not None:
-                self._pool.shutdown()
-            if self._manager is not None:
-                self._manager.shutdown()
+            # Shut down the worker pool (only if it was ever started; a
+            # start in progress finishes first, and none starts after).
+            with self._pool_lock:
+                self._closed = True
+                if self._pool is not None:
+                    self._pool.shutdown()
+                if self._manager is not None:
+                    self._manager.shutdown()
 
             logger.info("Stopping asyncio event loop...")
             # Stop the asyncio loop

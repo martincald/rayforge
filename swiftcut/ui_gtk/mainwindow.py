@@ -50,6 +50,7 @@ from .doceditor.import_handler import (
     start_interactive_import,
 )
 from .doceditor.item_properties import DocItemPropertiesWidget
+from .doceditor.layout_progress import LayoutProgress
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
@@ -273,6 +274,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar = MainToolbar()
         self._connect_toolbar_signals()
         main_ui_box.append(self.toolbar)
+        # A running Auto Layout's progress and Cancel, at the toolbar's
+        # end.
+        self.layout_progress = LayoutProgress(task_mgr)
+        self.toolbar.append(self.layout_progress)
 
         # Create an overlay so the right panel can float above the canvas.
         self._canvas_overlay = Gtk.Overlay()

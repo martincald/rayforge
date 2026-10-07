@@ -200,3 +200,186 @@ from pieces lying on top of each other. The fair bar is today's layout
 on filled pieces, where it sees solid shapes: 1.31 (circles-20), 1.34
 (mixed-18) and 1.34 (forty-40), with zero overlaps required instead of
 0, 0 and 8; and 1.70 for forty-40 on the full bed.
+
+## After (E2: off the main loop)
+
+Measured on the same Apple M1 as Before, with the E1 layout (true
+outlines, Package A's engine) now computed in a worker process.
+
+**What runs where.** Pressing Auto Layout reads the document on the
+main thread (`NestLayoutStrategy`: outlines, frames, obstacles), then
+`TaskManager.run_process` runs `swiftcut.shared.placement.arrange` in
+the spawn worker pool under the task key `auto-layout`. The worker
+reports one progress step per piece and checks for Cancel before each
+piece (`ExecutionContextProxy.is_cancelled`, one call to the pool's
+Manager per piece). The result comes back as plain data and is applied
+on the main thread as one undo step. A progress row at the end of the
+toolbar (label, bar, Cancel) is shown only while that task runs;
+Cancel calls `TaskManager.cancel_task("auto-layout")`. A cancelled
+layout changes no matrix and adds no undo entry, and the worker stops
+at its next piece.
+
+**The pool's first start.** The pool is created on the first
+`run_process` call. Before this change, that call blocked its caller,
+here the main thread. In a small script, `TaskManager._ensure_pool()`
+(two spawn Managers and eight workers) took 170 to 217 ms over three
+runs. In the main window, with the 40 pieces loaded, it held the main
+loop for 413 and 456 ms: the frame-time test below, run with only this
+change reverted. `run_process` now starts the pool on a helper thread
+and submits from there. `cancel_task` copes with a task whose pool is
+not up yet, and `shutdown` waits for a start in progress. Started as
+`python -m swiftcut`, the app's workers do not re-run its
+`__main__`: multiprocessing's spawn skips a package's `__main__`
+module (`_fixup_main_from_name`). So a worker imports the pool code,
+the initializer (`swiftcut.worker_init`), and what the task's function
+and data need. In the tests the initializer comes from
+`tests/conftest.py`, which imports more.
+
+**Timings** (`tests/perf/perf_auto_layout.py`). *time* is a cold start:
+the first layout of a fresh task manager, pool start included. *warm*
+is a second run on the same document after undo. *main* is the main
+thread's own work: reading the document and applying the result. The
+E1 column is the E1 code computing on the task manager's thread,
+measured in the same session.
+
+| Boundary | Benchmark | E1 | E2 cold | E2 warm | Stall cold / warm | Main: read + apply |
+|---|---|---|---|---|---|---|
+| stock | circles-20 | 0.6 s | 1.4 s | 0.6 s | 28 / 21 ms | 21 + 1 ms |
+| stock | mixed-18 | 0.5 s | 1.2 s | 0.5 s | 11 / 20 ms | 8 + 1 ms |
+| stock | forty-40 | 1.2 s | 2.0 s | 1.2 s | 20 / 29 ms | 18 + 2 ms |
+| bed | circles-20 | 0.6 s | 1.3 s | 0.7 s | 21 / 27 ms | 17 + 1 ms |
+| bed | mixed-18 | 0.5 s | 1.2 s | 0.5 s | 17 / 18 ms | 12 + 1 ms |
+| bed | forty-40 | 1.2 s | 2.0 s | 1.2 s | 36 / 25 ms | 29 + 1 ms |
+
+All within the 3 s target. A warm run takes as long as E1's run on
+the task manager's thread. The first run after launch costs about
+0.8 s more: the pool starting and its first worker importing what it
+needs (not broken down further).
+The layout's own time in-process (`test_profile`, under cProfile) is
+1.3 s for forty-40 on the stock and on the bed. `classify` (the hull
+NFP prefilter) is still the largest part. The E1 check that skips
+quarter turns giving the same shape (`layout._same_shape`) costs about
+0.38 s. Compactness, clashes and frames are unchanged from E1 on every
+row (1.649 / 1.491 / 1.491 on the stocks, 1.629 / 1.549 / 1.666 on the
+bed, 0 overlap, 0 close, 0 frames outside); E3 owns compactness.
+
+**The GTK main loop** (`tests/ui_gtk/doceditor/test_auto_layout_ui.py`).
+The test opens the main window on the 1400 x 900 bed, imports
+forty-40, and activates `win.layout-pixel-perfect` (Ctrl+Alt+A's
+action). A 16 ms GLib timer records the longest gap from the press
+until the undo entry exists, plus one tick. The cold pool start, the
+document read and the apply are all inside that window; nothing is
+excluded. The bar is 100 ms.
+
+| Code | Runs | Longest gap | Result in the document after |
+|---|---|---|---|
+| E1 (task manager's thread) | 3 | 59, 84, 125 ms | 1.3 s |
+| E2, pool started on the main thread (manager.py reverted) | 2 | 413, 456 ms | not recorded |
+| E2 (worker process), cold pool | 6 | 60, 63, 66, 72, 76, 79 ms | 1.9 to 2.0 s (3 timed) |
+| E2, cold pool, progress row disabled | 2 | 64, 66 ms | 1.85, 1.9 s |
+| E2, pool started just before the press | 4 | 32, 39, 67, 69 ms | 1.4 to 2.6 s |
+
+E1 passed this bar twice in three runs, so the test does not tell E1
+from E2 reliably. It does catch a pool start on the main thread. In
+E2 cold, the longest gap comes about 0.1 s after the press, while the
+helper thread spawns the pool's processes. That the spawn holds the
+main thread there is inferred from the timing, not traced. The
+progress row is not the cause: the gap is the same with it disabled.
+The cold runs leave 21 to 40 ms below the bar, and a review run once
+went over it, so on a loaded machine the test can fail; the margin is
+accepted as is, for the owner to judge.
+With the pool started on a thread just before the press, its workers
+were still starting up, so those runs vary; one took 2.6 s. The read
+takes 18 to 30 ms of main-thread time and the apply 7 to 9 ms, with
+the canvas drawing. The "manager.py reverted" row is the test itself
+with `swiftcut/shared/tasker/manager.py` put back to E1's. The last
+two rows, the timings of the cold rows, and three of the cold runs
+come from a temporary variant of the test that also recorded when
+each gap came. The last two runs of the last row also had the row
+disabled.
+
+**Spatial index.** `_Search.is_free` first looks for obstacles whose
+boxes overlap the grown piece's box. It does this with one vectorized
+compare over a flat numpy array of obstacle boxes. `test_spatial_index`
+times that against raygeo's `SpatialGrid` (built once, then queried 100
+times, about one find_position call's worth):
+
+```
+INDEX obstacles=40 queries=100: numpy 0.39 ms; SpatialGrid cell 25 mm 0.43 ms, cell 50 mm 0.42 ms, cell 100 mm 0.43 ms
+INDEX obstacles=500 queries=100: numpy 0.48 ms; SpatialGrid cell 25 mm 0.75 ms, cell 50 mm 0.66 ms, cell 100 mm 0.69 ms
+```
+
+**Decision: keep numpy.** At 40 obstacles the two are within 0.15 ms
+per 100 queries either way: this test has numpy ahead, and an earlier
+scratch version of the same loop had the grid ahead. At 500 obstacles
+the grid is 40 to 60 % slower in both. Either way, the query costs
+under 1 ms of a find_position call, which averages about 16 ms on
+forty-40 (1.2 s for 73 calls). The flat box array is the index, and
+the bbox prefilter still runs before every polygon test. An index
+would not help `classify`, the largest cost, either: its grid spans
+the whole boundary, so every obstacle is relevant to it.
+
+**Cap on exact tests.** `find_position(..., max_tests=MAX_TESTS)` with
+`MAX_TESTS = 1000`. It counts the grid positions given an exact
+outline test. The slides are not counted; each is a bisection of at
+most about 18 steps. Once the cap is reached, the nearest position
+known to be free without a test is taken (then slid as usual). If there
+is none, the piece does not fit.
+
+- Benchmarks (`test_exact_tests`): circles-20 and mixed-18 need no
+  exact test, because convex pieces are decided by the hull prefilter.
+  forty-40 needs at most 33 per call on the stock (276 in all) and 52
+  on the bed (302 in all), so a cap of 1000 is about 20 times the
+  largest seen and does not change any benchmark result.
+- Worst case: a bed-sized comb (3 mm teeth, 3 mm gaps, 936 vertices)
+  and a small L that fits nowhere. Uncapped, it took 8,050 exact tests
+  and 3.8 s, and 9.2 s with 10 mm gaps (38,925 tests). Capped, each
+  call takes 0.26 to 0.48 s.
+- The cap also bounds the import placement (A3), which runs on the
+  main thread: the same comb now costs at most about 0.5 s per import
+  there.
+- `tests/shared/test_placement.py` covers the cap and the fall-back.
+
+**auto.py.** `PixelPerfectLayoutStrategy` (`doceditor/layout/auto.py`)
+was deleted in E1, after the Before numbers above were recorded. E2
+checked what else it alone used. Nothing in `swiftcut/` or `tests/`
+is left unused: `geometry_to_cairo` and cairo have other users, and
+scipy stays for the sketcher addon. The only remaining mentions are the
+generated `.po`/`.pot` source comments, which change when the
+catalogues are next regenerated, and the historical note in
+`docs/PERF_AUDIT.md`. Both are left as they are.
+
+**The document changing meanwhile.** The window stays usable while
+the worker computes, so the document can change before the result
+arrives. The result is applied only if the editor still has the same
+document and no laid-out item, workpiece or stock in it moved, came or
+went since it was read (`NestLayoutStrategy.changed` compares world
+transforms, so pipeline updates do not count). Otherwise nothing
+moves, no undo entry is added, and a notice says the document changed.
+This covers a document opened meanwhile, an item deleted or moved, and
+an obstacle moved onto the layout; `tests/doceditor/test_auto_layout.py`
+tests the replaced document and the moved obstacle.
+
+**Pieces that fit nowhere.** Such a piece stays where it is, and every
+other piece is kept clear of it, also the larger ones placed before it
+was found: a piece too large for the boundary any way up is known
+before the layout starts, and finding another starts the layout over
+with it fixed (at most once per piece).
+
+A second Auto Layout started while one runs replaces it (same task
+key): the first is cancelled and the second's result applies (read
+from the code, not tested).
+
+Not verified: the frozen .app and the Windows build, where spawning
+the pool may cost more (NEEDS-OWNER).
+
+**Commands** (from the repository root, inside the sandbox wrapper
+from the package instructions):
+
+```
+python -m pytest tests/perf/perf_auto_layout.py -q -s -k test_layout
+PERF_LAYOUT_BOUNDARY=bed python -m pytest tests/perf/perf_auto_layout.py -q -s -k test_layout
+python -m pytest tests/perf/perf_auto_layout.py -q -s -k "test_profile or test_exact_tests or test_spatial_index"
+PERF_LAYOUT_BOUNDARY=bed python -m pytest tests/perf/perf_auto_layout.py -q -s -k "test_profile or test_exact_tests"
+python -m pytest -m ui tests/ui_gtk/doceditor/test_auto_layout_ui.py -q -s
+```

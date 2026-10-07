@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from ..core.item import DocItem
 from ..core.undo import ChangePropertyCommand
+from ..shared.placement import arrange
 from .layout import (
     BboxAlignBottomStrategy,
     BboxAlignCenterStrategy,
@@ -21,11 +22,16 @@ from .layout import (
 )
 
 if TYPE_CHECKING:
+    from raygeo.geo import Matrix
+
     from ..shared.tasker.manager import TaskManager
     from ..shared.tasker.task import Task
     from .editor import DocEditor
 
 logger = logging.getLogger(__name__)
+
+#: The key of the task an Auto Layout runs as.
+AUTO_LAYOUT_KEY = "auto-layout"
 
 
 class LayoutCmd:
@@ -88,24 +94,7 @@ class LayoutCmd:
 
             # The result of the task is the dictionary of transformation
             # deltas.
-            deltas = task.result()
-
-            if not deltas:
-                return  # No changes to apply
-
-            with self._editor.history_manager.transaction(
-                transaction_name
-            ) as t:
-                for item, delta_matrix in deltas.items():
-                    old_matrix = item.matrix.copy()
-                    new_matrix = delta_matrix @ old_matrix
-                    cmd = ChangePropertyCommand(
-                        target=item,
-                        property_name="matrix",
-                        new_value=new_matrix,
-                        old_value=old_matrix,
-                    )
-                    t.execute(cmd)
+            self._apply_deltas(task.result(), transaction_name)
 
         # This simple coroutine just runs the calculation in the background
         # and returns the result.
@@ -122,6 +111,25 @@ class LayoutCmd:
             when_done=when_done,
             key=f"layout-{transaction_name}",  # key to prevent concurrent runs
         )
+
+    def _apply_deltas(
+        self, deltas: dict[DocItem, Matrix], transaction_name: str
+    ):
+        """Applies the deltas (`delta @ item.matrix`) as one undo step."""
+        if not deltas:
+            return  # No changes to apply
+
+        with self._editor.history_manager.transaction(transaction_name) as t:
+            for item, delta_matrix in deltas.items():
+                old_matrix = item.matrix.copy()
+                new_matrix = delta_matrix @ old_matrix
+                cmd = ChangePropertyCommand(
+                    target=item,
+                    property_name="matrix",
+                    new_value=new_matrix,
+                    old_value=old_matrix,
+                )
+                t.execute(cmd)
 
     def center_horizontally(
         self, selected_items: list[DocItem], surface_width_mm: float
@@ -216,14 +224,56 @@ class LayoutCmd:
         self.execute_layout(strategy, _("Position at Point"))
 
     def layout_pixel_perfect(self, selected_items: list[DocItem]):
-        """Action handler for Auto Layout on true outlines."""
+        """
+        Action handler for Auto Layout on true outlines. The document
+        is read here; the layout is worked out in a worker process, as
+        the task AUTO_LAYOUT_KEY (with progress, and cancelling it
+        changes nothing), and applied on the main thread as one undo
+        step, unless the document changed meanwhile.
+        """
         items_to_layout = self.get_items_to_layout(selected_items)
 
         if not items_to_layout:
             return
 
         strategy = NestLayoutStrategy(items=items_to_layout)
-        self.execute_layout(strategy, _("Auto Layout"))
+        args = strategy.arrange_args()
+        if args is None:
+            self._editor.notification_requested.send(
+                self,
+                message=_(
+                    "Auto Layout needs a stock or a machine bed to lay "
+                    "out on."
+                ),
+            )
+            return
+
+        def on_error_reported(sender, message: str):
+            self._editor.notification_requested.send(self, message=message)
+
+        def when_done(task: Task):
+            # Cancelled: nothing changes. Failed: the task manager
+            # logged it.
+            if task.get_status() != "completed":
+                return
+            # Worked out on the document as it was read: one that has
+            # changed since may not have room where the result says.
+            if self._editor.doc is not strategy.doc or strategy.changed():
+                self._editor.notification_requested.send(
+                    self,
+                    message=_(
+                        "The document changed during Auto Layout; "
+                        "nothing was moved."
+                    ),
+                )
+                return
+            strategy.error_reported.connect(on_error_reported)
+            deltas = strategy.deltas(task.result())
+            self._apply_deltas(deltas, _("Auto Layout"))
+
+        self._task_manager.run_process(
+            arrange, *args, key=AUTO_LAYOUT_KEY, when_done=when_done
+        )
 
     def get_items_to_layout(
         self, selected_items: list[DocItem]

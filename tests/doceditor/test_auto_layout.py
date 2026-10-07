@@ -2,18 +2,29 @@
 Auto Layout (Arrange > Auto Layout, Ctrl+Alt+A) on real imported
 workpieces: their true outlines end 1 mm apart with their frames
 inside the boundary, every other workpiece is kept clear of and left
-where it is, and one undo puts everything back.
+where it is, and one undo puts everything back. It is worked out in a
+worker process, with progress; cancelled, or if the document changes
+meanwhile, it changes nothing.
 """
+
+import asyncio
+import time
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
 from raygeo.geo import Matrix
 
+from swiftcut.core.doc import Doc
 from swiftcut.core.group import Group
 from swiftcut.core.workpiece import WorkPiece
+from swiftcut.doceditor.layout import NestLayoutStrategy, nest
+from swiftcut.doceditor.layout_cmd import AUTO_LAYOUT_KEY
 from tests.doceditor import layout_bench as bench
 
 ELLIPSES = [piece for piece in bench.FORTY if piece.name.startswith("ell")]
+#: The notice when the document changed while the layout was worked out.
+CHANGED = "The document changed during Auto Layout; nothing was moved."
 
 #: Each document and the stock it is laid out on, about twice its area.
 DOCUMENTS = {
@@ -154,19 +165,37 @@ async def test_larger_pieces_are_kept_clear_of_one_that_fits_nowhere(
 
 
 @pytest.mark.asyncio
+async def test_no_stock_and_no_machine_bed_gives_a_notice(
+    doc_editor, monkeypatch
+):
+    workpiece = WorkPiece(name="Piece")
+    workpiece.set_size(20, 10)
+    doc_editor.doc.add_workpiece(workpiece)
+    before = workpiece.matrix.copy()
+    monkeypatch.setattr(nest, "get_context", lambda: Mock(machine=None))
+    notices = _notices(doc_editor)
+
+    doc_editor.layout.layout_pixel_perfect([workpiece])
+
+    assert workpiece.matrix == before
+    assert notices == [
+        "Auto Layout needs a stock or a machine bed to lay out on."
+    ]
+
+
+@pytest.mark.asyncio
 async def test_turned_and_mirrored_items_in_a_transformed_group(
     doc_editor, task_mgr, bed, tmp_path, monkeypatch
 ):
-    from swiftcut.shared.placement import arrange
-
+    # The worker's result, as the main thread turns it into deltas.
     calls = []
+    deltas = NestLayoutStrategy.deltas
 
-    def spy(proxy, pieces, *args, **kwargs):
-        result = arrange(proxy, pieces, *args, **kwargs)
-        calls.append((pieces, result))
-        return result
+    def spy(strategy, placements):
+        calls.append((strategy.arrange_args()[0], placements))
+        return deltas(strategy, placements)
 
-    monkeypatch.setattr("swiftcut.doceditor.layout.nest.arrange", spy)
+    monkeypatch.setattr(NestLayoutStrategy, "deltas", spy)
     turned, mirrored = await bench.build(
         doc_editor, task_mgr, tmp_path, [bench.l_shape(60, 40, 15)] * 2
     )
@@ -239,3 +268,98 @@ async def test_one_undo_restores_every_matrix(
     assert [wp.matrix for wp in workpieces] != before
     history.undo()
     assert [wp.matrix for wp in workpieces] == before
+
+
+@pytest.mark.asyncio
+async def test_the_layout_runs_in_a_worker_process_with_progress(
+    doc_editor, task_mgr, bed, tmp_path
+):
+    workpieces = await bench.build(doc_editor, task_mgr, tmp_path, bench.MIXED)
+    progress = []
+
+    doc_editor.layout.layout_pixel_perfect(workpieces)
+    task = task_mgr.get_task(AUTO_LAYOUT_KEY)
+    task.status_changed.connect(
+        lambda task: progress.append(task.get_progress()), weak=False
+    )
+    await bench.settle(doc_editor, task_mgr)
+
+    assert task.task_type == "process"
+    assert task.get_status() == "completed"
+    assert any(0 < fraction < 1 for fraction in progress)
+    assert bench.clashes(workpieces) == {"overlap": 0, "close": 0}
+
+
+@pytest.mark.asyncio
+async def test_cancel_mid_run_changes_nothing(
+    doc_editor, task_mgr, bed, tmp_path
+):
+    workpieces = await bench.build(doc_editor, task_mgr, tmp_path, bench.FORTY)
+    before = [workpiece.matrix.copy() for workpiece in workpieces]
+    history = doc_editor.history_manager
+    entries = len(history.undo_stack)
+    notices = _notices(doc_editor)
+
+    doc_editor.layout.layout_pixel_perfect(workpieces)
+    task = task_mgr.get_task(AUTO_LAYOUT_KEY)
+    deadline = time.monotonic() + 60
+    while task.get_progress() == 0:
+        assert time.monotonic() < deadline, "no progress"
+        await asyncio.sleep(0.005)
+    assert task.get_progress() < 1
+    task_mgr.cancel_task(AUTO_LAYOUT_KEY)
+    # The worker stops at the next piece; its last word, which would
+    # have been the result, clears the task.
+    while task_mgr._zombie_tasks:
+        assert time.monotonic() < deadline, "the worker did not stop"
+        await asyncio.sleep(0.01)
+    await bench.settle(doc_editor, task_mgr)
+
+    assert task.get_status() == "canceled"
+    assert [workpiece.matrix for workpiece in workpieces] == before
+    assert len(history.undo_stack) == entries
+    assert notices == []
+
+
+@pytest.mark.asyncio
+async def test_document_replaced_mid_run_is_left_alone(
+    doc_editor, task_mgr, bed, tmp_path
+):
+    workpieces = await bench.build(doc_editor, task_mgr, tmp_path, bench.FORTY)
+    before = [workpiece.matrix.copy() for workpiece in workpieces]
+    old_history = doc_editor.history_manager
+    entries = len(old_history.undo_stack)
+    notices = _notices(doc_editor)
+
+    doc_editor.layout.layout_pixel_perfect(workpieces)
+    new_doc = Doc()
+    doc_editor.set_doc(new_doc)
+    await bench.settle(doc_editor, task_mgr)
+
+    assert not new_doc.history_manager.can_undo()
+    assert len(old_history.undo_stack) == entries
+    assert [workpiece.matrix for workpiece in workpieces] == before
+    assert notices == [CHANGED]
+
+
+@pytest.mark.asyncio
+async def test_obstacle_moved_mid_run_moves_nothing(
+    doc_editor, task_mgr, bed, tmp_path
+):
+    workpieces = await bench.build(doc_editor, task_mgr, tmp_path, bench.MIXED)
+    fixed = WorkPiece(name="Fixed")
+    fixed.set_size(100, 100)
+    doc_editor.doc.add_workpiece(fixed)
+    before = [workpiece.matrix.copy() for workpiece in workpieces]
+    history = doc_editor.history_manager
+    entries = len(history.undo_stack)
+    notices = _notices(doc_editor)
+
+    doc_editor.layout.layout_pixel_perfect(workpieces)
+    # Onto the bed centre, where the layout gathers the pieces.
+    fixed.pos = (650, 400)
+    await bench.settle(doc_editor, task_mgr)
+
+    assert [workpiece.matrix for workpiece in workpieces] == before
+    assert len(history.undo_stack) == entries
+    assert notices == [CHANGED]

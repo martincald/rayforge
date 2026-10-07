@@ -37,6 +37,11 @@ def long_running_process_func(context: ExecutionContextProxy):
     return "should_be_discarded"
 
 
+def touch_process_func(context: ExecutionContextProxy, path: Path):
+    """A process function that leaves a file behind if it runs."""
+    path.touch()
+
+
 def worker_init(shared_state: dict, filepath: Path):
     """Initializer function that writes its PID to a file."""
     # This function runs in the worker process.
@@ -372,6 +377,92 @@ class TestProcessTasks:
         with pytest.raises(CancelledError):
             final_task.result()
         assert not manager._tasks
+
+    def test_first_task_starts_the_pool_off_the_callers_thread(
+        self, manager: TaskManager, monkeypatch
+    ):
+        """
+        Starting the pool spawns processes and waits for them; the
+        caller (usually the main thread) must not wait with it.
+        """
+        threads = []
+        ensure_pool = manager._ensure_pool
+
+        def spy():
+            threads.append(threading.current_thread())
+            ensure_pool()
+
+        monkeypatch.setattr(manager, "_ensure_pool", spy)
+        done = threading.Event()
+
+        manager.run_process(
+            simple_process_func, key="cold", when_done=lambda t: done.set()
+        )
+
+        assert done.wait(timeout=30), "Process task did not complete"
+        assert threads and threads[0] is not threading.current_thread()
+
+    def test_task_fails_when_the_pool_cannot_start(
+        self, manager: TaskManager, monkeypatch
+    ):
+        def broken():
+            raise RuntimeError("no processes")
+
+        monkeypatch.setattr(manager, "_ensure_pool", broken)
+        done = threading.Event()
+        statuses = []
+
+        def when_done(task):
+            statuses.append(task.get_status())
+            done.set()
+
+        manager.run_process(
+            simple_process_func, key="broken", when_done=when_done
+        )
+
+        assert done.wait(timeout=30), "Task was not finalized"
+        assert statuses == ["failed"]
+        assert not manager._tasks
+
+    def test_pool_signals_are_connected_before_others_see_it(
+        self, manager: TaskManager, monkeypatch
+    ):
+        # Another thread may submit to the pool as soon as it is set.
+        seen = []
+        connect = manager._connect_pool_signals
+
+        def spy(pool):
+            seen.append(manager._pool)
+            connect(pool)
+
+        monkeypatch.setattr(manager, "_connect_pool_signals", spy)
+
+        manager._ensure_pool()
+
+        assert seen == [None]
+        assert manager._pool is not None
+
+    def test_task_cancelled_before_the_pool_starts_never_runs(
+        self, manager: TaskManager, tmp_path
+    ):
+        marker = tmp_path / "ran"
+        statuses = []
+
+        manager.run_process(
+            touch_process_func,
+            marker,
+            key="early",
+            when_done=lambda t: statuses.append(t.get_status()),
+        )
+        manager.cancel_task("early")
+
+        assert statuses == ["canceled"]
+        # The worker skips it, and its final message clears it.
+        deadline = time.monotonic() + 30
+        while manager._zombie_tasks:
+            assert time.monotonic() < deadline, "Task was not finalized"
+            time.sleep(0.01)
+        assert not marker.exists()
 
     def test_process_with_worker_initializer(self, tmp_path):
         """
