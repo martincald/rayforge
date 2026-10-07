@@ -29,3 +29,29 @@ def fits(size: tuple[float, float], bed: Rect) -> bool:
     """Whether a (width, height) box fits inside the bed."""
     width, height = size
     return width <= bed[2] + _EPSILON_MM and height <= bed[3] + _EPSILON_MM
+
+
+def inside(box: Rect, bed: Rect) -> bool:
+    """Whether an (x, y, width, height) box lies inside the bed."""
+    return clamp_offset(box, bed) == (0.0, 0.0) and fits(box[2:], bed)
+
+
+def clamp_offset(box: Rect, bed: Rect) -> tuple[float, float]:
+    """
+    The smallest (dx, dy) that moves an (x, y, width, height) box inside
+    the bed. On an axis where the box is larger than the bed, its low
+    edge goes onto the bed's.
+    """
+    return (
+        _clamp_axis(box[0], box[2], bed[0], bed[2]),
+        _clamp_axis(box[1], box[3], bed[1], bed[3]),
+    )
+
+
+def _clamp_axis(
+    low: float, size: float, bed_low: float, bed_size: float
+) -> float:
+    if low < bed_low - _EPSILON_MM or size > bed_size + _EPSILON_MM:
+        return bed_low - low
+    over = low + size - (bed_low + bed_size)
+    return -over if over > _EPSILON_MM else 0.0

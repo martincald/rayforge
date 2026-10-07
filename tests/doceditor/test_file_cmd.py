@@ -7,6 +7,7 @@ import pytest
 from raygeo.geo import Matrix
 from raygeo.ops.state import CoolantMode
 
+from swiftcut.core.bed_bounds import inside
 from swiftcut.core.doc import Doc
 from swiftcut.core.group import Group
 from swiftcut.core.layer import Layer
@@ -918,6 +919,23 @@ class TestImportPlacement:
 
         assert _frame_centre([wp]) == pytest.approx((200, 150))
         assert notices == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "corner", [(0, 0), (1400, 0), (0, 900), (1400, 900)]
+    )
+    async def test_a_drop_on_a_bed_corner_lands_inside(
+        self, doc_editor, task_mgr, bed, tmp_path, corner
+    ):
+        path = _svg_mm(tmp_path / "part.svg", 100, 60)
+
+        (wp,) = await self._import(doc_editor, task_mgr, path, corner)
+
+        x, y, w, h = wp.bbox
+        assert inside(wp.bbox, (0, 0, 1400, 900))
+        # In the corner: on both its edges.
+        assert (x if corner[0] == 0 else x + w) == pytest.approx(corner[0])
+        assert (y if corner[1] == 0 else y + h) == pytest.approx(corner[1])
 
     @pytest.mark.asyncio
     async def test_multi_item_file_keeps_its_layout(

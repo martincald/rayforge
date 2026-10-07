@@ -15,6 +15,7 @@ from blinker import Signal
 from gi.repository import Gdk, Graphene, Gtk
 from raygeo.geo import Matrix
 
+from ...core.bed_bounds import clamp_offset, inside
 from ..layout import HANDLE_HIT_SIZE, ROTATION_ARC_RADIUS
 from ..shared.keyboard import (
     SNAP_OVERRIDE_MASK,
@@ -884,7 +885,9 @@ class Canvas(Gtk.DrawingArea):
         world_dy = current_world_y - start_world_y
 
         if self._moving:
-            world_dx, world_dy = self._snap_move(world_dx, world_dy)
+            world_dx, world_dy = self._clamp_move(
+                *self._snap_move(world_dx, world_dy)
+            )
 
         if self._rotating and self._rotation_pivot:
             angle, (current_world_x, current_world_y) = self._rotate_pointer(
@@ -894,38 +897,45 @@ class Canvas(Gtk.DrawingArea):
 
         # Dispatch to transform handlers (copied from base class)
         if self._selection_group:
+            group = self._selection_group
+            origin = self._active_origin
+            pivot = self._rotation_pivot
             if self._moving:
                 self._selection_group.apply_move(world_dx, world_dy)
                 self.transform_moved.send(
                     self, elements=self._selection_group.elements
                 )
             elif self._resizing:
-                if self._active_origin:
-                    self._selection_group.resize_from_drag(
-                        self._active_region,
-                        world_dx,
-                        world_dy,
-                        self._active_origin,
-                        self._ctrl_pressed,
-                        self._shift_pressed,
+                if origin:
+                    self._stop_at_bounds(
+                        lambda t: group.resize_from_drag(
+                            self._active_region,
+                            world_dx * t,
+                            world_dy * t,
+                            origin,
+                            self._ctrl_pressed,
+                            self._shift_pressed,
+                        )
                     )
                 for elem in self._selection_group.elements:
                     elem.trigger_update()
             elif self._rotating:
-                if self._rotation_pivot:
-                    self._selection_group.rotate_from_drag(
-                        current_world_x,
-                        current_world_y,
-                        self._rotation_pivot,
-                        self._drag_start_angle,
+                if pivot:
+                    self._rotate_within_bounds(
+                        lambda x, y: group.rotate_from_drag(
+                            x, y, pivot, self._drag_start_angle
+                        ),
+                        (current_world_x, current_world_y),
                     )
             elif self._shearing:
-                if self._active_origin:
-                    self._selection_group.shear_from_drag(
-                        self._active_region,
-                        world_dx,
-                        world_dy,
-                        self._active_origin,
+                if origin:
+                    self._stop_at_bounds(
+                        lambda t: group.shear_from_drag(
+                            self._active_region,
+                            world_dx * t,
+                            world_dy * t,
+                            origin,
+                        )
                     )
             self.queue_draw()
         elif self._drag_target:
@@ -969,54 +979,59 @@ class Canvas(Gtk.DrawingArea):
                         )
                         self.queue_draw()
             elif self._resizing:
-                if (
-                    self._drag_target
-                    and self._initial_transform
-                    and self._initial_world_transform
-                ):
-                    transform.resize_element(
-                        element=self._drag_target,
-                        world_dx=world_dx,
-                        world_dy=world_dy,
-                        initial_local_transform=self._initial_transform,
-                        initial_world_transform=self._initial_world_transform,
-                        active_region=self._active_region,
-                        view_transform=self.view_transform,
-                        shift_pressed=self._shift_pressed,
-                        ctrl_pressed=self._ctrl_pressed,
+                target = self._drag_target
+                initial = self._initial_transform
+                initial_world = self._initial_world_transform
+                if target and initial and initial_world:
+                    self._stop_at_bounds(
+                        lambda t: transform.resize_element(
+                            element=target,
+                            world_dx=world_dx * t,
+                            world_dy=world_dy * t,
+                            initial_local_transform=initial,
+                            initial_world_transform=initial_world,
+                            active_region=self._active_region,
+                            view_transform=self.view_transform,
+                            shift_pressed=self._shift_pressed,
+                            ctrl_pressed=self._ctrl_pressed,
+                        )
                     )
                     self._drag_target.trigger_update()
                     self.queue_draw()
             elif self._rotating:
-                if (
-                    self._drag_target
-                    and self._initial_world_transform
-                    and self._rotation_pivot
-                ):
-                    transform.rotate_element(
-                        element=self._drag_target,
-                        world_x=current_world_x,
-                        world_y=current_world_y,
-                        initial_world_transform=self._initial_world_transform,
-                        rotation_pivot=self._rotation_pivot,
-                        drag_start_angle=self._drag_start_angle,
+                target = self._drag_target
+                initial_world = self._initial_world_transform
+                pivot = self._rotation_pivot
+                if target and initial_world and pivot:
+                    self._rotate_within_bounds(
+                        lambda x, y: transform.rotate_element(
+                            element=target,
+                            world_x=x,
+                            world_y=y,
+                            initial_world_transform=initial_world,
+                            rotation_pivot=pivot,
+                            drag_start_angle=self._drag_start_angle,
+                        ),
+                        (current_world_x, current_world_y),
                     )
                     self.queue_draw()
-            elif self._shearing and (
-                self._drag_target
-                and self._initial_transform
-                and self._initial_world_transform
-            ):
-                transform.shear_element(
-                    element=self._drag_target,
-                    world_dx=world_dx,
-                    world_dy=world_dy,
-                    initial_local_transform=self._initial_transform,
-                    initial_world_transform=self._initial_world_transform,
-                    active_region=self._active_region,
-                    view_transform=self.view_transform,
-                )
-                self.queue_draw()
+            elif self._shearing:
+                target = self._drag_target
+                initial = self._initial_transform
+                initial_world = self._initial_world_transform
+                if target and initial and initial_world:
+                    self._stop_at_bounds(
+                        lambda t: transform.shear_element(
+                            element=target,
+                            world_dx=world_dx * t,
+                            world_dy=world_dy * t,
+                            initial_local_transform=initial,
+                            initial_world_transform=initial_world,
+                            active_region=self._active_region,
+                            view_transform=self.view_transform,
+                        )
+                    )
+                    self.queue_draw()
 
     def _start_rotation(
         self,
@@ -1099,6 +1114,111 @@ class Canvas(Gtk.DrawingArea):
                 (0, 0, target.width, target.height)
             )
         return None
+
+    def _drag_bounds(self) -> Rect | None:
+        """
+        The world box a move, resize, rotate or shear keeps what it
+        drags inside, None for none: the base canvas has no bounds.
+        """
+        return None
+
+    def _transformed_box(self) -> Rect:
+        """The world box of what a transform drags, where it is now."""
+        boxes = [
+            elem.get_world_bounding_box()
+            for elem in self._transforming_elements
+        ]
+        left = min(b[0] for b in boxes)
+        bottom = min(b[1] for b in boxes)
+        return (
+            left,
+            bottom,
+            max(b[0] + b[2] for b in boxes) - left,
+            max(b[1] + b[3] for b in boxes) - bottom,
+        )
+
+    def _clamp_move(
+        self, world_dx: float, world_dy: float
+    ) -> tuple[float, float]:
+        """
+        Cuts a move so what it drags stays inside the drag bounds, and
+        pulls back in what started outside. A guide on an axis the cut
+        moves no longer holds, so it goes.
+        """
+        bounds = self._drag_bounds()
+        origin = self._moving_box()
+        target = self._drag_target
+        if bounds is None or origin is None or (target and target.draggable):
+            return world_dx, world_dy
+        x, y, w, h = origin
+        cut_x, cut_y = clamp_offset((x + world_dx, y + world_dy, w, h), bounds)
+        self._snap_guides = [
+            (start, end)
+            for start, end in self._snap_guides
+            if not (cut_x and start[0] == end[0])
+            and not (cut_y and start[1] == end[1])
+        ]
+        return world_dx + cut_x, world_dy + cut_y
+
+    def _stop_at_bounds(self, apply: Callable[[float], None]) -> float:
+        """
+        Applies a resize, rotate or shear drag through apply(fraction):
+        all of it, or, where that would take what it drags out of the
+        drag bounds, the largest fraction bisection finds inside, so it
+        stops at the edge. What started outside is not held.
+
+        Returns:
+            The fraction applied.
+        """
+        apply(1.0)
+        bounds = self._drag_bounds()
+        origin = self._moving_box()
+        if (
+            bounds is None
+            or origin is None
+            or not inside(origin, bounds)
+            or inside(self._transformed_box(), bounds)
+        ):
+            return 1.0
+        low, high = 0.0, 1.0
+        for _ in range(16):
+            mid = (low + high) / 2
+            apply(mid)
+            if inside(self._transformed_box(), bounds):
+                low = mid
+            else:
+                high = mid
+        apply(low)
+        return low
+
+    def _rotate_within_bounds(
+        self, rotate: Callable[[float, float], None], pointer: Point
+    ) -> None:
+        """
+        Rotates through rotate(x, y), the pointer in WORLD space, held
+        inside the drag bounds: a rotate that would leave them stops at
+        the edge, and the readout shows where it stopped.
+        """
+        assert self._rotation_pivot is not None
+        pivot_x, pivot_y = self._rotation_pivot
+        x, y = pointer[0] - pivot_x, pointer[1] - pivot_y
+        turn = math.degrees(math.atan2(y, x)) - self._drag_start_angle
+        turn = (turn + 180) % 360 - 180
+
+        def turned(fraction: float) -> Point:
+            if fraction == 1.0:
+                return pointer
+            back = math.radians((fraction - 1.0) * turn)
+            cos, sin = math.cos(back), math.sin(back)
+            return pivot_x + x * cos - y * sin, pivot_y + x * sin + y * cos
+
+        fraction = self._stop_at_bounds(lambda t: rotate(*turned(t)))
+        if fraction < 1.0 and self._rotation_readout:
+            angle = self._rotation_readout[0] + (1.0 - fraction) * turn
+            self._rotation_readout = (
+                (angle + 180) % 360 - 180,
+                self.view_transform.transform_point(turned(fraction)),
+            )
 
     def _snap_sources(self) -> list[Rect]:
         """

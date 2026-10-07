@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from swiftcut.core.group import Group
@@ -146,6 +148,31 @@ def test_copy_paste(edit_cmd: EditCmd, doc_editor: DocEditor):
     assert edit_cmd._paste_counter == 3
 
 
+def test_repeated_paste_near_an_edge_stays_inside(
+    edit_cmd: EditCmd, doc_editor: DocEditor
+):
+    """Each paste steps further down and right, and stops on the bed's
+    edges (200 x 150 mm) with the pasted items kept together."""
+    wp1 = WorkPiece(name="wp1")
+    wp1.set_size(20, 10)
+    wp1.pos = (150, 15)
+    wp2 = WorkPiece(name="wp2")
+    wp2.set_size(10, 10)
+    wp2.pos = (175, 25)
+    edit_cmd.add_items([wp1, wp2])
+    edit_cmd.copy_items([wp1, wp2])
+
+    with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
+        m.return_value.machine.axis_extents = (200, 150)
+        for expected in [(160, 5), (165, 0), (165, 0)]:
+            a, b = edit_cmd.paste_items()
+
+            assert a.pos == pytest.approx(expected)
+            assert (b.pos[0] - a.pos[0], b.pos[1] - a.pos[1]) == (
+                pytest.approx((25, 10))
+            )
+
+
 def test_copy_paste_nested(edit_cmd: EditCmd, items_on_layer):
     """Test copying and pasting a group with children."""
     layer = items_on_layer["layer"]
@@ -182,7 +209,7 @@ def test_copy_paste_nested(edit_cmd: EditCmd, items_on_layer):
 def test_cut_paste_with_undo(edit_cmd: EditCmd, doc_editor: DocEditor):
     layer = doc_editor.doc.active_layer
     wp1 = WorkPiece(name="wp1")
-    wp1.pos = (100, 200)
+    wp1.pos = (100, 150)
     edit_cmd.add_items([wp1])
 
     original_count = len(layer.get_content_items())
@@ -200,7 +227,7 @@ def test_cut_paste_with_undo(edit_cmd: EditCmd, doc_editor: DocEditor):
     assert len(pasted1_list) == 1
     pasted1 = pasted1_list[0]
     assert len(layer.get_content_items()) == original_count
-    assert pasted1.pos == pytest.approx((100, 200))
+    assert pasted1.pos == pytest.approx((100, 150))
     assert edit_cmd._paste_counter == 1  # Incremented for next paste
 
     doc_editor.history_manager.undo()
@@ -211,7 +238,7 @@ def test_cut_paste_with_undo(edit_cmd: EditCmd, doc_editor: DocEditor):
     assert len(layer.get_content_items()) == original_count
     restored_item = layer.children[-1]
     assert restored_item.uid == original_item_uid
-    assert restored_item.pos == pytest.approx((100, 200))
+    assert restored_item.pos == pytest.approx((100, 150))
 
 
 def test_duplicate(edit_cmd: EditCmd, doc_editor: DocEditor):

@@ -7,6 +7,7 @@ from blinker import Signal
 from gi.repository import Gdk, GLib, Graphene, Gtk
 
 from ...context import get_context
+from ...core.bed_bounds import bed_rect
 from ...core.group import Group
 from ...core.item import DocItem
 from ...core.layer import Layer
@@ -37,6 +38,8 @@ from .elements.workpiece import WorkPieceElement
 from .projection import CanvasProjection
 
 if TYPE_CHECKING:
+    from raygeo.geo.types import Rect
+
     from ...doceditor.editor import DocEditor
     from .drag_drop_cmd import DragDropCmd
 
@@ -1149,6 +1152,10 @@ class WorkSurface(WorldSurface):
         space. Callers must ensure ``self.machine`` is set."""
         assert self.machine
         return MachinePanel(self.machine)
+
+    def _drag_bounds(self) -> "Rect | None":
+        """The bed: a drag keeps what it moves, resizes or rotates on it."""
+        return bed_rect(self.machine) if self.machine else None
 
     def _on_machine_changed(self, machine: Machine | None):
         """

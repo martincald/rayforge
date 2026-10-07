@@ -8,7 +8,7 @@ from typing import (
     cast,
 )
 
-from raygeo.geo import Geometry, Move
+from raygeo.geo import Geometry, Matrix, Move
 
 from ..core.item import DocItem
 from ..core.stock import StockItem
@@ -139,6 +139,14 @@ class EditCmd:
                     original_pos[1] + offset_y,
                 )
 
+            # Keep the pasted items, together, inside the bed.
+            shift = Matrix.translation(
+                *self._editor.transform.bed_move(newly_pasted_items, 0.0, 0.0)
+            )
+            for new_item in newly_pasted_items:
+                new_item.matrix = shift @ new_item.matrix
+
+            for new_item in newly_pasted_items:
                 command = ListItemCommand(
                     owner_obj=target_layer,
                     item=new_item,

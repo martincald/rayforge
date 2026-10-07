@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from raygeo.geo import Matrix
 
 from ..context import get_context
+from ..core.bed_bounds import bed_rect, clamp_offset, fits
 from ..core.item import DocItem
 from ..core.undo import ChangePropertyCommand
 
@@ -97,6 +98,64 @@ class TransformCmd:
                 return item.matrix.copy()
         return world_transform
 
+    def bed_move(
+        self, items: list[DocItem], dx: float, dy: float
+    ) -> tuple[float, float]:
+        """The world move (dx, dy) of the items, cut so their combined
+        world box stays inside the bed; a box already outside comes
+        back in."""
+        machine = get_context().machine
+        if not machine:
+            return dx, dy
+        min_x, min_y, max_x, max_y = self.group_bbox_world(items)
+        off_x, off_y = clamp_offset(
+            (min_x + dx, min_y + dy, max_x - min_x, max_y - min_y),
+            bed_rect(machine),
+        )
+        return dx + off_x, dy + off_y
+
+    def _into_bed(
+        self, items: list[DocItem], old_matrices: list[Matrix]
+    ) -> None:
+        """Moves items, already at their new matrices, so their combined
+        world box lies inside the bed; back to their old matrices when
+        that box is larger than the bed."""
+        machine = get_context().machine
+        if not machine:
+            return
+        bed = bed_rect(machine)
+        min_x, min_y, max_x, max_y = self.group_bbox_world(items)
+        box = (min_x, min_y, max_x - min_x, max_y - min_y)
+        if not fits(box[2:], bed):
+            for item, old_matrix in zip(items, old_matrices):
+                item.matrix = old_matrix
+            return
+        dx, dy = clamp_offset(box, bed)
+        if not (dx or dy):
+            return
+        shift = Matrix.translation(dx, dy)
+        for item in items:
+            item.matrix = self._world_to_local_matrix(
+                item, shift @ item.get_world_transform()
+            )
+
+    @staticmethod
+    def _record(t, items: list[DocItem], old_matrices: list[Matrix]):
+        """Records each item's change from its old matrix to its current
+        one in the transaction *t*."""
+        for item, old_matrix in zip(items, old_matrices):
+            new_matrix = item.matrix.copy()
+            if old_matrix.is_close(new_matrix):
+                item.matrix = old_matrix
+                continue
+            cmd = ChangePropertyCommand(
+                target=item,
+                property_name="matrix",
+                new_value=new_matrix,
+                old_value=old_matrix,
+            )
+            t.execute(cmd)
+
     def nudge_items(
         self,
         items: list[DocItem],
@@ -113,7 +172,10 @@ class TransformCmd:
             dy_mm: The distance to move along the Y-axis in millimeters.
         """
         history_manager = self._editor.history_manager
-        if not items or (dx_mm == 0.0 and dy_mm == 0.0):
+        if not items:
+            return
+        dx_mm, dy_mm = self.bed_move(items, dx_mm, dy_mm)
+        if dx_mm == 0.0 and dy_mm == 0.0:
             return
 
         with history_manager.transaction(_("Move item(s)")) as t:
@@ -245,8 +307,9 @@ class TransformCmd:
                     x_world, y_world = x, y
 
                 current_pos = item.pos
-                dx = x_world - current_pos[0]
-                dy = y_world - current_pos[1]
+                dx, dy = self.bed_move(
+                    [item], x_world - current_pos[0], y_world - current_pos[1]
+                )
 
                 # Apply translation to matrix
                 new_matrix = Matrix.translation(dx, dy) @ old_matrix
@@ -273,6 +336,7 @@ class TransformCmd:
             for item in items:
                 old_matrix = item.matrix.copy()
                 item.angle = angle
+                self._into_bed([item], [old_matrix])
                 new_matrix = item.matrix.copy()
 
                 if old_matrix.is_close(new_matrix):
@@ -297,6 +361,7 @@ class TransformCmd:
             for item in items:
                 old_matrix = item.matrix.copy()
                 item.shear = shear
+                self._into_bed([item], [old_matrix])
                 new_matrix = item.matrix.copy()
 
                 if old_matrix.is_close(new_matrix):
@@ -371,6 +436,7 @@ class TransformCmd:
                 # The set_size method will rebuild the matrix,
                 # preserving pos/angle
                 item.set_size(new_width, new_height)
+                self._into_bed([item], [old_matrix])
                 new_matrix = item.matrix.copy()
 
                 if old_matrix.is_close(new_matrix):
@@ -414,8 +480,9 @@ class TransformCmd:
         else:
             target_world = (x, y)
 
-        dx = target_world[0] - bbox_min_x
-        dy = target_world[1] - bbox_min_y
+        dx, dy = self.bed_move(
+            items, target_world[0] - bbox_min_x, target_world[1] - bbox_min_y
+        )
 
         if abs(dx) < 1e-9 and abs(dy) < 1e-9:
             return
@@ -456,8 +523,8 @@ class TransformCmd:
         center = self.group_center_world(items)
 
         with history_manager.transaction(_("Change item angle")) as t:
+            old_matrices = [item.matrix.copy() for item in items]
             for item in items:
-                old_matrix = item.matrix.copy()
                 world_transform_old = item.get_world_transform()
                 rotate_transform_world = Matrix.rotation(
                     delta_angle, center=center
@@ -466,20 +533,11 @@ class TransformCmd:
                     rotate_transform_world @ world_transform_old
                 )
 
-                new_matrix = self._world_to_local_matrix(
+                item.matrix = self._world_to_local_matrix(
                     item, world_transform_new
                 )
-
-                if old_matrix.is_close(new_matrix):
-                    continue
-
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
+            self._into_bed(items, old_matrices)
+            self._record(t, items, old_matrices)
 
     def set_shear_group(self, items: list[DocItem], shear: float):
         """Shears the whole selection so the anchor item (``items[0]``)
@@ -503,22 +561,12 @@ class TransformCmd:
             return
 
         with history_manager.transaction(_("Change item shear")) as t:
+            old_matrices = [item.matrix.copy() for item in items]
             for item in items:
                 target_shear = item.shear + delta_deg
-                old_matrix = item.matrix.copy()
                 item.shear = target_shear
-                new_matrix = item.matrix.copy()
-
-                if old_matrix.is_close(new_matrix):
-                    continue
-
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
+            self._into_bed(items, old_matrices)
+            self._record(t, items, old_matrices)
 
     def set_size_group(
         self,
@@ -576,8 +624,8 @@ class TransformCmd:
         )
 
         with history_manager.transaction(_("Resize item(s)")) as t:
+            old_matrices = [item.matrix.copy() for item in items]
             for item in items:
-                old_matrix = item.matrix.copy()
                 world_old = item.get_world_transform()
 
                 # Build world-space scale around centre
@@ -588,18 +636,9 @@ class TransformCmd:
                     .post_translate(-center[0], -center[1])
                 )
                 world_new = scale_matrix @ world_old
-                new_matrix = self._world_to_local_matrix(item, world_new)
-
-                if old_matrix.is_close(new_matrix):
-                    continue
-
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
+                item.matrix = self._world_to_local_matrix(item, world_new)
+            self._into_bed(items, old_matrices)
+            self._record(t, items, old_matrices)
 
     def reset_position(self, items: list[DocItem]):
         """Moves every item's top-left corner to machine (0, 0)."""

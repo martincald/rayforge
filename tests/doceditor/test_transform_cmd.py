@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from swiftcut.core.bed_bounds import inside
 from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.transform_cmd import TransformCmd
@@ -189,6 +190,7 @@ def test_set_position_group_all_machine_origins(doc_editor):
         mock_space.machine_item_to_world.side_effect = m2w
         mock_space.world_item_to_machine.side_effect = w2m
         mock_machine = MagicMock()
+        mock_machine.axis_extents = (W, H)
         mock_machine.get_coordinate_space.return_value = mock_space
         mock_machine.panel.machine_item_to_world.side_effect = m2w
         mock_machine.panel.world_item_to_machine.side_effect = w2m
@@ -335,10 +337,10 @@ def test_set_size_group_fixed_ratio_width_only(doc_editor):
     doc_editor.doc.add_child(layer)
     a = WorkPiece(name="A")
     a.set_size(20, 20)
-    a.pos = (10, 10)
+    a.pos = (60, 60)
     b = WorkPiece(name="B")
     b.set_size(30, 20)
-    b.pos = (50, 30)
+    b.pos = (100, 80)
     layer.add_child(a)
     layer.add_child(b)
 
@@ -370,10 +372,10 @@ def test_set_size_group_fixed_ratio_height_only(doc_editor):
     doc_editor.doc.add_child(layer)
     a = WorkPiece(name="A")
     a.set_size(20, 20)
-    a.pos = (10, 10)
+    a.pos = (60, 60)
     b = WorkPiece(name="B")
     b.set_size(30, 20)
-    b.pos = (50, 30)
+    b.pos = (100, 80)
     layer.add_child(a)
     layer.add_child(b)
 
@@ -452,10 +454,10 @@ def test_set_angle_group_rotates_as_whole(doc_editor):
     doc_editor.doc.add_child(layer)
     a = WorkPiece(name="A")
     a.set_size(20, 20)
-    a.pos = (0, 0)
+    a.pos = (60, 60)
     b = WorkPiece(name="B")
     b.set_size(20, 20)
-    b.pos = (40, 0)
+    b.pos = (100, 60)
     layer.add_child(a)
     layer.add_child(b)
 
@@ -506,10 +508,10 @@ def test_set_shear_preserves_centers(doc_editor):
     doc_editor.doc.add_child(layer)
     a = WorkPiece(name="A")
     a.set_size(20, 20)
-    a.pos = (0, 0)
+    a.pos = (60, 60)
     b = WorkPiece(name="B")
     b.set_size(20, 20)
-    b.pos = (40, 10)
+    b.pos = (100, 70)
     layer.add_child(a)
     layer.add_child(b)
 
@@ -540,10 +542,10 @@ def test_set_shear_group_preserves_midpoint(doc_editor):
     doc_editor.doc.add_child(layer)
     a = WorkPiece(name="A")
     a.set_size(20, 20)
-    a.pos = (0, 0)
+    a.pos = (60, 60)
     b = WorkPiece(name="B")
     b.set_size(20, 20)
-    b.pos = (40, 10)
+    b.pos = (100, 70)
     layer.add_child(a)
     layer.add_child(b)
 
@@ -730,3 +732,232 @@ def test_get_shear_group(doc_editor):
     a.pos = (0, 0)
     layer.add_child(a)
     assert tc.get_shear_group([a]) == pytest.approx(0.0)
+
+
+# ── Bed bounds ────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def bed_200x100():
+    """A 200 x 100 mm bed whose machine coordinates are world ones."""
+    machine = MagicMock()
+    machine.axis_extents = (200, 100)
+    machine.panel.machine_item_to_world.side_effect = lambda pos, size: pos
+    with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
+        m.return_value.machine = machine
+        yield
+
+
+def _piece(doc_editor, name, size, pos):
+    wp = WorkPiece(name=name)
+    wp.set_size(*size)
+    wp.pos = pos
+    doc_editor.doc.active_layer.add_child(wp)
+    return wp
+
+
+def _box(items):
+    min_x, min_y, max_x, max_y = TransformCmd.group_bbox_world(items)
+    return min_x, min_y, max_x - min_x, max_y - min_y
+
+
+@pytest.mark.parametrize(
+    "target, landed",
+    [
+        ((500.0, 40.0), (180.0, 40.0)),
+        ((-50.0, 40.0), (0.0, 40.0)),
+        ((50.0, 500.0), (50.0, 90.0)),
+        ((50.0, -50.0), (50.0, 0.0)),
+        ((-50.0, -50.0), (0.0, 0.0)),
+        ((500.0, 500.0), (180.0, 90.0)),
+    ],
+)
+def test_a_typed_position_past_the_bed_is_clamped(
+    doc_editor, bed_200x100, target, landed
+):
+    wp = _piece(doc_editor, "A", (20, 10), (50, 40))
+    history = doc_editor.history_manager
+    steps = len(history.undo_stack)
+
+    TransformCmd(doc_editor).set_position([wp], *target)
+
+    assert wp.pos == pytest.approx(landed)
+    assert len(history.undo_stack) == steps + 1
+
+
+def test_a_typed_group_position_past_the_bed_is_clamped(
+    doc_editor, bed_200x100
+):
+    a = _piece(doc_editor, "A", (20, 10), (50, 40))
+    b = _piece(doc_editor, "B", (30, 20), (90, 50))
+
+    TransformCmd(doc_editor).set_position_group([a, b], 500.0, -50.0)
+
+    assert _box([a, b]) == pytest.approx((130.0, 0.0, 70.0, 30.0))
+    assert b.pos[0] - a.pos[0] == pytest.approx(40.0)
+
+
+def test_a_typed_size_past_an_edge_keeps_its_size_inside(
+    doc_editor, bed_200x100
+):
+    wp = _piece(doc_editor, "A", (20, 10), (170, 40))
+
+    TransformCmd(doc_editor).set_size([wp], 50.0, 10.0)
+
+    assert wp.size == pytest.approx((50.0, 10.0))
+    assert _box([wp]) == pytest.approx((150.0, 40.0, 50.0, 10.0))
+
+
+def test_a_typed_group_size_past_an_edge_keeps_its_size_inside(
+    doc_editor, bed_200x100
+):
+    a = _piece(doc_editor, "A", (20, 10), (150, 80))
+    b = _piece(doc_editor, "B", (20, 10), (175, 85))
+
+    TransformCmd(doc_editor).set_size_group([a, b], 90.0, 30.0)
+
+    assert _box([a, b]) == pytest.approx((110.0, 70.0, 90.0, 30.0))
+
+
+@pytest.mark.parametrize("group", [False, True])
+def test_a_typed_size_larger_than_the_bed_is_refused(
+    doc_editor, bed_200x100, group
+):
+    wp = _piece(doc_editor, "A", (20, 10), (50, 40))
+    before = wp.matrix.copy()
+    history = doc_editor.history_manager
+    steps = len(history.undo_stack)
+    tc = TransformCmd(doc_editor)
+
+    if group:
+        tc.set_size_group([wp], 250.0, 10.0)
+    else:
+        tc.set_size([wp], 250.0, 10.0)
+
+    assert wp.matrix == before
+    assert len(history.undo_stack) == steps
+
+
+def test_a_typed_angle_near_an_edge_turns_inside(doc_editor, bed_200x100):
+    wp = _piece(doc_editor, "A", (60, 10), (0, 0))
+
+    TransformCmd(doc_editor).set_angle([wp], 90.0)
+
+    assert wp.angle == pytest.approx(90.0)
+    assert _box([wp]) == pytest.approx((25.0, 0.0, 10.0, 60.0))
+
+
+def test_a_typed_group_angle_near_an_edge_turns_inside(
+    doc_editor, bed_200x100
+):
+    a = _piece(doc_editor, "A", (20, 10), (150, 80))
+    b = _piece(doc_editor, "B", (20, 10), (180, 90))
+
+    TransformCmd(doc_editor).set_angle_group([a, b], 90.0)
+
+    assert a.angle == pytest.approx(90.0)
+    assert b.angle == pytest.approx(90.0)
+    assert inside(_box([a, b]), (0, 0, 200, 100))
+    assert _box([a, b])[1] + _box([a, b])[3] == pytest.approx(100.0)
+
+
+# A 40 mm square flush with each edge and corner of the bed, centred
+# between the others, and those edges (0 left, 1 bottom, 2 right,
+# 3 top). Its turned box is never smaller, so it ends flush again.
+FLUSH = [
+    ((0, 30), (0,)),
+    ((160, 30), (2,)),
+    ((80, 0), (1,)),
+    ((80, 60), (3,)),
+    ((0, 0), (0, 1)),
+    ((160, 0), (2, 1)),
+    ((0, 60), (0, 3)),
+    ((160, 60), (2, 3)),
+]
+
+
+@pytest.mark.parametrize("pos, edges", FLUSH)
+@pytest.mark.parametrize("angle", [90.0, 45.0, -30.0])
+@pytest.mark.parametrize("group", [False, True])
+def test_a_typed_angle_at_each_edge_and_corner_turns_inside(
+    doc_editor, bed_200x100, pos, edges, angle, group
+):
+    history = doc_editor.history_manager
+    steps = len(history.undo_stack)
+    tc = TransformCmd(doc_editor)
+
+    if group:
+        # The square's two halves, turned as one about its centre.
+        items = [
+            _piece(doc_editor, "A", (40, 20), pos),
+            _piece(doc_editor, "B", (40, 20), (pos[0], pos[1] + 20)),
+        ]
+        tc.set_angle_group(items, angle)
+    else:
+        items = [_piece(doc_editor, "A", (40, 40), pos)]
+        tc.set_angle(items, angle)
+
+    for item in items:
+        assert item.angle == pytest.approx(angle)
+    assert inside(_box(items), (0, 0, 200, 100))
+    box = TransformCmd.group_bbox_world(items)
+    for edge in edges:
+        assert box[edge] == pytest.approx((0, 0, 200, 100)[edge])
+    assert len(history.undo_stack) == steps + 1
+
+
+@pytest.mark.parametrize("group", [False, True])
+def test_a_typed_angle_too_long_for_the_bed_is_refused(
+    doc_editor, bed_200x100, group
+):
+    wp = _piece(doc_editor, "A", (150, 10), (20, 45))
+    before = wp.matrix.copy()
+    history = doc_editor.history_manager
+    steps = len(history.undo_stack)
+    tc = TransformCmd(doc_editor)
+
+    if group:
+        tc.set_angle_group([wp], 90.0)
+    else:
+        tc.set_angle([wp], 90.0)
+
+    assert wp.matrix == before
+    assert len(history.undo_stack) == steps
+
+
+@pytest.mark.parametrize("group", [False, True])
+def test_a_typed_shear_near_an_edge_stays_inside(
+    doc_editor, bed_200x100, group
+):
+    wp = _piece(doc_editor, "A", (20, 20), (0, 40))
+    tc = TransformCmd(doc_editor)
+
+    if group:
+        tc.set_shear_group([wp], 30.0)
+    else:
+        tc.set_shear([wp], 30.0)
+
+    assert wp.shear == pytest.approx(30.0)
+    assert inside(_box([wp]), (0, 0, 200, 100))
+    assert _box([wp])[0] == pytest.approx(0.0)
+
+
+def test_a_nudge_at_an_edge_is_a_no_op_without_an_undo_step(
+    doc_editor, bed_200x100
+):
+    wp = _piece(doc_editor, "A", (20, 10), (0, 40))
+    history = doc_editor.history_manager
+    steps = len(history.undo_stack)
+
+    TransformCmd(doc_editor).nudge_items([wp], -1.0, 0.0)
+
+    assert wp.pos == pytest.approx((0.0, 40.0))
+    assert len(history.undo_stack) == steps
+
+
+def test_a_nudge_past_an_edge_stops_on_it(doc_editor, bed_200x100):
+    wp = _piece(doc_editor, "A", (20, 10), (175, 40))
+
+    TransformCmd(doc_editor).nudge_items([wp], 10.0, 0.0)
+
+    assert wp.pos == pytest.approx((180.0, 40.0))
