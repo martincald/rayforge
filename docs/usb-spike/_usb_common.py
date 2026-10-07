@@ -166,6 +166,15 @@ def install_hex_logging(transport) -> None:
 
     transport.send_command = logged_send_command
 
+    orig_stream_command = transport.stream_command
+
+    async def logged_stream_command(command: bytes, should_stop) -> bool:
+        swizzled = transport._codec.swizzle(command)
+        print(f"  tx (swizzled): {swizzled.hex(' ')}")
+        return await orig_stream_command(command, should_stop)
+
+    transport.stream_command = logged_stream_command
+
     def on_raw(sender, data: bytes) -> None:
         print(f"  rx (raw):      {data.hex(' ')}")
 

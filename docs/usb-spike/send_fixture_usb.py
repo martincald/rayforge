@@ -7,23 +7,25 @@ UDP ground-truth sender uses
 tests/machine/driver/ruida/fixtures/rdworks_reference.rd), zeroes
 every power command including C6 65 (not covered by
 send_fixture_test.py's UDP zeroing set -- see _POWER2_OPCODES below),
-recomputes the E5 05 file checksum, and sends it with
-RuidaClient.send_job() -- the production, ACK-paced, NAK-retrying
-sender (swiftcut/machine/driver/ruida/ruida_client.py), swizzled with
-NO checksum prefix, over RuidaUsbTransport
-(swiftcut/machine/driver/ruida/ruida_usb_transport.py). Nothing here
-reimplements chunking or the ACK loop.
+recomputes the E5 05 file checksum, and streams it with
+RuidaClient.stream_job() -- the app's USB job sender
+(swiftcut/machine/driver/ruida/ruida_client.py): every chunk written
+once, back to back, paced by the FTDI FIFO, swizzled with NO checksum
+prefix, over RuidaUsbTransport
+(swiftcut/machine/driver/ruida/ruida_usb_transport.py). The
+controller answers no job chunk over USB, so nothing waits for an ACK
+and nothing is re-sent: a re-sent chunk would run twice. Nothing here
+reimplements chunking or pacing.
 
 Power zeroed means the laser will NOT fire, but the gantry WILL still
 execute every move in the job at full programmed speed.
 
 Note on --magic: it is passed through to the transport's own codec
-(the actual wire encoding), but RuidaClient.send_job() itself
-unswizzles the blob it is given, and detects the chunk ACK/NAK bytes,
-using the hardcoded JOB_MAGIC constant in ruida_client.py (a file this
-package does not edit) -- so the job blob built below is always
-swizzled with JOB_MAGIC, regardless of --magic, matching
-send_job()'s actual contract.
+(the actual wire encoding), but RuidaClient.stream_job() itself
+unswizzles the blob it is given, and detects the job's reject byte,
+using the hardcoded JOB_MAGIC constant in ruida_client.py -- so the
+job blob built below is always swizzled with JOB_MAGIC, regardless of
+--magic, matching stream_job()'s actual contract.
 
 Run docs/usb-spike/enumerate.py, probe_usb.py, and jog_usb.py first.
 Keep the machine's E-stop within reach before confirming.
@@ -165,23 +167,17 @@ async def run(args: argparse.Namespace) -> int:
     def on_start(blob_size: int, chunk_count: int) -> None:
         print(f"sending {blob_size} bytes in {chunk_count} chunk(s)...")
 
-    def on_chunk(
-        index: int, chunk_count: int, chunk_size: int, attempts: int
-    ) -> None:
-        print(
-            f"chunk {index}/{chunk_count}: ACKed ({chunk_size} bytes, "
-            f"{attempts} attempt(s))"
-        )
-
     await client.connect()
     try:
-        await client.send_job(swizzled, on_start=on_start, on_chunk=on_chunk)
+        await client.stream_job(
+            swizzled, should_stop=lambda: False, on_start=on_start
+        )
     except RuntimeError as exc:
         sys.exit(f"{exc} - transport problem, check wiring/power.")
     finally:
         await client.disconnect()
     print()
-    print("All chunks ACKed. Watch the machine.")
+    print("All chunks sent, each once. Watch the machine.")
     return 0
 
 

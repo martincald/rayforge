@@ -12,9 +12,11 @@ checksum recomputed, using ../send_fixture_usb.py's build_patched_job
 is sent, every power command in the patched job is checked to be
 zero; any that is not aborts the run.
 
-It goes out through the app's RuidaClient.send_job: chunks of at most
-1000 bytes split on command boundaries, each swizzled with no
-checksum prefix and ACK-paced, with NAK and timeout retries.
+It goes out through the app's RuidaClient.stream_job: chunks of at
+most 1000 bytes split on command boundaries, each swizzled with no
+checksum prefix and written once, back to back, paced by the FTDI
+FIFO. The controller answers no job chunk over USB, so nothing waits
+for an ACK and nothing is re-sent: a re-sent chunk would run twice.
 
 Ladder: 1) enumerate.py  2) probe.py  3) jog.py  4) *fixture.py*
 
@@ -94,23 +96,19 @@ async def run(args: argparse.Namespace) -> int:
     def on_start(blob_size: int, chunk_count: int) -> None:
         print(f"sending {blob_size} bytes in {chunk_count} chunk(s)\n")
 
-    def on_chunk(index, chunk_count, chunk_size, attempts) -> None:
-        print(
-            f"chunk {index}/{chunk_count}: ACKed ({chunk_size} bytes, "
-            f"{attempts} attempt(s))\n"
-        )
-
     await client.connect()
     try:
         print_port_settings(transport)
-        await client.send_job(swizzled, on_start=on_start, on_chunk=on_chunk)
+        await client.stream_job(
+            swizzled, should_stop=lambda: False, on_start=on_start
+        )
     except RuntimeError as e:
         print(f"FAILED: {e}")
         return 1
     finally:
         await client.disconnect()
 
-    print("All chunks ACKed. Watch the machine run the job.")
+    print("All chunks sent, each once. Watch the machine run the job.")
     return 0
 
 

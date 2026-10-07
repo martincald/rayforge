@@ -12,6 +12,8 @@ minimum sees no difference at all. The head is moved instead, before
 the job is sent, and the job itself is left alone.
 """
 
+import asyncio
+
 import pytest
 import pytest_asyncio
 from blinker import Signal
@@ -539,6 +541,45 @@ class TestGoScaleTracesTheJobOutline:
         assert _moves(after_stop) == []
         assert _moves(spy.commands) == EXPECTED_TRACE[StartCorner.TOP_LEFT][:2]
         assert ruida_driver._jog_busy is False
+
+    @pytest.mark.asyncio
+    async def test_a_start_during_it_is_refused(self, ruida_driver, machine):
+        """
+        Start mid-trace must not pre-move from wherever the head is
+        nor send a job into the trace; Go Scale goes on undisturbed.
+        """
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        spy = _ClientSpy()
+        ruida_driver._client = spy
+        gate = asyncio.Event()
+        plain_read = spy.read_position
+
+        async def gated_read(timeout: float = 2.0):
+            if _moves(spy.commands):
+                await gate.wait()
+            return await plain_read(timeout)
+
+        spy.read_position = gated_read
+        trace = asyncio.create_task(ruida_driver.go_scale(WIDTH, HEIGHT, 2400))
+        while not _moves(spy.commands):
+            await asyncio.sleep(0)
+        doc = Doc()
+        ops = _rect_job()
+
+        try:
+            with pytest.raises(RuntimeError, match="busy"):
+                await asyncio.wait_for(
+                    ruida_driver.run(
+                        RuidaEncoder().encode(ops, machine, doc), doc, ops
+                    ),
+                    1.0,
+                )
+        finally:
+            gate.set()
+        await asyncio.wait_for(trace, 5.0)
+
+        assert spy.blobs == []
+        assert _moves(spy.commands) == EXPECTED_TRACE[StartCorner.TOP_LEFT]
 
     @pytest.mark.asyncio
     async def test_a_busy_machine_ignores_it(self, ruida_driver, machine):

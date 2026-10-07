@@ -88,6 +88,7 @@ def _print_wire_bytes(transport) -> None:
     raw = transport._raw
     codec = transport._codec
     write = raw._raw_write
+    write_some = raw._raw_write_some
 
     def show(direction: str, data: bytes) -> None:
         print(f"{direction} {len(data):4d} B  wire:  {data.hex(' ')}")
@@ -97,7 +98,16 @@ def _print_wire_bytes(transport) -> None:
         show("TX", data)
         write(data)
 
+    def logged_write_some(data: bytes) -> int:
+        # A job stream writes through here; only what the port took
+        # crossed it.
+        taken = write_some(data)
+        if taken:
+            show("TX", data[:taken])
+        return taken
+
     raw._raw_write = logged_write
+    raw._raw_write_some = logged_write_some
     raw.received.connect(lambda sender, data: show("RX", data), weak=False)
 
 

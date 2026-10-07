@@ -86,6 +86,14 @@ existing helpers.
 
 ## The ACK-paced send loop is reused, not duplicated
 
+> **Superseded (2026-10-07).** The owner's controller answers no job
+> chunk over USB (`session-2026-10-07_19-30-14.log`: no reply to chunk
+> 1 in four attempts, yet it ran each one), so a job no longer goes
+> through `send_job()` over USB. `RuidaClient.stream_job()` writes
+> every chunk once, back to back, paced by the FTDI FIFO through
+> `RuidaUsbTransport.stream_command()`; `send_job()` is UDP only.
+> Rung 4 below streams the same way. The section is kept as written.
+
 `RuidaUsbTransport` does not implement any retry, timeout, or
 chunking logic itself. `RuidaClient` only type-hints its `transport`
 argument under `TYPE_CHECKING` and never `isinstance`-checks it
@@ -171,9 +179,10 @@ implementation:
   reassembly.
 - `RuidaClient` (`ruida_client.py`) for command construction,
   `get_card_info()`/`read_position()`, `rapid_move_axis()`, and --
-  for rung 4 -- the ACK-paced, NAK-retrying `send_job()` chunker. None
-  of chunking, ACK pacing, retry, or framing is reimplemented anywhere
-  in `docs/usb-spike/`.
+  for rung 4 -- the unacknowledged, FIFO-paced `stream_job()` (it was
+  the ACK-paced `send_job()` until 2026-10-07; see above). None of
+  chunking, pacing, or framing is reimplemented anywhere in
+  `docs/usb-spike/`.
 
 `enumerate.py` and `probe_usb.py` (pre-existing from an earlier pass)
 were updated in this pass to use this same production code path --
@@ -272,9 +281,8 @@ $ PYTHONPATH=. /c/msys64/mingw64/bin/python.exe \
     docs/usb-spike/send_fixture_usb.py --mock --yes
 175 commands, 1013 bytes swizzled, power zeroed (including C6 65)
 sending 1013 bytes in 2 chunk(s)...
-chunk 1/2: ACKed (991 bytes, 1 attempt(s))
-chunk 2/2: ACKed (22 bytes, 1 attempt(s))
-All chunks ACKed. Watch the machine.
+
+All chunks sent, each once. Watch the machine.
 ```
 
 (Full untruncated output, including every raw hex line, was captured

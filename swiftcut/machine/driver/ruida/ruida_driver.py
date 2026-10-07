@@ -261,7 +261,7 @@ class RuidaDriver(Driver):
         self._jog_speed_mm_min = self.DEFAULT_JOG_SPEED
         # A job owns the wire while it uploads and runs: interactive
         # motion is refused for the duration rather than interleaved
-        # into a stream whose acks are matched positionally.
+        # into the upload, or into the job the controller is running.
         self._job_running = False
         # Every halt bumps this. A start-corner move captures it on
         # entry and abandons itself the moment it changes, so a stop
@@ -884,6 +884,14 @@ class RuidaDriver(Driver):
         # blob from ops here; encoded serves UI progress mapping only.
         op_map = encoded.op_map
         num_ops = op_map.op_count if op_map else 0
+        # Go Scale, a jog, a home or a focus owns the head. A job
+        # started now would pre-move from wherever the head is and
+        # interleave with that motion; before Go Scale left the job
+        # path, MachineCmd's one-job rule refused it the same way.
+        if self._jog_busy or self._job_running:
+            raise RuntimeError(
+                _("the machine is busy; wait for it to stop, or press Stop")
+            )
         blob = build_rd_bytes(ops, self._machine, doc)
 
         logger.info(

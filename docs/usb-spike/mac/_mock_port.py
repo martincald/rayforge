@@ -3,11 +3,12 @@ The --mock port for the macOS USB ladder (docs/usb-spike/mac/).
 
 A stand-in for pyserial's Serial with the in-repo Ruida simulator
 (RuidaSimulator) behind it, plus list_ports entries that include one
-with FTDI's VID. install() patches exactly the two places the vcp
-backend reaches the OS -- serial.Serial and
-serial.tools.list_ports.comports -- so the production
-RuidaUsbTransport open sequence, device selection, framing and read
-loop all run unmodified. Only the device is fake.
+with FTDI's VID. install() patches the three places the vcp backend
+reaches the OS -- serial.Serial, serial.tools.list_ports.comports and
+the job stream's write-what-fits on the port's fd, which a mock port
+has none of -- so the production RuidaUsbTransport open sequence,
+device selection, framing and read loop all run unmodified. Only the
+device is fake.
 """
 
 from __future__ import annotations
@@ -104,3 +105,14 @@ def install() -> None:
     mock.patch(
         "serial.tools.list_ports.comports", return_value=MOCK_PORTS
     ).start()
+    mock.patch(
+        "swiftcut.machine.driver.ruida.ruida_usb_transport"
+        "._VcpBackend._raw_write_some",
+        _write_all,
+    ).start()
+
+
+def _write_all(backend, data: bytes) -> int:
+    """The mock FIFO is never full: it takes every byte at once."""
+    backend._serial.write(data)
+    return len(data)

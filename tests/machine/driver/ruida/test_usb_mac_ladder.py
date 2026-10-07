@@ -96,12 +96,17 @@ def test_jog_refuses_to_move_without_confirmation():
     assert _tx(result.stdout) == []
 
 
-def test_fixture_sends_the_zero_power_job_in_acked_chunks():
+def test_fixture_streams_the_zero_power_job_each_chunk_once():
+    """No chunk waits for an ACK over USB, and none is re-sent."""
     result = _run("fixture.py", "--yes")
 
     assert result.returncode == 0, result.stderr
     assert "power commands, all zero (including C6 65)" in result.stdout
-    chunks = [wire for wire, _plain in _tx(result.stdout)]
-    assert len(chunks) >= 2
-    assert all(len(chunk) <= 1000 for chunk in chunks)
-    assert "All chunks ACKed" in result.stdout
+    announced = re.search(r"in (\d+) chunk\(s\)", result.stdout)
+    assert announced
+    writes = _tx(result.stdout)
+    assert len(writes) == int(announced[1]) >= 2
+    assert all(len(wire) <= 1000 for wire, _plain in writes)
+    plain = b"".join(p for _wire, p in writes)
+    assert plain.startswith(b"\xd8\x12") and plain.endswith(b"\xd7")
+    assert "All chunks sent, each once" in result.stdout
