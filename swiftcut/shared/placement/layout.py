@@ -1,6 +1,7 @@
 """
-Layout: several pieces placed one after another, each where it sits
-closest to a target, turned by the quarter turn that lands it nearest.
+Layout: several pieces placed one after another into a tight pile,
+each where the box around the pile grows least, turned by the quarter
+turn that grows it least.
 
 Pure numpy and raygeo on plain data, like the engine it calls, so it
 can run in a worker process.
@@ -29,6 +30,14 @@ _EPSILON_MM = 1e-6
 _SAME_SHAPE_MM = 0.1
 # How many points along a turn's outlines are checked against another.
 _SAME_SHAPE_SAMPLES = 64
+# How much the pile box's larger side, squared, weighs against its
+# area (see _pile_costs): area alone stretches the pile into a strip.
+# Every weight from 1.2 to 3 does about as well on the benchmarks;
+# below 1.2 the results jump (docs/auto-layout-notes.md).
+_SQUARE_WEIGHT = 2.0
+
+#: A box as (x0, y0, x1, y1), in world mm.
+Box = tuple[float, float, float, float]
 
 
 class Piece(NamedTuple):
@@ -53,13 +62,16 @@ def arrange(
     """
     Places the pieces one after another, largest outline area first
     (equal ones in the given order), each with find_position: its
-    frame as close to the target as it goes, its frame inside the
-    boundary, its outlines `clearance` from the obstacles and from the
-    pieces placed before it. Each piece is tried as it is and turned
-    90, 180 and 270 degrees about its frame's centre, skipping turns
-    that give an outline already tried; the turn whose frame centre
-    lands nearest the target wins, ties going to the smaller turn. A
-    piece that fits nowhere stays where it is, an obstacle for every
+    frame inside the boundary, its outlines `clearance` from the
+    obstacles and from the pieces placed before it. The first frame
+    goes as close to the target as it fits. Each later one goes where
+    the box around the frames placed so far, the pile, grows least:
+    by its area and its larger side (see _pile_costs), then by the
+    frame's centre nearest the target. Each piece is tried as it is
+    and turned 90, 180 and 270 degrees about its frame's centre,
+    skipping turns that give an outline already tried; the turn that
+    does best by the same order wins, ties going to the smaller turn.
+    A piece that fits nowhere stays where it is, an obstacle for every
     other piece: one whose frame is larger than the boundary any way
     up is known from the start, and finding another starts the layout
     over (at most once per piece).
@@ -71,7 +83,8 @@ def arrange(
         pieces: The pieces to place.
         obstacles: Outer outlines that stay where they are.
         boundary: The (x, y, width, height) every frame stays inside.
-        target: Where the frames' centres should go.
+        target: Where the pile is centred: the first frame's centre
+            goes as close to it as it fits, and it breaks ties.
         clearance: Minimum gap between outlines, in mm.
 
     Returns:
@@ -90,18 +103,20 @@ def arrange(
         fixed = list(obstacles)
         for piece in stay:
             fixed.extend(piece.outlines)
+        pile: Box | None = None
         for piece in by_size:
             if piece.id in placed:
                 continue
             if proxy.is_cancelled():
                 return {}
-            best = _best_turn(piece, fixed, boundary, target, clearance)
+            best = _best_turn(piece, fixed, boundary, target, clearance, pile)
             if best is None:
                 stay.append(piece)
                 break
-            angle, dx, dy, outlines = best
+            angle, dx, dy, outlines, box = best
             placed[piece.id] = (angle, dx, dy, True)
             fixed.extend((p + (dx, dy)).tolist() for p in outlines)
+            pile = box if pile is None else _union(pile, box)
             proxy.set_progress(len(placed))
         else:
             return placed
@@ -119,26 +134,40 @@ def _best_turn(
     boundary: Rect,
     target: Point,
     clearance: float,
-) -> tuple[float, float, float, list[np.ndarray]] | None:
+    pile: Box | None,
+) -> tuple[float, float, float, list[np.ndarray], Box] | None:
     """
-    The turn of the piece whose frame centre lands nearest the target,
-    ties going to the smaller turn, as (angle, dx, dy, turned
-    outlines); None if no turn fits.
+    The turn of the piece that does best: by the pile's costs with its
+    frame added (see _pile_costs; none for the first piece), then by
+    its frame centre's distance to the target, ties going to the
+    smaller turn. As (angle, dx, dy, turned outlines, frame box); None
+    if no turn fits.
     """
     best = None
     for angle, outlines, frame in _turns(piece):
         dx, dy, fits = _place(
-            outlines, frame, obstacles, boundary, target, clearance
+            outlines, frame, obstacles, boundary, target, clearance, pile
         )
         if not fits:
             continue
         x, y, w, h = frame
+        box = (x + dx, y + dy, x + w + dx, y + h + dy)
+        costs = () if pile is None else _pile_costs(pile, *box)
         distance = math.hypot(
             x + w / 2 + dx - target[0], y + h / 2 + dy - target[1]
         )
-        if best is None or distance < best[0] - _EPSILON_MM:
-            best = (distance, angle, dx, dy, outlines)
+        score = (*map(float, costs), distance)
+        if best is None or _before(score, best[0]):
+            best = (score, angle, dx, dy, outlines, box)
     return None if best is None else best[1:]
+
+
+def _before(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
+    """Whether a comes before b, compared in order, _EPSILON_MM apart."""
+    for x, y in zip(a, b):
+        if abs(x - y) > _EPSILON_MM:
+            return x < y
+    return False
 
 
 def _turns(piece: Piece) -> Iterator[tuple[float, list[np.ndarray], Rect]]:
@@ -225,10 +254,13 @@ def _place(
     boundary: Rect,
     target: Point,
     clearance: float,
+    pile: Box | None,
 ) -> tuple[float, float, bool]:
     """
     find_position for a piece whose frame, not its outlines, is
-    centred on the target and kept inside the boundary.
+    centred on the target and kept inside the boundary; with a pile,
+    placed where the pile's costs with the frame added are lowest
+    (see _pile_costs).
     """
     points = np.concatenate(outlines)
     (x0, y0), (x1, y1) = points.min(axis=0), points.max(axis=0)
@@ -239,13 +271,40 @@ def _place(
     bottom, top = y0 - fy, fy + fh - y1
     bx, by, bw, bh = boundary
     tx, ty = target
+    hw, hh = (x1 - x0) / 2, (y1 - y0) / 2
+
+    def cost(x, y):
+        # The frame's box when the outlines' box centres on (x, y).
+        return _pile_costs(
+            pile, x - hw - left, y - hh - bottom, x + hw + right, y + hh + top
+        )
+
     return find_position(
         outlines,
         obstacles,
         (bx + left, by + bottom, bw - left - right, bh - bottom - top),
         (tx + (left - right) / 2, ty + (bottom - top) / 2),
         clearance,
+        cost=None if pile is None else cost,
     )
+
+
+def _pile_costs(pile: Box, x0, y0, x1, y1) -> tuple:
+    """
+    The cost the layout keeps lowest, as a 1-tuple: the area of the
+    box around the pile and the box (x0, y0, x1, y1), plus
+    _SQUARE_WEIGHT times its larger side squared. For numbers or
+    arrays that broadcast together.
+    """
+    px0, py0, px1, py1 = pile
+    w = np.maximum(px1, x1) - np.minimum(px0, x0)
+    h = np.maximum(py1, y1) - np.minimum(py0, y0)
+    return (w * h + _SQUARE_WEIGHT * np.maximum(w, h) ** 2,)
+
+
+def _union(a: Box, b: Box) -> Box:
+    """The box around two boxes."""
+    return (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
 
 
 def _area(outlines: Sequence[Polygon]) -> float:

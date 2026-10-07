@@ -205,25 +205,30 @@ async def test_profile(doc_editor, task_mgr, bed, tmp_path):
 async def test_exact_tests(doc_editor, task_mgr, bed, tmp_path, name):
     """
     How many grid positions each find_position call tests exactly (not
-    counting its slides), which engine.MAX_TESTS caps.
+    counting its slides and pattern search), which engine.MAX_TESTS
+    caps.
     """
     workpieces, _boundary = await _document(
         doc_editor, task_mgr, tmp_path, name
     )
     counts = []
     calls = [0]
-    is_free, slide = engine._Search.is_free, engine._Search.slide
+    is_free = engine._Search.is_free
+    slide, refine = engine._Search.slide, engine._Search.refine
     find_position = layout.find_position
 
     def counted_is_free(search, x, y):
         calls[0] += 1
         return is_free(search, x, y)
 
-    def uncounted_slide(search, start, goal):
-        before = calls[0]
-        result = slide(search, start, goal)
-        calls[0] = before
-        return result
+    def uncounted(method):
+        def wrapper(*args):
+            before = calls[0]
+            result = method(*args)
+            calls[0] = before
+            return result
+
+        return wrapper
 
     def counted_find_position(*args, **kwargs):
         calls[0] = 0
@@ -233,7 +238,8 @@ async def test_exact_tests(doc_editor, task_mgr, bed, tmp_path, name):
 
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(engine._Search, "is_free", counted_is_free)
-        patch.setattr(engine._Search, "slide", uncounted_slide)
+        patch.setattr(engine._Search, "slide", uncounted(slide))
+        patch.setattr(engine._Search, "refine", uncounted(refine))
         patch.setattr(layout, "find_position", counted_find_position)
         NestLayoutStrategy(items=workpieces).calculate_deltas()
 

@@ -4,8 +4,9 @@ Placement: where a new piece goes among the pieces already on the bed.
 The search tries grid positions around a target, nearest first, takes
 the first one where the piece keeps a clearance from every obstacle
 and stays inside the bed, then slides the piece toward the target
-until it touches. Pure numpy and raygeo on plain point lists, so it
-can run in a worker process.
+until it touches. A caller may rank the positions by its own cost
+instead (see find_position). Pure numpy and raygeo on plain point
+lists, so it can run in a worker process.
 
 Outlines are outer outlines of three or more points, in world mm
 (origin bottom-left, Y up), as open or closed rings. Every outline
@@ -16,7 +17,7 @@ caller's to allow for.
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import NamedTuple
 
 import numpy as np
@@ -33,12 +34,15 @@ from raygeo.geo.shape.polygon import (
 Point = tuple[float, float]
 Polygon = Sequence[Point]
 Rect = tuple[float, float, float, float]
+#: Costs of a position, given the arrays of its x and y (see
+#: find_position).
+Cost = Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, ...]]
 
 #: The grid step is a quarter of the piece's smaller side, but no
 #: less than this, in mm.
 MIN_STEP_MM = 2.0
 #: At most this many grid positions get an exact test per call. The
-#: 40-piece benchmark needs at most 52; a bed-sized comb of 900
+#: 40-piece benchmark needs at most 73; a bed-sized comb of 900
 #: vertices, where nothing fits, takes about 0.5 ms per test.
 MAX_TESTS = 1000
 # Round joins sag between their vertices by about 0.2 % of the offset;
@@ -46,6 +50,11 @@ MAX_TESTS = 1000
 _ROUND_JOIN_GROWTH = 1.01
 # The slide toward the target stops this close to contact, in mm.
 _SLIDE_TOLERANCE_MM = 0.01
+# The pattern search for a lower cost (see find_position) starts at
+# half the grid step and ends at this step, in mm.
+_REFINE_MM = 0.05
+# The directions it steps in: eight, 45 degrees apart.
+_DIRECTIONS = [(math.cos(a), math.sin(a)) for a in np.arange(8) * math.pi / 4]
 # How many of the piece's vertices are tested for lying inside an
 # obstacle, which proves an overlap without the exact test.
 _SAMPLES = 8
@@ -68,6 +77,7 @@ def find_position(
     target: Point | None = None,
     clearance: float = 1.0,
     max_tests: int = MAX_TESTS,
+    cost: Cost | None = None,
 ) -> Placement:
     """
     Where to move a piece so it sits closest to the target without
@@ -84,6 +94,13 @@ def find_position(
     exact outline test; after `max_tests` exact tests the nearest
     position known to be free that way is taken, if there is one.
 
+    With a cost, the positions are tried lowest cost first instead,
+    ties going nearest the target (past `max_tests`, the lowest cost
+    one known to be free is taken). A slide is then kept only if it
+    does not raise the cost, and a pattern search moves the piece on
+    while that lowers the cost or, at the same cost, brings it nearer
+    the target.
+
     Args:
         piece: Outer outlines of the piece, moved as one.
         obstacles: Outer outlines already on the bed.
@@ -92,7 +109,11 @@ def find_position(
             go; the bed centre if None.
         clearance: Minimum gap between outlines, in mm.
         max_tests: The most grid positions tested exactly (the slides
-            add at most a bisection's worth each).
+            and the pattern search are not counted).
+        cost: The costs of centring the piece's bounding box on
+            (x, y), for arrays x and y that broadcast together,
+            compared in order; None tries the positions nearest the
+            target first.
 
     Returns:
         The move (dx, dy) and fits=True. If no position is free (or
@@ -121,17 +142,26 @@ def find_position(
     search = _Search(raw, (cx, cy), obstacles, clearance)
     blocked, unknown = search.classify(xs, ys)
 
-    # Exact tests only for the undecided positions nearer than the
-    # nearest one known to be free.
+    # Exact tests only for the undecided positions that come no later
+    # than the first one known to be free.
     dist = off_y[:, None] ** 2 + off_x[None, :] ** 2
+    costs = []
+    if cost is not None:
+        costs = [
+            np.broadcast_to(c, dist.shape)
+            for c in cost(xs[None, :], ys[:, None])
+        ]
+    first = costs[0] if costs else dist
     clear = ~blocked & ~unknown
     todo = ~blocked
     if clear.any():
-        todo &= dist <= dist[clear].min()
+        todo &= first <= first[clear].min()
     # Past max_tests, only the positions known to be free are left.
     rows, cols = np.nonzero(todo)
     tests = 0
-    for k in np.lexsort((off_x[cols], off_y[rows], dist[rows, cols])):
+    keys = (off_x[cols], off_y[rows], dist[rows, cols])
+    keys += tuple(c[rows, cols] for c in reversed(costs))
+    for k in np.lexsort(keys):
         row, col = rows[k], cols[k]
         if clear[row, col]:
             break
@@ -142,9 +172,24 @@ def find_position(
     else:
         return Placement(float(goal[0] - cx), float(goal[1] - cy), False)
 
-    x, y = search.slide((xs[col], ys[row]), goal)
-    x, y = search.slide((x, y), (goal[0], y))
-    x, y = search.slide((x, y), (x, goal[1]))
+    x, y = xs[col], ys[row]
+    if cost is None:
+        x, y = search.slide((x, y), goal)
+        x, y = search.slide((x, y), (goal[0], y))
+        x, y = search.slide((x, y), (x, goal[1]))
+        return Placement(float(x - cx), float(y - cy), True)
+
+    def key(x: float, y: float) -> tuple[float, ...]:
+        """The position's costs, then its squared distance to target."""
+        return (*map(float, cost(x, y)), (x - tx) ** 2 + (y - ty) ** 2)
+
+    for along in range(3):
+        # Along the line to the goal, then along x, then along y.
+        end = (goal, (goal[0], y), (x, goal[1]))[along]
+        moved = search.slide((x, y), end)
+        if key(*moved) <= key(x, y):
+            x, y = moved
+    x, y = search.refine((x, y), key, step, (lo_x, lo_y, hi_x, hi_y))
     return Placement(float(x - cx), float(y - cy), True)
 
 
@@ -261,6 +306,35 @@ class _Search:
             else:
                 hi = mid
         return x0 + lo * (x1 - x0), y0 + lo * (y1 - y0)
+
+    def refine(
+        self,
+        start: Point,
+        key: Callable[[float, float], tuple[float, ...]],
+        step: float,
+        bounds: tuple[float, float, float, float],
+    ) -> Point:
+        """
+        Pattern search from a free start: step in eight directions to
+        a free position of lower key within bounds (x0, y0, x1, y1),
+        halving the step whenever there is none, down to _REFINE_MM.
+        """
+        x0, y0, x1, y1 = bounds
+        x, y = start
+        best = key(x, y)
+        step /= 2
+        while step >= _REFINE_MM:
+            for ux, uy in _DIRECTIONS:
+                nx, ny = x + ux * step, y + uy * step
+                if not (x0 <= nx <= x1 and y0 <= ny <= y1):
+                    continue
+                k = key(nx, ny)
+                if k < best and self.is_free(nx, ny):
+                    x, y, best = nx, ny, k
+                    break
+            else:
+                step /= 2
+        return x, y
 
 
 def _points(polygon: Polygon) -> list[Point]:

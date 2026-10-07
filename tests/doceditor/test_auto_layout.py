@@ -1,10 +1,11 @@
 """
 Auto Layout (Arrange > Auto Layout, Ctrl+Alt+A) on real imported
 workpieces: their true outlines end 1 mm apart with their frames
-inside the boundary, every other workpiece is kept clear of and left
-where it is, and one undo puts everything back. It is worked out in a
-worker process, with progress; cancelled, or if the document changes
-meanwhile, it changes nothing.
+inside the boundary, the benchmarks end at least as compact as the
+old layout left them (but the one in E3_GAP), every other workpiece is
+kept clear of and left where it is, and one undo puts everything
+back. It is worked out in a worker process, with progress; cancelled,
+or if the document changes meanwhile, it changes nothing.
 """
 
 import asyncio
@@ -34,6 +35,20 @@ DOCUMENTS = {
     # Circles, ellipses, rectangles, and Ls, Us, a cross and a star.
     "forty": bench.BENCHMARKS["forty-40"],
 }
+
+#: The least compact each benchmark may end, on its stock or on the
+#: bed (bench.compactness; lower is more compact): the old layout's
+#: result on the same pieces drawn filled, at the smallest margin
+#: (0.625 mm) where it keeps 1 mm between outlines
+#: (docs/auto-layout-notes.md, Before).
+COMPACTNESS_BAR = {
+    ("circles-20", "stock"): 1.328,
+    ("mixed-18", "stock"): 1.337,
+    ("forty-40", "stock"): 1.346,
+    ("forty-40", "bed"): 1.700,
+}
+#: The benchmark that still ends less compact than its bar.
+E3_GAP = {("forty-40", "stock")}
 
 
 @pytest.fixture
@@ -75,6 +90,35 @@ async def test_true_outlines_end_1mm_apart_inside_the_stock(
     assert bench.clashes(workpieces) == {"overlap": 0, "close": 0}
     assert bench.frames_outside(workpieces, bench.frame_box(stock)) == []
     assert notices == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name, boundary",
+    [
+        pytest.param(
+            *case,
+            marks=pytest.mark.xfail(
+                strict=True, reason="E3 gap, see docs/auto-layout-notes.md"
+            ),
+        )
+        if case in E3_GAP
+        else case
+        for case in COMPACTNESS_BAR
+    ],
+)
+async def test_benchmarks_end_within_the_compactness_bar(
+    doc_editor, task_mgr, bed, tmp_path, name, boundary
+):
+    pieces, size = bench.BENCHMARKS[name]
+    workpieces = await bench.build(doc_editor, task_mgr, tmp_path, pieces)
+    if boundary == "stock":
+        bench.add_stock(doc_editor, size)
+
+    await _auto_layout(doc_editor, task_mgr, workpieces)
+
+    assert bench.clashes(workpieces) == {"overlap": 0, "close": 0}
+    assert bench.compactness(workpieces) <= COMPACTNESS_BAR[name, boundary]
 
 
 @pytest.mark.asyncio

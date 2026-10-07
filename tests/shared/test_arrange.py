@@ -115,6 +115,22 @@ def test_largest_piece_takes_the_target():
     assert_clear(small_outlines, large_outlines)
 
 
+def test_later_pieces_go_where_the_pile_grows_least():
+    big = rect_piece("big", 0, 0, 100, 100)
+    wide = rect_piece("wide", 0, 0, 40, 30)
+    small = rect_piece("small", 0, 0, 20, 20)
+
+    result = arrange(Proxy(), [big, wide, small], [], BOUNDARY, CENTRE)
+
+    # The small one fits in the pile beside the wide one, under the big
+    # one; nearest the centre would be against the big one's side.
+    pile = [placed(p, result[p.id])[1] for p in (big, wide)]
+    _outlines, corners = placed(small, result["small"])
+    x0, y0 = np.min(pile, axis=(0, 1))
+    x1, y1 = np.max(pile, axis=(0, 1))
+    assert_inside(corners, (x0, y0, x1 - x0, y1 - y0))
+
+
 def test_equal_pieces_go_in_the_given_order():
     first = rect_piece("first", 300, 200, 30, 30)
     second = rect_piece("second", 0, 0, 30, 30)

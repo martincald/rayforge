@@ -1,6 +1,6 @@
 """
-Auto Layout on true outlines: the items gather around the centre of
-the stock or the bed, 1 mm clear of each other and of every other
+Auto Layout on true outlines: the items gather in a tight pile centred
+on the stock or the bed, 1 mm clear of each other and of every other
 workpiece.
 """
 
@@ -30,13 +30,13 @@ logger = logging.getLogger(__name__)
 
 class NestLayoutStrategy(LayoutStrategy):
     """
-    Arranges items as close to the centre of the boundary (the part of
-    the visible stock's bounding box on the bed, else the bed) as they
-    go, largest first, each turned by the quarter turn that lands it
-    nearest; mirroring is kept. Their outlines keep 1 mm from each
-    other and from every other workpiece in the document, and their
-    frames stay inside the boundary. Items that fit nowhere stay where
-    they are, with a notice.
+    Arranges items in a tight pile centred on the boundary (the part of
+    the visible stock's bounding box on the bed, else the bed), largest
+    first, each where and by the quarter turn that grows the pile's box
+    least (see shared.placement.arrange); mirroring is kept. Their
+    outlines keep 1 mm from each other and from every other workpiece
+    in the document, and their frames stay inside the boundary. Items
+    that fit nowhere stay where they are, with a notice.
 
     The document is read when the strategy is built, which must be on
     the main thread; arrange_args hands that to arrange, which may run
