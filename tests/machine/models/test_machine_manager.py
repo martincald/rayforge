@@ -613,3 +613,69 @@ async def test_a_switch_releases_the_old_machine_before_the_new_connects(
     old.disconnect.assert_not_awaited()
     saved = await asyncio.to_thread(lite_context.config_mgr.filepath.read_text)
     assert yaml.safe_load(saved)["machine"] == ilab_626.id
+
+
+@pytest.mark.asyncio
+async def test_a_switch_swaps_per_machine_settings_and_keeps_shared_ones(
+    lite_context, task_mgr: TaskManager
+):
+    """
+    Per machine, in each profile's own file: the bed, the Cut Scale
+    values, the connection and USB device, the start corner and the
+    machine hours. Shared, in config.yaml and the materials and
+    recipes dirs: everything else. A switch changes which profile is
+    active and nothing else; no value is copied between profiles.
+    """
+    from swiftcut import config as config_module
+    from swiftcut.machine.models.machine import StartCorner
+
+    manager, ilab_614, ilab_626 = _bundled_pair(lite_context)
+    for machine in (ilab_614, ilab_626):
+        machine.auto_connect = False
+    ilab_626.driver_args = {**ilab_626.driver_args, "usb_serial": "BBB"}
+    ilab_626.cut_scale_speed_mm_s = 15.0
+    ilab_626.start_corner = StartCorner.BOTTOM_RIGHT
+    manager.save_machine(ilab_626)
+    config = lite_context.config
+    config.set_machine(ilab_614)
+    config.set_theme("dark")
+    config.set_unit_preference("speed", "mm/min")
+    ilab_614_file = manager.filename_from_id(ilab_614.id)
+    ilab_614_bytes = ilab_614_file.read_bytes()
+    shared_before = yaml.safe_load(
+        await asyncio.to_thread(lite_context.config_mgr.filepath.read_text)
+    )
+    manager.controllers[ilab_614.id] = AsyncMock()
+    manager.controllers[ilab_626.id] = AsyncMock()
+
+    manager.set_active_machine(ilab_626)
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    active = config.machine
+    assert active is ilab_626
+    assert active.axis_extents == (900.0, 900.0)
+    assert active.cut_scale_speed_mm_s == 15.0
+    assert active.cut_scale_power_pct == 30.0
+    assert active.driver_args["connection"] == "usb"
+    assert active.driver_args["usb_serial"] == "BBB"
+    assert active.start_corner == StartCorner.BOTTOM_RIGHT
+    assert active.machine_hours.total_hours == 0.0
+    assert ilab_614.axis_extents == (1400.0, 900.0)
+    assert "usb_serial" not in ilab_614.driver_args
+    assert ilab_614.start_corner == StartCorner.TOP_LEFT
+    assert ilab_614.machine_hours.total_hours > 0
+    assert ilab_614_file.read_bytes() == ilab_614_bytes
+
+    shared_after = yaml.safe_load(
+        await asyncio.to_thread(lite_context.config_mgr.filepath.read_text)
+    )
+    assert shared_before.pop("machine") == ilab_614.id
+    assert shared_after.pop("machine") == ilab_626.id
+    assert shared_after == shared_before
+    assert shared_after["theme"] == "dark"
+    assert shared_after["unit_preferences"]["speed"] == "mm/min"
+    for shared_dir in (
+        config_module.USER_MATERIALS_DIR,
+        config_module.USER_RECIPES_DIR,
+    ):
+        assert config_module.MACHINE_DIR not in shared_dir.parents
