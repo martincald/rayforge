@@ -740,28 +740,6 @@ class MainWindow(Adw.ApplicationWindow):
         """Public method to load a project from a given path."""
         self.project_cmd.load_project(file_path)
 
-    def _update_macros_menu(self, *args):
-        """Rebuilds the dynamic 'Macros' menu."""
-        config = get_context().config
-        if not config.machine:
-            self.menu_model.update_macros_menu([])
-            return
-
-        macros = sorted(
-            config.machine.macros.values(), key=lambda m: m.name.lower()
-        )
-        enabled_macros = [m for m in macros if m.enabled]
-        self.menu_model.update_macros_menu(enabled_macros)
-
-    def on_execute_macro(self, action: Gio.SimpleAction, param: GLib.Variant):
-        """Handler for the 'execute-macro' action."""
-        config = get_context().config
-        if not config.machine:
-            return
-        macro_uid = param.get_string()
-        logger.info(f"Executing macro: {macro_uid}")
-        self.machine_cmd.execute_macro_by_uid(config.machine, macro_uid)
-
     def _on_job_started(self, sender):
         logger.debug("Job started")
         self.toolbar.set_job_progress(0.0)
@@ -1187,7 +1165,6 @@ class MainWindow(Adw.ApplicationWindow):
         # After undo/redo, the document state may have changed in ways
         # that require a full UI sync (e.g., layer visibility).
         self.on_doc_changed(self.doc_editor.doc)
-        self._update_macros_menu()
 
     def on_doc_changed(self, sender, **kwargs):
         # Synchronize UI elements that depend on the document model
@@ -1483,7 +1460,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.surface.set_machine(config.machine)
 
         self.surface.update_from_doc()
-        self._update_macros_menu()
 
         # Check for any pending notifications from the new machine immediately
         if self._current_machine:
@@ -1504,7 +1480,6 @@ class MainWindow(Adw.ApplicationWindow):
             self._current_machine.job_finished.disconnect(
                 self._on_job_finished
             )
-            self._current_machine.changed.disconnect(self._update_macros_menu)
             self._current_machine.machine_hours.changed.disconnect(
                 self._on_machine_hours_changed
             )
@@ -1532,7 +1507,6 @@ class MainWindow(Adw.ApplicationWindow):
                 self._on_connection_status_changed
             )
             self._current_machine.job_finished.connect(self._on_job_finished)
-            self._current_machine.changed.connect(self._update_macros_menu)
             self._current_machine.machine_hours.changed.connect(
                 self._on_machine_hours_changed
             )
@@ -1589,7 +1563,6 @@ class MainWindow(Adw.ApplicationWindow):
             am.get_action("machine-cancel").set_enabled(False)
             am.get_action("machine-clear-alarm").set_enabled(False)
             am.get_action("machine-focus-z").set_enabled(False)
-            am.get_action("execute-macro").set_enabled(False)
             am.get_action("zero-here").set_enabled(False)
 
             self.toolbar.export_button.set_tooltip_text(
@@ -1751,10 +1724,6 @@ class MainWindow(Adw.ApplicationWindow):
                 x, y = state.machine_pos[:2]
                 if x is not None and y is not None:
                     self.surface.set_laser_dot_position(x, y)
-
-            # Set macro action sensitivity
-            can_run_macros = connected and not is_job_or_task_active
-            am.get_action("execute-macro").set_enabled(can_run_macros)
 
             # WCS UI
             is_g53 = (

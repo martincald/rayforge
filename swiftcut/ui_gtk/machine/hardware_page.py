@@ -2,7 +2,6 @@ from gettext import gettext as _
 from typing import cast
 
 from gi.repository import Adw, Gtk
-from raygeo.ops.axis import Axis
 
 from ...machine.models.machine import Machine, Origin
 from ..shared.pref_rows.length_spin_row import LengthSpinRow
@@ -104,20 +103,6 @@ class HardwarePage(TrackedPreferencesPage):
             "notify::active", self.on_reverse_y_changed
         )
         axes_group.add(self.reverse_y_axis_row)
-
-        self.reverse_z_axis_row = Adw.SwitchRow()
-        self.reverse_z_axis_row.set_title(_("Reverse Z-Axis Direction"))
-        self.reverse_z_axis_row.set_subtitle(
-            _(
-                "Enable if a positive Z command (e.g., G0 Z10) moves the head "
-                "down"
-            )
-        )
-        self.reverse_z_axis_row.set_active(machine.reverse_z_axis)
-        self.reverse_z_axis_row.connect(
-            "notify::active", self.on_reverse_z_changed
-        )
-        axes_group.add(self.reverse_z_axis_row)
 
         work_area_group = Adw.PreferencesGroup(title=_("Work Area"))
         work_area_group.set_description(
@@ -241,12 +226,10 @@ class HardwarePage(TrackedPreferencesPage):
 
         self._is_initializing = False
         self._update_soft_limits_ui()
-        self._update_z_axis_state()
 
     def _on_machine_changed(self, sender, **kwargs):
         if self._is_initializing:
             return
-        self._update_z_axis_state()
         self._update_axis_extents_ui()
         self._update_soft_limits_ui()
 
@@ -285,9 +268,6 @@ class HardwarePage(TrackedPreferencesPage):
 
     def on_reverse_y_changed(self, row, _):
         self.machine.set_reverse_y_axis(row.get_active())
-
-    def on_reverse_z_changed(self, row, _):
-        self.machine.set_reverse_z_axis(row.get_active())
 
     def on_x_extent_changed(self, row):
         x = self.x_extent_row.get_value_in_base_units()
@@ -340,10 +320,3 @@ class HardwarePage(TrackedPreferencesPage):
         x_max = self.soft_x_max_row.get_value_in_base_units()
         y_max = self.soft_y_max_row.get_value_in_base_units()
         self.machine.set_soft_limits(x_min, y_min, x_max, y_max)
-
-    def _update_z_axis_state(self):
-        if self._is_initializing:
-            return
-
-        has_z = self.machine.can_jog(Axis.Z)
-        self.reverse_z_axis_row.set_visible(has_z)

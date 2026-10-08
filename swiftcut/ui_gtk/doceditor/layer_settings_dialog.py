@@ -8,14 +8,13 @@ from ...core.layer import Layer
 from ..icons import get_icon
 from ..machine.wcs_dialog import WcsDialog
 from ..shared.patched_dialog_window import PatchedDialogWindow
-from ..shared.pref_rows.length_spin_row import LengthSpinRow
 
 if TYPE_CHECKING:
     from ...doceditor.editor import DocEditor
 
 
 class LayerSettingsDialog(PatchedDialogWindow):
-    """Dialog for configuring layer-level settings including rotary."""
+    """Dialog for configuring layer-level settings."""
 
     def __init__(
         self,
@@ -96,59 +95,7 @@ class LayerSettingsDialog(PatchedDialogWindow):
         self.wcs_row.connect("notify::selected", self._on_wcs_changed)
         general_group.add(self.wcs_row)
 
-        rotary_group = Adw.PreferencesGroup(
-            title=_("Rotary Attachment"),
-            description=_(
-                "Configure rotary attachment for cylindrical objects. "
-                "When enabled, Y-axis movements are converted to "
-                "rotational movements in degrees."
-            ),
-        )
-        content.add(rotary_group)
-
-        self.rotary_enabled_row = Adw.SwitchRow()
-        self.rotary_enabled_row.set_title(_("Enable Rotary Mode"))
-        self.rotary_enabled_row.set_subtitle(
-            _("Convert Y-axis to rotary axis")
-        )
-        self.rotary_enabled_row.set_active(layer.rotary_enabled)
-        self.rotary_enabled_row.connect(
-            "notify::active", self._on_rotary_enabled_changed
-        )
-        rotary_group.add(self.rotary_enabled_row)
-
-        self._populate_module_store()
-        self.module_row = Adw.ComboRow(
-            title=_("Rotary Module"),
-            subtitle=_("Select the rotary module for this layer"),
-            model=self._module_store,
-        )
-        self._select_current_module()
-        self.module_row.connect("notify::selected", self._on_module_changed)
-        self.module_row.set_sensitive(layer.rotary_enabled)
-        rotary_group.add(self.module_row)
-
-        self.rotary_diameter_row = LengthSpinRow(
-            _("Object Diameter"),
-            _("Diameter of the cylindrical object"),
-            lower=1,
-            upper=1000,
-            value_in_base=layer.rotary_diameter,
-        )
-        self.rotary_diameter_row.value_changed.connect(
-            self._on_rotary_diameter_changed
-        )
-        self.rotary_diameter_row.set_sensitive(layer.rotary_enabled)
-        rotary_group.add(self.rotary_diameter_row)
-
         self._is_initializing = False
-
-        has_modules = bool(self._module_uids)
-        if not has_modules:
-            self.module_row.set_sensitive(False)
-
-        if not self.layer.rotary_module_uid and has_modules:
-            self.layer.set_rotary_module_uid(self._module_uids[0])
 
     def _populate_wcs_store(self):
         self._wcs_store = Gtk.StringList()
@@ -199,65 +146,6 @@ class LayerSettingsDialog(PatchedDialogWindow):
 
     def _on_edit_dialog_destroy(self, *_):
         self._edit_dialog = None
-
-    def _populate_module_store(self):
-        self._module_store = Gtk.StringList()
-        self._module_uids: list[str] = []
-        machine = get_context().machine
-        if machine:
-            for module in sorted(
-                machine.rotary_modules.values(), key=lambda m: m.name
-            ):
-                self._module_store.append(module.name)
-                self._module_uids.append(module.uid)
-
-    def _select_current_module(self):
-        uid = self.layer.rotary_module_uid
-        if uid and uid in self._module_uids:
-            self.module_row.set_selected(self._module_uids.index(uid))
-        elif self._module_uids:
-            self.module_row.set_selected(0)
-            self.layer.set_rotary_module_uid(self._module_uids[0])
-
-    def _on_rotary_enabled_changed(self, row, _):
-        if self._is_initializing:
-            return
-        enabled = row.get_active()
-        self.module_row.set_sensitive(enabled)
-        self.rotary_diameter_row.set_sensitive(enabled)
-        self.layer.set_rotary_enabled(enabled)
-        if enabled and self.layer.rotary_module_uid is None:
-            machine = get_context().machine
-            if machine:
-                default_rm = machine.get_default_rotary_module()
-                if default_rm:
-                    self.layer.set_rotary_module_uid(default_rm.uid)
-                    self.layer.set_rotary_diameter(default_rm.default_diameter)
-                    self.rotary_diameter_row.set_value_in_base_units(
-                        default_rm.default_diameter
-                    )
-
-    def _on_module_changed(self, row, _param):
-        if self._is_initializing:
-            return
-        idx = row.get_selected()
-        if idx < len(self._module_uids):
-            uid = self._module_uids[idx]
-            self.layer.set_rotary_module_uid(uid)
-            machine = get_context().machine
-            if machine:
-                rm = machine.get_rotary_module_by_uid(uid)
-                if rm:
-                    self.layer.set_rotary_diameter(rm.default_diameter)
-                    self.rotary_diameter_row.set_value_in_base_units(
-                        rm.default_diameter
-                    )
-
-    def _on_rotary_diameter_changed(self, row):
-        if self._is_initializing:
-            return
-        diameter = self.rotary_diameter_row.get_value_in_base_units()
-        self.layer.set_rotary_diameter(diameter)
 
     def _on_color_changed(self, button, _param):
         if self._is_initializing:

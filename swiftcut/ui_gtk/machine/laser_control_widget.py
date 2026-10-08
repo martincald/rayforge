@@ -98,23 +98,6 @@ class LaserControlWidget(Gtk.Box):
         self._power_row.add_suffix(suffix_box)
         self._group.add(self._power_row)
 
-        self._frequency_row = SpinRow(
-            _("Frequency"),
-            _("Modulation frequency"),
-            lower=1,
-            upper=100000,
-            step_increment=100,
-        )
-        self._group.add(self._frequency_row)
-
-        self._pulse_width_row = SpinRow(
-            _("Pulse Width"),
-            _("Length of each pulse"),
-            lower=1,
-            upper=100000,
-        )
-        self._group.add(self._pulse_width_row)
-
         self._duration_row = SpinRow(
             _("Duration"),
             _("Seconds (0 = continuous)"),
@@ -136,12 +119,7 @@ class LaserControlWidget(Gtk.Box):
         self._group.add(self._focus_row)
 
         # This panel lives in the dock, so its fields are the dock's.
-        for row in (
-            self._frequency_row,
-            self._pulse_width_row,
-            self._duration_row,
-        ):
-            compact_spin_button(row.get_spin_button())
+        compact_spin_button(self._duration_row.get_spin_button())
 
         self.append(self._group)
 
@@ -152,7 +130,6 @@ class LaserControlWidget(Gtk.Box):
 
         self.connect("destroy", self._on_destroy)
         self._update_sensitivity()
-        self._update_pwm_visibility()
 
     def set_machine(
         self, machine: Machine | None, machine_cmd: MachineCmd | None
@@ -208,19 +185,6 @@ class LaserControlWidget(Gtk.Box):
             )
         )
         self._power_adj.set_value(head.focus_power_percent * 100)
-        self._frequency_row.set_range(1, head.max_pwm_frequency)
-        self._frequency_row.set_value(head.pwm_frequency)
-        self._pulse_width_row.set_range(
-            head.min_pulse_width, head.max_pulse_width
-        )
-        self._pulse_width_row.set_value(head.pulse_width)
-        self._update_pwm_visibility()
-
-    def _update_pwm_visibility(self):
-        head = self._get_selected_head()
-        show = head is not None and head.laser_type.supports_pwm
-        self._frequency_row.set_visible(show)
-        self._pulse_width_row.set_visible(show)
 
     def _on_head_selection_changed(self, row, _pspec):
         head = self._get_selected_head()
@@ -260,8 +224,6 @@ class LaserControlWidget(Gtk.Box):
         can_toggle = can_pulse or self._is_on
         self._head_row.set_sensitive(has_heads)
         self._power_row.set_sensitive(has_heads and can_pulse)
-        self._frequency_row.set_sensitive(has_heads)
-        self._pulse_width_row.set_sensitive(has_heads)
         self._duration_row.set_sensitive(has_heads and can_pulse)
         self._toggle_btn.set_sensitive(connected and has_heads and can_toggle)
         unsupported = _("Not supported on this controller")

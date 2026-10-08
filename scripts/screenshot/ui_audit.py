@@ -74,13 +74,10 @@ MACHINE_PAGES = (
     "general",
     "hardware",
     "advanced",
-    "hooks-macros",
     "device",
     "heads",
-    "rotary-module",
     "nogo-zones",
     "maintenance",
-    "capabilities",
 )
 
 APP_PAGES = (

@@ -2,7 +2,6 @@ from gettext import gettext as _
 
 from gi.repository import Gio, GLib, Gtk
 
-from ..machine.models.macro import Macro
 from .action_registry import action_registry
 from .haptics import haptics
 
@@ -180,13 +179,6 @@ class MainMenu(Gio.Menu):
         jog_group.append(_("Frame"), "win.machine-frame")
         machine_menu.append_section(None, jog_group)
 
-        # Macros submenu under jog controls
-        macros_menu = Gio.Menu()
-        # This section will be populated dynamically
-        self.dynamic_macros_section = Gio.Menu()
-        macros_menu.append_section(None, self.dynamic_macros_section)
-        machine_menu.append_submenu(_("Macros"), macros_menu)
-
         job_group = Gio.Menu()
         job_group.append(_("Send Job"), "win.machine-send")
         job_group.append(_("Pause / Resume Job"), "win.machine-hold")
@@ -258,13 +250,6 @@ class MainMenu(Gio.Menu):
         for info in items:
             if info.label:
                 group.append(info.label, f"win.{info.action_name}")
-
-    def update_macros_menu(self, macros: list[Macro]):
-        """Clears and rebuilds the dynamic macro execution menu items."""
-        self.dynamic_macros_section.remove_all()
-        for macro in macros:
-            action_name = f"win.execute-macro('{macro.uid}')"
-            self.dynamic_macros_section.append(macro.name, action_name)
 
     def update_recent_files_menu(self, recent_infos: list[Gtk.RecentInfo]):
         """Clears and rebuilds the dynamic recent files menu."""

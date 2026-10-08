@@ -7,15 +7,12 @@ from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .advanced_preferences_page import AdvancedPreferencesPage
-from .capabilities_page import CapabilitiesPage
 from .device_settings_page import DeviceSettingsPage
 from .general_preferences_page import GeneralPreferencesPage
 from .hardware_page import HardwarePage
 from .head_preferences_page import HeadPreferencesPage
-from .hooks_macros_page import HooksMacrosPage
 from .maintenance_page import MaintenancePage
 from .nogo_zones_page import NogoZonesPage
-from .rotary_module_page import RotaryModulePage
 
 
 class MachineSettingsDialog(PatchedDialogWindow):
@@ -84,12 +81,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         advanced_page = AdvancedPreferencesPage(machine=self.machine)
         self.content_stack.add_titled(advanced_page, "advanced", _("Advanced"))
 
-        # --- Page 5: Hooks & Macros ---
-        hooks_macros_page = HooksMacrosPage(machine=self.machine)
-        self.content_stack.add_titled(
-            hooks_macros_page, "hooks-macros", _("Hooks & Macros")
-        )
-
         # --- Page 6: Device ---
         device_page = DeviceSettingsPage(machine=self.machine)
         device_page.show_toast.connect(self._on_show_toast)
@@ -98,12 +89,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         # --- Page 7: Heads ---
         heads_page = HeadPreferencesPage(machine=self.machine)
         self.content_stack.add_titled(heads_page, "heads", _("Heads"))
-
-        # --- Page 8: Rotary Module ---
-        rotary_module_page = RotaryModulePage(machine=self.machine)
-        self.content_stack.add_titled(
-            rotary_module_page, "rotary-module", _("Rotary Module")
-        )
 
         # --- Page 9: No-Go Zones ---
         nogo_zones_page = NogoZonesPage(machine=self.machine)
@@ -115,12 +100,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         maintenance_page = MaintenancePage(machine=self.machine)
         self.content_stack.add_titled(
             maintenance_page, "maintenance", _("Maintenance")
-        )
-
-        # --- Page 12: Capabilities ---
-        capabilities_page = CapabilitiesPage(machine=self.machine)
-        self.content_stack.add_titled(
-            capabilities_page, "capabilities", _("Capabilities")
         )
 
         # Create the content's NavigationPage wrapper
@@ -140,22 +119,13 @@ class MachineSettingsDialog(PatchedDialogWindow):
         self._add_sidebar_row(
             _("Advanced"), "machine-settings-advanced-symbolic", "advanced"
         )
-        self._add_sidebar_row(
-            _("Hooks & Macros"), "code-symbolic", "hooks-macros"
-        )
         self._add_sidebar_row(_("Device"), "settings-symbolic", "device")
         self._add_sidebar_row(_("Heads"), "laser-on-symbolic", "heads")
-        self._add_sidebar_row(
-            _("Rotary Module"), "rotary-symbolic", "rotary-module"
-        )
         self._add_sidebar_row(
             _("No-Go Zones"), "action-unavailable-symbolic", "nogo-zones"
         )
         self._add_sidebar_row(
             _("Maintenance"), "timer-symbolic", "maintenance"
-        )
-        self._add_sidebar_row(
-            _("Capabilities"), "settings-symbolic", "capabilities"
         )
 
         # Connect sidebar selection

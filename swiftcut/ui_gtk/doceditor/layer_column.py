@@ -384,12 +384,7 @@ class LayerColumn(Gtk.Box):
     def _update_icon(self):
         if old := self.icon_container.get_first_child():
             self.icon_container.remove(old)
-        icon_name = (
-            "rotary-symbolic"
-            if self.layer.rotary_enabled
-            else "layer-symbolic"
-        )
-        icon = get_icon(icon_name)
+        icon = get_icon("layer-symbolic")
         rgba = Gdk.RGBA()
         rgba.parse(self.layer.color)
         dark = Adw.StyleManager.get_default().get_dark()
@@ -426,13 +421,7 @@ class LayerColumn(Gtk.Box):
             self.visibility_button.set_child(self.visibility_off_icon)
 
     def _update_subtitle(self):
-        machine = get_context().machine
-        module_name = None
-        if machine and self.layer.rotary_module_uid:
-            rm = machine.get_rotary_module_by_uid(self.layer.rotary_module_uid)
-            if rm:
-                module_name = rm.name
-        self.subtitle_label.set_text(self.layer.get_subtitle(module_name))
+        self.subtitle_label.set_text(self.layer.get_subtitle())
 
     def _connect_signals(self):
         self.layer.updated.connect(self._on_layer_updated)

@@ -14,8 +14,6 @@ from ..context import get_context
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder.base import EncodedOutput
-from ..pipeline.encoder.context import GcodeContext, JobInfo
-from ..shared.util.template import TemplateFormatter
 from .driver import acceleration_run_up_mm, get_driver_cls
 from .driver.dummy import NoDeviceDriver
 from .job_monitor import JobMonitor
@@ -653,33 +651,6 @@ class MachineCmd:
             self._editor.task_manager.add_coroutine(
                 lambda ctx: driver.set_jog_speed(speed), key="set-jog-speed"
             )
-
-    def execute_macro_by_uid(self, machine: Machine, macro_uid: str):
-        """Finds a macro by UID, expands it, and runs it on the machine."""
-        macro = machine.macros.get(macro_uid)
-        if not macro or not macro.enabled:
-            logger.warning(
-                f"Macro with UID {macro_uid} not found or disabled."
-            )
-            return
-
-        # A macro executed outside a job context has limited information.
-        # We provide a dummy JobInfo for variables that might expect it.
-        context = GcodeContext(
-            machine=machine,
-            doc=self._editor.doc,
-            job=JobInfo(extents=(0, 0, 0, 0)),
-        )
-        formatter = TemplateFormatter(machine, context)
-        expanded_lines = formatter.expand_macro(macro)
-        gcode_to_run = "\n".join(expanded_lines)
-
-        # We use the machine's run_raw method, which is simpler than building a
-        # full job and allows macros to be self-contained.
-        self._editor.task_manager.add_coroutine(
-            lambda ctx: machine.run_raw(gcode_to_run),
-            key=f"macro-{macro_uid}",
-        )
 
     def set_power(
         self,
