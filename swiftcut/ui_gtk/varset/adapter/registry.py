@@ -9,7 +9,7 @@ from ....core.varset import Var
 # imported here so that its class registers itself in _ADAPTER_REGISTRY.
 from .appkey import AppKeyAdapter
 from .base import _ADAPTER_REGISTRY, RowAdapter, escape_title
-from .combo import BaudRateAdapter, ComboAdapter, SerialPortAdapter
+from .combo import ComboAdapter
 from .entry import EntryAdapter, HostnameAdapter
 from .length import LengthRowAdapter
 from .oauth import OAuthFlowAdapter
@@ -21,9 +21,7 @@ from .textarea import TextAreaAdapter
 
 _ALL_ADAPTERS = (
     AppKeyAdapter,
-    BaudRateAdapter,
     ComboAdapter,
-    SerialPortAdapter,
     HostnameAdapter,
     LengthRowAdapter,
     OAuthFlowAdapter,

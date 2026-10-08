@@ -203,6 +203,20 @@ def test_device_page_has_no_firmware_settings_editor(ui_context_initializer):
     dialog.destroy()
 
 
+@pytest.mark.ui
+def test_maintenance_page_id_opens_the_maintenance_page(
+    ui_context_initializer,
+):
+    # The page id the main window's maintenance alert passes.
+    dialog = _dialog(ui_context_initializer, initial_page="maintenance")
+
+    row = dialog.sidebar_list.get_selected_row()
+    assert dialog._row_to_page_name[row] == "maintenance"
+    assert dialog.content_stack.get_visible_child_name() == "maintenance"
+    assert dialog.content_page.get_title() == "Maintenance"
+    dialog.destroy()
+
+
 def test_profile_round_trip_keeps_the_fields_behind_removed_rows(
     lite_context,
 ):

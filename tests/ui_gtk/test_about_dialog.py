@@ -76,3 +76,12 @@ def test_about_dialog_has_no_link_rows_and_no_supporters():
         assert "Supporters" not in _label_texts(dialog)
     finally:
         dialog.destroy()
+
+
+def test_dependency_list_names_only_what_the_app_talks_through():
+    """No rows for the network libraries of removed features."""
+    from swiftcut.ui_gtk.about import get_dependency_info
+
+    comm = dict(get_dependency_info()["File Formats & Communication"])
+
+    assert list(comm) == ["ezdxf", "pypdf", "PyYAML", "pyserial"]

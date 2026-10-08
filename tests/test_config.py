@@ -250,3 +250,23 @@ def test_snapping_is_on_by_default_and_survives_the_config_file():
     restored = Config.from_dict(config.to_dict(), lambda _id: None)
 
     assert restored.canvas_view.snapping_enabled is False
+
+
+def test_the_view_state_has_no_3d_toggles():
+    """With the 3D view gone, only the 2D canvas toggles persist; an
+    older config naming a removed toggle still loads."""
+    assert set(Config().canvas_view.to_dict()) == {
+        "show_workpieces",
+        "show_travel_lines",
+        "show_nogo_zones",
+        "show_grid",
+        "show_tabs",
+        "pan_inertia_enabled",
+        "haptics_enabled",
+        "snapping_enabled",
+    }
+    old = Config.from_dict(
+        {"canvas_view": {"show_camera": True, "show_grid": False}},
+        lambda _id: None,
+    )
+    assert old.canvas_view.show_grid is False

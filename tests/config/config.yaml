@@ -14,10 +14,8 @@ bottom_panel:
   visible: true
 cache_budget_bytes: 2147483648
 canvas_view:
-  perspective_mode: false
   show_camera: true
   show_grid: true
-  show_models: true
   show_nogo_zones: true
   show_tabs: true
   show_travel_lines: true

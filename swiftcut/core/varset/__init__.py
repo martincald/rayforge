@@ -1,5 +1,4 @@
 from .appkeyvar import AppKeyVar
-from .baudratevar import BaudrateVar
 from .boolvar import BoolVar
 from .choicevar import ChoiceVar
 from .floatvar import FloatVar, SliderFloatVar
@@ -9,7 +8,6 @@ from .labeledchoicevar import LabeledChoiceVar
 from .lengthvar import LengthVar
 from .oauthvar import OAuthFlowVar
 from .portvar import PortVar
-from .serialportvar import SerialPortVar
 from .speedvar import SpeedVar
 from .textareavar import TextAreaVar
 from .urlvar import UrlVar, WebsocketUrlVar
@@ -18,7 +16,6 @@ from .varset import VarSet, merge_varsets
 
 __all__ = [
     "AppKeyVar",
-    "BaudrateVar",
     "BoolVar",
     "ChoiceVar",
     "FloatVar",
@@ -28,7 +25,6 @@ __all__ = [
     "LengthVar",
     "OAuthFlowVar",
     "PortVar",
-    "SerialPortVar",
     "SliderFloatVar",
     "SpeedVar",
     "TextAreaVar",

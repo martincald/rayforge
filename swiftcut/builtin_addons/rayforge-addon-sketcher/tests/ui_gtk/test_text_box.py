@@ -6,7 +6,6 @@ import cairo
 import pytest
 
 if sys.platform.startswith("linux"):
-    os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
     if not os.environ.get("DISPLAY"):
         pytest.skip(
             "DISPLAY not set on Linux, skipping UI tests. Run with xvfb-run.",

@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from swiftcut.context import RayforgeContext
 
 
+TEST_DEVICES_DIR = Path(__file__).parent / "devices"
+
+
 def _encode(ops, machine, doc):
     """Encode ops via the driver encoder (bypasses deleted encode_ops)."""
     driver_cls = get_driver_cls(machine.driver_name)
@@ -230,17 +233,12 @@ async def test_inject_wcs_after_preamble_flag(carvera_air_machine: "Machine"):
     assert "G54" not in gcode_lines
 
 
-@pytest.mark.asyncio
-async def test_builtin_devices_all_load():
-    """All bundled device profiles can be loaded."""
-    for d in sorted(BUILTIN_DEVICES_DIR.iterdir()):
-        if d.is_dir():
-            pkg = DeviceProfile.from_path(d)
-            assert pkg.name
-            if pkg.machine_config.driver:
-                driver_cls = get_driver_cls(pkg.machine_config.driver)
-                if driver_cls.uses_gcode:
-                    assert pkg.dialect_config
+def test_no_third_party_device_profiles_ship():
+    """The lab runs its two bundled ilab profiles; no other vendor's
+    device profile ships (docs/removal-inventory-2.md row 54)."""
+    assert not BUILTIN_DEVICES_DIR.exists() or not any(
+        BUILTIN_DEVICES_DIR.iterdir()
+    )
 
 
 @pytest.mark.asyncio
@@ -248,7 +246,7 @@ async def test_device_without_rotary_modules(
     context_initializer: "RayforgeContext",
 ):
     """Devices without rotary_modules create machines with none."""
-    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "omtech-polar")
+    pkg = DeviceProfile.from_path(TEST_DEVICES_DIR / "omtech-polar")
     machine = pkg.create_machine(context_initializer)
     tasker.task_mgr.wait_until_settled(5000)
     assert machine.rotary_modules == {}

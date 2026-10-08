@@ -622,14 +622,6 @@ def main():
     # SECTION 3: PLATFORM SPECIFIC INITIALIZATION
     # ===================================================================
 
-    # Set the PyOpenGL platform before importing anything that uses OpenGL.
-    # 'egl' is generally the best choice for GTK4 on modern Linux
-    # (Wayland/X11).
-    # On Windows and macOS, letting PyOpenGL auto-detect is more reliable.
-    if sys.platform.startswith("linux"):
-        logger.info("Linux detected. Setting PYOPENGL_PLATFORM=egl")
-        os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
-
     # Print PyCairo version
     import cairo
 
@@ -646,15 +638,6 @@ def main():
     gi.require_version("PangoCairo", "1.0")
     gi.require_version("Gtk", "4.0")
     gi.require_version("GdkPixbuf", "2.0")
-
-    # The model-preview module is NOT initialized here any more. Its
-    # only job is to import PyOpenGL and set an availability flag, which
-    # costs ~132 ms before the first frame for something no first-paint
-    # widget uses. Callers ask
-    # `swiftcut.ui_gtk.shared.model_preview.is_available()` instead,
-    # which initializes on first use - still after the platform env var
-    # is set above and after Gtk is available in gi, which are the two
-    # ordering constraints that mattered.
 
     # Import modules that depend on GTK or manage global state
     import swiftcut.shared.tasker

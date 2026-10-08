@@ -8,7 +8,6 @@ import pytest
 
 # Platform-Specific Setup
 if sys.platform.startswith("linux"):
-    os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
     if not os.environ.get("DISPLAY"):
         pytest.skip(
             "DISPLAY not set on Linux, skipping UI tests. Run with xvfb-run.",
@@ -60,11 +59,6 @@ def workpieces_project_path(assets_path: Path) -> Path:
 @pytest.fixture
 def app_and_window(ui_context_initializer, request):
     """Sets up Adw.Application and MainWindow without blocking."""
-    from swiftcut.ui_gtk.shared import model_preview
-
-    model_preview.initialize()
-    assert model_preview.initialized, "OpenGL model preview failed to init"
-
     win = None
 
     class TestApp(Adw.Application):

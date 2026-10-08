@@ -61,7 +61,6 @@ TOOLBAR_ICONS = [
     "export-symbolic",
     "undo-symbolic",
     "redo-symbolic",
-    "3d-symbolic",
     "refresh-symbolic",
     "jog-symbolic",
     "align-horizontal-center-symbolic",

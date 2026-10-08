@@ -161,8 +161,6 @@ def get_dependency_info() -> dict:
         "pypdf",
         "PyYAML",
         "pyserial",
-        "aiohttp",
-        "websockets",
     ]:
         ver = _get_version(pkg)
         comm_deps.append((pkg, ver))

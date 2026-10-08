@@ -24,7 +24,6 @@ class VisibilityOverlay(Gtk.Box):
     def __init__(
         self,
         show_workpiece=True,
-        show_models=False,
         show_grid=False,
         show_tabs=False,
         shortcuts=None,
@@ -75,19 +74,6 @@ class VisibilityOverlay(Gtk.Box):
             )
             self.tabs_button.set_action_name("win.show_tabs")
             self.append(self.tabs_button)
-
-        if show_models:
-            self.models_button = Gtk.ToggleButton()
-            self.models_button.add_css_class("sc-icon-button")
-            self.models_button.set_child(get_icon("model-symbolic"))
-            self.models_button.set_active(True)
-            self.models_button.set_tooltip_text(
-                self._format_tooltip(
-                    _("Toggle 3D model visibility"), "win.show_models"
-                )
-            )
-            self.models_button.set_action_name("win.show_models")
-            self.append(self.models_button)
 
         if show_grid:
             self.grid_button = Gtk.ToggleButton()

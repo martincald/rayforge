@@ -3,17 +3,13 @@ from typing import Any
 from gi.repository import Adw, Gtk
 
 from ....core.varset import (
-    BaudrateVar,
     ChoiceVar,
-    SerialPortVar,
     Var,
 )
-from ....machine.transport.serial import SerialTransport
 from .base import (
     NULL_CHOICE_LABEL,
     RowAdapter,
     escape_title,
-    natural_sort_key,
     register_adapter,
 )
 
@@ -100,65 +96,3 @@ class ComboAdapter(RowAdapter):
             self._row.set_title(escape_title(var.label))
         if var.description:
             self._row.set_subtitle(var.description)
-
-
-@register_adapter(BaudrateVar)
-class BaudRateAdapter(ComboAdapter):
-    @classmethod
-    def create(
-        cls, var: Var, target_property: str
-    ) -> tuple[Adw.PreferencesRow, "BaudRateAdapter"]:
-        assert isinstance(var, BaudrateVar)
-        choices_str = [str(rate) for rate in var.choices]
-        store = Gtk.StringList.new(choices_str)
-        row = Adw.ComboRow(model=store, title=escape_title(var.label))
-        if var.description:
-            row.set_subtitle(var.description)
-        initial_val = getattr(var, target_property)
-        if initial_val is not None and str(initial_val) in choices_str:
-            row.set_selected(choices_str.index(str(initial_val)))
-        return row, cls(row, var)
-
-
-@register_adapter(SerialPortVar)
-class SerialPortAdapter(ComboAdapter):
-    @classmethod
-    def create(
-        cls, var: Var, target_property: str
-    ) -> tuple[Adw.PreferencesRow, "SerialPortAdapter"]:
-        initial_val = getattr(var, target_property)
-        port_set = set(SerialTransport.list_ports())
-        if initial_val:
-            port_set.add(initial_val)
-        sorted_ports = sorted(port_set, key=natural_sort_key)
-        choices = [NULL_CHOICE_LABEL] + sorted_ports
-        store = Gtk.StringList.new(choices)
-        row = Adw.ComboRow(model=store, title=escape_title(var.label))
-        if var.description:
-            row.set_subtitle(var.description)
-        if initial_val and initial_val in choices:
-            row.set_selected(choices.index(initial_val))
-
-        def on_open(gesture, n_press, x, y):
-            selected_obj = row.get_selected_item()
-            current_sel = None
-            if selected_obj:
-                current_sel = selected_obj.get_string()  # type: ignore
-
-            new_ports = SerialTransport.list_ports()
-            port_set = set(new_ports)
-            if current_sel and current_sel != NULL_CHOICE_LABEL:
-                port_set.add(current_sel)
-            new_sorted = sorted(port_set, key=natural_sort_key)
-            new_choices = [NULL_CHOICE_LABEL] + new_sorted
-
-            model = row.get_model()
-            if isinstance(model, Gtk.StringList):
-                model.splice(0, model.get_n_items(), new_choices)
-                if current_sel in new_choices:
-                    row.set_selected(new_choices.index(current_sel))
-
-        click_controller = Gtk.GestureClick.new()
-        click_controller.connect("pressed", on_open)
-        row.add_controller(click_controller)
-        return row, cls(row, var)

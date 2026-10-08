@@ -1,9 +1,9 @@
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
 
-from swiftcut.config import BUILTIN_DEVICES_DIR
 from swiftcut.machine.device.profile import DeviceProfile
 from swiftcut.machine.driver.dummy import NoDeviceDriver
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
@@ -13,13 +13,15 @@ if TYPE_CHECKING:
     from swiftcut.context import RayforgeContext
     from swiftcut.machine.models.machine import Machine
 
+TEST_DEVICES_DIR = Path(__file__).parent / "devices"
+
 
 @pytest_asyncio.fixture
 async def omtech_polar_machine(
     context_initializer: "RayforgeContext",
 ) -> "Machine":
     """Provides a Machine instance from the OMTech Polar device."""
-    pkg = DeviceProfile.from_path(BUILTIN_DEVICES_DIR / "omtech-polar")
+    pkg = DeviceProfile.from_path(TEST_DEVICES_DIR / "omtech-polar")
     machine = pkg.create_machine(context_initializer)
     context_initializer.machine_mgr.add_machine(machine)
 

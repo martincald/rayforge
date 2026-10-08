@@ -12,7 +12,6 @@ import time
 import pytest
 
 if sys.platform.startswith("linux"):
-    os.environ.setdefault("PYOPENGL_PLATFORM", "egl")
     if not os.environ.get("DISPLAY"):
         pytest.skip(
             "DISPLAY not set on Linux, skipping UI tests. Run with xvfb-run.",
@@ -84,9 +83,6 @@ def _build(win, folder, pieces):
 @pytest.fixture
 def app_and_window(ui_context_initializer, request):
     """The main window on the 1400 x 900 mm ilab-614 bed."""
-    from swiftcut.ui_gtk.shared import model_preview
-
-    model_preview.initialize()
     get_context().config.machine.set_axis_extents(1400, 900)
 
     class TestApp(Adw.Application):

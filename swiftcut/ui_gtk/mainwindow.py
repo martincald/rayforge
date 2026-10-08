@@ -949,15 +949,6 @@ class MainWindow(Adw.ApplicationWindow):
         config.canvas_view.show_nogo_zones = is_visible
         config.changed.send(config)
 
-    def on_show_models_state_change(
-        self, action: Gio.SimpleAction, value: GLib.Variant
-    ):
-        is_visible = value.get_boolean()
-        action.set_state(value)
-        config = get_context().config
-        config.canvas_view.show_models = is_visible
-        config.changed.send(config)
-
     def on_show_grid_state_change(
         self, action: Gio.SimpleAction, value: GLib.Variant
     ):
@@ -1015,14 +1006,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.on_show_nogo_zones_state_change(
             am.get_action("show_nogo_zones"),
             GLib.Variant.new_boolean(cv.show_nogo_zones),
-        )
-
-        am.get_action("show_models").set_state(
-            GLib.Variant.new_boolean(not cv.show_models)
-        )
-        self.on_show_models_state_change(
-            am.get_action("show_models"),
-            GLib.Variant.new_boolean(cv.show_models),
         )
 
         am.get_action("show_grid").set_state(
@@ -1138,14 +1121,14 @@ class MainWindow(Adw.ApplicationWindow):
             )
 
     def _open_machine_hours_dialog(self):
-        """Opens the machine settings dialog on the Hours page."""
+        """Opens the machine settings dialog on the Maintenance page."""
         config = get_context().config
         if not config.machine:
             return
         dialog = MachineSettingsDialog(
             machine=config.machine,
             transient_for=self,
-            initial_page="hours",
+            initial_page="maintenance",
         )
         dialog.present()
 
