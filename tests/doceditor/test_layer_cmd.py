@@ -1,6 +1,8 @@
 import pytest
 
+from swiftcut.core.group import Group
 from swiftcut.core.layer import Layer
+from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.layer_cmd import AddLayerAndSetActiveCommand, LayerCmd
 
 
@@ -123,3 +125,83 @@ def test_layer_cmd_reorder_layers(layer_cmd):
 
     assert layer_cmd._editor.doc.layers == new_order
     assert len(layer_cmd._editor.history_manager.undo_stack) == 1
+
+
+def _layers_with(layer_cmd, *names):
+    """Adds one layer per name; returns them."""
+    layers = [Layer(name=name) for name in names]
+    for layer in layers:
+        layer_cmd._editor.doc.add_child(layer)
+    return layers
+
+
+def test_move_items_to_layer_is_one_undo_step(layer_cmd):
+    """Moving several shapes to a layer is undone in one step."""
+    source, target = _layers_with(layer_cmd, "A", "B")
+    wp1 = WorkPiece(name="wp1")
+    wp2 = WorkPiece(name="wp2")
+    wp1.pos = (10, 20)
+    source.add_child(wp1)
+    source.add_child(wp2)
+    hm = layer_cmd._editor.history_manager
+    before = len(hm.undo_stack)
+
+    layer_cmd.move_items_to_layer([wp1, wp2], target)
+
+    assert wp1.layer is target and wp2.layer is target
+    assert wp1.pos == pytest.approx((10, 20))
+    assert len(hm.undo_stack) == before + 1
+
+    hm.undo()
+    assert wp1.layer is source and wp2.layer is source
+    assert len(hm.undo_stack) == before
+
+    hm.redo()
+    assert wp1.layer is target and wp2.layer is target
+
+
+def test_moving_from_several_layers_is_one_undo_step(layer_cmd):
+    """A selection spanning two layers moves, and comes back, at once."""
+    layer_a, target, layer_c = _layers_with(layer_cmd, "A", "B", "C")
+    wp_a = WorkPiece(name="on A")
+    wp_c = WorkPiece(name="on C")
+    layer_a.add_child(wp_a)
+    layer_c.add_child(wp_c)
+    hm = layer_cmd._editor.history_manager
+    before = len(hm.undo_stack)
+
+    layer_cmd.move_items_to_layer([wp_a, wp_c], target)
+
+    assert wp_a.layer is target and wp_c.layer is target
+    assert len(hm.undo_stack) == before + 1
+
+    hm.undo()
+    assert wp_a.layer is layer_a
+    assert wp_c.layer is layer_c
+
+
+def test_moving_to_the_items_own_layer_adds_no_undo_step(layer_cmd):
+    (layer,) = _layers_with(layer_cmd, "A")
+    wp = WorkPiece(name="wp")
+    layer.add_child(wp)
+    hm = layer_cmd._editor.history_manager
+    before = len(hm.undo_stack)
+
+    layer_cmd.move_items_to_layer([wp], layer)
+
+    assert wp.layer is layer
+    assert len(hm.undo_stack) == before
+
+
+def test_a_group_moves_to_a_layer_with_its_children(layer_cmd):
+    source, target = _layers_with(layer_cmd, "A", "B")
+    group = Group(name="group")
+    wp = WorkPiece(name="wp")
+    source.add_child(group)
+    group.add_child(wp)
+
+    layer_cmd.move_items_to_layer([group], target)
+
+    assert group.parent is target
+    assert wp.parent is group
+    assert wp.layer is target

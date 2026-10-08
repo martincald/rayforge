@@ -1692,6 +1692,7 @@ class MainWindow(Adw.ApplicationWindow):
         can_move_layers = has_selection and len(doc.layers) > 1
         am.get_action("layer-move-up").set_enabled(can_move_layers)
         am.get_action("layer-move-down").set_enabled(can_move_layers)
+        am.get_action("move-to-layer").set_enabled(can_move_layers)
 
         # Update sensitivity for Arrangement actions
         can_distribute = len(self.surface.get_selected_workpieces()) >= 2

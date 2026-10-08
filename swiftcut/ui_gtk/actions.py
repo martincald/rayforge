@@ -364,6 +364,11 @@ class ActionManager:
         # Layer Management Actions
         self._add_action("layer-move-up", self.on_layer_move_up)
         self._add_action("layer-move-down", self.on_layer_move_down)
+        self._add_action(
+            "move-to-layer",
+            self.on_move_to_layer,
+            GLib.VariantType.new("s"),
+        )
 
         # Grouping Actions
         self._add_action("group", self.on_group_action)
@@ -690,6 +695,21 @@ class ActionManager:
         self.editor.layer.move_selected_to_adjacent_layer(
             self.win.surface, direction=1
         )
+
+    def on_move_to_layer(self, action, param):
+        """Handler for the 'move-to-layer' action; param is a layer UID."""
+        layer_uid = param.get_string()
+        layer = next(
+            (lyr for lyr in self.editor.doc.layers if lyr.uid == layer_uid),
+            None,
+        )
+        items = self.win.surface.get_selected_top_level_items()
+        if layer is None or not items:
+            return
+        self.editor.layer.move_items_to_layer(items, layer)
+        # The moved elements are rebuilt in their new layer: select the
+        # same items again.
+        self.win.surface.select_items(items)
 
     def on_group_action(self, action, param):
         """Handler for the 'group' action."""

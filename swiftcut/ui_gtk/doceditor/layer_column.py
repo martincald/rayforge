@@ -14,6 +14,7 @@ from ...core.layer import Layer
 from ...core.source_asset import SourceAsset
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
+from ..canvas2d.context_menu import build_move_to_layer_menu
 from ..icons import get_icon
 from ..layout import (
     COMPACT_SPACE_CONTROL,
@@ -613,6 +614,9 @@ class LayerColumn(Gtk.Box):
     def _show_item_context_menu(self, gesture):
         menu = Gio.Menu.new()
         menu.append_item(Gio.MenuItem.new(_("Duplicate"), "win.duplicate"))
+        menu.append_submenu(
+            _("Move to Layer"), build_move_to_layer_menu(self.doc)
+        )
         menu.append_section(None, Gio.Menu.new())
         menu.append_item(Gio.MenuItem.new(_("Copy"), "win.copy"))
         menu.append_item(Gio.MenuItem.new(_("Cut"), "win.cut"))

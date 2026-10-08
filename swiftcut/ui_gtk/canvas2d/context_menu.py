@@ -5,9 +5,10 @@ from collections.abc import Callable
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Optional
 
-from gi.repository import Gio, Gtk
+from gi.repository import Gio, GLib, Gtk
 
 if TYPE_CHECKING:
+    from ...core.doc import Doc
     from ...core.item import DocItem
     from .surface import WorkSurface
 
@@ -122,6 +123,21 @@ def _populate_standard_items(menu: Gio.Menu):
     menu.append_item(Gio.MenuItem.new(_("Remove"), "win.remove"))
 
 
+def build_move_to_layer_menu(doc: Doc) -> Gio.Menu:
+    """
+    One entry per layer, in document order, each moving the selection
+    to that layer through the win.move-to-layer action.
+    """
+    menu = Gio.Menu.new()
+    for layer in doc.layers:
+        item = Gio.MenuItem.new(layer.name, None)
+        item.set_action_and_target_value(
+            "win.move-to-layer", GLib.Variant.new_string(layer.uid)
+        )
+        menu.append_item(item)
+    return menu
+
+
 def _create_item_context_menu() -> Gio.Menu:
     """Builds the standard context menu for DocItems."""
     menu = Gio.Menu.new()
@@ -184,6 +200,10 @@ def show_item_context_menu(
     """
     menu = Gio.Menu.new()
     _populate_standard_items(menu)
+    # Right after "Move Up a Layer" and "Move Down a Layer".
+    menu.insert_submenu(
+        2, _("Move to Layer"), build_move_to_layer_menu(surface.doc)
+    )
 
     # Invoke registered extension handlers
     context_menu_extension_registry.invoke_all(surface, item, gesture, menu)
