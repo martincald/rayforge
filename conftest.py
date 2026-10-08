@@ -1,7 +1,16 @@
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# The same test config dir tests/conftest.py sets, before anything
+# imports swiftcut.config: the addon tests do not load tests/conftest.py,
+# and without it they wrote to the user's real config dir.
+os.environ["RAYFORGE_CONFIG_DIR"] = str(
+    Path(tempfile.gettempdir()) / "rayforge_test_config"
+)
 
 _root_dir = Path(__file__).parent
 _builtin_addons = _root_dir / "swiftcut" / "builtin_addons"

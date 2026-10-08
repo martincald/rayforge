@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import logging
 from pathlib import Path
 from typing import Optional
@@ -11,7 +12,7 @@ from ...shared.tasker import task_mgr
 from ..driver import RuidaDriver, get_driver_cls
 from ..driver.driver import ResourceBusyError
 from .controller import MachineController
-from .default_profile import ILAB_614_PROFILE
+from .default_profile import BUNDLED_NAMES, BUNDLED_PROFILES
 from .machine import Machine
 
 logger = logging.getLogger(__name__)
@@ -30,18 +31,18 @@ class MachineManager:
 
     def initialize_connections(self):
         """
-        Triggers initial connection for all machines with auto_connect enabled.
-        This is called after the UI is fully initialized to ensure proper
-        signal handling during connection attempts.
+        Triggers the initial connection of the active machine, if it has
+        auto_connect enabled. The other profiles never connect: both
+        bundled machines reach the same controller. This is called after
+        the UI is fully initialized to ensure proper signal handling
+        during connection attempts.
         """
-        for machine in self.machines.values():
-            if machine.auto_connect and not machine.is_connected():
-                task_mgr.add_coroutine(
-                    lambda ctx, m=machine: self._rebuild_and_connect_machine(
-                        m
-                    ),
-                    key=(machine.id, "initial-connect"),
-                )
+        machine = get_context().config.machine
+        if machine and machine.auto_connect and not machine.is_connected():
+            task_mgr.add_coroutine(
+                lambda ctx: self._rebuild_and_connect_machine(machine),
+                key=(machine.id, "initial-connect"),
+            )
 
     async def shutdown(self):
         """
@@ -207,8 +208,11 @@ class MachineManager:
         """Returns a list of all managed machines, sorted by name."""
         return sorted(self.machines.values(), key=lambda m: m.name)
 
-    def create_default_machine(self):
-        machine = Machine.from_dict(ILAB_614_PROFILE, context=get_context())
+    def create_default_machine(self, profile: dict) -> Machine:
+        """Adds a machine built from a bundled profile."""
+        machine = Machine.from_dict(
+            copy.deepcopy(profile), context=get_context()
+        )
         self.add_machine(machine)
         return machine
 
@@ -217,10 +221,14 @@ class MachineManager:
         name = machine.driver_name or ""
         return get_driver_cls(name, default=None) is not None
 
-    def ensure_default_machine(self) -> Machine | None:
+    def ensure_default_machine(self) -> list[Machine]:
         """
-        Seeds the bundled default unless a profile with a resolvable
-        driver exists. Driverless profiles are left on disk untouched.
+        Seeds the bundled profiles and returns the machines it added.
+        With no profile that has a resolvable driver, every bundled
+        profile is seeded. When a bundled machine already exists, only
+        the bundled names still missing are added; existing files are
+        never rewritten. Otherwise nothing is seeded. Driverless
+        profiles are left on disk untouched.
         """
         for m in self.machines.values():
             if not self.has_driver(m):
@@ -231,12 +239,37 @@ class MachineManager:
                     m.id,
                     m.driver_name,
                 )
-        if any(self.has_driver(m) for m in self.machines.values()):
-            return None
-        return self.create_default_machine()
+        drivered = [m for m in self.machines.values() if self.has_driver(m)]
+        if drivered and not self.switchable_machines():
+            return []
+        present = {m.name for m in drivered}
+        return [
+            self.create_default_machine(profile)
+            for profile in BUNDLED_PROFILES
+            if profile["machine"]["name"] not in present
+        ]
+
+    def switchable_machines(self) -> list[Machine]:
+        """
+        The bundled machines, in bundled order: for each bundled name,
+        the machine of that name with a resolvable driver (the lowest
+        id if there are several). Reads names and ids only, so it never
+        creates a controller.
+        """
+        by_name: dict[str, Machine] = {}
+        for m in sorted(self.machines.values(), key=lambda m: m.id):
+            if m.name in BUNDLED_NAMES and self.has_driver(m):
+                by_name.setdefault(m.name, m)
+        return [by_name[name] for name in BUNDLED_NAMES if name in by_name]
 
     def pick_auto_machine(self) -> Machine | None:
-        """Returns the min-by-id machine with a driver, or None."""
+        """
+        Returns the first bundled machine, else the min-by-id machine
+        with a driver, or None.
+        """
+        switchable = self.switchable_machines()
+        if switchable:
+            return switchable[0]
         candidates = [m for m in self.machines.values() if self.has_driver(m)]
         return min(candidates, key=lambda m: m.id, default=None)
 

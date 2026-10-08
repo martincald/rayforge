@@ -8,7 +8,7 @@ machine:
       direction: normal
       extents:
       - 0
-      - 1400.0
+      - 900.0
       letter: X
       resolution: 0.01
     - axis_type: linear
@@ -26,7 +26,7 @@ machine:
       letter: Z
       resolution: 0.01
   axis_extents:
-  - 1400.0
+  - 900.0
   - 900.0
   capabilities: null
   clear_alarm_on_connect: false
@@ -36,10 +36,13 @@ machine:
     - 0.0
     - 0.0
     - 0.0
+  cut_scale_power_pct: 30.0
+  cut_scale_speed_mm_s: 20.0
   default_rotary_module_uid: null
   dialect_uid: null
   driver: RuidaDriver
   driver_args:
+    connection: usb
     host: 192.168.1.100
     jog_port: 50207
     port: 50200
@@ -89,11 +92,12 @@ machine:
     uid: 1d88afa7-d70f-4608-acc8-165522c8124d
   home_on_start: false
   hookmacros: {}
+  id: b892c06c-502e-45e0-8b02-4c91dee261bb
   machine_hours:
     counters: {}
-    total_hours: 23.484947806160385
+    total_hours: 0.0
   macros: {}
-  name: Ilab
+  name: ilab-626
   nogo_zones: []
   origin: top_left
   panel_orientation: native
@@ -106,9 +110,9 @@ machine:
   soft_limits: null
   speeds:
     acceleration: 1000
-    max_cut_speed: 9342
+    max_cut_speed: 18000
     max_travel_speed: 3000
-  start_corner: bottom_left
+  start_corner: top_left
   supports_arcs: true
   supports_curves: false
   units:

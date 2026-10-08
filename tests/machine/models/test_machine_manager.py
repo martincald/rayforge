@@ -11,9 +11,14 @@ machines and coordinating their lifecycle.
 """
 
 import asyncio
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from swiftcut.machine.models.default_profile import (
+    ILAB_614_PROFILE,
+    ILAB_626_PROFILE,
+)
 from swiftcut.machine.models.machine import Machine
 from swiftcut.machine.models.manager import MachineManager
 from swiftcut.shared.tasker.manager import TaskManager
@@ -248,3 +253,37 @@ class TestMachineManager:
         assert machine.has_controller is False
         with pytest.raises(ValueError):
             _ = machine.controller
+
+
+def _bundled_pair(context):
+    """
+    Both bundled profiles in the context's manager, beside its inert
+    placeholder. Building a machine creates no controller, so nothing
+    connects unless a test asks for a controller.
+    """
+    manager = context.machine_mgr
+    ilab_614 = manager.create_default_machine(ILAB_614_PROFILE)
+    ilab_626 = manager.create_default_machine(ILAB_626_PROFILE)
+    return manager, ilab_614, ilab_626
+
+
+@pytest.mark.asyncio
+async def test_only_the_active_machine_connects_at_launch(
+    lite_context, task_mgr: TaskManager
+):
+    """
+    Both bundled profiles reach the same controller, so launch
+    connects the active one only; the other never gets a controller.
+    """
+    manager, ilab_614, ilab_626 = _bundled_pair(lite_context)
+    lite_context.config.set_machine(ilab_626)
+
+    with patch.object(
+        manager, "_rebuild_and_connect_machine", new=AsyncMock()
+    ) as connect:
+        manager.initialize_connections()
+        await asyncio.to_thread(task_mgr.wait_until_settled, 2000)
+
+    connect.assert_awaited_once_with(ilab_626)
+    assert not manager.has_controller(ilab_614.id)
+    assert not manager.has_controller(ilab_626.id)
