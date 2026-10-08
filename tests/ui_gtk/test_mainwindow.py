@@ -388,6 +388,63 @@ def test_both_starts_go_through_one_guarded_method(app_and_window):
 
 
 @pytest.mark.ui
+def test_with_crawford_mode_both_starts_ask_where_to_start(app_and_window):
+    """
+    Both Starts open the sheet; its answers reach the one guarded
+    run_send_job, "current" exactly as a Start without the mode.
+    """
+    _app, win = app_and_window
+    jog = win.bottom_panel.jog_widget
+    machine = get_context().config.machine
+    get_context().config.set_crawford_mode(True)
+    machine.last_job_start = (120.0, 80.0)
+    jog.jog_speed_base = 3000
+
+    with (
+        patch.object(
+            win,
+            "_run_sanity_check_and_proceed",
+            side_effect=lambda proceed: proceed(),
+        ),
+        patch.object(win.machine_cmd, "run_send_job") as run_send_job,
+        patch(
+            "swiftcut.ui_gtk.machine.start_position_dialog."
+            "StartPositionDialog"
+        ) as dialog_cls,
+    ):
+        win.on_send_clicked(None, None)
+        jog.start_btn.emit("clicked")
+
+        assert run_send_job.call_count == 0
+        assert [c.args[0] for c in dialog_cls.call_args_list] == [
+            (120.0, 80.0),
+            (120.0, 80.0),
+        ]
+        toolbar_run, panel_run = (
+            c.args[1] for c in dialog_cls.call_args_list
+        )
+        toolbar_run(None)
+        panel_run(None)
+        toolbar_run((120.0, 80.0))
+        panel_run((120.0, 80.0))
+
+    progress = win._on_job_progress_updated
+    done = win._on_send_done
+    assert run_send_job.call_args_list == [
+        call(machine, on_progress=progress, on_done=done),
+        call(machine),
+        call(
+            machine,
+            on_progress=progress,
+            on_done=done,
+            start_at=(120.0, 80.0),
+            premove_speed=3000,
+        ),
+        call(machine, start_at=(120.0, 80.0), premove_speed=3000),
+    ]
+
+
+@pytest.mark.ui
 def test_both_stop_buttons_cancel_through_one_method(app_and_window):
     """The toolbar's Stop and the jog panel's reach one cancel_job."""
     _app, win = app_and_window

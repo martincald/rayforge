@@ -3,6 +3,7 @@ from gettext import gettext as _
 
 from gi.repository import Adw
 
+from ...context import get_context
 from ...machine.driver import get_driver_cls
 from ...machine.models.machine import Machine
 from ..shared.pref_rows.acceleration_spin_row import AccelerationSpinRow
@@ -140,6 +141,23 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         )
         speeds_group.add(self.acceleration_row)
 
+        # Group for Job Start
+        start_group = Adw.PreferencesGroup(title=_("Job Start"))
+        self.add(start_group)
+
+        # Crawford mode is shared by every machine; the start it goes
+        # back to is each machine's own.
+        self.crawford_row = Adw.SwitchRow()
+        self.crawford_row.set_title(_("Crawford mode"))
+        self.crawford_row.set_subtitle(
+            _("Start asks: from here, or where the last job started")
+        )
+        self.crawford_row.set_active(get_context().config.crawford_mode)
+        self.crawford_row.connect(
+            "notify::active", self.on_crawford_mode_changed
+        )
+        start_group.add(self.crawford_row)
+
         # Initial check for errors
         self._update_error_state()
 
@@ -222,3 +240,7 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
             return
         value = row.get_value_in_base_units()
         self.machine.set_acceleration(int(value))
+
+    def on_crawford_mode_changed(self, row, _param):
+        """Turn the Start sheet on or off."""
+        get_context().config.set_crawford_mode(row.get_active())

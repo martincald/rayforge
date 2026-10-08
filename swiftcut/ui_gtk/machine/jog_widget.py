@@ -13,6 +13,7 @@ from ..layout import (
     format_position,
 )
 from .cut_scale_dialog import CutScaleDialog
+from .start_position_dialog import request_start
 
 # The widget carries its jog speed in application base units, which
 # is what Driver.jog and Driver.set_jog_speed take, so the value
@@ -907,7 +908,20 @@ class JogWidget(Gtk.Widget):
     def _on_start_clicked(self, button):
         """Handle Start button click."""
         if self.machine and self.machine_cmd:
-            self.machine_cmd.run_send_job(self.machine)
+            machine = self.machine
+            machine_cmd = self.machine_cmd
+
+            def run(start_at: tuple[float, float] | None):
+                if start_at is None:
+                    machine_cmd.run_send_job(machine)
+                else:
+                    machine_cmd.run_send_job(
+                        machine,
+                        start_at=start_at,
+                        premove_speed=self.jog_speed_base,
+                    )
+
+            request_start(self.get_root(), machine, run)
 
     def _on_pause_clicked(self, button):
         """Handle Pause button click."""

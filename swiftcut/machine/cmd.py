@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from blinker import Signal
 from raygeo.ops import Ops
+from raygeo.ops.axis import Axis
 from raygeo.ops.types import CommandType
 
 from ..context import get_context
@@ -16,18 +17,21 @@ from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder.base import EncodedOutput
 from .driver import acceleration_run_up_mm, get_driver_cls
 from .driver.dummy import NoDeviceDriver
+from .driver.ruida.ruida_driver import _job_size_mm
 from .job_monitor import JobMonitor
 from .models.coordspace import MachineSpace
 
 if TYPE_CHECKING:
-    from raygeo.ops.axis import Axis
-
     from ..doceditor.editor import DocEditor
     from .models.laser import Laser
     from .models.machine import Machine
 
 
 logger = logging.getLogger(__name__)
+
+# How close the head has to come to the last job's start before a
+# Crawford Start runs: the driver's own jog settle tolerance.
+PREMOVE_TOLERANCE_MM = 0.5
 
 
 class MachineCmd:
@@ -49,6 +53,9 @@ class MachineCmd:
         # has no job on the driver to stop yet, so it is latched here
         # and the scale refuses to start.
         self._scale_cancelled = False
+        # The same for a Start still moving the head to the last job's
+        # start: Stop ends the move, and the job must not follow it.
+        self._premove_cancelled = False
         self._cancel_in_flight = False
 
     @property
@@ -322,9 +329,8 @@ class MachineCmd:
         self, ops: Ops, machine: Machine
     ) -> tuple[float, float]:
         """How far the driver moves the head before it sends this job."""
-        min_x, min_y, max_x, max_y = ops.rect()
         return machine.panel.start_corner_offset(
-            machine.start_corner, max_x - min_x, max_y - min_y
+            machine.start_corner, *_job_size_mm(ops)
         )
 
     def _job_anchor(
@@ -356,6 +362,86 @@ class MachineCmd:
         """
         if anchor is not None:
             self._scheduler(machine.set_last_job_start, anchor)
+
+    async def _premove_to_start(
+        self,
+        ops: Ops,
+        machine: Machine,
+        start_at: tuple[float, float],
+        speed: int | None,
+    ) -> bool:
+        """
+        Jog the head so this job is anchored at start_at.
+
+        The driver still makes its own start-corner move before it
+        sends, so the head goes that far short of start_at and the
+        driver's move lands it there. The jog is the jog panel's
+        primitive: ignored while the machine is busy, waited out until
+        it settles, and ended by Stop.
+
+        Returns whether the job may go ahead: only once the head is
+        there. A move that was stopped, was ignored, or could not
+        reach the target (a clamped one, say) refuses the job.
+        """
+        x, y = machine.device_state.machine_pos[:2]
+        if x is None or y is None:
+            self._refuse_start(
+                "the head position is unknown",
+                _("Job not sent: the head position is unknown."),
+            )
+            return False
+
+        dx, dy = self._start_corner_offset(ops, machine)
+        target = (start_at[0] - dx, start_at[1] - dy)
+
+        def arrived() -> bool:
+            hx, hy = machine.device_state.machine_pos[:2]
+            return (
+                hx is not None
+                and hy is not None
+                and abs(target[0] - hx) <= PREMOVE_TOLERANCE_MM
+                and abs(target[1] - hy) <= PREMOVE_TOLERANCE_MM
+            )
+
+        # The latch is checked before the jog as well: a Stop pressed
+        # while the job was still being prepared must not move the head.
+        if not self._premove_cancelled and not arrived():
+            logger.info(
+                f"Moving to the last job's start: ({target[0]:.2f}, "
+                f"{target[1]:.2f}) mm"
+            )
+            await machine.jog(
+                {Axis.X: target[0] - x, Axis.Y: target[1] - y}, speed
+            )
+
+        if self._premove_cancelled:
+            self._refuse_start(
+                "the move to the last job's start position was stopped",
+                _(
+                    "Job not sent: the move to the last job's start "
+                    "position was stopped."
+                ),
+            )
+            return False
+        if not arrived():
+            self._refuse_start(
+                f"the head did not reach the last job's start position "
+                f"({target[0]:.2f}, {target[1]:.2f}) mm; it is at "
+                f"{machine.device_state.machine_pos}",
+                _(
+                    "Job not sent: the head did not reach the last "
+                    "job's start position."
+                ),
+            )
+            return False
+        return True
+
+    def _refuse_start(self, reason: str, message: str) -> None:
+        """Log and show why a Crawford Start sent no job."""
+        logger.warning(f"Job not sent: {reason}")
+        self._scheduler(
+            self._editor.notification_requested.send, self, message=message
+        )
 
     async def _start_job(
         self,
@@ -441,6 +527,8 @@ class MachineCmd:
         machine: Machine,
         on_progress: Callable[[dict], None] | None = None,
         on_done: Callable[[], None] | None = None,
+        start_at: tuple[float, float] | None = None,
+        premove_speed: int | None = None,
     ):
         """
         Schedules the send_job coroutine to run via the task manager.
@@ -454,12 +542,33 @@ class MachineCmd:
             on_progress: Optional progress callback, on the main thread.
             on_done: Optional callback, run on the main thread once the
                 send finishes, is cancelled, or fails.
+            start_at: Crawford mode's "last job's start position": a
+                machine-space (x, y) in mm the job is anchored at. The
+                head is jogged there first, in the same task, so the
+                one-job rule and Stop cover the move too.
+            premove_speed: That jog's speed in mm/min, the jog panel's.
         """
+        if start_at is not None and premove_speed is None:
+            raise ValueError("start_at needs a premove_speed")
         if self.is_job_running:
             logger.warning("Start ignored: a job is already running")
             return
         self._send_active = True
         self.job_state_changed.send(self)
+
+        final_job_action = self._run_send_action
+        if start_at is not None:
+            self._premove_cancelled = False
+
+            async def premove_then_send(artifact, machine, on_progress):
+                if await self._premove_to_start(
+                    artifact.ops, machine, start_at, premove_speed
+                ):
+                    await self._run_send_action(
+                        artifact, machine, on_progress
+                    )
+
+            final_job_action = premove_then_send
 
         def when_done(task):
             self._send_active = False
@@ -471,7 +580,7 @@ class MachineCmd:
             lambda ctx: self._start_job(
                 machine,
                 job_name="sending",
-                final_job_action=self._run_send_action,
+                final_job_action=final_job_action,
                 on_progress=on_progress,
             ),
             key="send-job",
@@ -497,6 +606,7 @@ class MachineCmd:
         it, cancelling it mid-flight.
         """
         self._scale_cancelled = True
+        self._premove_cancelled = True
         if self._cancel_in_flight:
             return
         self._cancel_in_flight = True

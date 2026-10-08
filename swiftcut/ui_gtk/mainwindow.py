@@ -63,6 +63,7 @@ from .layout import (
     stylesheet,
 )
 from .machine.settings_dialog import MachineSettingsDialog
+from .machine.start_position_dialog import request_start
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
 from .settings.settings_dialog import SettingsWindow
@@ -2105,19 +2106,32 @@ class MainWindow(Adw.ApplicationWindow):
         if not machine:
             return
 
-        def _proceed():
+        def _run(start_at: tuple[float, float] | None):
             focus_action = self.action_manager.get_action("toggle-focus")
             focus_state = focus_action.get_state()
             if focus_state and focus_state.get_boolean():
                 focus_action.change_state(GLib.Variant.new_boolean(False))
 
+            # Crawford mode's "last job's start position" adds the
+            # move there; the jog panel's speed, as Go Scale uses.
+            premove = {}
+            if start_at is not None:
+                jog = self.bottom_panel.jog_widget
+                premove = {
+                    "start_at": start_at,
+                    "premove_speed": jog.jog_speed_base,
+                }
             # The panel's Start goes the same way, so one guard
             # refuses a second Start from either.
             self.machine_cmd.run_send_job(
                 machine,
                 on_progress=self._on_job_progress_updated,
                 on_done=self._on_send_done,
+                **premove,
             )
+
+        def _proceed():
+            request_start(self, machine, _run)
 
         self._run_sanity_check_and_proceed(_proceed)
 

@@ -519,6 +519,7 @@ class _StartDriver:
     def __init__(self, during_run=None):
         self.runs = 0
         self.go_scales = 0
+        self.cancels = 0
         self.job_finished = Signal()
         self._during_run = during_run
 
@@ -529,6 +530,9 @@ class _StartDriver:
 
     async def go_scale(self, width, height, speed):
         self.go_scales += 1
+
+    async def cancel(self):
+        self.cancels += 1
 
 
 def _start_cmd(task_mgr, ops: Ops) -> MachineCmd:
@@ -715,3 +719,326 @@ class TestLastJobStartRecording:
 
         assert (driver.runs, driver.go_scales) == (2, 1)
         assert machine.last_job_start is None
+
+
+def _arriving_jog(machine: Machine, order=None, short: float = 0.0):
+    """A jog that settles where it was sent, or short of it in X."""
+
+    async def jog(deltas, speed):
+        if order is not None:
+            order.append("jog")
+        x, y = machine.device_state.machine_pos[:2]
+        _head_at(
+            machine,
+            x + deltas.get(Axis.X, 0.0) - short,
+            y + deltas.get(Axis.Y, 0.0),
+        )
+
+    return AsyncMock(side_effect=jog)
+
+
+def _notices(cmd: MachineCmd) -> list[str]:
+    send = cmd._editor.notification_requested.send
+    return [c.kwargs["message"] for c in send.call_args_list]
+
+
+class TestStartFromLastJobStart:
+    """Crawford mode's second choice: move back, then the normal Start."""
+
+    @pytest.mark.asyncio
+    async def test_the_head_is_jogged_so_the_job_lands_on_the_last_start(
+        self, task_mgr, machine
+    ):
+        """
+        The driver still pre-moves a top-left start by the job's width
+        toward -X, so the jog stops that far short of the last start.
+        """
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        _head_at(machine, 300.0, 200.0)
+        order = []
+        jog = _arriving_jog(machine, order)
+        driver = _StartDriver(during_run=lambda: order.append("run"))
+        cmd = _start_cmd(task_mgr, _job())
+
+        with patch.object(machine, "jog", jog):
+            await _start(
+                task_mgr,
+                cmd,
+                machine,
+                driver,
+                start_at=(80.0, 50.0),
+                premove_speed=6000,
+            )
+
+        jog.assert_awaited_once_with({Axis.X: -200.0, Axis.Y: -150.0}, 6000)
+        assert order == ["jog", "run"]
+        assert machine.last_job_start == (80.0, 50.0)
+        assert _notices(cmd) == []
+
+    @pytest.mark.asyncio
+    async def test_a_head_already_there_is_not_moved(self, task_mgr, machine):
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(StartCorner.TOP_RIGHT)
+        _head_at(machine, 80.3, 49.8)
+        jog = _arriving_jog(machine)
+        driver = _StartDriver()
+
+        with patch.object(machine, "jog", jog):
+            await _start(
+                task_mgr,
+                _start_cmd(task_mgr, _job()),
+                machine,
+                driver,
+                start_at=(80.0, 50.0),
+                premove_speed=6000,
+            )
+
+        jog.assert_not_awaited()
+        assert driver.runs == 1
+
+    @pytest.mark.asyncio
+    async def test_a_head_that_stops_short_sends_no_job(
+        self, task_mgr, machine, caplog
+    ):
+        """Ignored while busy, clamped or timed out: it is not there."""
+        _head_at(machine, 300.0, 200.0)
+        jog = _arriving_jog(machine, short=2.0)
+        driver = _StartDriver()
+        cmd = _start_cmd(task_mgr, _job())
+
+        with (
+            patch.object(machine, "jog", jog),
+            caplog.at_level(logging.WARNING, logger="swiftcut.machine.cmd"),
+        ):
+            await _start(
+                task_mgr,
+                cmd,
+                machine,
+                driver,
+                start_at=(80.0, 50.0),
+                premove_speed=6000,
+            )
+
+        jog.assert_awaited_once()
+        assert driver.runs == 0
+        assert "did not reach the last job's start" in caplog.text
+        assert len(_notices(cmd)) == 1
+        assert "did not reach" in _notices(cmd)[0]
+        assert not cmd.is_job_running
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_position_sends_no_job(self, task_mgr, machine):
+        _head_at(machine, None, None)
+        jog = _arriving_jog(machine)
+        driver = _StartDriver()
+        cmd = _start_cmd(task_mgr, _job())
+
+        with patch.object(machine, "jog", jog):
+            await _start(
+                task_mgr,
+                cmd,
+                machine,
+                driver,
+                start_at=(80.0, 50.0),
+                premove_speed=6000,
+            )
+
+        jog.assert_not_awaited()
+        assert driver.runs == 0
+        assert "position is unknown" in _notices(cmd)[0]
+
+    @pytest.mark.asyncio
+    async def test_stop_during_the_move_sends_no_job(
+        self, task_mgr, machine, caplog
+    ):
+        _head_at(machine, 300.0, 200.0)
+        driver = _StartDriver()
+        jogging = threading.Event()
+
+        async def jog_until_stopped(deltas, speed):
+            jogging.set()
+            while not driver.cancels:
+                await asyncio.sleep(0.01)
+
+        cmd = _start_cmd(task_mgr, _job())
+        with (
+            patch.object(
+                type(machine),
+                "driver",
+                new_callable=PropertyMock,
+                return_value=driver,
+            ),
+            patch.object(
+                machine, "jog", AsyncMock(side_effect=jog_until_stopped)
+            ),
+            caplog.at_level(logging.WARNING, logger="swiftcut.machine.cmd"),
+        ):
+            cmd.run_send_job(
+                machine, start_at=(80.0, 50.0), premove_speed=6000
+            )
+            assert await asyncio.to_thread(jogging.wait, 5)
+            cmd.cancel_job(machine)
+            await wait_for_tasks_to_finish(task_mgr)
+            # The notice is shown on the main thread, so it lands after.
+            await asyncio.sleep(0.05)
+
+        assert (driver.runs, driver.cancels) == (0, 1)
+        assert "move to the last job's start position was stopped" in (
+            caplog.text
+        )
+        assert "was stopped" in _notices(cmd)[0]
+        assert not cmd.is_job_running
+
+    @pytest.mark.asyncio
+    async def test_a_stop_before_this_start_does_not_refuse_it(
+        self, task_mgr, machine
+    ):
+        """The Stop latch belongs to one Start: the next one moves."""
+        _head_at(machine, 300.0, 200.0)
+        jog = _arriving_jog(machine)
+        driver = _StartDriver()
+        cmd = _start_cmd(task_mgr, _job())
+        with patch.object(
+            type(machine),
+            "driver",
+            new_callable=PropertyMock,
+            return_value=driver,
+        ):
+            cmd.cancel_job(machine)
+
+        with patch.object(machine, "jog", jog):
+            await _start(
+                task_mgr,
+                cmd,
+                machine,
+                driver,
+                start_at=(80.0, 50.0),
+                premove_speed=6000,
+            )
+
+        jog.assert_awaited_once()
+        assert driver.runs == 1
+        assert _notices(cmd) == []
+
+    def test_a_start_position_needs_a_speed(self):
+        cmd = MachineCmd(MagicMock())
+
+        with pytest.raises(ValueError):
+            cmd.run_send_job(MagicMock(), start_at=(80.0, 50.0))
+
+    @pytest.mark.asyncio
+    async def test_stop_while_the_job_is_prepared_never_moves_the_head(
+        self, task_mgr, machine
+    ):
+        _head_at(machine, 300.0, 200.0)
+        driver = _StartDriver()
+        jog = _arriving_jog(machine)
+        preparing = threading.Event()
+        release = threading.Event()
+
+        async def slow_pipeline():
+            preparing.set()
+            while not release.is_set():
+                await asyncio.sleep(0.01)
+            return MagicMock()
+
+        cmd = _start_cmd(task_mgr, _job())
+        cmd._editor.pipeline.generate_job_artifact_async = slow_pipeline
+        with (
+            patch.object(
+                type(machine),
+                "driver",
+                new_callable=PropertyMock,
+                return_value=driver,
+            ),
+            patch.object(machine, "jog", jog),
+        ):
+            cmd.run_send_job(
+                machine, start_at=(80.0, 50.0), premove_speed=6000
+            )
+            assert await asyncio.to_thread(preparing.wait, 5)
+            cmd.cancel_job(machine)
+            release.set()
+            await wait_for_tasks_to_finish(task_mgr)
+
+        jog.assert_not_awaited()
+        assert driver.runs == 0
+
+    @pytest.mark.asyncio
+    async def test_a_second_start_during_the_move_is_refused(
+        self, task_mgr, machine, caplog
+    ):
+        _head_at(machine, 300.0, 200.0)
+        driver = _StartDriver()
+        jogging = threading.Event()
+
+        async def jog_until_stopped(deltas, speed):
+            jogging.set()
+            while not driver.cancels:
+                await asyncio.sleep(0.01)
+
+        jog = AsyncMock(side_effect=jog_until_stopped)
+        cmd = _start_cmd(task_mgr, _job())
+        with (
+            patch.object(
+                type(machine),
+                "driver",
+                new_callable=PropertyMock,
+                return_value=driver,
+            ),
+            patch.object(machine, "jog", jog),
+        ):
+            cmd.run_send_job(
+                machine, start_at=(80.0, 50.0), premove_speed=6000
+            )
+            assert await asyncio.to_thread(jogging.wait, 5)
+            first = task_mgr.get_task("send-job")
+
+            with caplog.at_level(
+                logging.WARNING, logger="swiftcut.machine.cmd"
+            ):
+                cmd.run_send_job(
+                    machine, start_at=(80.0, 50.0), premove_speed=6000
+                )
+                cmd.run_send_job(machine)
+            await asyncio.sleep(0.1)
+
+            assert caplog.text.count("a job is already running") == 2
+            assert task_mgr.get_task("send-job") is first
+            assert not first.is_cancelled()
+            jog.assert_awaited_once()
+
+            cmd.cancel_job(machine)
+            await wait_for_tasks_to_finish(task_mgr)
+
+        assert driver.runs == 0
+
+    def test_off_hands_start_the_same_action_as_before(self):
+        """With no start_at, the job path is untouched."""
+        editor = MagicMock()
+        cmd = MachineCmd(editor)
+        machine = MagicMock()
+
+        cmd.run_send_job(machine)
+        task = editor.task_manager.add_coroutine.call_args.args[0]
+        with patch.object(cmd, "_start_job", new=MagicMock()) as start_job:
+            task(None)
+
+        assert start_job.call_args.kwargs["final_job_action"] == (
+            cmd._run_send_action
+        )
+
+    @pytest.mark.asyncio
+    async def test_off_never_moves_the_head(self, task_mgr, machine):
+        _head_at(machine, 300.0, 200.0)
+        jog = _arriving_jog(machine)
+        driver = _StartDriver()
+
+        with patch.object(machine, "jog", jog):
+            await _start(
+                task_mgr, _start_cmd(task_mgr, _job()), machine, driver
+            )
+
+        jog.assert_not_awaited()
+        assert driver.runs == 1

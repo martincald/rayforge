@@ -77,6 +77,9 @@ class Config:
         self.window_geometry: dict[str, dict[str, Any]] = {}
         self.canvas_view: CanvasViewState = CanvasViewState()
         self.auto_pipeline: bool = True
+        # Start asks whether to run from here or from where the last
+        # job started.
+        self.crawford_mode: bool = False
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
         # Default DPI for unitless SVG imports
         self.import_dpi: float = 96.0
@@ -174,6 +177,13 @@ class Config:
         self.auto_pipeline = enabled
         self.changed.send(self)
 
+    def set_crawford_mode(self, enabled: bool):
+        """Sets whether Start asks where to start the job from."""
+        if self.crawford_mode == enabled:
+            return
+        self.crawford_mode = enabled
+        self.changed.send(self)
+
     def set_ops_color_mode(self, mode: OpsColorMode):
         """Sets the ops color mode."""
         if self.ops_color_mode == mode:
@@ -213,6 +223,7 @@ class Config:
             "window_geometry": self.window_geometry,
             "canvas_view": self.canvas_view.to_dict(),
             "auto_pipeline": self.auto_pipeline,
+            "crawford_mode": self.crawford_mode,
             "ops_color_mode": self.ops_color_mode.value,
             "import_dpi": self.import_dpi,
             "cache_budget_bytes": self.cache_budget_bytes,
@@ -279,6 +290,7 @@ class Config:
             data.get("canvas_view", {})
         )
         config.auto_pipeline = data.get("auto_pipeline", True)
+        config.crawford_mode = data.get("crawford_mode", False)
 
         ops_color_mode_str = data.get(
             "ops_color_mode", OpsColorMode.LASER.value
