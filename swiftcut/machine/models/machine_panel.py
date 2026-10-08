@@ -372,15 +372,19 @@ class MachinePanel:
         Visual directions are expressed in presented (rotated)
         coordinates, so the composed world-to-machine matrix rotates the
         delta vector: on a ROTATED_RIGHT bed a visual east jog drives
-        the native Y axis. UP/DOWN are pinned to Axis.Z and delegated to
-        the machine, which has no rotation knowledge.
+        the native Y axis. UP/DOWN are pinned to Axis.Z, which no
+        rotation touches.
+
+        This is the only visual-direction-to-axis mapping: the arrow
+        keys, the start corner and Home's park all come from here.
         """
         # Local import: machine.py imports this module before JogDirection
         # is defined, so a module-level import would be circular.
         from .machine import JogDirection
 
         if direction in (JogDirection.UP, JogDirection.DOWN):
-            return {Axis.Z: self._machine.calculate_jog(direction, distance)}
+            dz = distance if direction == JogDirection.UP else -distance
+            return {Axis.Z: -dz if self._machine.reverse_z_axis else dz}
         # Arrow convention: left arrow = X toward machine home, right
         # arrow away from it. The presented X sign is inverted here,
         # the one place a visual direction becomes a delta, so the

@@ -14,6 +14,7 @@ from blinker import Signal
 from swiftcut.machine.driver.driver import Axis
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
+from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
 from swiftcut.machine.models.machine import (
     JogDirection,
     Machine,
@@ -571,22 +572,24 @@ class TestHomeParksTheHead:
     async def test_home_parks_at_the_top_left_corner(self, driver):
         """D8 2A stops at the switches, so the app drives on from there.
 
-        The bed is 400 x 300 and the margin is 1 mm, so the top-left
-        corner of a default-origin profile is (1, 299) mm.
+        The bed is 400 x 300 and the margin is 1 mm. Top-left is where
+        the panel's left and up arrows end: the left arrow is +X on a
+        default-origin profile, and up is +Y, so the corner is
+        (399, 299) mm.
         """
         spy = self._homing_driver(driver)
 
         await driver.home()
 
         targets = [move_target(m) for m in moves(spy.commands)]
-        assert targets == [(1000, 299000)]
+        assert targets == [(399000, 299000)]
 
     def test_the_park_follows_the_reversed_axis(self, driver):
-        """A reversed axis runs -extent..0, and west becomes +X.
+        """A reversed axis runs -extent..0, and west becomes -X.
 
-        calculate_jog is the profile's own answer to "which way is
-        west", so the park agrees with it rather than reading the
-        reverse flag a second time: the left edge is now the high end
+        The panel's calculate_jog is the profile's own answer to "which
+        way is west", so the park agrees with it rather than reading the
+        reverse flag a second time: the left edge is now the low end
         of the range. Asserted in machine space, because _to_controller
         is the one site that turns that into the controller's own
         count -- and it negates a reversed axis, which would make a
@@ -595,7 +598,7 @@ class TestHomeParksTheHead:
         """
         driver._machine.set_reverse_x_axis(True)
 
-        assert driver._top_left_corner() == (-1000, 299000)
+        assert driver._top_left_corner() == (-399000, 299000)
 
     @pytest.mark.asyncio
     async def test_the_reversed_park_reaches_the_wire_negated(self, driver):
@@ -605,13 +608,38 @@ class TestHomeParksTheHead:
 
         await driver.home()
 
-        assert move_target(moves(spy.commands)[0]) == (1000, 299000)
+        assert move_target(moves(spy.commands)[0]) == (399000, 299000)
 
     def test_the_park_follows_a_top_origin(self, driver):
         """North is -Y for a top origin, so the corner flips with it."""
         driver._machine.set_origin(Origin.TOP_LEFT)
 
-        assert driver._top_left_corner() == (1000, 1000)
+        assert driver._top_left_corner() == (399000, 1000)
+
+    def test_the_ilab_614_park_is_its_top_left_corner(self, driver):
+        """
+        The owner's profile: a 1400 x 900 bed, top-left origin, no
+        reversed axis. Home used to park at x = 1 mm, the far end from
+        where the left arrow goes, and the owner saw it end top-right.
+        The park is now where the left and up arrows run out.
+        """
+        profile = ILAB_614_PROFILE["machine"]
+        machine = driver._machine
+        machine.set_axis_extents(*profile["axis_extents"])
+        machine.set_origin(Origin(profile["origin"]))
+        machine.set_reverse_x_axis(profile["reverse_x_axis"])
+        machine.set_reverse_y_axis(profile["reverse_y_axis"])
+
+        park = driver._top_left_corner()
+
+        assert park == (1399000, 1000)
+        # Same sign convention as the panel jog tests: from the park,
+        # the left arrow (+X here) and the up arrow (-Y) have nowhere
+        # left to go but the 1 mm margin.
+        west = machine.panel.calculate_jog(JogDirection.WEST, 1.0)
+        north = machine.panel.calculate_jog(JogDirection.NORTH, 1.0)
+        assert west == {Axis.X: 1.0} and north == {Axis.Y: -1.0}
+        assert park[0] + 1000 == 1400000 and park[1] - 1000 == 0
 
     @pytest.mark.asyncio
     async def test_the_park_runs_at_the_panel_jog_speed(self, driver):

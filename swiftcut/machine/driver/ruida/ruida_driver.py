@@ -1199,12 +1199,12 @@ class RuidaDriver(Driver):
         """
         The bed's top-left corner in machine micrometres.
 
-        Which end of each axis that is comes from the profile's own
-        jog convention -- calculate_jog already answers "which way is
-        west/north" for this origin and these reverse flags -- so no
-        second axis mapping is introduced here. The corner is inset by
-        the margin a held jog stops at, so the park never drives into
-        a hard stop.
+        Which end of each axis that is comes from the jog panel's
+        mapping, MachinePanel.calculate_jog -- the arrow keys' own answer
+        to "which way is west/north" -- so the park and a jog agree and
+        no second axis mapping is introduced here. The corner is inset
+        by the margin a held jog stops at, so the park never drives
+        into a hard stop.
         """
         # Imported here, not at module scope: machine.py imports this
         # package for get_driver_cls, which is why Machine itself is
@@ -1212,17 +1212,15 @@ class RuidaDriver(Driver):
         from ...models.machine import JogDirection
 
         margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
-        return (
-            self._axis_end("x", JogDirection.WEST, margin_um),
-            self._axis_end("y", JogDirection.NORTH, margin_um),
-        )
-
-    def _axis_end(self, axis: str, direction, margin_um: int) -> int:
-        """The far end of one axis in a visual direction, inset."""
-        low, high = self._axis_range(axis)
-        if self._machine.calculate_jog(direction, 1.0) > 0:
-            return high - margin_um
-        return low + margin_um
+        corner: dict[Axis, int] = {}
+        for direction in (JogDirection.WEST, JogDirection.NORTH):
+            deltas = self._machine.panel.calculate_jog(direction, 1.0)
+            for axis, delta in deltas.items():
+                low, high = self._axis_range("x" if axis is Axis.X else "y")
+                corner[axis] = low + margin_um
+                if delta > 0:
+                    corner[axis] = high - margin_um
+        return corner[Axis.X], corner[Axis.Y]
 
     def _log_start_corner_premove(self, x_um: int, y_um: int) -> None:
         """Say where the start corner sends the head, in mm."""

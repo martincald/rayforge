@@ -4436,7 +4436,7 @@ target.
 - **Severity:** SAFETY
 - **Location:** `swiftcut/machine/driver/ruida/ruida_driver.py:832` (`_axis_end`), reached from `:825` (`_top_left_corner`) and `:797` (`_park_after_home`)
 - **Class:** Failure class 2 - sign / axis / frame errors in the interactive-motion subsystem (jog arrows -> D9 10 payload, Go Scale / Cut Scale framing)
-- **Status:** TODO - NEEDS-HARDWARE. Carried forward from the start-corner work: the start-corner pre-move was moved onto the panel mapping, the home park deliberately was not (surgical-changes rule), so the two now disagree. Confirm on the machine which end of X is physically top-left before changing the park.
+- **Status:** FIXED 2026-10-08. The hardware check came back from the owner: Home All ended top-right, the outcome where the park is wrong and the panel is right. `_top_left_corner` now takes each axis's end from `MachinePanel.calculate_jog` (rotation included), `_axis_end` is gone, and `Machine.calculate_jog` is deleted: the panel owns the Z mapping too, so there is one visual-direction-to-axis mapping. `TestHomeParksTheHead` expects the panel's ends, and `test_the_ilab_614_park_is_its_top_left_corner` pins (1399, 1) mm on the owner's profile. Carried forward from the start-corner work: the start-corner pre-move was moved onto the panel mapping, the home park deliberately was not (surgical-changes rule), so the two disagreed until this fix.
 
 **Evidence**
 

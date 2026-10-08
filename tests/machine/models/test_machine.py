@@ -1563,50 +1563,50 @@ class TestJogDelegation:
     @pytest.mark.parametrize(
         "direction, origin, reverse, distance, expected_delta",
         [
-            (JogDirection.EAST, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
-            (JogDirection.WEST, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
+            (JogDirection.EAST, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
+            (JogDirection.WEST, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.NORTH, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
             (JogDirection.UP, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
-            (JogDirection.WEST, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
+            (JogDirection.EAST, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
+            (JogDirection.WEST, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
             (JogDirection.NORTH, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
             (JogDirection.UP, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.TOP_LEFT, False, 10.0, 10.0),
-            (JogDirection.WEST, Origin.TOP_LEFT, False, 10.0, -10.0),
+            (JogDirection.EAST, Origin.TOP_LEFT, False, 10.0, -10.0),
+            (JogDirection.WEST, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.NORTH, Origin.TOP_LEFT, False, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.UP, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.TOP_LEFT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.TOP_RIGHT, False, 10.0, -10.0),
-            (JogDirection.WEST, Origin.TOP_RIGHT, False, 10.0, 10.0),
+            (JogDirection.EAST, Origin.TOP_RIGHT, False, 10.0, 10.0),
+            (JogDirection.WEST, Origin.TOP_RIGHT, False, 10.0, -10.0),
             (JogDirection.NORTH, Origin.TOP_RIGHT, False, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.TOP_RIGHT, False, 10.0, 10.0),
             (JogDirection.UP, Origin.TOP_RIGHT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.TOP_RIGHT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
-            (JogDirection.WEST, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
+            (JogDirection.EAST, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
+            (JogDirection.WEST, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.NORTH, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
             (JogDirection.UP, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
-            (JogDirection.WEST, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
+            (JogDirection.EAST, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
+            (JogDirection.WEST, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
             (JogDirection.NORTH, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
             (JogDirection.UP, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.TOP_LEFT, True, 10.0, -10.0),
-            (JogDirection.WEST, Origin.TOP_LEFT, True, 10.0, 10.0),
+            (JogDirection.EAST, Origin.TOP_LEFT, True, 10.0, 10.0),
+            (JogDirection.WEST, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.NORTH, Origin.TOP_LEFT, True, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.UP, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.TOP_LEFT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.TOP_RIGHT, True, 10.0, 10.0),
-            (JogDirection.WEST, Origin.TOP_RIGHT, True, 10.0, -10.0),
+            (JogDirection.EAST, Origin.TOP_RIGHT, True, 10.0, -10.0),
+            (JogDirection.WEST, Origin.TOP_RIGHT, True, 10.0, 10.0),
             (JogDirection.NORTH, Origin.TOP_RIGHT, True, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.TOP_RIGHT, True, 10.0, -10.0),
             (JogDirection.UP, Origin.TOP_RIGHT, True, 10.0, -10.0),
@@ -1627,7 +1627,10 @@ class TestJogDelegation:
         """
         Tests that machine.jog() calls the driver with the correct signed
         delta, accounting for origin position and reverse axis settings.
-        This verifies the integration between calculate_jog and jog.
+        This verifies the integration between the jog panel's mapping,
+        MachinePanel.calculate_jog, and jog. Its arrow convention: the
+        left arrow is +X on a bed whose X grows to the right, negated
+        by reverse_x_axis; Y and Z follow the origin and their flags.
         """
         machine = jog_machine
 
@@ -1662,7 +1665,9 @@ class TestJogDelegation:
 
         # --- Act ---
         # Simulate the UI flow: calculate delta based on direction, then jog
-        calculated_delta = machine.calculate_jog(direction, distance)
+        calculated_delta = machine.panel.calculate_jog(direction, distance)[
+            axis
+        ]
         assert calculated_delta == expected_delta  # Sanity check
 
         await machine.jog({axis: calculated_delta}, speed)
@@ -1675,50 +1680,50 @@ class TestJogDelegation:
     @pytest.mark.parametrize(
         "direction, origin, reverse, distance, expected",
         [
-            (JogDirection.EAST, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
-            (JogDirection.WEST, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
+            (JogDirection.EAST, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
+            (JogDirection.WEST, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.NORTH, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
             (JogDirection.UP, Origin.BOTTOM_LEFT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.BOTTOM_LEFT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
-            (JogDirection.WEST, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
+            (JogDirection.EAST, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
+            (JogDirection.WEST, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
             (JogDirection.NORTH, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
             (JogDirection.UP, Origin.BOTTOM_RIGHT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.BOTTOM_RIGHT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.TOP_LEFT, False, 10.0, 10.0),
-            (JogDirection.WEST, Origin.TOP_LEFT, False, 10.0, -10.0),
+            (JogDirection.EAST, Origin.TOP_LEFT, False, 10.0, -10.0),
+            (JogDirection.WEST, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.NORTH, Origin.TOP_LEFT, False, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.UP, Origin.TOP_LEFT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.TOP_LEFT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.TOP_RIGHT, False, 10.0, -10.0),
-            (JogDirection.WEST, Origin.TOP_RIGHT, False, 10.0, 10.0),
+            (JogDirection.EAST, Origin.TOP_RIGHT, False, 10.0, 10.0),
+            (JogDirection.WEST, Origin.TOP_RIGHT, False, 10.0, -10.0),
             (JogDirection.NORTH, Origin.TOP_RIGHT, False, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.TOP_RIGHT, False, 10.0, 10.0),
             (JogDirection.UP, Origin.TOP_RIGHT, False, 10.0, 10.0),
             (JogDirection.DOWN, Origin.TOP_RIGHT, False, 10.0, -10.0),
-            (JogDirection.EAST, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
-            (JogDirection.WEST, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
+            (JogDirection.EAST, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
+            (JogDirection.WEST, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.NORTH, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
             (JogDirection.UP, Origin.BOTTOM_LEFT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.BOTTOM_LEFT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
-            (JogDirection.WEST, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
+            (JogDirection.EAST, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
+            (JogDirection.WEST, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
             (JogDirection.NORTH, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
             (JogDirection.SOUTH, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
             (JogDirection.UP, Origin.BOTTOM_RIGHT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.BOTTOM_RIGHT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.TOP_LEFT, True, 10.0, -10.0),
-            (JogDirection.WEST, Origin.TOP_LEFT, True, 10.0, 10.0),
+            (JogDirection.EAST, Origin.TOP_LEFT, True, 10.0, 10.0),
+            (JogDirection.WEST, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.NORTH, Origin.TOP_LEFT, True, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.UP, Origin.TOP_LEFT, True, 10.0, -10.0),
             (JogDirection.DOWN, Origin.TOP_LEFT, True, 10.0, 10.0),
-            (JogDirection.EAST, Origin.TOP_RIGHT, True, 10.0, 10.0),
-            (JogDirection.WEST, Origin.TOP_RIGHT, True, 10.0, -10.0),
+            (JogDirection.EAST, Origin.TOP_RIGHT, True, 10.0, -10.0),
+            (JogDirection.WEST, Origin.TOP_RIGHT, True, 10.0, 10.0),
             (JogDirection.NORTH, Origin.TOP_RIGHT, True, 10.0, 10.0),
             (JogDirection.SOUTH, Origin.TOP_RIGHT, True, 10.0, -10.0),
             (JogDirection.UP, Origin.TOP_RIGHT, True, 10.0, -10.0),
@@ -1736,7 +1741,9 @@ class TestJogDelegation:
     ):
         """
         Tests that jog delta calculation correctly accounts for origin
-        position and reverse axis settings.
+        position and reverse axis settings, in the jog panel's arrow
+        convention: the left arrow is +X on a bed whose X grows to the
+        right, negated by reverse_x_axis.
         """
         isolated_machine.set_origin(origin)
         if direction in (JogDirection.EAST, JogDirection.WEST):
@@ -1746,8 +1753,14 @@ class TestJogDelegation:
         else:
             isolated_machine.set_reverse_z_axis(reverse)
 
-        result = isolated_machine.calculate_jog(direction, distance)
-        assert result == expected
+        axis = {
+            JogDirection.EAST: Axis.X,
+            JogDirection.WEST: Axis.X,
+            JogDirection.NORTH: Axis.Y,
+            JogDirection.SOUTH: Axis.Y,
+        }.get(direction, Axis.Z)
+        result = isolated_machine.panel.calculate_jog(direction, distance)
+        assert result == {axis: expected}
 
     @pytest.mark.parametrize(
         "enabled, reverse_x, reverse_y, current_pos, axis, distance, expected",

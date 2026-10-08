@@ -28,7 +28,7 @@ class _StubMachine:
 
     def __init__(self, space: MachineSpace, reverse_z: bool = False):
         self._space = space
-        self.reverse_z = reverse_z
+        self.reverse_z_axis = reverse_z
         self.changed = Signal()
         self.nogo_zones: dict[str, Zone] = {}
 
@@ -47,34 +47,42 @@ class _StubMachine:
         x, y = self._space.get_workarea_origin_in_machine()
         return (x, y, 0.0)
 
-    def calculate_jog(self, direction: JogDirection, distance: float) -> float:
-        """Mirror Machine.calculate_jog for panel equivalence tests."""
-        origin = self._space.origin
-        x_axis_right = origin in (
-            OriginCorner.TOP_RIGHT,
-            OriginCorner.BOTTOM_RIGHT,
-        )
-        y_axis_down = origin in (
-            OriginCorner.TOP_LEFT,
-            OriginCorner.TOP_RIGHT,
-        )
-        if direction == JogDirection.EAST:
-            delta = -distance if x_axis_right else distance
-            return -delta if self._space.reverse_x else delta
-        if direction == JogDirection.WEST:
-            delta = distance if x_axis_right else -distance
-            return -delta if self._space.reverse_x else delta
-        if direction == JogDirection.NORTH:
-            delta = -distance if y_axis_down else distance
-            return -delta if self._space.reverse_y else delta
-        if direction == JogDirection.SOUTH:
-            delta = distance if y_axis_down else -distance
-            return -delta if self._space.reverse_y else delta
-        if direction == JogDirection.UP:
-            return -distance if self.reverse_z else distance
-        if direction == JogDirection.DOWN:
-            return distance if self.reverse_z else -distance
-        return 0.0
+
+def _expected_jog(
+    machine: _StubMachine, direction: JogDirection, distance: float
+) -> float:
+    """
+    The arrow convention, written out for an unrotated bed.
+
+    The left arrow is +X on a bed whose X grows to the right (a left
+    origin) and -X on one whose X grows to the left, negated by
+    reverse_x. North is -Y on a top origin and +Y on a bottom one,
+    negated by reverse_y. Up is +Z, negated by reverse_z_axis. East,
+    south and down are the opposites.
+    """
+    space = machine.get_coordinate_space()
+    x_grows_right = space.origin in (
+        OriginCorner.TOP_LEFT,
+        OriginCorner.BOTTOM_LEFT,
+    )
+    y_down = space.origin in (OriginCorner.TOP_LEFT, OriginCorner.TOP_RIGHT)
+    west = distance if x_grows_right else -distance
+    north = -distance if y_down else distance
+    up = distance
+    if space.reverse_x:
+        west = -west
+    if space.reverse_y:
+        north = -north
+    if machine.reverse_z_axis:
+        up = -up
+    return {
+        JogDirection.WEST: west,
+        JogDirection.EAST: -west,
+        JogDirection.NORTH: north,
+        JogDirection.SOUTH: -north,
+        JogDirection.UP: up,
+        JogDirection.DOWN: -up,
+    }[direction]
 
 
 def _panel(**space_kwargs) -> MachinePanel:
@@ -647,16 +655,11 @@ class TestMachinePanelCalculateJog:
     @pytest.mark.parametrize("origin", list(OriginCorner))
     @pytest.mark.parametrize("reverse_x", [False, True])
     @pytest.mark.parametrize("reverse_y", [False, True])
-    def test_native_matches_machine_calculate_jog(
+    def test_native_follows_the_arrow_convention(
         self, origin, reverse_x, reverse_y
     ):
-        """NATIVE orientation reproduces the machine's per-axis jog
-        calculation, with X inverted.
-
-        The panel owns the arrow convention (left arrow = X toward
-        machine home); Machine.calculate_jog predates it and still
-        answers in the un-inverted sense, so X is compared negated.
-        """
+        """NATIVE orientation moves each arrow along its own axis, in
+        the arrow convention (left arrow = X toward machine home)."""
         x_dir, y_dir = self._directions_for(origin)
         panel = _panel(
             origin=origin,
@@ -666,9 +669,7 @@ class TestMachinePanelCalculateJog:
             reverse_y=reverse_y,
         )
         for direction, axis in self.AXIS_FOR_DIRECTION.items():
-            expected = panel.machine.calculate_jog(direction, 10.0)
-            if axis is Axis.X:
-                expected = -expected
+            expected = _expected_jog(panel.machine, direction, 10.0)
             assert panel.calculate_jog(direction, 10.0) == {axis: expected}
 
     @pytest.mark.parametrize(

@@ -923,37 +923,6 @@ class Machine:
         """
         return MachineSpace.from_machine(self)
 
-    def calculate_jog(self, direction: JogDirection, distance: float) -> float:
-        """
-        Calculate the signed coordinate delta for a jog operation based on a
-        visual direction.
-
-        Args:
-            direction: The visual direction for the jog.
-            distance: The positive distance for the jog.
-
-        Returns:
-            The signed delta for the specified direction, taking into account
-            origin position and reverse axis settings.
-        """
-        if direction == JogDirection.EAST:
-            delta = -distance if self.x_axis_right else distance
-            return -delta if self.reverse_x_axis else delta
-        if direction == JogDirection.WEST:
-            delta = distance if self.x_axis_right else -distance
-            return -delta if self.reverse_x_axis else delta
-        if direction == JogDirection.NORTH:
-            delta = -distance if self.y_axis_down else distance
-            return -delta if self.reverse_y_axis else delta
-        if direction == JogDirection.SOUTH:
-            delta = distance if self.y_axis_down else -distance
-            return -delta if self.reverse_y_axis else delta
-        if direction == JogDirection.UP:
-            return -distance if self.reverse_z_axis else distance
-        if direction == JogDirection.DOWN:
-            return distance if self.reverse_z_axis else -distance
-        return 0.0
-
     def set_soft_limits_enabled(self, enabled: bool):
         """Enable or disable soft limits for jog operations."""
         if self.soft_limits_enabled == enabled:
