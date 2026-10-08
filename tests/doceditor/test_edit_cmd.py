@@ -347,3 +347,49 @@ def test_reset_paste_counter(edit_cmd: EditCmd):
     # paste_items then increments the counter for the *next* paste.
     edit_cmd.paste_items()
     assert edit_cmd._paste_counter == 1
+
+
+@pytest.fixture
+def notices(doc_editor: DocEditor):
+    """The messages the editor asks the window to show."""
+    received: list[str] = []
+
+    def on_notice(sender, message, **kwargs):
+        received.append(message)
+
+    # Blinker holds the handler weakly; this frame keeps it alive.
+    doc_editor.notification_requested.connect(on_notice)
+    yield received
+
+
+def test_paste_into_a_hidden_layer_is_refused_with_a_notice(
+    edit_cmd: EditCmd, doc_editor: DocEditor, notices: list[str]
+):
+    layer = doc_editor.doc.active_layer
+    wp = WorkPiece(name="wp")
+    edit_cmd.add_items([wp])
+    edit_cmd.copy_items([wp])
+    layer.set_visible(False)
+    undo_depth = len(doc_editor.history_manager.undo_stack)
+
+    assert edit_cmd.paste_items() == []
+
+    assert layer.get_content_items() == [wp]
+    assert len(doc_editor.history_manager.undo_stack) == undo_depth
+    assert len(notices) == 1 and "hidden" in notices[0]
+
+
+def test_duplicate_into_a_hidden_layer_is_refused_with_a_notice(
+    edit_cmd: EditCmd, doc_editor: DocEditor, notices: list[str]
+):
+    layer = doc_editor.doc.active_layer
+    wp = WorkPiece(name="wp")
+    edit_cmd.add_items([wp])
+    layer.set_visible(False)
+    undo_depth = len(doc_editor.history_manager.undo_stack)
+
+    assert edit_cmd.duplicate_items([wp]) == []
+
+    assert layer.get_content_items() == [wp]
+    assert len(doc_editor.history_manager.undo_stack) == undo_depth
+    assert len(notices) == 1 and "hidden" in notices[0]

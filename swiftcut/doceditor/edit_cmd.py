@@ -44,6 +44,22 @@ class EditCmd:
         """Checks if there is anything on the clipboard to paste."""
         return len(self._clipboard_snapshot) > 0
 
+    def _refuse_hidden_layer(self, layer: "Layer") -> bool:
+        """
+        A hidden layer is inert: nothing is pasted or duplicated into
+        it. Says so, and returns True, when the layer is hidden.
+        """
+        if layer.visible:
+            return False
+        self._editor.notification_requested.send(
+            self,
+            message=_(
+                'Layer "{name}" is hidden. Show it to paste or '
+                "duplicate into it."
+            ).format(name=layer.name),
+        )
+        return True
+
     def _get_top_level_items(
         self, all_items: Sequence[DocItem]
     ) -> list[DocItem]:
@@ -106,13 +122,12 @@ class EditCmd:
         Returns:
             A list of the newly created top-level items.
         """
-        if not self.can_paste():
+        target_layer = self._editor.doc.active_layer
+        if self._refuse_hidden_layer(target_layer) or not self.can_paste():
             return []
 
         history = self._editor.history_manager
         newly_pasted_items = []
-
-        target_layer = self._editor.doc.active_layer
 
         with history.transaction(_("Paste item(s)")) as t:
             offset_x = self._paste_increment_mm[0] * self._paste_counter
@@ -176,6 +191,8 @@ class EditCmd:
         newly_duplicated_items = []
 
         target_layer = self._editor.doc.active_layer
+        if self._refuse_hidden_layer(target_layer):
+            return []
 
         top_level_items = self._get_top_level_items(items)
 

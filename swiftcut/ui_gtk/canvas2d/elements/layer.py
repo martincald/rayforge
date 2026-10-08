@@ -84,6 +84,28 @@ class LayerElement(CanvasElement):
 
         self.children.sort(key=sort_key)
 
+    def get_elem_hit(
+        self,
+        world_x: float,
+        world_y: float,
+        selectable: bool = False,
+        strokes_only: bool = False,
+    ) -> CanvasElement | None:
+        """A hidden layer is inert: nothing on it can be hit."""
+        if not self.visible:
+            return None
+        return super().get_elem_hit(world_x, world_y, selectable, strokes_only)
+
+    def _drop_from_selection(self):
+        """Removes this layer's elements from the canvas selection."""
+        assert self.canvas
+        editing = self.canvas.edit_context
+        if editing and editing in self.get_all_children_recursive():
+            self.canvas.leave_edit_mode()
+        if any(self.get_selected()):
+            self.unselect_all()
+            self.canvas._finalize_selection_state()
+
     def sync_with_model(
         self,
         sender,
@@ -155,6 +177,14 @@ class LayerElement(CanvasElement):
 
             if new_elem:
                 self.add(new_elem)
+
+        # A hidden layer is inert: its shapes are not selectable, and
+        # hiding it drops them from the selection.
+        for elem in self.children:
+            if isinstance(elem, (WorkPieceElement, GroupElement)):
+                elem.selectable = self.data.visible
+        if not self.data.visible:
+            self._drop_from_selection()
 
         if self.data.workflow is None:
             return  # layers without workflow

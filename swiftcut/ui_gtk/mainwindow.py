@@ -2212,8 +2212,12 @@ class MainWindow(Adw.ApplicationWindow):
         Checks for image data on system clipboard first, then falls back
         to workpiece paste.
         """
-        # Priority 1: Check if system clipboard contains image data
-        if self.drag_drop_cmd.handle_clipboard_paste():
+        # Priority 1: Check if system clipboard contains image data. A
+        # hidden layer takes nothing: paste_items below says so.
+        if (
+            self.doc_editor.doc.active_layer.visible
+            and self.drag_drop_cmd.handle_clipboard_paste()
+        ):
             return
 
         # Priority 2: Standard workpiece paste
@@ -2254,7 +2258,8 @@ class MainWindow(Adw.ApplicationWindow):
             newly_duplicated = self.doc_editor.edit.duplicate_items(
                 list(selection)
             )
-            self.surface.select_items(newly_duplicated)
+            if newly_duplicated:
+                self.surface.select_items(newly_duplicated)
 
     def on_menu_remove(self, action, param):
         items = self.surface.get_selected_items()

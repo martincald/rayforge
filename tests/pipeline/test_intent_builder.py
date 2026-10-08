@@ -320,6 +320,29 @@ def test_hidden_steps_excluded(isolated_machine):
     assert job_key() not in keys
 
 
+def test_hidden_layer_is_still_in_the_job_until_owner_approves_exclusion(
+    isolated_machine,
+):
+    """
+    Characterization, not a rule: hiding a layer makes it inert on the
+    canvas, but the job still cuts it (only step.visible is checked,
+    and website/docs/features/multi-layer.md says so). Excluding hidden
+    layers changes the protected job path and waits for the owner. If
+    approved, flip these asserts to `not in`.
+    """
+    step = _TestStep(name="s1")
+    wp1 = WorkPiece(name="wp1")
+    doc = _make_doc(step, wp1)
+    doc.active_layer.set_visible(False)
+
+    nodes = IntentBuilder(machine=isolated_machine).build(doc)
+    keys = [n.key for n in nodes]
+
+    assert workpiece_key(wp1.uid, step.uid) in keys
+    assert step_key(step.uid) in keys
+    assert job_key() in keys
+
+
 def test_layers_without_workpieces_skipped_for_compute(isolated_machine):
     step = _TestStep(name="s1")
     doc = Doc()
