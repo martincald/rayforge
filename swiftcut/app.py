@@ -1,6 +1,5 @@
 # flake8: noqa: E402
 import argparse
-import asyncio
 import gettext
 import locale
 import logging
@@ -727,6 +726,9 @@ def main():
     # wait for it.
     loop = swiftcut.shared.tasker.task_mgr.loop
     if loop.is_running():
+        # Imported here: at the top it would delay the splash.
+        import asyncio
+
         logger.info(f"Running async shutdown on loop {loop}...")
         future = asyncio.run_coroutine_threadsafe(shutdown_async(), loop)
         try:
