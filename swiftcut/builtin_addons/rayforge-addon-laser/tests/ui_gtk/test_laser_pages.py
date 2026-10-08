@@ -150,6 +150,29 @@ def test_raster_page_builds(editor, laser_machine, ui_context):
     assert isinstance(page, StepSettingsPage)
 
 
+def _row_titles(widget) -> list[str]:
+    titles = []
+    child = widget.get_first_child()
+    while child is not None:
+        if isinstance(child, Adw.PreferencesRow):
+            titles.append(child.get_title())
+        titles.extend(_row_titles(child))
+        child = child.get_next_sibling()
+    return titles
+
+
+@pytest.mark.ui
+def test_raster_depth_levels_have_no_z_step(editor, laser_machine, ui_context):
+    """The Ruida encoder has no Z: depth levels are passes only."""
+    step_cls = step_registry.get("EngraveStep")
+    assert step_cls is not None
+    page = RasterSettingsPage(editor, step_cls.create(ui_context))
+
+    titles = _row_titles(page)
+    assert "Number of Depth Levels" in titles
+    assert not any("Z Step" in title for title in titles)
+
+
 @pytest.mark.ui
 def test_dialog_uses_contour_page(editor, laser_machine, ui_context):
     dialog = StepSettingsDialog(editor, _contour_step(ui_context))

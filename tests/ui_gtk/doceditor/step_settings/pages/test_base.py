@@ -7,8 +7,6 @@ import pytest
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from swiftcut.machine.models.machine import Machine
-from swiftcut.machine.models.spindle import SpindleHead
 from swiftcut.ui_gtk.doceditor.step_settings.pages import StepSettingsPage
 from swiftcut.ui_gtk.doceditor.step_settings.rows import CutSpeedRow, SpinRow
 
@@ -28,7 +26,7 @@ def test_add_section_accepts_row_class_and_instance(editor, step):
         CutSpeedRow,
         SpinRow(editor, step, "count", "Count", None, 1, 10, 1, 0),
     )
-    assert len(page._sections) == 3
+    assert len(page._sections) == 2
 
 
 @pytest.mark.ui
@@ -46,22 +44,9 @@ def test_get_selected_head(editor, step, machine):
 
 
 @pytest.mark.ui
-def test_cooling_section_hidden_for_laser_head(editor, step, machine):
+def test_no_cooling_section(editor, step):
+    """Coolant is a spindle option; the Ruida laser has no coolant."""
     page = StepSettingsPage(editor, step)
-    assert page.coolant_section.get_visible() is False
-
-
-@pytest.mark.ui
-def test_cooling_section_visible_for_spindle_head(editor, step, ui_context):
-    machine = Machine(ui_context)
-    machine.set_axis_extents(200, 150)
-    head = SpindleHead()
-    head.name = "Spindle"
-    machine.heads.clear()
-    machine.add_head(head)
-    ui_context.machine_mgr.machines.clear()
-    ui_context.machine_mgr.add_machine(machine)
-    ui_context.config.set_machine(machine)
-
-    page = StepSettingsPage(editor, step)
-    assert page.coolant_section.get_visible() is True
+    assert [section.get_title() for section in page._sections] == [
+        "General"
+    ]

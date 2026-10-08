@@ -187,20 +187,6 @@ class RasterSettingsPage(LaserStepSettingsPage):
         )
         self._add(engrave_group, self.levels_row)
 
-        self.z_step_row = LengthSpinRow(
-            _("Z Step-Down per Level"),
-            upper=50,
-            value_in_base=step.z_step_down,
-        )
-        self._add(engrave_group, self.z_step_row)
-        self.z_step_row.value_changed.connect(
-            lambda r: self._debounce(
-                self._on_param_changed,
-                "z_step_down",
-                r.get_value_in_base_units(),
-            )
-        )
-
         self.angle_incr_row = AngleSpinRow(
             _("Rotate Angle Per Pass"),
             _("Degrees to rotate each successive pass"),
@@ -524,7 +510,6 @@ class RasterSettingsPage(LaserStepSettingsPage):
         self.dither_algorithm_row.set_visible(is_dither)
 
         self.levels_row.set_visible(is_multi_pass)
-        self.z_step_row.set_visible(is_multi_pass)
         self.angle_incr_row.set_visible(is_multi_pass)
 
         self._on_param_changed("depth_mode", selected_mode.name)

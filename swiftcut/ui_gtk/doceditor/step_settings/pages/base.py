@@ -6,11 +6,10 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from gi.repository import Adw, GLib, Gtk
 
 from .....core.undo.property_cmd import ChangePropertyCommand
-from .....machine.models.spindle import SpindleHead
 from .....shared.util.glib import DebounceMixin
 from ....shared.preferences_page import TrackedPreferencesPage
 from ..recipe_control_widget import RecipeControlWidget
-from ..rows import CoolantRow, StepRow
+from ..rows import StepRow
 
 if TYPE_CHECKING:
     from .....doceditor.editor import DocEditor
@@ -53,7 +52,6 @@ class StepSettingsPage(DebounceMixin, TrackedPreferencesPage):
         self._rows: list[Any] = []
         if self.show_identity:
             self._add_identity_section()
-            self._add_cooling_section()
 
     def _add_identity_section(self):
         name_row = Adw.EntryRow(title=_("Name"))
@@ -76,22 +74,6 @@ class StepSettingsPage(DebounceMixin, TrackedPreferencesPage):
 
     def _on_recipe_applied(self, *args):
         self._sync_widgets_to_model()
-
-    def _add_cooling_section(self):
-        """Add the coolant section, hidden unless a spindle head is used."""
-        self.coolant_row = CoolantRow(self.editor, self.step)
-        self.coolant_section = self.add_section(
-            _("Cooling"),
-            self.coolant_row,
-            description=_("Coolant used while this operation runs."),
-        )
-        self.step.updated.connect(self._update_cooling_section_visibility)
-        self._update_cooling_section_visibility()
-
-    def _update_cooling_section_visibility(self, *args):
-        self.coolant_section.set_visible(
-            isinstance(self.get_selected_head(), SpindleHead)
-        )
 
     def get_machine(self):
         return getattr(self.editor.context, "machine", None)
