@@ -73,17 +73,21 @@ def _fresh_config(scratch):
 def cold_start(scratch):
     """Process spawn -> main window mapped, in seconds.
 
-    There is no splash outside a PyInstaller bundle (app.py:172-186
-    only closes one if ``pyi_splash`` imports), so from source the
-    honest equivalent of "splash shown" is the spawn itself. The
-    uiscript stamps ``time.time()`` from the window's map handler and
-    quits, so the delta is spawn -> first frame on screen.
+    The uiscript stamps ``time.time()`` from the window's map handler
+    and quits, so the delta is spawn -> first frame on screen. On macOS
+    swiftcut/splash.py stamps the moment its window is up, which gives
+    spawn -> splash (``splash_s``). Elsewhere there is no splash from
+    source (a PyInstaller bundle's is raised by its bootloader), so the
+    honest equivalent of "splash shown" is the spawn itself.
     """
     mark = scratch / "mapped.stamp"
+    splash_mark = scratch / "splash.stamp"
     samples = []
+    splash_samples = []
     for _ in range(RUNS):
-        if mark.exists():
-            mark.unlink()
+        for stamp in (mark, splash_mark):
+            if stamp.exists():
+                stamp.unlink()
         started = time.time()
         proc = subprocess.run(
             [
@@ -96,7 +100,12 @@ def cold_start(scratch):
                 str(ROOT / "scripts" / "perf" / "mark_mapped.py"),
             ],
             cwd=ROOT,
-            env=_env({"PERF_MARK_FILE": str(mark)}),
+            env=_env(
+                {
+                    "PERF_MARK_FILE": str(mark),
+                    "PERF_SPLASH_MARK_FILE": str(splash_mark),
+                }
+            ),
             capture_output=True,
             timeout=300,
         )
@@ -104,7 +113,15 @@ def cold_start(scratch):
             tail = proc.stderr.decode("utf-8", "replace")[-2000:]
             raise RuntimeError(f"window never mapped:\n{tail}")
         samples.append(float(mark.read_text(encoding="utf-8")) - started)
-    return {"cold_start_s": _median(samples), "samples": samples}
+        if splash_mark.exists():
+            shown = float(splash_mark.read_text(encoding="utf-8"))
+            splash_samples.append(shown - started)
+    return {
+        "cold_start_s": _median(samples),
+        "samples": samples,
+        "splash_s": _median(splash_samples),
+        "splash_samples": splash_samples,
+    }
 
 
 def import_time_profile(scratch):

@@ -314,6 +314,13 @@ PY
         fi
     fi
 
+    # The splash image swiftcut/splash.py shows, the same one the
+    # Windows build makes. Without it the app starts with no splash
+    # (never a stale one from an earlier build).
+    rm -f swiftcut_splash.png
+    "$VENV_PY" scripts/win/win_create_splash.py || \
+        echo "Splash image failed; building without a splash." >&2
+
     "$VENV_PY" -m PyInstaller --clean --noconfirm SwiftCut.macos.spec
 
     APP_ROOT="dist/SwiftCut.app/Contents"

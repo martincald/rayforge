@@ -20,6 +20,7 @@ for i, arg in enumerate(sys.argv):
         os.environ["RAYFORGE_CONFIG_DIR"] = sys.argv[i + 1]
         break
 
+from swiftcut import splash
 from swiftcut.config import LOG_DIR
 from swiftcut.logging_setup import setup_logging
 
@@ -171,7 +172,8 @@ def _show_error_dialog(title, message):
 
 def _close_splash():
     """
-    Closes the PyInstaller splash screen, if this is a bundle that has one.
+    Closes the splash: swiftcut.splash on macOS, otherwise the PyInstaller
+    splash screen, if this is a bundle that has one.
 
     Also stops worker subprocesses from raising a splash of their own: they
     re-execute this same executable via multiprocessing 'spawn', so their
@@ -180,6 +182,7 @@ def _close_splash():
     children to inherit it.
     """
     os.environ["PYINSTALLER_SUPPRESS_SPLASH_SCREEN"] = "1"
+    splash.close()
     # PyInstaller has no splash screen on macOS, and importing
     # pyi_splash in a bundle without one logs a traceback.
     if sys.platform == "darwin":
@@ -209,6 +212,8 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.error(
         "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
     )
+    # A splash left up would hide that startup failed.
+    splash.close()
 
     # Format rather than print: in a windowed launch sys.stderr can be None,
     # and traceback.print_exception then writes the traceback nowhere.
@@ -240,6 +245,12 @@ def main():
 
     # Set the global exception handler.
     sys.excepthook = handle_exception
+
+    # The macOS splash goes up before the heavy imports below; the main
+    # window's map handler takes it down again. In the bundle the first
+    # runtime hook has already spawned it, and this spawns nothing.
+    if not {"-h", "--help", "--version"} & set(sys.argv[1:]):
+        splash.spawn(base_dir / "swiftcut_splash.png")
 
     # We need Adw for the class definition, so this one import is okay here.
     import gi
@@ -673,6 +684,7 @@ def main():
             "to come to the front and exiting."
         )
         instance_guard.notify_primary()
+        splash.close()
         return 0
 
     # Run application
@@ -685,6 +697,7 @@ def main():
     exit_code = app.run(None)
     logger.info("app.run() returned with exit_code=%s", exit_code)
     if app.win is None:
+        splash.close()
         if _unhandled_exception:
             logger.error(
                 "Application startup failed before creating a window."

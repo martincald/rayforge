@@ -11,19 +11,22 @@ transparency - an antialiased edge would blend blue into magenta and
 leave a fringe - so the corner mask is thresholded to hard pixels,
 which is the "only sharp transparent image corners are possible"
 limitation PyInstaller documents.
+
+The macOS build bundles the same image for swiftcut/splash.py; there
+the pixi environment has no Rsvg typelib and no Segoe UI, so the
+glyph goes through librsvg's own rsvg-convert (as
+scripts/mac/mac_create_icon.sh does) and the wordmark uses the
+system font.
 """
 
 import io
+import subprocess
 from pathlib import Path
 
 import cairo
 import gi
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-
-gi.require_version("Rsvg", "2.0")
-
-from gi.repository import Rsvg  # noqa: E402
 
 here = Path(__file__).parent.parent.parent
 source_path = here / "swiftcut/resources/icons/org.ilab.SwiftCut.svg"
@@ -49,6 +52,18 @@ def render_glyph(size):
     start = svg.index('<g id="background"')
     end = svg.index('<g id="swift"')
     bare = svg[:start] + svg[end:]
+
+    try:
+        gi.require_version("Rsvg", "2.0")
+    except ValueError:
+        png = subprocess.run(
+            ["rsvg-convert", "-w", str(size), "-h", str(size)],
+            input=bare.encode("utf-8"),
+            capture_output=True,
+            check=True,
+        ).stdout
+        return Image.open(io.BytesIO(png)).convert("RGBA")
+    from gi.repository import Rsvg
 
     handle = Rsvg.Handle.new_from_data(bare.encode("utf-8"))
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
@@ -116,7 +131,11 @@ except OSError:
     try:
         font = ImageFont.truetype("segoeuib.ttf", 40)
     except OSError:
-        font = ImageFont.load_default()
+        try:
+            font = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 40)
+            font.set_variation_by_name("Semibold")
+        except (OSError, ValueError):
+            font = ImageFont.load_default()
 
 draw = ImageDraw.Draw(canvas)
 text = "SwiftCut"

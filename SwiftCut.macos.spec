@@ -50,6 +50,10 @@ _datas = [
 ]
 if _use_car:
     _datas.append(('Assets.car', '.'))
+# The splash image for swiftcut/splash.py, made by mac_build.sh; if it
+# could not be made, the app starts without a splash.
+if os.path.exists('swiftcut_splash.png'):
+    _datas.append(('swiftcut_splash.png', '.'))
 
 a = Analysis(
     ['swiftcut/app.py'],
@@ -66,8 +70,15 @@ a = Analysis(
             },
         },
     },
-    runtime_hooks=['scripts/mac/pyi_rth_cffi_bundle.py'],
-    excludes=[],
+    # The splash hook must stay first: see the hook itself.
+    runtime_hooks=[
+        'scripts/mac/pyi_rth_splash.py',
+        'scripts/mac/pyi_rth_cffi_bundle.py',
+    ],
+    # Only PyInstaller's own pip install brings setuptools in (cffi's
+    # compile-time shim and pyi_rth_setuptools import it); left in, every
+    # frozen process imports it at startup.
+    excludes=['setuptools'],
     noarchive=False,
     optimize=0,
 )
