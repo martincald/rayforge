@@ -12,6 +12,7 @@ from swiftcut.doceditor.editor import DocEditor
 from swiftcut.machine.models.laser import Laser
 from swiftcut.machine.models.machine import Machine
 from swiftcut.shared import tasker
+from tests.conftest import _seed_inert_machine
 
 
 class FakeStep(Step):
@@ -68,6 +69,7 @@ def ui_context(ui_task_mgr, monkeypatch, tmp_path):
     monkeypatch.setattr(tasker.task_mgr, "_instance", ui_task_mgr)
 
     context = get_context()
+    _seed_inert_machine(temp_machine_dir, context)
     yield context
 
     asyncio.run(context.shutdown())

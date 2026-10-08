@@ -1,9 +1,14 @@
+from collections.abc import Sequence
 from gettext import gettext as _
+from typing import TYPE_CHECKING
 
 from gi.repository import Gio, GLib, Gtk
 
 from .action_registry import action_registry
 from .haptics import haptics
+
+if TYPE_CHECKING:
+    from ..machine.models.machine import Machine
 
 
 class MainMenu(Gio.Menu):
@@ -173,6 +178,10 @@ class MainMenu(Gio.Menu):
 
         # Machine Menu
         machine_menu = Gio.Menu()
+        # The machine switcher; the machine panel's header shows it too.
+        self.machines_section = Gio.Menu()
+        machine_menu.append_section(None, self.machines_section)
+
         jog_group = Gio.Menu()
         jog_group.append(_("Home"), "win.machine-home")
         jog_group.append(_("Frame"), "win.machine-frame")
@@ -248,6 +257,16 @@ class MainMenu(Gio.Menu):
         for info in items:
             if info.label:
                 group.append(info.label, f"win.{info.action_name}")
+
+    def update_machines_menu(self, machines: Sequence["Machine"]):
+        """Rebuilds the machine switcher: one radio item per machine."""
+        self.machines_section.remove_all()
+        for machine in machines:
+            item = Gio.MenuItem.new(machine.name, None)
+            item.set_action_and_target_value(
+                "win.select-machine", GLib.Variant.new_string(machine.id)
+            )
+            self.machines_section.append_item(item)
 
     def update_recent_files_menu(self, recent_infos: list[Gtk.RecentInfo]):
         """Clears and rebuilds the dynamic recent files menu."""

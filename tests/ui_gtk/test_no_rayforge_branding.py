@@ -23,11 +23,7 @@ anywhere in the app by design and would be exempted here via
     it never trips this gate;
   - the MIT attribution in the About dialog (see
     swiftcut/ui_gtk/about.py), which must name Rayforge and its author
-    because the MIT license requires the attribution to stay;
-  - the one-time "Import settings from Rayforge" action in Device
-    Settings (see swiftcut/ui_gtk/machine/device_settings_page.py,
-    `import_legacy_banner`), which must name "Rayforge" so the user
-    knows what it is offering to import from.
+    because the MIT license requires the attribution to stay.
 """
 
 import ast
@@ -75,9 +71,6 @@ UI_TEXT_CALLS = {
 # Exact user-visible strings that are allowed to contain "rayforge" or
 # "Rayforge". See the module docstring for why each entry is here.
 ALLOWLIST: set[str] = {
-    "A Rayforge configuration from before the rename was found. Import"
-    " its device settings?",
-    "Import settings from Rayforge",
     # The MIT license requires us to keep the attribution to Rayforge.
     "Based on Rayforge by Samuel Abels, used under the MIT License.",
 }

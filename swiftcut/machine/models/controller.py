@@ -43,6 +43,7 @@ class MachineController:
         machine: "Machine",
         context: "RayforgeContext",
         scheduler,
+        released: bool = False,
     ):
         self.machine = machine
         self.context = context
@@ -78,6 +79,12 @@ class MachineController:
         # from status reports after a UI-initiated WCS switch.
         self._confirmed_active_wcs: str | None = None
 
+        # Set by release() when another machine became the active one,
+        # or from the start for a bundled machine that is not active:
+        # rebuilds still apply settings edits but never connect. The
+        # manager clears it when this machine is active again.
+        self._released = released
+
         # Listen to machine's changed signal to rebuild driver when
         # driver configuration changes
         self.machine.changed.connect(self._on_machine_changed)
@@ -96,6 +103,12 @@ class MachineController:
 
     async def connect(self):
         """Public method to connect the driver."""
+        if self._released:
+            logger.info(
+                f"Machine '{self.machine.name}' is not active; not "
+                "connecting"
+            )
+            return
         if self.driver is not None:
             await self.driver.connect()
 
@@ -108,6 +121,32 @@ class MachineController:
                 self.rebuild_driver,
                 key=(self.machine.id, "rebuild-driver"),
             )
+
+    async def release(self):
+        """
+        Disconnects the driver for good, when another machine becomes
+        the active one. Unlike disconnect(), nothing reconnects it
+        afterwards: until the manager makes this machine active again,
+        a rebuild (a settings edit in a dialog still open on it) builds
+        a driver but never connects it.
+        """
+        # Set first, so a rebuild in flight does not connect either.
+        # Forgetting the settings makes the rebuild that makes this
+        # machine active again build and connect a fresh driver.
+        self._released = True
+        self._driver_settings = None
+        # Cancelled before taking the lock: a rebuild in flight holds it.
+        for task in (
+            "driver-connect",
+            "rebuild-driver",
+            "rebuild-driver-on-change",
+            "rebuild-driver-on-init",
+            "initial-connect",
+        ):
+            task_mgr.cancel_task((self.machine.id, task))
+        async with self._rebuild_lock:
+            await self.driver.cleanup()
+            self._reset_status()
 
     async def shutdown(self):
         """
@@ -187,8 +226,8 @@ class MachineController:
     async def rebuild_driver(self, ctx: Optional["ExecutionContext"] = None):
         """
         Instantiates and sets up the driver based on the machine's current
-        configuration. Connects if auto_connect is enabled and the new driver
-        is not NoDeviceDriver.
+        configuration. Connects if auto_connect is enabled, the new driver
+        is not NoDeviceDriver and the controller is not released.
 
         One settings change asks for two rebuilds: set_driver_args'
         own and this controller's change listener. The second finds
@@ -256,7 +295,16 @@ class MachineController:
             if old_driver:
                 await old_driver.cleanup()
 
-            if self.machine.auto_connect and not isinstance(
+            if self._released:
+                # Another machine is active and may hold the port.
+                # Forget the settings, so the rebuild that makes this
+                # machine active again builds and connects a driver.
+                self._driver_settings = None
+                logger.info(
+                    f"Machine '{self.machine.name}' (id:{self.machine.id}) "
+                    f"is not active; not connecting after driver rebuild"
+                )
+            elif self.machine.auto_connect and not isinstance(
                 new_driver, NoDeviceDriver
             ):
                 logger.info(

@@ -7,7 +7,6 @@ from typing import cast
 from blinker import Signal
 from gi.repository import Adw, GLib, Gtk
 
-from ... import config
 from ...context import get_context
 from ...logging_setup import get_current_log_file
 from ...machine.driver.ruida.ruida_driver import RuidaDriver
@@ -52,24 +51,6 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         # Create a single main group for all static content
         self.main_group = Adw.PreferencesGroup()
         self.add(self.main_group)
-
-        # One-time offer to copy device settings over from a
-        # pre-rebrand "rayforge" config dir, for the case where the
-        # automatic startup migration (swiftcut/config.py) found the
-        # swiftcut config dir already populated and left it alone
-        # rather than risk overwriting it. Copy-only, never clobbers
-        # an existing machine profile; see config.import_legacy_config.
-        self.import_legacy_banner = Adw.Banner(
-            title=_(
-                "A Rayforge configuration from before the rename was"
-                " found. Import its device settings?"
-            ),
-            button_label=_("Import settings from Rayforge"),
-        )
-        self.import_legacy_banner.connect(
-            "button-clicked", self._on_import_legacy_clicked
-        )
-        self.main_group.add(self.import_legacy_banner)
 
         # Firewall hint, shown while the connection is in the ERROR
         # state. Windows-only: the message names a Windows-specific
@@ -261,23 +242,13 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             logger.debug("_update_ui_state: Machine removed, skipping.")
             return
 
-        # Control banners
-        self.import_legacy_banner.set_revealed(
-            config.should_offer_legacy_import(
-                config.LEGACY_CONFIG_DIR, config.CONFIG_DIR
-            )
-        )
-
         self.firewall_row.set_visible(
             sys.platform == "win32"
             and self.machine.connection_status == TransportStatus.ERROR
         )
 
         # The main group is visible if any of its contents are.
-        self.main_group.set_visible(
-            self.import_legacy_banner.get_revealed()
-            or self.firewall_row.get_visible()
-        )
+        self.main_group.set_visible(self.firewall_row.get_visible())
 
         self._update_diagnostics()
         logger.debug("_update_ui_state: Finished.")
@@ -397,30 +368,6 @@ class DeviceSettingsPage(TrackedPreferencesPage):
 
         log_file = get_current_log_file()
         self.diag_log_row.set_subtitle(str(log_file) if log_file else _("N/A"))
-
-    def _on_import_legacy_clicked(self, _banner):
-        """
-        Handler for the "Import settings from Rayforge" banner button.
-
-        Copy-only and non-destructive: `config.import_legacy_config`
-        never overwrites anything already present in the swiftcut
-        config dir, so an existing/active machine profile is never
-        clobbered - a same-named legacy file is simply skipped. Any
-        new machine files it does copy in are picked up immediately
-        via `load_new_machines` without disturbing already-loaded
-        machines. Writes a migration marker, so the banner will not be
-        offered again regardless of whether anything new was found.
-        """
-        logger.info("Importing legacy config from Rayforge.")
-        copied = config.import_legacy_config(
-            config.LEGACY_CONFIG_DIR, config.CONFIG_DIR
-        )
-        get_context().machine_mgr.load_new_machines()
-        self._update_ui_state()
-        if copied:
-            self.show_toast.send(self, message=_("Settings imported."))
-        else:
-            self.show_toast.send(self, message=_("Nothing new to import."))
 
     def _on_reset_ruida_ports_clicked(self, _button):
         """

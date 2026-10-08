@@ -10,6 +10,7 @@ from swiftcut.context import get_context
 from swiftcut.shared import tasker
 from swiftcut.shared.tasker.manager import TaskManager
 from swiftcut.shared.util.glib import idle_add
+from tests.conftest import _seed_inert_machine
 
 
 @pytest.fixture
@@ -41,6 +42,7 @@ def ui_context(ui_task_mgr, monkeypatch, tmp_path):
     monkeypatch.setattr(tasker.task_mgr, "_instance", ui_task_mgr)
 
     context = get_context()
+    _seed_inert_machine(temp_machine_dir, context)
     yield context
 
     asyncio.run(context.shutdown())

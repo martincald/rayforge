@@ -399,3 +399,42 @@ def test_ilab_614_is_picked_first_whatever_the_ids(lite_context, tmp_path):
 
     assert picked.name == "ilab-614"
     assert picked.id == ilab_614_id
+
+
+def test_a_machine_beside_the_bundled_ones_is_never_active(
+    tmp_path, task_mgr, monkeypatch
+):
+    """
+    config.yaml naming a drivered machine that is not bundled, beside
+    ilab-614, makes ilab-614 active: the switcher lists only the
+    bundled machines, so the other could never be switched back to.
+    """
+    from swiftcut import config
+    from swiftcut import context as context_module
+    from swiftcut.context import get_context
+    from swiftcut.shared import tasker
+
+    config_dir = tmp_path / "config"
+    machine_dir = config_dir / "machines"
+    monkeypatch.setattr(config, "CONFIG_DIR", config_dir)
+    monkeypatch.setattr(config, "DIALECT_DIR", config_dir / "dialects")
+    monkeypatch.setattr(config, "MACHINE_DIR", machine_dir)
+    monkeypatch.setattr(tasker.task_mgr, "_instance", task_mgr)
+    machine_dir.mkdir(parents=True)
+    other_id = "0ther000-0000-4000-8000-000000000001"
+    (machine_dir / f"{other_id}.yaml").write_text(
+        "machine:\n  name: Other Laser\n  driver: NoDeviceDriver\n"
+    )
+    (machine_dir / "20fb2d0b-9637-4761-9331-286479d6307a.yaml").write_bytes(
+        PROFILE_YAML.read_bytes()
+    )
+    (config_dir / "config.yaml").write_text(f"machine: {other_id}\n")
+
+    try:
+        context = get_context()
+        context.initialize_lite_context(machine_dir)
+
+        assert context.config.machine.name == "ilab-614"
+        assert context.machine_mgr.get_machine_by_id(other_id) is not None
+    finally:
+        context_module._context_instance = None

@@ -227,11 +227,10 @@ class DocEditor:
         self.pipeline.set_cache_budget_bytes(config.cache_budget_bytes)
 
         new_machine = config.machine
-        if new_machine and new_machine is not self.pipeline.machine:
-            if self.context.machine:
-                self.context.machine.changed.disconnect(
-                    self._on_machine_changed
-                )
+        old_machine = self.pipeline.machine
+        if new_machine and new_machine is not old_machine:
+            if old_machine:
+                old_machine.changed.disconnect(self._on_machine_changed)
             self.pipeline.set_machine(new_machine)
             new_machine.changed.connect(self._on_machine_changed)
             self._on_machine_changed(self)

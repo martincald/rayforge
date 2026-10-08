@@ -1,4 +1,5 @@
 # flake8: noqa: E402
+import copy
 import logging
 import os
 import sys
@@ -9,6 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
+import yaml
 
 # Platform-Specific Setup
 if sys.platform.startswith("linux"):
@@ -31,6 +33,7 @@ from swiftcut.context import get_context
 from swiftcut.machine.cmd import MachineCmd
 from swiftcut.machine.driver.driver import DeviceState, DeviceStatus
 from swiftcut.machine.transport import TransportStatus
+from swiftcut.shared.tasker import task_mgr
 from swiftcut.ui_gtk.mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -718,3 +721,152 @@ def test_help_menu_has_no_donate_entry(app_and_window):
 
     assert win.lookup_action("about") is not None
     assert win.lookup_action("donate") is None
+
+
+# The machine switcher. Both bundled profiles are put on the inert
+# NoDeviceDriver, so a switch runs end to end with no hardware.
+
+
+@pytest.fixture
+def bundled_machines(ui_context_initializer):
+    """ilab-614 and ilab-626 on the NoDeviceDriver, ilab-614 active."""
+    from swiftcut.machine.models.default_profile import (
+        ILAB_614_PROFILE,
+        ILAB_626_PROFILE,
+    )
+    from swiftcut.machine.models.machine import Machine
+
+    context = ui_context_initializer
+    machines = []
+    for profile in (ILAB_614_PROFILE, ILAB_626_PROFILE):
+        data = copy.deepcopy(profile)
+        data["machine"]["driver"] = "NoDeviceDriver"
+        data["machine"]["auto_connect"] = False
+        machine = Machine.from_dict(data, context=context)
+        context.machine_mgr.add_machine(machine)
+        machines.append(machine)
+    context.config.set_machine(machines[0])
+    return machines
+
+
+def _wait_for(condition, timeout_sec: float = 10.0):
+    end_time = time.monotonic() + timeout_sec
+    while not condition():
+        assert time.monotonic() < end_time, "timed out"
+        process_events_for_duration(0.05)
+
+
+def _settled():
+    return not task_mgr.has_tasks()
+
+
+def _menu_labels(menu) -> list[str]:
+    return [
+        menu.get_item_attribute_value(
+            i, "label", GLib.VariantType.new("s")
+        ).get_string()
+        for i in range(menu.get_n_items())
+    ]
+
+
+@pytest.mark.ui
+def test_machine_menu_and_panel_list_exactly_the_two_machines(
+    bundled_machines, app_and_window
+):
+    """The inert placeholder machine is never offered."""
+    _app, win = app_and_window
+    ilab_614, ilab_626 = bundled_machines
+    section = win.menu_model.machines_section
+
+    assert _menu_labels(section) == ["ilab-614", "ilab-626"]
+    assert [
+        section.get_item_attribute_value(
+            i, "target", GLib.VariantType.new("s")
+        ).get_string()
+        for i in range(section.get_n_items())
+    ] == [ilab_614.id, ilab_626.id]
+    machine_menu = _submenu(win.menu_model, "_Machine")
+    assert _menu_actions(machine_menu).count("win.select-machine") == 2
+
+    button = win.bottom_panel.machine_button
+    assert button.get_menu_model() is section
+    assert button.get_visible()
+    assert button.get_label() == "ilab-614"
+    assert win.bottom_panel.wcs_group.get_title() == "Machine"
+    assert win.action_manager.get_action(
+        "select-machine"
+    ).get_state().get_string() == (ilab_614.id)
+
+
+@pytest.mark.ui
+def test_without_bundled_machines_the_switcher_is_hidden(app_and_window):
+    _app, win = app_and_window
+
+    assert win.menu_model.machines_section.get_n_items() == 0
+    assert not win.bottom_panel.machine_button.get_visible()
+
+
+@pytest.mark.ui
+def test_select_machine_switches_the_machine_bed_and_header(
+    bundled_machines, app_and_window
+):
+    _app, win = app_and_window
+    ilab_614, ilab_626 = bundled_machines
+    context = get_context()
+    action = win.action_manager.get_action("select-machine")
+    assert win.surface._tracked_axis_extents == (1400.0, 900.0)
+    _wait_for(_settled)
+    win._update_actions_and_ui()
+    assert action.get_enabled()
+
+    win.activate_action(
+        "win.select-machine", GLib.Variant.new_string(ilab_626.id)
+    )
+    _wait_for(lambda: context.config.machine is ilab_626 and _settled())
+
+    assert win.surface._tracked_axis_extents == (900.0, 900.0)
+    assert win.bottom_panel.machine_button.get_label() == "ilab-626"
+    assert action.get_state().get_string() == ilab_626.id
+    assert win.doc_editor.pipeline.machine is ilab_626
+    # The old machine is released, and nothing listens to it any more.
+    assert not context.machine_mgr.controllers[ilab_614.id].driver.did_setup
+    assert ilab_614.connection_status == TransportStatus.DISCONNECTED
+    assert win.doc_editor._on_machine_changed not in list(
+        ilab_614.changed.receivers_for(ilab_614)
+    )
+    with open(context.config_mgr.filepath) as f:
+        assert yaml.safe_load(f)["machine"] == ilab_626.id
+
+
+@pytest.mark.ui
+def test_select_machine_is_disabled_while_a_job_or_task_runs(
+    bundled_machines, app_and_window
+):
+    """A switch disconnects the driver: never under a job or a task."""
+    _app, win = app_and_window
+    _ilab_614, ilab_626 = bundled_machines
+    action = win.action_manager.get_action("select-machine")
+    machine_mgr = get_context().machine_mgr
+    _wait_for(_settled)
+
+    with patch.object(
+        MachineCmd,
+        "is_job_running",
+        new_callable=PropertyMock,
+        return_value=True,
+    ):
+        win._update_actions_and_ui()
+        assert not action.get_enabled()
+
+        with patch.object(machine_mgr, "set_active_machine") as switch:
+            win.on_select_machine(
+                action, GLib.Variant.new_string(ilab_626.id)
+            )
+            switch.assert_not_called()
+
+    with patch.object(task_mgr._instance, "has_tasks", return_value=True):
+        win._update_actions_and_ui()
+        assert not action.get_enabled()
+
+    win._update_actions_and_ui()
+    assert action.get_enabled()

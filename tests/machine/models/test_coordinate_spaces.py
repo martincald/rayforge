@@ -22,6 +22,7 @@ from swiftcut import context as context_module
 from swiftcut.context import get_context
 from swiftcut.machine.models.dialect_manager import DialectManager
 from swiftcut.machine.models.machine import Machine, Origin
+from tests.conftest import _seed_inert_machine
 
 
 @pytest.fixture(autouse=True)
@@ -48,6 +49,7 @@ def lite_context(tmp_path_factory):
     config.MACHINE_DIR = temp_machine_dir
 
     ctx = get_context()
+    _seed_inert_machine(temp_machine_dir, ctx)
     ctx.initialize_lite_context(temp_machine_dir)
     ctx._dialect_mgr = DialectManager(temp_dialect_dir)
     yield ctx

@@ -10,11 +10,14 @@ The MachineController is the logic layer that owns and manages the driver.
 """
 
 import logging
+from unittest.mock import call, patch
 
 import pytest
 
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.models.controller import MachineController
 from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.transport import TransportStatus
 from swiftcut.shared.tasker import task_mgr
 
 
@@ -155,3 +158,96 @@ class TestRebuildForTheLiveSettings:
 
         assert controller.driver is not driver
         assert controller.driver.did_setup
+
+
+class TestRelease:
+    """
+    Another machine becoming active releases this one's driver for
+    good: disconnect() would rebuild and reconnect it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_release_disconnects_and_schedules_no_rebuild(
+        self, lite_context
+    ):
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+        machine.set_connection_status(TransportStatus.CONNECTED)
+
+        with patch(
+            "swiftcut.machine.models.controller.task_mgr"
+        ) as controller_tasks:
+            await controller.release()
+
+        assert controller_tasks.cancel_task.call_args_list == [
+            call((machine.id, "driver-connect")),
+            call((machine.id, "rebuild-driver")),
+            call((machine.id, "rebuild-driver-on-change")),
+            call((machine.id, "rebuild-driver-on-init")),
+            call((machine.id, "initial-connect")),
+        ]
+        controller_tasks.add_coroutine.assert_not_called()
+        assert controller.driver is driver
+        assert not driver.did_setup
+        assert machine.connection_status == TransportStatus.DISCONNECTED
+
+    @pytest.mark.asyncio
+    async def test_a_released_controller_shuts_down_cleanly(
+        self, lite_context
+    ):
+        """Quitting after a switch cleans the released driver up again."""
+        _machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        await controller.release()
+
+        await controller.shutdown()
+
+    @pytest.mark.asyncio
+    async def test_a_released_controller_rebuilds_when_active_again(
+        self, lite_context
+    ):
+        """Switching back builds a new driver, as rebuild_driver does."""
+        _machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+        await controller.release()
+
+        await controller.rebuild_driver()
+
+        assert controller.driver is not driver
+        assert controller.driver.did_setup
+
+    @pytest.mark.asyncio
+    async def test_a_released_controller_rebuilds_but_never_connects(
+        self, lite_context, monkeypatch
+    ):
+        """
+        A settings edit on a released machine builds a driver with the
+        new settings and connects nothing. Once the flag is cleared (the
+        manager does that on a switch back), a rebuild connects.
+        """
+        connects = []
+
+        async def fake_connect(driver):
+            connects.append(driver.host)
+
+        monkeypatch.setattr(
+            RuidaDriver, "_connect_implementation", fake_connect
+        )
+        machine, controller = _ruida_controller(lite_context)
+        machine.auto_connect = True
+        await controller.rebuild_driver()
+        await controller.release()
+
+        machine.driver_args = {"host": "192.168.1.101"}
+        await controller.rebuild_driver()
+        await controller.rebuild_driver()
+
+        assert controller.driver.host == "192.168.1.101"
+        assert connects == ["192.168.1.100"]
+
+        controller._released = False
+        await controller.rebuild_driver()
+
+        assert connects == ["192.168.1.100", "192.168.1.101"]

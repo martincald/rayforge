@@ -17,6 +17,9 @@ from .machine import Machine
 
 logger = logging.getLogger(__name__)
 
+# The task key of a machine switch: one switch at a time.
+SWITCH_TASK_KEY = "switch-machine"
+
 
 class MachineManager:
     def __init__(self, base_dir: Path):
@@ -72,8 +75,19 @@ class MachineManager:
         logger.debug(
             f"Creating controller for machine '{machine.name}' on first use."
         )
+        # A bundled machine that is not the active one shares the
+        # active machine's device: its driver is built, never connected.
+        active = get_context().config.machine
+        released = (
+            active is not None
+            and active is not machine
+            and machine in self.switchable_machines()
+        )
         controller = MachineController(
-            machine, get_context(), task_mgr.schedule_on_main_thread
+            machine,
+            get_context(),
+            task_mgr.schedule_on_main_thread,
+            released=released,
         )
 
         # Wire up the machine's signal proxies to the new controller
@@ -126,43 +140,88 @@ class MachineManager:
                 f"Failed to auto-connect machine '{machine.name}': {e}"
             )
 
-    def set_active_machine(self, new_machine: Machine):
+    def set_active_machine(self, new_machine: Machine) -> bool:
         """
-        Sets the active machine, handling the connection lifecycle for
-        shared resources.
+        Makes a bundled machine the active one, handling the connection
+        lifecycle for the controller both profiles share. Returns False
+        when the switch is refused.
         """
         context = get_context()
         old_machine = context.config.machine
 
         if old_machine and old_machine.id == new_machine.id:
-            return  # No change
+            return False  # No change
+        if new_machine not in self.switchable_machines():
+            logger.warning(
+                f"Not switching to '{new_machine.name}': "
+                "not a bundled machine"
+            )
+            return False
+        # A second request would replace (cancel) the switch in flight.
+        if task_mgr.get_task(SWITCH_TASK_KEY) is not None:
+            logger.warning(
+                f"Not switching to '{new_machine.name}': "
+                "a machine switch is in progress"
+            )
+            return False
 
         logger.info(f"Switching active machine to '{new_machine.name}'")
 
         async def switch_routine(ctx):
-            # 1. Disconnect the old machine if it's connected
-            if old_machine and old_machine.is_connected():
-                logger.info(
-                    f"Disconnecting previous machine '{old_machine.name}'"
-                )
-                await old_machine.disconnect()
-                # Add a small delay for the OS to release the port
-                await asyncio.sleep(0.2)
+            try:
+                # 1. Release the old machine's driver. Unlike
+                #    disconnect(), release() never rebuilds or
+                #    reconnects it, so the port is free for the new one.
+                if old_machine and self.has_controller(old_machine.id):
+                    logger.info(
+                        f"Releasing previous machine '{old_machine.name}'"
+                    )
+                    await self.controllers[old_machine.id].release()
+                    # Add a small delay for the OS to release the port
+                    await asyncio.sleep(0.2)
 
-            # 2. Update the global config. This triggers UI updates, so it
-            #    must run on the main thread (GTK is not thread-safe).
-            await task_mgr.run_on_main_thread(
-                context.config.set_machine, new_machine
+                # 2. Update the global config. This triggers UI updates,
+                #    so it must run on the main thread (GTK is not
+                #    thread-safe).
+                await task_mgr.run_on_main_thread(
+                    context.config.set_machine, new_machine
+                )
+            except Exception as e:  # noqa: BLE001 - async switch task
+                logger.error(
+                    f"Switching to machine '{new_machine.name}' failed: {e}"
+                )
+
+            # 3. Whichever machine is active now gets its driver back:
+            #    the new one, or the old one when the switch failed
+            #    before it landed. It connects if set to auto-connect.
+            await self._connect_active_machine()
+
+        task_mgr.add_coroutine(switch_routine, key=SWITCH_TASK_KEY)
+        return True
+
+    async def _connect_active_machine(self):
+        """
+        Builds the active machine's driver, released or not, and
+        connects it if it is set to auto-connect.
+        """
+        machine = get_context().config.machine
+        if machine is None:
+            return
+        logger.info(f"Connecting active machine '{machine.name}'")
+        try:
+            controller = self.get_controller(machine.id)
+            controller._released = False
+            await controller.rebuild_driver()
+        except ResourceBusyError:
+            logger.warning(
+                f"Active machine '{machine.name}' could not connect "
+                "because resource is busy."
             )
-
-            # 3. Connect the new machine if it's set to auto-connect
-            if new_machine.auto_connect:
-                logger.info(
-                    f"Connecting to new active machine '{new_machine.name}'"
-                )
-                await self._safe_connect(new_machine)
-
-        task_mgr.add_coroutine(switch_routine)
+        except Exception as e:  # noqa: BLE001 - async switch task
+            logger.error(
+                f"Failed to connect machine '{machine.name}' "
+                f"after the switch: {e}"
+            )
 
     def filename_from_id(self, machine_id: str) -> Path:
         return self.base_dir / f"{machine_id}.yaml"
@@ -170,15 +229,26 @@ class MachineManager:
     def add_machine(self, machine: Machine):
         if machine.id in self.machines:
             return
+        if any(m.name == machine.name for m in self.switchable_machines()):
+            logger.warning(
+                f"Not adding machine '{machine.name}': a bundled machine "
+                "has that name"
+            )
+            return
         self.machines[machine.id] = machine
         machine.changed.connect(self.on_machine_changed)
         self.save_machine(machine)
         self.machine_added.send(self, machine_id=machine.id)
 
-    def remove_machine(self, machine_id: str):
+    def remove_machine(self, machine_id: str) -> bool:
         machine = self.machines.get(machine_id)
         if not machine:
-            return
+            return False
+        if machine in self.switchable_machines():
+            logger.warning(
+                f"Not removing machine '{machine.name}': it is bundled"
+            )
+            return False
 
         # Shut down and remove the associated controller if it exists
         if machine_id in self.controllers:
@@ -200,6 +270,7 @@ class MachineManager:
             logger.error(f"Error removing machine file {machine_file}: {e}")
 
         self.machine_removed.send(self, machine_id=machine_id)
+        return True
 
     def get_machine_by_id(self, machine_id):
         return self.machines.get(machine_id)
@@ -337,28 +408,3 @@ class MachineManager:
                 self.load_machine(file.stem)
             except (OSError, ValueError, TypeError, yaml.YAMLError) as e:
                 logger.error(f"Failed to load machine from {file}: {e}")
-
-    def load_new_machines(self) -> list["Machine"]:
-        """
-        Loads machine profile files present in `base_dir` that are not
-        yet tracked in `self.machines`, e.g. after an out-of-band copy
-        into `base_dir` such as the "Import settings from Rayforge"
-        action. Unlike `load()`, machines already tracked are left
-        untouched (not reloaded/replaced), so an already-connected or
-        active machine is never disturbed. Fires `machine_added` for
-        each newly loaded machine, since - unlike at startup - the UI
-        may already be listening.
-        """
-        added: list["Machine"] = []
-        for file in self.base_dir.glob("*.yaml"):
-            if file.stem in self.machines:
-                continue
-            try:
-                machine = self.load_machine(file.stem)
-            except (OSError, ValueError, TypeError, yaml.YAMLError) as e:
-                logger.error(f"Failed to load machine from {file}: {e}")
-                continue
-            if machine is not None:
-                added.append(machine)
-                self.machine_added.send(self, machine_id=machine.id)
-        return added

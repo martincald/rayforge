@@ -4,7 +4,7 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING
 
 from blinker import Signal
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gio, Gtk
 from raygeo.ops.axis import Axis
 
 from ...logging_setup import ui_log_event_received
@@ -169,6 +169,17 @@ class BottomPanel(Gtk.Box):
         self._controls_widget.set_margin_end(COMPACT_SPACE_GROUP)
         self._controls_widget.set_margin_top(COMPACT_SPACE_CONTROL)
         self._controls_widget.set_margin_bottom(COMPACT_SPACE_CONTROL)
+
+        # The machine switcher in the machine panel's header. The window
+        # gives it the Machine menu's section, so both share one action;
+        # hidden until then.
+        self.machine_button = Gtk.MenuButton(
+            label=machine.name if machine else "",
+            tooltip_text=_("Switch machine"),
+            valign=Gtk.Align.CENTER,
+            visible=False,
+        )
+        self.machine_button.add_css_class("flat")
 
         if machine:
             self._setup_wcs_controls()
@@ -341,9 +352,10 @@ class BottomPanel(Gtk.Box):
             self._update_wcs_ui()
 
     def _setup_wcs_controls(self):
-        self.wcs_group = Adw.PreferencesGroup()
+        self.wcs_group = Adw.PreferencesGroup(title=_("Machine"))
         self.wcs_group.add_css_class("compact")
         self.wcs_group.add_css_class("sc-panel")
+        self.wcs_group.set_header_suffix(self.machine_button)
 
         if self.machine:
             self.wcs_list = self.machine.supported_wcs
@@ -581,6 +593,7 @@ class BottomPanel(Gtk.Box):
         self.machine_cmd = machine_cmd
 
         self.console.set_machine(machine)
+        self.machine_button.set_label(machine.name if machine else "")
 
         if self.machine:
             self._connect_machine_signals()
@@ -589,6 +602,11 @@ class BottomPanel(Gtk.Box):
         if self.machine and self.machine_cmd:
             self.jog_widget.set_machine(self.machine, self.machine_cmd)
             self.laser_control.set_machine(self.machine, self.machine_cmd)
+
+    def set_machines_menu(self, menu: Gio.MenuModel):
+        """The machine switcher's menu; hidden while it is empty."""
+        self.machine_button.set_menu_model(menu)
+        self.machine_button.set_visible(menu.get_n_items() > 0)
 
     def _on_wcs_selection_changed(self, combo_row, _pspec):
         if self._updating_wcs_ui:

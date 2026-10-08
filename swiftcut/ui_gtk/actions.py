@@ -439,6 +439,18 @@ class ActionManager:
             GLib.VariantType.new("s"),
         )
 
+        # The machine switcher. Its state is the active machine's id,
+        # set by the window once a switch has landed, never on click.
+        machine = get_context().config.machine
+        select_machine = Gio.SimpleAction.new_stateful(
+            "select-machine",
+            GLib.VariantType.new("s"),
+            GLib.Variant.new_string(machine.id if machine else ""),
+        )
+        select_machine.connect("activate", self.win.on_select_machine)
+        self.win.add_action(select_machine)
+        self.actions["select-machine"] = select_machine
+
         action_extension_registry.invoke_setup_handlers(self)
 
         self.update_action_states()

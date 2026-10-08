@@ -51,10 +51,8 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         )
         self.add(name_group)
 
-        # Machine Name
-        name_row = Adw.EntryRow(title=_("Name"))
-        name_row.set_text(self.machine.name)
-        name_row.connect("notify::text", self.on_name_changed)
+        # Machine Name: read-only, the bundled machines keep theirs.
+        name_row = Adw.ActionRow(title=_("Name"), subtitle=self.machine.name)
         name_group.add(name_row)
 
         self.driver_group = VarSetWidget(title=_("Driver Settings"))
@@ -215,10 +213,6 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         # connection and USB device) are not in this VarSet.
         values = {**self.machine.driver_args, **self.driver_group.get_values()}
         self.machine.set_driver_args(values)
-
-    def on_name_changed(self, entry_row, _):
-        """Update the machine name when the text changes."""
-        self.machine.set_name(entry_row.get_text())
 
     def on_travel_speed_changed(self, row: SpeedSpinRow):
         """Update the max travel speed when the value changes."""

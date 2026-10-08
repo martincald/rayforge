@@ -516,6 +516,13 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel.set_visible(True)
         self.vertical_paned.set_end_child(self.bottom_panel)
 
+        # The machine switcher: the bundled machines, in the Machine menu
+        # and in the machine panel's header.
+        self.menu_model.update_machines_menu(
+            context.machine_mgr.switchable_machines()
+        )
+        self.bottom_panel.set_machines_menu(self.menu_model.machines_section)
+
         self.bottom_panel.gcode_viewer.line_activated.connect(
             self._on_gcode_line_activated
         )
@@ -759,6 +766,18 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_start_corner_hovered(self, sender, *, hovered: bool):
         self.surface.set_start_corner_hovered(hovered)
+
+    def on_select_machine(self, action, param):
+        """
+        Switches to the bundled machine whose id is the parameter. The
+        action's state follows once the switch has landed.
+        """
+        if not action.get_enabled() or self.machine_cmd.is_job_running:
+            return
+        machine_mgr = get_context().machine_mgr
+        machine = machine_mgr.get_machine_by_id(param.get_string())
+        if machine:
+            machine_mgr.set_active_machine(machine)
 
     def load_project(self, file_path: Path):
         """Public method to load a project from a given path."""
@@ -1468,6 +1487,11 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.surface.update_from_doc()
 
+        machine_id = config.machine.id if config.machine else ""
+        self.action_manager.get_action("select-machine").set_state(
+            GLib.Variant.new_string(machine_id)
+        )
+
         # Check for any pending notifications from the new machine immediately
         if self._current_machine:
             self._on_machine_hours_changed(self._current_machine.machine_hours)
@@ -1569,6 +1593,7 @@ class MainWindow(Adw.ApplicationWindow):
             am.get_action("machine-cancel").set_enabled(False)
             am.get_action("machine-focus-z").set_enabled(False)
             am.get_action("zero-here").set_enabled(False)
+            am.get_action("select-machine").set_enabled(False)
 
             self.toolbar.machine_warning_box.set_visible(False)
             self.surface.set_laser_dot_visible(False)
@@ -1604,6 +1629,10 @@ class MainWindow(Adw.ApplicationWindow):
             )
 
             am.get_action("machine-home").set_enabled(
+                not is_job_or_task_active
+            )
+            # A switch disconnects the driver: never mid-job or mid-task.
+            am.get_action("select-machine").set_enabled(
                 not is_job_or_task_active
             )
 

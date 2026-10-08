@@ -11,10 +11,13 @@ machines and coordinating their lifecycle.
 """
 
 import asyncio
+import copy
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import yaml
 
+from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.models.default_profile import (
     ILAB_614_PROFILE,
     ILAB_626_PROFILE,
@@ -88,42 +91,6 @@ class TestMachineManager:
         assert str(expected_file) in caplog.text
         assert "ilab-614" in caplog.text
         assert reloaded_manager.machines[machine.id].name == "ilab-614"
-
-    def test_load_new_machines_picks_up_files_added_out_of_band(
-        self, lite_context, tmp_path
-    ):
-        """
-        load_new_machines is what lets a running MachineManager pick up
-        a machine file dropped into base_dir after startup (e.g. by the
-        "Import settings from Rayforge" action), without disturbing any
-        machine already loaded and possibly connected.
-        """
-        manager = MachineManager(tmp_path)
-        existing = Machine(lite_context)
-        manager.add_machine(existing)
-
-        added = manager.load_new_machines()
-        assert added == []
-        assert len(manager.machines) == 1
-
-        imported = Machine(lite_context)
-        manager.save_machine(imported)  # write the file, but don't add()
-
-        received = []
-
-        def on_machine_added(sender, machine_id):
-            received.append(machine_id)
-
-        manager.machine_added.connect(on_machine_added)
-
-        added = manager.load_new_machines()
-
-        assert [m.id for m in added] == [imported.id]
-        assert imported.id in manager.machines
-        assert existing.id in manager.machines
-        # The already-loaded machine must be left as the same object.
-        assert manager.machines[existing.id] is existing
-        assert received == [imported.id]
 
     def test_load_machine_warns_on_non_default_ruida_ports(
         self, lite_context, tmp_path, caplog
@@ -287,3 +254,362 @@ async def test_only_the_active_machine_connects_at_launch(
     connect.assert_awaited_once_with(ilab_626)
     assert not manager.has_controller(ilab_614.id)
     assert not manager.has_controller(ilab_626.id)
+
+
+def _other_machine(context, name="Other Laser"):
+    """A machine that is not bundled, on the inert NoDeviceDriver."""
+    machine = Machine(context)
+    machine.name = name
+    machine.driver_name = "NoDeviceDriver"
+    return machine
+
+
+def test_switchable_machines_are_the_bundled_ones_in_order(lite_context):
+    """
+    The switcher lists ilab-614 then ilab-626, whatever order they
+    were added in, and never a driverless or a non-bundled machine.
+    """
+    manager = lite_context.machine_mgr
+    driverless = Machine(lite_context)
+    manager.add_machine(driverless)
+    manager.add_machine(_other_machine(lite_context))
+    ilab_626 = manager.create_default_machine(ILAB_626_PROFILE)
+    ilab_614 = manager.create_default_machine(ILAB_614_PROFILE)
+
+    assert manager.switchable_machines() == [ilab_614, ilab_626]
+    assert not manager.has_controller(ilab_614.id)
+    assert not manager.has_controller(ilab_626.id)
+
+
+def test_a_bundled_machine_cannot_be_removed(lite_context):
+    """
+    Removing a bundled machine is refused: the machine and its file
+    stay, and nothing is told it was removed.
+    """
+    manager, _ilab_614, ilab_626 = _bundled_pair(lite_context)
+    machine_file = manager.filename_from_id(ilab_626.id)
+    removed = []
+
+    def on_removed(sender, machine_id):
+        removed.append(machine_id)
+
+    manager.machine_removed.connect(on_removed)
+
+    assert manager.remove_machine(ilab_626.id) is False
+
+    assert manager.get_machine_by_id(ilab_626.id) is ilab_626
+    assert machine_file.exists()
+    assert removed == []
+
+
+def test_a_second_machine_with_a_bundled_name_cannot_be_added(lite_context):
+    """
+    A machine named like a bundled one is refused; a machine that is
+    not bundled is still added and removed as before.
+    """
+    manager, _ilab_614, ilab_626 = _bundled_pair(lite_context)
+    impostor = _other_machine(lite_context, name="ilab-626")
+
+    manager.add_machine(impostor)
+
+    assert impostor.id not in manager.machines
+    assert not manager.filename_from_id(impostor.id).exists()
+    assert manager.switchable_machines()[1] is ilab_626
+
+    other = _other_machine(lite_context)
+    manager.add_machine(other)
+    assert manager.get_machine_by_id(other.id) is other
+    assert manager.remove_machine(other.id) is True
+    assert other.id not in manager.machines
+    assert not manager.filename_from_id(other.id).exists()
+
+
+def test_switching_to_a_machine_that_is_not_bundled_is_refused(
+    lite_context, task_mgr: TaskManager
+):
+    manager, ilab_614, _ilab_626 = _bundled_pair(lite_context)
+    other = _other_machine(lite_context)
+    manager.add_machine(other)
+    lite_context.config.set_machine(ilab_614)
+
+    assert manager.set_active_machine(other) is False
+    assert manager.set_active_machine(ilab_614) is False
+
+    assert not task_mgr.has_tasks()
+    assert lite_context.config.machine is ilab_614
+
+
+@pytest.mark.asyncio
+async def test_a_second_switch_is_refused_while_one_runs(
+    lite_context, task_mgr: TaskManager
+):
+    """
+    Two quick clicks make one switch: a second request would replace
+    (cancel) the switch in flight, so it is refused instead.
+    """
+    manager, ilab_614, ilab_626 = _bundled_pair(lite_context)
+    lite_context.config.set_machine(ilab_614)
+    old, new = AsyncMock(), AsyncMock()
+    manager.controllers[ilab_614.id] = old
+    manager.controllers[ilab_626.id] = new
+
+    assert manager.set_active_machine(ilab_626) is True
+    assert manager.set_active_machine(ilab_626) is False
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    old.release.assert_awaited_once()
+    new.rebuild_driver.assert_awaited_once()
+    assert lite_context.config.machine is ilab_626
+
+
+@pytest.mark.asyncio
+async def test_a_failed_connect_after_a_switch_is_logged(
+    lite_context, task_mgr: TaskManager, caplog
+):
+    """The switch has landed; a driver error is logged, like
+    _safe_connect's, and is no failed task."""
+    manager, ilab_614, ilab_626 = _bundled_pair(lite_context)
+    lite_context.config.set_machine(ilab_614)
+    new = AsyncMock()
+    new.rebuild_driver.side_effect = RuntimeError("no such device")
+    manager.controllers[ilab_614.id] = AsyncMock()
+    manager.controllers[ilab_626.id] = new
+
+    with caplog.at_level("ERROR"):
+        assert manager.set_active_machine(ilab_626) is True
+        await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    assert lite_context.config.machine is ilab_626
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert errors == [
+        "Failed to connect machine 'ilab-626' after the switch: no such device"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_a_released_machine_never_reconnects(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    """
+    After a switch to ilab-626, a Machine Settings dialog still open on
+    ilab-614 edits its driver args: ilab-614's driver is rebuilt with
+    them but never connects, so two connection loops never share the
+    device. Switching back connects ilab-614 exactly once.
+    """
+    connects = []
+
+    async def fake_connect(driver):
+        connects.append(driver._machine.name)
+
+    monkeypatch.setattr(RuidaDriver, "_connect_implementation", fake_connect)
+    manager = lite_context.machine_mgr
+    machines = []
+    for profile in (ILAB_614_PROFILE, ILAB_626_PROFILE):
+        data = copy.deepcopy(profile)
+        # Never let a test dial out to a real machine.
+        data["machine"]["driver_args"]["connection"] = "udp"
+        data["machine"]["driver_args"]["host"] = "192.0.2.1"
+        machine = Machine.from_dict(data, context=lite_context)
+        manager.add_machine(machine)
+        machines.append(machine)
+    ilab_614, ilab_626 = machines
+    assert ilab_614.auto_connect and ilab_626.auto_connect
+    lite_context.config.set_machine(ilab_614)
+    manager.get_controller(ilab_614.id)
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+    assert manager.set_active_machine(ilab_626) is True
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+    assert connects == ["ilab-614", "ilab-626"]
+    released_driver = manager.controllers[ilab_614.id].driver
+
+    ilab_614.set_driver_args({**ilab_614.driver_args, "host": "192.0.2.2"})
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    assert connects == ["ilab-614", "ilab-626"]
+    driver = manager.controllers[ilab_614.id].driver
+    assert driver is not released_driver
+    assert driver.host == "192.0.2.2"
+
+    assert manager.set_active_machine(ilab_614) is True
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    assert connects == ["ilab-614", "ilab-626", "ilab-614"]
+    for controller in list(manager.controllers.values()):
+        await controller.shutdown()
+
+
+def _udp_pair(context, monkeypatch, connects):
+    """
+    Both bundled profiles on UDP to a documentation address, with the
+    Ruida connect faked to record which machine connected.
+    """
+
+    async def fake_connect(driver):
+        connects.append(driver._machine.name)
+
+    monkeypatch.setattr(RuidaDriver, "_connect_implementation", fake_connect)
+    manager = context.machine_mgr
+    machines = []
+    for profile in (ILAB_614_PROFILE, ILAB_626_PROFILE):
+        data = copy.deepcopy(profile)
+        # Never let a test dial out to a real machine.
+        data["machine"]["driver_args"]["connection"] = "udp"
+        data["machine"]["driver_args"]["host"] = "192.0.2.1"
+        machine = Machine.from_dict(data, context=context)
+        manager.add_machine(machine)
+        machines.append(machine)
+    return manager, machines[0], machines[1]
+
+
+async def _settle(task_mgr: TaskManager):
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+
+@pytest.mark.asyncio
+async def test_a_switch_that_fails_to_land_reconnects_the_active_machine(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    """
+    A config.changed receiver raises while switching back to ilab-614:
+    ilab-614 is the active machine, so it gets its driver back and
+    connects, instead of staying released and silent.
+    """
+    connects = []
+    manager, ilab_614, ilab_626 = _udp_pair(
+        lite_context, monkeypatch, connects
+    )
+    lite_context.config.set_machine(ilab_614)
+    manager.get_controller(ilab_614.id)
+    await _settle(task_mgr)
+    assert manager.set_active_machine(ilab_626) is True
+    await _settle(task_mgr)
+    armed = [True]
+
+    def bad_receiver(sender, **kwargs):
+        if armed:
+            armed.clear()
+            raise RuntimeError("a UI handler failed")
+
+    lite_context.config.changed.connect(bad_receiver, weak=False)
+    try:
+        assert manager.set_active_machine(ilab_614) is True
+        await _settle(task_mgr)
+    finally:
+        lite_context.config.changed.disconnect(bad_receiver)
+
+    assert lite_context.config.machine is ilab_614
+    assert manager.controllers[ilab_614.id]._released is False
+    assert connects == ["ilab-614", "ilab-626", "ilab-614"]
+    for controller in list(manager.controllers.values()):
+        await controller.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_a_release_that_fails_keeps_the_old_machine_connected(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    """
+    The old driver's cleanup raises: the switch never lands, ilab-614
+    stays active and is connected again, and ilab-626 never connects.
+    """
+    connects = []
+    manager, ilab_614, ilab_626 = _udp_pair(
+        lite_context, monkeypatch, connects
+    )
+    lite_context.config.set_machine(ilab_614)
+    manager.get_controller(ilab_614.id)
+    await _settle(task_mgr)
+    real_cleanup = RuidaDriver.cleanup
+    armed = [True]
+
+    async def failing_cleanup(driver):
+        if armed:
+            armed.clear()
+            raise OSError("the port did not close")
+        await real_cleanup(driver)
+
+    monkeypatch.setattr(RuidaDriver, "cleanup", failing_cleanup)
+
+    assert manager.set_active_machine(ilab_626) is True
+    await _settle(task_mgr)
+
+    assert lite_context.config.machine is ilab_614
+    assert manager.controllers[ilab_614.id]._released is False
+    assert connects == ["ilab-614", "ilab-614"]
+    for controller in list(manager.controllers.values()):
+        await controller.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_an_inactive_machine_never_connects_when_its_driver_is_used(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    """
+    Asking the inactive bundled machine for its driver builds a
+    controller for it; that controller starts released, so nothing
+    but the active machine connects.
+    """
+    connects = []
+    manager, ilab_614, ilab_626 = _udp_pair(
+        lite_context, monkeypatch, connects
+    )
+    lite_context.config.set_machine(ilab_614)
+    manager.get_controller(ilab_614.id)
+    await _settle(task_mgr)
+
+    ilab_626.supports_pwm()
+    await _settle(task_mgr)
+    await manager.get_controller(ilab_626.id).connect()
+
+    assert manager.controllers[ilab_626.id]._released is True
+    assert connects == ["ilab-614"]
+
+    assert manager.set_active_machine(ilab_626) is True
+    await _settle(task_mgr)
+    assert connects == ["ilab-614", "ilab-626"]
+    for controller in list(manager.controllers.values()):
+        await controller.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_a_switch_releases_the_old_machine_before_the_new_connects(
+    lite_context, task_mgr: TaskManager
+):
+    """
+    Both profiles reach the same controller. The switch releases the
+    old machine's driver for good, then makes the new machine active
+    (saved in config.yaml), then builds and connects the new driver.
+    The old driver is never rebuilt or reconnected.
+    """
+    manager, ilab_614, ilab_626 = _bundled_pair(lite_context)
+    for machine in (ilab_614, ilab_626):
+        machine.auto_connect = False
+    lite_context.config.set_machine(ilab_614)
+    events = []
+    old, new = AsyncMock(), AsyncMock()
+    old.release.side_effect = lambda: events.append("release ilab-614")
+    new.rebuild_driver.side_effect = lambda: events.append(
+        "rebuild ilab-626"
+    )
+    manager.controllers[ilab_614.id] = old
+    manager.controllers[ilab_626.id] = new
+
+    def on_config_changed(sender, **kwargs):
+        events.append(f"active {lite_context.config.machine.name}")
+
+    lite_context.config.changed.connect(on_config_changed)
+
+    assert manager.set_active_machine(ilab_626) is True
+    await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    assert events == [
+        "release ilab-614",
+        "active ilab-626",
+        "rebuild ilab-626",
+    ]
+    assert lite_context.config.machine is ilab_626
+    old.rebuild_driver.assert_not_awaited()
+    old.connect.assert_not_awaited()
+    old.disconnect.assert_not_awaited()
+    saved = await asyncio.to_thread(lite_context.config_mgr.filepath.read_text)
+    assert yaml.safe_load(saved)["machine"] == ilab_626.id

@@ -209,10 +209,16 @@ class RayforgeContext:
             logger.info("Lazy loading config manager")
             self._config_mgr = CoreConfigManager(CONFIG_FILE, self.machine_mgr)
             self._config = self._config_mgr.config
-            # A driverless profile is never auto-selected.
+            # A driverless profile is never auto-selected, nor one
+            # beside the bundled machines.
             mgr = self.machine_mgr
             active = self._config.machine
-            if active is None or not mgr.has_driver(active):
+            switchable = mgr.switchable_machines()
+            if (
+                active is None
+                or not mgr.has_driver(active)
+                or (switchable and active not in switchable)
+            ):
                 self._config.set_machine(mgr.pick_auto_machine())
             # Sync the context language with the configured preference.
             # This overrides the system-detected language if the user has
@@ -347,10 +353,17 @@ class RayforgeContext:
         config_file = Path(machine_dir) / ".." / "config.yaml"
         self._config_mgr = CoreConfigManager(config_file, self._machine_mgr)
         self._config = self._config_mgr.config
-        # A driverless profile is never auto-selected.
+        # A driverless profile is never auto-selected, nor one beside
+        # the bundled machines.
+        mgr = self._machine_mgr
         active = self._config.machine
-        if active is None or not self._machine_mgr.has_driver(active):
-            self._config.set_machine(self._machine_mgr.pick_auto_machine())
+        switchable = mgr.switchable_machines()
+        if (
+            active is None
+            or not mgr.has_driver(active)
+            or (switchable and active not in switchable)
+        ):
+            self._config.set_machine(mgr.pick_auto_machine())
 
     async def shutdown(self):
         """
