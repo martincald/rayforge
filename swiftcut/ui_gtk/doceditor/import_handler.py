@@ -44,7 +44,11 @@ def _start_interactive_import(
 
     # Define the handler locally to capture context from its closure.
     def on_dialog_response(
-        sender, *, response_id: str, spec: VectorizationSpec
+        sender,
+        *,
+        response_id: str,
+        spec: VectorizationSpec,
+        split_paths: bool = False,
     ):
         _on_import_dialog_response(
             sender,
@@ -55,6 +59,7 @@ def _start_interactive_import(
             file_path,
             mime_type,
             position_mm,
+            split_paths,
         )
 
     # Use weak=False to prevent the handler from being garbage collected.
@@ -71,6 +76,7 @@ def _on_import_dialog_response(
     file_path: Path,
     mime_type: str,
     position_mm: tuple[float, float] | None = None,
+    split_paths: bool = False,
 ):
     """Callback for when the interactive import dialog is closed."""
     logger.info(f"Received response '{response_id}' from ImportDialog.")
@@ -79,7 +85,7 @@ def _on_import_dialog_response(
             f"Executing final import for {file_path} with spec: {spec}"
         )
         editor.file.load_file_from_path(
-            file_path, mime_type, spec, position_mm
+            file_path, mime_type, spec, position_mm, split_paths=split_paths
         )
         win.item_revealer.set_reveal_child(False)
 
@@ -443,7 +449,10 @@ def start_reimport(
         initial_spec=initial_spec,
     )
 
-    def on_response(sender, *, response_id: str, spec: VectorizationSpec):
+    # A re-import offers no "Import as": it repeats the original import.
+    def on_response(
+        sender, *, response_id: str, spec: VectorizationSpec, **kwargs
+    ):
         if response_id == "import":
             editor.file.reimport_from_source_asset(
                 source_asset, spec, position_mm, target_layer

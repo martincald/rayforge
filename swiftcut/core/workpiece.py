@@ -1384,7 +1384,10 @@ class WorkPiece(DocItem):
         self.pos = (model_x, model_y)
 
     def apply_split(
-        self, fragments: list[Geometry], drop_dust: bool = True
+        self,
+        fragments: list[Geometry],
+        source: SourceAsset | None = None,
+        drop_dust: bool = True,
     ) -> list[WorkPiece]:
         """
         Creates new WorkPiece instances from a list of normalized geometry
@@ -1398,6 +1401,8 @@ class WorkPiece(DocItem):
             fragments: A list of Geometry objects. Each must be a subset of
                        self.boundaries, defined in the same 0-1 Y-up
                        normalized coordinate space.
+            source: The workpiece's SourceAsset, for a workpiece not yet
+                    in a document (self.source resolves through it).
             drop_dust: Drop fragments under 0.1 mm in both directions.
 
         Returns:
@@ -1408,7 +1413,8 @@ class WorkPiece(DocItem):
 
         new_workpieces = []
         original_matrix = self.matrix
-        source = self.source
+        if source is None:
+            source = self.source
 
         # Get current physical dimensions to filter noise.
         phys_w, phys_h = self.size

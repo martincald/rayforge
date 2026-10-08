@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import ezdxf
+import numpy as np
 import pytest
 from raygeo.geo import Matrix
 from raygeo.ops.state import CoolantMode
@@ -14,7 +16,11 @@ from swiftcut.core.layer import Layer
 from swiftcut.core.source_asset import SourceAsset
 from swiftcut.core.step import Step
 from swiftcut.core.stock_asset import StockAsset
-from swiftcut.core.vectorization_spec import PassthroughSpec, TraceSpec
+from swiftcut.core.vectorization_spec import (
+    LayerImportMode,
+    PassthroughSpec,
+    TraceSpec,
+)
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 from swiftcut.doceditor.file_cmd import (
@@ -978,6 +984,385 @@ class TestImportPlacement:
             or y >= 600 + 1.0
         )
         assert 0 <= x and x + w <= 1400 and 0 <= y and y + h <= 900
+
+
+def _paths_dxf(path: Path, layers=("0", "0", "0")) -> Path:
+    """
+    A DXF in mm: a 40 x 30 rectangle and a triangle (closed polylines)
+    and a 90 mm open line, none touching, on the given layers.
+    """
+    doc = ezdxf.new()
+    doc.header["$INSUNITS"] = 4  # mm
+    msp = doc.modelspace()
+    rect, triangle, line = layers
+    msp.add_lwpolyline(
+        [(0, 0), (40, 0), (40, 30), (0, 30)],
+        close=True,
+        dxfattribs={"layer": rect},
+    )
+    msp.add_lwpolyline(
+        [(60, 0), (90, 0), (90, 20)],
+        close=True,
+        dxfattribs={"layer": triangle},
+    )
+    msp.add_line((0, 50), (90, 50), dxfattribs={"layer": line})
+    doc.saveas(path)
+    return path
+
+
+# The paths of _paths_dxf: world rects relative to the drawing's
+# corner, and their total length.
+_PATH_RECTS = [(0, 0, 40, 30), (0, 50, 90, 50), (60, 0, 90, 20)]
+_PATH_LENGTH = 140 + 50 + (30**2 + 20**2) ** 0.5 + 90
+
+
+def _world_rects(workpieces):
+    """Sorted world rects of every path, relative to their union."""
+    rects = [
+        contour.rect()
+        for wp in workpieces
+        for contour in wp.get_world_geometry().split_into_contours()
+    ]
+    x0 = min(r[0] for r in rects)
+    y0 = min(r[1] for r in rects)
+    return sorted((r[0] - x0, r[1] - y0, r[2] - x0, r[3] - y0) for r in rects)
+
+
+def _world_length(workpieces):
+    return sum(wp.get_world_geometry().distance() for wp in workpieces)
+
+
+def _paths_centre(workpieces):
+    """
+    The centre of the union of the workpieces' paths (a line piece's
+    frame reaches 1 mm past its line).
+    """
+    rects = [wp.get_world_geometry().rect() for wp in workpieces]
+    x0 = min(r[0] for r in rects)
+    y0 = min(r[1] for r in rects)
+    x1 = max(r[2] for r in rects)
+    y1 = max(r[3] for r in rects)
+    return (x0 + x1) / 2, (y0 + y1) / 2
+
+
+def _two_rects_svg(path: Path) -> Path:
+    """A 100 x 50 mm SVG without layers: two rectangles."""
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+        'height="50mm" viewBox="0 0 100 50">'
+        '<rect x="10" y="10" width="20" height="30" fill="none" '
+        'stroke="black" stroke-width="0.1"/>'
+        '<rect x="60" y="5" width="30" height="20" fill="none" '
+        'stroke="black" stroke-width="0.1"/></svg>'
+    )
+    return path
+
+
+def _ink(wp, px_per_mm=10):
+    """The opaque pixels of the workpiece rendered at its size."""
+    width, height = wp.size
+    surface = wp.render_to_pixels(
+        round(width * px_per_mm), round(height * px_per_mm)
+    )
+    assert surface is not None
+    pixels = np.ndarray(
+        (surface.get_height(), surface.get_stride() // 4, 4),
+        dtype=np.uint8,
+        buffer=surface.get_data(),
+    )
+    return int((pixels[:, : surface.get_width(), 3] > 128).sum())
+
+
+class TestImportAsIndividualShapes:
+    """
+    Import as Individual shapes: one workpiece per path, placed as one
+    piece on the active machine's bed, in one undo step. Single shape,
+    the default, keeps a file's paths in one workpiece.
+    """
+
+    @pytest.fixture
+    def bed(self, test_machine_and_config):
+        """A 900 x 900 mm bed."""
+        machine, _config = test_machine_and_config
+        machine.set_axis_extents(900, 900)
+        return machine
+
+    async def _import(self, editor, task_mgr, path, spec=None, **kwargs):
+        """Imports a file; returns the workpieces it added."""
+        before = {wp.uid for wp in editor.doc.all_workpieces}
+        editor.file.load_file_from_path(
+            path, None, spec or PassthroughSpec(), **kwargs
+        )
+        await _wait_for_import(editor, task_mgr)
+        return [wp for wp in editor.doc.all_workpieces if wp.uid not in before]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("kwargs", [{}, {"split_paths": False}])
+    async def test_single_shape_by_default(
+        self, doc_editor, task_mgr, bed, tmp_path, kwargs
+    ):
+        path = _paths_dxf(tmp_path / "paths.dxf")
+
+        (wp,) = await self._import(doc_editor, task_mgr, path, **kwargs)
+
+        assert len(wp.boundaries.split_into_contours()) == 3
+
+    @pytest.mark.asyncio
+    async def test_one_workpiece_per_path_in_one_undo_step(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _paths_dxf(tmp_path / "paths.dxf")
+        history = doc_editor.history_manager
+        entries = len(history.undo_stack)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert sorted(wp.boundaries.is_closed() for wp in pieces) == [
+            False,
+            True,
+            True,
+        ]
+        assert all(wp.layer is doc_editor.doc.active_layer for wp in pieces)
+        # The drawing keeps its layout, and nothing is lost.
+        assert _world_rects(pieces) == [
+            pytest.approx(r, abs=1e-6) for r in _PATH_RECTS
+        ]
+        assert _world_length(pieces) == pytest.approx(_PATH_LENGTH)
+        assert len(history.undo_stack) == entries + 1
+
+        history.undo()
+
+        assert doc_editor.doc.all_workpieces == []
+
+    @pytest.mark.asyncio
+    async def test_placed_as_one_piece_on_the_active_bed(
+        self, doc_editor, task_mgr, test_machine_and_config, tmp_path
+    ):
+        """
+        The 900 x 900 machine is made the active one after a 1400 x 900
+        one: the drawing centres on its bed and stays inside it.
+        """
+        machine, config = test_machine_and_config
+        machine.set_axis_extents(1400, 900)
+        active = Machine(doc_editor.context)
+        active.set_axis_extents(900, 900)
+        doc_editor.context.machine_mgr.add_machine(active)
+        config.set_machine(active)
+        path = _paths_dxf(tmp_path / "paths.dxf")
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert _paths_centre(pieces) == pytest.approx((450, 450))
+        for wp in pieces:
+            assert inside(wp.bbox, (0, 0, 900, 900))
+
+    @pytest.mark.asyncio
+    async def test_items_imported_says_whether_individual(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _paths_dxf(tmp_path / "paths.dxf")
+        sent = []
+        doc_editor.file.items_imported.connect(
+            lambda sender, **kwargs: sent.append(kwargs), weak=False
+        )
+
+        single = await self._import(doc_editor, task_mgr, path)
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert sent == [
+            {"items": single, "individual": False},
+            {"items": pieces, "individual": True},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_new_layers_keep_each_layers_pieces(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _paths_dxf(tmp_path / "layers.dxf", layers=("A", "B", "B"))
+        spec = PassthroughSpec(layer_import_mode=LayerImportMode.NEW_LAYERS)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, spec, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        by_layer = {
+            layer.name: len(layer.get_content_items())
+            for layer in {wp.layer for wp in pieces}
+        }
+        assert by_layer == {"A": 1, "B": 2}
+
+    @pytest.mark.asyncio
+    async def test_flatten_puts_every_piece_on_the_current_layer(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = _paths_dxf(tmp_path / "layers.dxf", layers=("A", "B", "B"))
+        spec = PassthroughSpec(layer_import_mode=LayerImportMode.FLATTEN)
+        layers = list(doc_editor.doc.layers)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, spec, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert all(wp.layer is doc_editor.doc.active_layer for wp in pieces)
+        assert doc_editor.doc.layers == layers
+
+    @pytest.mark.asyncio
+    async def test_svg_pieces_render_their_own_part(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        """
+        An SVG piece renders the SVG through its crop window: each
+        piece's window is its own part of the drawing's window.
+        """
+        path = _two_rects_svg(tmp_path / "two.svg")
+        (single,) = await self._import(doc_editor, task_mgr, path)
+        px, py, pw, ph = single.source_segment.crop_window_px
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        windows = [wp.source_segment.crop_window_px for wp in pieces]
+        assert len(set(windows)) == 2
+        for x, y, w, h in windows:
+            assert w < pw and h < ph
+            assert px - 1e-6 <= x and x + w <= px + pw + 1e-6
+            assert py - 1e-6 <= y and y + h <= py + ph + 1e-6
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("mode", list(LayerImportMode))
+    @pytest.mark.parametrize("kind", ["svg", "dxf"])
+    async def test_pieces_go_to_the_layer_of_their_single_shape(
+        self, doc_editor, task_mgr, bed, tmp_path, mode, kind
+    ):
+        """
+        On a document of three layers, the current one last, each piece
+        goes to the layer the single shape of its file layer goes to:
+        for an SVG without layers and a DXF of layers A and B.
+        """
+        doc = doc_editor.doc
+        doc.add_child(Layer(name="L2"))
+        doc.add_child(Layer(name="L3"))
+        doc.active_layer = doc.layers[-1]
+        if kind == "svg":
+            path, count = _two_rects_svg(tmp_path / "two.svg"), 2
+        else:
+            path = _paths_dxf(tmp_path / "ab.dxf", layers=("A", "B", "B"))
+            count = 3
+        spec = PassthroughSpec(layer_import_mode=mode)
+        single = await self._import(doc_editor, task_mgr, path, spec)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, spec, split_paths=True
+        )
+
+        assert len(pieces) == count
+        # New Layers makes the layers again, under the same names.
+        layer_of = {wp.source_segment.layer_id: wp.layer.name for wp in single}
+        assert len(layer_of) == len(single)
+        assert [layer_of[wp.source_segment.layer_id] for wp in pieces] == [
+            wp.layer.name for wp in pieces
+        ]
+
+    @pytest.mark.asyncio
+    async def test_paths_under_a_tenth_of_a_mm_are_kept(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        path = tmp_path / "dust.dxf"
+        dxf = ezdxf.new()
+        dxf.header["$INSUNITS"] = 4  # mm
+        msp = dxf.modelspace()
+        msp.add_lwpolyline([(0, 0), (40, 0), (40, 30), (0, 30)], close=True)
+        msp.add_line((0, 50), (90, 45))
+        msp.add_circle((60, 10), 0.03)  # a 0.06 mm dot
+        dxf.saveas(path)
+        (single,) = await self._import(doc_editor, task_mgr, path)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert _world_length(pieces) == pytest.approx(_world_length([single]))
+
+    @pytest.mark.asyncio
+    async def test_svg_line_pieces_render_their_line(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        """
+        A horizontal or vertical line piece is 1 mm across, like a lone
+        line imported (not a sliver too thin to render). No path moves.
+        """
+        path = tmp_path / "lines.svg"
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+            'height="60mm" viewBox="0 0 100 60">'
+            '<rect x="10" y="10" width="20" height="30" fill="none" '
+            'stroke="black" stroke-width="0.5"/>'
+            '<line x1="40" y1="20" x2="90" y2="20" stroke="black" '
+            'stroke-width="0.5"/>'
+            '<line x1="60" y1="30" x2="60" y2="55" stroke="black" '
+            'stroke-width="0.5"/></svg>'
+        )
+        (single,) = await self._import(doc_editor, task_mgr, path)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert _world_rects(pieces) == [
+            pytest.approx(r, abs=1e-6) for r in _world_rects([single])
+        ]
+        lines = [wp for wp in pieces if not wp.boundaries.is_closed()]
+        assert sorted(wp.size for wp in lines) == [
+            pytest.approx((1.0, 25.0)),
+            pytest.approx((50.0, 1.0)),
+        ]
+        for wp in pieces:
+            assert _ink(wp) > 0
+
+    @pytest.mark.asyncio
+    async def test_dxf_line_pieces_are_sized_like_a_lone_line(
+        self, doc_editor, task_mgr, bed, tmp_path
+    ):
+        """
+        The importer gives a lone horizontal line 90 x 1 mm and a lone
+        vertical one 1 x 40 mm; so do line pieces. No path moves.
+        """
+        path = tmp_path / "lines.dxf"
+        dxf = ezdxf.new()
+        dxf.header["$INSUNITS"] = 4  # mm
+        msp = dxf.modelspace()
+        msp.add_lwpolyline([(0, 0), (40, 0), (40, 30), (0, 30)], close=True)
+        msp.add_line((0, 50), (90, 50))
+        msp.add_line((60, 0), (60, 40))
+        dxf.saveas(path)
+        (single,) = await self._import(doc_editor, task_mgr, path)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, path, split_paths=True
+        )
+
+        assert len(pieces) == 3
+        assert _world_rects(pieces) == [
+            pytest.approx(r, abs=1e-6) for r in _world_rects([single])
+        ]
+        lines = [wp for wp in pieces if not wp.boundaries.is_closed()]
+        assert sorted(wp.size for wp in lines) == [
+            pytest.approx((1.0, 40.0)),
+            pytest.approx((90.0, 1.0)),
+        ]
 
 
 class TestGetImporterInfo:

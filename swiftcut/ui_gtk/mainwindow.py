@@ -353,6 +353,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.doc_editor.notification_requested.connect(
             self._on_editor_notification
         )
+        self.doc_editor.file.items_imported.connect(self._on_items_imported)
         self.doc_editor.document_settled.connect(self._on_document_settled)
         self.doc_editor.saved_state_changed.connect(
             self.project_cmd.on_saved_state_changed
@@ -734,6 +735,14 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_select_items_requested(self, sender, *, items, **kwargs):
         self.surface.select_items(items)
+
+    def _on_items_imported(self, sender, *, items, individual: bool):
+        """
+        Shapes imported individually are selected (a hidden layer's
+        shapes cannot be).
+        """
+        if individual:
+            self.surface.select_items(items)
 
     def _on_start_corner_hovered(self, sender, *, hovered: bool):
         self.surface.set_start_corner_hovered(hovered)

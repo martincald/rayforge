@@ -19,6 +19,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
     import pyvips
 
+from blinker import Signal
 from raygeo.geo import Geometry, Matrix
 from raygeo.geo.types import Point, Rect
 from raygeo.ops.state import CoolantMode
@@ -52,6 +53,7 @@ from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..shared.placement import find_position
 from .layout.outline import OUTLINE_TOLERANCE_MM, item_world_polygons
+from .split_cmd import PathSplitStrategy
 
 if TYPE_CHECKING:
     from ..core.asset import IAsset
@@ -134,6 +136,9 @@ class FileCmd:
         # Set by the UI. Without a policy (headless), oversized imports
         # are scaled to fit.
         self.oversize_policy: OversizePolicy | None = None
+        # Sent once an import is in the document: items=the imported
+        # content, individual=True when imported as individual shapes.
+        self.items_imported = Signal()
 
     def get_importer_info(
         self, file_path: Path, mime_type: str | None
@@ -447,6 +452,38 @@ class FileCmd:
         self._place_at_nearest_free_spot(content_to_transform, position_mm)
 
     @staticmethod
+    def _split_into_paths(
+        pairs: list[tuple[DocItem, DocItem]], source: SourceAsset | None
+    ) -> list[tuple[DocItem, DocItem]]:
+        """
+        Replaces each imported workpiece of several paths, top level or
+        in a layer, with one workpiece per path (see PathSplitStrategy),
+        every path kept, each going where the workpiece was going. The
+        items are not in the document yet, so no undo is needed.
+        """
+        strategy = PathSplitStrategy()
+
+        def paths_of(wp: WorkPiece) -> list[DocItem]:
+            fragments = strategy.calculate_fragments(wp)
+            pieces = wp.apply_split(fragments, source=source, drop_dust=False)
+            return list(pieces) if len(pieces) > 1 else [wp]
+
+        result: list[tuple[DocItem, DocItem]] = []
+        for owner, item in pairs:
+            if isinstance(item, Layer):
+                for child in item.get_content_items():
+                    if isinstance(child, WorkPiece):
+                        index = item.children.index(child)
+                        item.remove_child(child)
+                        item.add_children(paths_of(child), index=index)
+                result.append((owner, item))
+            elif isinstance(item, WorkPiece):
+                result.extend((owner, piece) for piece in paths_of(item))
+            else:
+                result.append((owner, item))
+        return result
+
+    @staticmethod
     def _unwrap_item(item: DocItem) -> list[DocItem]:
         """Extract content items from a Layer, or return the item itself."""
         if isinstance(item, Layer):
@@ -501,12 +538,15 @@ class FileCmd:
         filename: Path,
         assets: list["IAsset"] | None = None,
         vectorization_spec: VectorizationSpec | None = None,
-    ) -> list[Layer]:
+        split_paths: bool = False,
+    ) -> tuple[list[Layer], list[DocItem]]:
         """
         Adds the imported items and their source to the document model using
-        the history manager.
+        the history manager. With split_paths, each workpiece goes in as
+        one workpiece per path, where the workpiece would have gone.
 
-        Returns the list of destination layers that received items.
+        Returns the list of destination layers that received items, and
+        the content added (out of any layer wrapper).
         """
         if source:
             self._editor.doc.add_asset(source)
@@ -522,6 +562,11 @@ class FileCmd:
             mode = vectorization_spec.layer_import_mode
 
         pairs = self._resolve_destinations(items, mode)
+        if split_paths:
+            pairs = self._split_into_paths(pairs, source)
+        content = self._get_positionable_content(
+            [item for _owner, item in pairs]
+        )
 
         with self._editor.history_manager.transaction(cmd_name) as t:
             for owner, item in pairs:
@@ -543,7 +588,7 @@ class FileCmd:
             elif isinstance(_item, Layer) and _item.uid not in seen:
                 dest_layers.append(_item)
                 seen.add(_item.uid)
-        return dest_layers
+        return dest_layers, content
 
     def _finalize_import_on_main_thread(
         self,
@@ -551,11 +596,13 @@ class FileCmd:
         filename: Path,
         position_mm: Point | None,
         vectorization_spec: VectorizationSpec | None = None,
+        split_paths: bool = False,
     ):
         """
         Performs the final steps of an import on the main thread.
         This includes positioning items (which may send UI notifications) and
         committing them to the document (which fires signals that update UI).
+        With split_paths, each path goes in as a workpiece of its own.
         """
         item_info = (
             f"{len(payload.items)} items"
@@ -570,17 +617,20 @@ class FileCmd:
         # 2. Add the positioned items to the document model. This is also
         #    safe now as all subsequent signal handling will be on the
         #    main thread.
-        dest_layers = self._commit_items_to_document(
+        dest_layers, content = self._commit_items_to_document(
             payload.items,
             payload.source,
             filename,
             payload.assets,
             vectorization_spec,
+            split_paths,
         )
 
         # 3. Add default steps to the destination layers.
         if dest_layers:
             self._editor.step.add_default_steps_for_layers(dest_layers)
+
+        self.items_imported.send(self, items=content, individual=split_paths)
 
     def load_file_from_path(
         self,
@@ -588,6 +638,7 @@ class FileCmd:
         mime_type: str | None,
         vectorization_spec: VectorizationSpec | None,
         position_mm: Point | None = None,
+        split_paths: bool = False,
     ):
         """
         Public, synchronous method to launch a file import in the background.
@@ -601,6 +652,9 @@ class FileCmd:
             position_mm: Optional (x, y) tuple in world coordinates (mm)
                 to center the imported item.
                         If None, items are centered on the workspace.
+            split_paths: Import each path as a workpiece of its own
+                (individual shapes), placed and put on layers as the
+                single shape would be.
         """
         logger.debug(
             f"Loading file: {filename} "
@@ -671,7 +725,11 @@ class FileCmd:
                                 return
                         if accepted is not False:
                             self._finalize_import_on_main_thread(
-                                import_result.payload, fn, pos_mm, vec_spec
+                                import_result.payload,
+                                fn,
+                                pos_mm,
+                                vec_spec,
+                                split_paths,
                             )
                         if not main_thread_done.done():
                             loop.call_soon_threadsafe(

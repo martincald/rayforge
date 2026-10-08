@@ -207,6 +207,19 @@ class ImportDialog(PatchedDialogWindow):
         self._mode_visible = can_trace and can_vector
         mode_group.set_visible(self._mode_visible)
 
+        # Import as one shape, or one shape per path: direct vector
+        # imports only, Single every time.
+        self.import_as_group = Adw.PreferencesGroup()
+        preferences_page.add(self.import_as_group)
+        self.import_as_row = Adw.ComboRow(
+            title=_("Import as"),
+            model=Gtk.StringList.new(
+                [_("Single shape"), _("Individual shapes")]
+            ),
+            selected=0,
+        )
+        self.import_as_group.add(self.import_as_row)
+
         # Layers Group (Dynamic)
         self.layers_group = Adw.PreferencesGroup(title=_("Layers"))
         self.layers_group.set_visible(False)
@@ -304,6 +317,9 @@ class ImportDialog(PatchedDialogWindow):
         )
         self.trace_group.set_sensitive(not is_direct_import)
         self.layers_group.set_sensitive(is_direct_import)
+        self.import_as_group.set_visible(
+            is_direct_import and self.source_asset is None
+        )
         self.warning_banner.set_revealed(False)
         self._schedule_preview_update()
 
@@ -813,6 +829,15 @@ class ImportDialog(PatchedDialogWindow):
 
     def _on_import_clicked(self, button):
         final_spec = self._get_current_spec()
-        logger.debug(f"_on_import_clicked: {final_spec}")
-        self.response.send(self, response_id="import", spec=final_spec)
+        split_paths = (
+            self.import_as_group.get_visible()
+            and self.import_as_row.get_selected() == 1
+        )
+        logger.debug(f"_on_import_clicked: {final_spec} {split_paths=}")
+        self.response.send(
+            self,
+            response_id="import",
+            spec=final_spec,
+            split_paths=split_paths,
+        )
         self.close()

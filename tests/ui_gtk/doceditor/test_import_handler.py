@@ -214,6 +214,56 @@ def test_unsupported_files_are_skipped(file_cmd_editor, tmp_path):
     route.assert_not_called()
 
 
+def _dialog_response_handler(start):
+    """Runs an import entry with a stand-in ImportDialog; returns the
+    handler it connected to the dialog's response."""
+    with patch.object(import_handler, "ImportDialog") as dialog_cls:
+        start()
+    return dialog_cls.return_value.response.connect.call_args.args[0]
+
+
+@pytest.mark.parametrize(
+    "kwargs, split_paths",
+    [
+        ({}, False),
+        ({"split_paths": False}, False),
+        ({"split_paths": True}, True),
+    ],
+)
+def test_the_import_as_choice_reaches_the_import(kwargs, split_paths):
+    editor = MagicMock()
+    editor.file.get_importer_info.return_value = (None, set())
+    spec = PassthroughSpec()
+    handler = _dialog_response_handler(
+        lambda: import_handler._start_interactive_import(
+            MagicMock(), editor, ARC_DXF, "image/vnd.dxf"
+        )
+    )
+
+    handler(None, response_id="import", spec=spec, **kwargs)
+
+    editor.file.load_file_from_path.assert_called_once_with(
+        ARC_DXF, "image/vnd.dxf", spec, None, split_paths=split_paths
+    )
+
+
+def test_a_reimport_takes_the_import_as_choice_without_using_it():
+    editor = MagicMock()
+    editor.doc.all_workpieces = []
+    source = MagicMock()
+    source.metadata = {"_importer_class": "DxfImporter"}
+    spec = PassthroughSpec()
+    handler = _dialog_response_handler(
+        lambda: import_handler.start_reimport(MagicMock(), editor, source)
+    )
+
+    handler(None, response_id="import", spec=spec, split_paths=False)
+
+    editor.file.reimport_from_source_asset.assert_called_once_with(
+        source, spec, None, None
+    )
+
+
 def _message_dialogs():
     return [
         window
