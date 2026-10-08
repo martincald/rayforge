@@ -8,6 +8,7 @@ from typing import (
     cast,
 )
 
+import cairo
 import numpy as np
 from raygeo.cnc.execution.specs import ComputePayload
 from raygeo.ops.assembly import Assembler
@@ -24,7 +25,9 @@ from swiftcut.core.varset import (
     SliderFloatVar,
     VarSet,
 )
+from swiftcut.core.vectorization_spec import TraceSpec
 from swiftcut.image.dither import DitherAlgorithm
+from swiftcut.image.geo_renderer import geometry_to_cairo
 from swiftcut.machine.models.laser import LaserHead
 from swiftcut.pipeline.stage.assembler_helpers import (
     DepthMode,
@@ -36,6 +39,8 @@ from swiftcut.pipeline.transformer.registry import transformer_registry
 from .laser_step import LaserStep
 
 if TYPE_CHECKING:
+    from raygeo.geo import Geometry
+
     from swiftcut.context import RayforgeContext
     from swiftcut.core.workpiece import WorkPiece
     from swiftcut.machine.models.machine import Machine
@@ -45,6 +50,15 @@ if TYPE_CHECKING:
         def calculate_auto_distance(
             step_speed: int, max_acceleration: int
         ) -> float: ...
+
+
+# How vector shapes are engraved: fill closed shapes, trace every
+# path, or both.
+ENGRAVE_MODES = ("FILL", "OUTLINE", "BOTH")
+
+# Narrowest line a vector outline is engraved with; the head's spot
+# size wins when it is wider.
+MIN_ENGRAVE_STROKE_MM = 0.2
 
 
 class EngraveStep(LaserStep):
@@ -122,6 +136,7 @@ class EngraveStep(LaserStep):
         self.angle_increment = 0.0
         self.dither_algorithm = None
         self.bidir_x_offset_mm = 0.0
+        self.engrave_mode = "BOTH"
 
     def get_operation_mode_short(self):
         if not self.depth_mode:
@@ -154,7 +169,7 @@ class EngraveStep(LaserStep):
         machine: Machine,
         workpiece: WorkPiece,
     ) -> dict:
-        _spot_x, spot_y = LaserHead.get_spot_size(
+        spot_x, spot_y = LaserHead.get_spot_size(
             self.get_selected_laser(machine)
         )
         line_interval = (
@@ -179,6 +194,8 @@ class EngraveStep(LaserStep):
             "num_depth_levels": self.num_depth_levels,
             "z_step_down": self.z_step_down,
             "angle_increment": self.angle_increment,
+            "engrave_mode": self.engrave_mode,
+            "stroke_width_mm": max(spot_x, spot_y, MIN_ENGRAVE_STROKE_MM),
         }
 
     def apply_import_settings(self, settings: dict[str, Any]) -> None:
@@ -281,6 +298,7 @@ class EngraveStep(LaserStep):
             self.dither_algorithm.value if self.dither_algorithm else None
         )
         result["bidir_x_offset_mm"] = self.bidir_x_offset_mm
+        result["engrave_mode"] = self.engrave_mode
         return result
 
     @classmethod
@@ -371,6 +389,10 @@ class EngraveStep(LaserStep):
             except ValueError:
                 step.dither_algorithm = DitherAlgorithm.FLOYD_STEINBERG
         step.bidir_x_offset_mm = data.get("bidir_x_offset_mm", 0.0)
+        engrave_mode = data.get("engrave_mode", "BOTH")
+        step.engrave_mode = (
+            engrave_mode if engrave_mode in ENGRAVE_MODES else "BOTH"
+        )
         return step
 
     @classmethod
@@ -399,6 +421,7 @@ class EngraveStep(LaserStep):
                 "angle_increment",
                 "dither_algorithm",
                 "bidir_x_offset_mm",
+                "engrave_mode",
                 "min_power",
                 "max_power",
             }
@@ -513,13 +536,34 @@ def _build_raster_part(
     px_per_mm_y = target_h / size[1]
 
     surface = workpiece.render_to_pixels(target_w, target_h)
+    is_vector = _is_vector_workpiece(workpiece)
+    if is_vector:
+        # The source render draws lines as hairlines that the scan
+        # grid samples into dashes; paint the shapes as real ink.
+        if surface is None:
+            surface = cairo.ImageSurface(
+                cairo.FORMAT_ARGB32, target_w, target_h
+            )
+        _paint_vector_ink(
+            surface,
+            cast("Geometry", workpiece.boundaries),
+            size,
+            (px_per_mm_x, px_per_mm_y),
+            step.engrave_mode,
+            max(spot_x, spot_y, MIN_ENGRAVE_STROKE_MM),
+        )
+        surface.flush()
     if surface is None:
         return Part(size_mm=size), None
 
     depth_mode = DepthMode[step.depth_mode]
 
     computed_auto_levels = None
-    if step.auto_levels:
+    if step.auto_levels and is_vector:
+        # Ink is solid black with antialiased edges; stretching the
+        # levels would turn the edge coverage into hard steps.
+        computed_auto_levels = (0, 255)
+    elif step.auto_levels:
         computed_auto_levels = compute_raster_auto_levels(
             workpiece,
             (px_per_mm_x, px_per_mm_y),
@@ -549,6 +593,70 @@ def _build_raster_part(
     )
     part.image_source = WholeImageSource(image)
     return part, alpha
+
+
+def _is_vector_workpiece(workpiece: WorkPiece) -> bool:
+    """True for shapes drawn from vector geometry. A traced bitmap
+    also has boundaries, but its pixels are the content to engrave."""
+    boundaries = workpiece.boundaries
+    if boundaries is None or boundaries.is_empty():
+        return False
+    vspec = getattr(workpiece.source_segment, "vectorization_spec", None)
+    return not isinstance(vspec, TraceSpec)
+
+
+def _paint_vector_ink(
+    surface: cairo.ImageSurface,
+    boundaries: Geometry,
+    size_mm: tuple[float, float],
+    pixels_per_mm: tuple[float, float],
+    engrave_mode: str,
+    stroke_width_mm: float,
+) -> None:
+    """Paint the workpiece's normalized (0-1, Y-up) boundaries onto
+    its raster render in solid black, over what is already there.
+
+    FILL and BOTH fill the closed contours even-odd, so a shape inside
+    another is a hole. OUTLINE and BOTH stroke every path, open or
+    closed, ``stroke_width_mm`` wide in both axes, antialiased.
+
+    The image ends at the bounding box, so a stroke lying on it would
+    keep only its inner half, which the scan's dot-width trim then
+    removes. Strokes are therefore drawn on the shape inset by half
+    their width, landing fully inside; fills keep the exact shape.
+    """
+    width_mm, height_mm = size_mm
+    ctx = cairo.Context(surface)
+    ctx.set_source_rgba(0, 0, 0, 1)
+    # User space is millimetres, Y-down, from here on.
+    ctx.scale(*pixels_per_mm)
+
+    def add_path(geometry: Geometry, inset: float = 0.0) -> None:
+        # A quarter of the size at most, so a sliver of a shape keeps
+        # an invertible, non-flipped scale.
+        ix = min(inset, width_mm / 4)
+        iy = min(inset, height_mm / 4)
+        ctx.save()
+        ctx.translate(ix, height_mm - iy)
+        ctx.scale(width_mm - 2 * ix, -(height_mm - 2 * iy))
+        geometry_to_cairo(geometry, ctx)
+        ctx.restore()
+
+    if engrave_mode in ("FILL", "BOTH"):
+        ctx.new_path()
+        for contour in boundaries.split_into_contours():
+            if contour.is_closed():
+                add_path(contour)
+        ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+        ctx.fill()
+
+    if engrave_mode in ("OUTLINE", "BOTH"):
+        ctx.new_path()
+        add_path(boundaries, stroke_width_mm / 2)
+        ctx.set_line_width(stroke_width_mm)
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+        ctx.stroke()
 
 
 MAX_RASTER_RENDER_PIXELS = 16 * 1024 * 1024

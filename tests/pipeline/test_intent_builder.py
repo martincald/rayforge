@@ -7,7 +7,7 @@ and the position-sensitive folding rule.
 """
 
 import math
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -39,6 +39,7 @@ from swiftcut.core.step import Step
 from swiftcut.core.stock import StockItem
 from swiftcut.core.stock_asset import StockAsset
 from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.ops_renderer import OPS_RENDERER
 from swiftcut.machine.models.dialect.grbl import GRBL_DIALECT
 from swiftcut.machine.models.machine import Machine, Origin
 from swiftcut.machine.models.rotary_module import RotaryMode, RotaryModule
@@ -1229,6 +1230,189 @@ def test_raster_step_is_position_sensitive(engrave_step_class):
     compute token."""
     step = engrave_step_class(name="engrave")
     assert step.is_position_sensitive() is True
+
+
+def _raster_compute_token(machine, doc, wp, step):
+    nodes = IntentBuilder(machine=machine).build(doc)
+    wpk = workpiece_key(wp.uid, step.uid)
+    return next(n.version_token for n in nodes if n.key == wpk)
+
+
+def test_raster_compute_token_changes_on_engrave_mode(
+    engrave_step_class, test_machine_and_config
+):
+    """Fill / Outline / Both changes the raster, so the preview and
+    the job must be recomputed."""
+    machine, context = test_machine_and_config
+    step = engrave_step_class.create(context, name="engrave")
+    wp = WorkPiece(name="wp")
+    wp.set_size(20.0, 20.0)
+    doc = _make_doc(step, wp)
+
+    tokens = set()
+    for mode in ("BOTH", "FILL", "OUTLINE"):
+        step.engrave_mode = mode
+        tokens.add(_raster_compute_token(machine, doc, wp, step))
+    assert len(tokens) == 3
+
+
+def test_raster_compute_token_changes_on_spot_size(
+    engrave_step_class, test_machine_and_config
+):
+    """The outline width follows the spot size. With every raster
+    interval set by hand (so nothing else derives from the spot), a
+    wider spot must still change the compute token."""
+    machine, context = test_machine_and_config
+    step = engrave_step_class.create(context, name="engrave")
+    step.line_interval_mm = 0.1
+    step.sample_interval_mm = 0.05
+    step.dot_width_correction_mm = 0.05
+    wp = WorkPiece(name="wp")
+    wp.set_size(20.0, 20.0)
+    doc = _make_doc(step, wp)
+    head = machine.heads[0]
+
+    head.spot_size_mm = (0.1, 0.1)
+    before = _raster_compute_token(machine, doc, wp, step)
+    head.spot_size_mm = (0.3, 0.3)
+    after = _raster_compute_token(machine, doc, wp, step)
+    assert before != after
+
+
+def _hairline_render(self, width, height):
+    """Today's base render of a DXF / Ruida / LightBurn line shape."""
+    return OPS_RENDERER._render_to_cairo_surface(
+        self.boundaries, width, height
+    )
+
+
+def _burned_x(ops, y):
+    """X of every sample with power on the scan row at ``y``."""
+    xs = []
+    for i in range(ops.len()):
+        if not ops.is_scanline(i) or abs(ops.endpoint(i)[1] - y) > 1e-6:
+            continue
+        x0 = ops.endpoint(i - 1)[0]
+        x1 = ops.endpoint(i)[0]
+        data = bytes(ops.scanline_data(i))
+        for k, power in enumerate(data):
+            if power:
+                xs.append(x0 + (x1 - x0) * (k + 0.5) / len(data))
+    return sorted(xs)
+
+
+def _scan_rows(ops):
+    return sorted(
+        {
+            round(ops.endpoint(i)[1], 6)
+            for i in range(ops.len())
+            if ops.is_scanline(i)
+        }
+    )
+
+
+def _scan_lines(ops, dx=0.0, dy=0.0):
+    """Every scan line as (y, x from, x to, power left to right), so
+    lines the optimizer reversed compare equal to the originals."""
+    lines = []
+    for i in range(ops.len()):
+        if not ops.is_scanline(i):
+            continue
+        x0 = ops.endpoint(i - 1)[0] - dx
+        x1, y = ops.endpoint(i)[0] - dx, ops.endpoint(i)[1] - dy
+        data = bytes(ops.scanline_data(i))
+        if x1 < x0:
+            x0, x1, data = x1, x0, data[::-1]
+        lines.append((round(y, 6), round(x0, 6), round(x1, 6), data))
+    return sorted(lines)
+
+
+def test_line_shape_rasters_unbroken_and_preview_equals_job(
+    engrave_step_class, test_machine_and_config
+):
+    """A line-only shape drawn with hairlines (rectangle outline, a
+    horizontal line across its middle and a diagonal, 20 x 10 mm),
+    engraved as Outline at the default 0.1 mm spot:
+
+    * every scan row burns both vertical edges, the middle line burns
+      as one gapless run, and the diagonal is present on every row it
+      crosses, overlapping from row to row;
+    * the canvas preview shows exactly the job's raster. The preview
+      is the ``workpiece:{wp}:{step}`` compute output, which
+      ``IntentController._reattach`` emits as
+      ``workpiece_artifact_ready`` and ``Pipeline._on_wp_output`` wraps
+      (its ``ops``, unchanged) into the WorkPieceArtifact the
+      ViewManager renders. The job reads that same node through the
+      step aggregate and on into the job aggregate.
+    """
+    machine, context = test_machine_and_config
+    step = engrave_step_class.create(context, name="engrave")
+    step.engrave_mode = "OUTLINE"
+    geo = Geometry()
+    geo.move_to(0, 0)
+    geo.line_to(1, 0)
+    geo.line_to(1, 1)
+    geo.line_to(0, 1)
+    geo.close_path()
+    geo.move_to(0.1, 0.5)
+    geo.line_to(0.9, 0.5)
+    geo.move_to(0.1, 0.1)
+    geo.line_to(0.9, 0.9)
+    wp = WorkPiece(name="lines")
+    wp._edited_boundaries = geo
+    wp.set_size(20.0, 10.0)
+    wp.pos = 30.0, 40.0
+    doc = _make_doc(step, wp)
+    assert machine.heads[0].spot_size_mm == (0.1, 0.1)
+
+    with patch.object(WorkPiece, "render_to_pixels", _hairline_render):
+        nodes = IntentBuilder(machine=machine, generation_id=1).build(doc)
+    wpk = workpiece_key(wp.uid, step.uid)
+    sk = step_key(step.uid)
+    step_node = next(n for n in nodes if n.key == sk)
+    sources = [
+        inp.source_key
+        for group in step_node.stage.spec.groups
+        for inp in group.inputs
+    ]
+    assert sources == [wpk]
+
+    completed = {}
+    execute_stages(nodes, lambda n: completed.__setitem__(n.key, n))
+    for key in (wpk, sk, job_key()):
+        assert completed[key].error is None, completed[key].error
+    preview = completed[wpk].output.ops
+
+    # One scan row every 0.1 mm over the whole 10 mm height.
+    rows = _scan_rows(preview)
+    assert rows == pytest.approx([0.1 * (i + 1) for i in range(100)])
+    previous = None
+    for y in rows:
+        xs = _burned_x(preview, y)
+        assert xs[0] <= 0.2 and xs[-1] >= 19.8, y
+        if 1.2 <= y <= 8.8:
+            # Diagonal centre (inset by the 0.1 mm half width).
+            centre = 2.08 + (y - 1.08) * 2.0
+            near = [x for x in xs if abs(x - centre) <= 0.5]
+            assert near, y
+            if previous is not None:
+                assert near[0] <= previous[-1] + 0.05, y
+            previous = near
+
+    # The middle line (y = 5 mm) burns 2.2..17.8 mm without a gap.
+    for y in (5.0, 5.1):
+        xs = [x for x in _burned_x(preview, y) if 2.2 <= x <= 17.8]
+        steps = np.diff(xs)
+        assert xs[0] < 2.3 and xs[-1] > 17.7, y
+        assert steps.max() < 0.06, y
+
+    # Preview == job: the same scan lines, power byte for byte, in the
+    # step aggregate and the job aggregate (placed at the workpiece;
+    # the per-step optimizer may reverse a line's direction).
+    lines = _scan_lines(preview)
+    for key in (sk, job_key()):
+        job_ops = completed[key].output.ops
+        assert _scan_lines(job_ops, 30.0, 40.0) == lines, key
 
 
 # ----------------------------------------------------------------------

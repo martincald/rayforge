@@ -21,6 +21,7 @@ from swiftcut.ui_gtk.shared.pref_rows import (
 )
 from swiftcut.ui_gtk.shared.slider import create_slider, create_slider_row
 
+from ..steps.raster_step import ENGRAVE_MODES
 from .rows import LaserStepSettingsPage
 
 _SCAN_MODES = [ScanMode.SEGMENTED, ScanMode.FULL_SWEEP]
@@ -48,6 +49,19 @@ class RasterSettingsPage(LaserStepSettingsPage):
             _("Power"),
             description=_("Power modulation and brightness range."),
         )
+
+        self.engrave_row = Adw.ComboRow(
+            title=_("Engrave"),
+            subtitle=_(
+                "Vector shapes: fill closed shapes, trace lines, or both"
+            ),
+            model=Gtk.StringList.new([_("Fill"), _("Outline"), _("Both")]),
+        )
+        self.engrave_row.set_selected(ENGRAVE_MODES.index(step.engrave_mode))
+        self.engrave_row.connect(
+            "notify::selected", self._on_engrave_mode_changed
+        )
+        self._add(engrave_group, self.engrave_row)
 
         mode_choices = [m.display_name for m in DepthMode]
         self.mode_row = Adw.ComboRow(
@@ -558,6 +572,11 @@ class RasterSettingsPage(LaserStepSettingsPage):
         selected_idx = row.get_selected()
         selected_mode = _SCAN_MODES[selected_idx]
         self._on_param_changed("scan_mode", selected_mode.name)
+
+    def _on_engrave_mode_changed(self, row, pspec):
+        self._on_param_changed(
+            "engrave_mode", ENGRAVE_MODES[row.get_selected()]
+        )
 
     def _update_power_labels(self, invert: bool):
         """Update min/max power labels based on invert setting."""
