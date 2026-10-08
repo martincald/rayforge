@@ -56,6 +56,10 @@ from .doceditor.layout_progress import LayoutProgress
 from .doceditor.missing_features_dialog import MissingFeaturesDialog
 from .doceditor.property_providers import register_builtin_providers
 from .doceditor.workflow_view import WorkflowView
+from .getting_started import (
+    GettingStartedWindow,
+    should_show_getting_started,
+)
 from .haptics import haptics
 from .layout import (
     OVERLAY_PANEL_HEIGHT_FRACTION,
@@ -180,6 +184,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._current_machine: Machine | None = None  # For signal handling
         self._saved_bottom_panel_visible = False
         self._old_doc = None  # Track previous document for signal reconnection
+        self._getting_started: GettingStartedWindow | None = None
 
         # The ToastOverlay will wrap the main content box
         self.toast_overlay = Adw.ToastOverlay()
@@ -2372,6 +2377,19 @@ class MainWindow(Adw.ApplicationWindow):
     def show_about_dialog(self, action, param):
         dialog = AboutDialog(transient_for=self)
         dialog.present()
+
+    def show_getting_started(self, action, param):
+        """Opens the first-run guide, whether or not it was seen."""
+        guide = self._getting_started
+        if guide is None or not guide.get_visible():
+            guide = GettingStartedWindow(transient_for=self)
+            self._getting_started = guide
+        guide.present()
+
+    def maybe_show_getting_started(self, scripted: bool):
+        """Opens the first-run guide if it has never been closed."""
+        if should_show_getting_started(get_context().config, scripted):
+            self.show_getting_started(None, None)
 
     def on_save_debug_log(self, action, param):
         DebugLogDialog(

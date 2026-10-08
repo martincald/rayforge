@@ -80,6 +80,10 @@ class Config:
         # Start asks whether to run from here or from where the last
         # job started.
         self.crawford_mode: bool = False
+        # The first-run guide shows until it is closed once. A config
+        # file from before the guide has no key, so it shows once there
+        # too.
+        self.getting_started_seen: bool = False
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
         # Default DPI for unitless SVG imports
         self.import_dpi: float = 96.0
@@ -184,6 +188,13 @@ class Config:
         self.crawford_mode = enabled
         self.changed.send(self)
 
+    def set_getting_started_seen(self, seen: bool):
+        """Sets whether the first-run guide has been closed."""
+        if self.getting_started_seen == seen:
+            return
+        self.getting_started_seen = seen
+        self.changed.send(self)
+
     def set_ops_color_mode(self, mode: OpsColorMode):
         """Sets the ops color mode."""
         if self.ops_color_mode == mode:
@@ -224,6 +235,7 @@ class Config:
             "canvas_view": self.canvas_view.to_dict(),
             "auto_pipeline": self.auto_pipeline,
             "crawford_mode": self.crawford_mode,
+            "getting_started_seen": self.getting_started_seen,
             "ops_color_mode": self.ops_color_mode.value,
             "import_dpi": self.import_dpi,
             "cache_budget_bytes": self.cache_budget_bytes,
@@ -291,6 +303,7 @@ class Config:
         )
         config.auto_pipeline = data.get("auto_pipeline", True)
         config.crawford_mode = data.get("crawford_mode", False)
+        config.getting_started_seen = data.get("getting_started_seen", False)
 
         ops_color_mode_str = data.get(
             "ops_color_mode", OpsColorMode.LASER.value

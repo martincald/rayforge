@@ -153,6 +153,33 @@ def test_crawford_mode_is_off_by_default_and_survives_the_config_file():
     assert restored.crawford_mode is True
 
 
+def test_getting_started_is_unseen_until_closed_and_survives_the_file(
+    tmp_path,
+):
+    from blinker import Signal
+
+    from swiftcut.core.config import ConfigManager
+
+    class Machines:
+        machine_removed = Signal()
+
+        @staticmethod
+        def get_machine_by_id(machine_id):
+            return None
+
+    path = tmp_path / "config.yaml"
+    # A config file from before the guide has no key: not seen yet.
+    path.write_text("theme: system\n")
+    manager = ConfigManager(path, Machines())
+    assert Config().getting_started_seen is False
+    assert manager.config.getting_started_seen is False
+
+    manager.config.set_getting_started_seen(True)
+
+    assert "getting_started_seen: true" in path.read_text()
+    assert ConfigManager(path, Machines()).config.getting_started_seen
+
+
 def test_snapping_is_on_by_default_and_survives_the_config_file():
     assert Config().canvas_view.snapping_enabled is True
     blank = Config.from_dict({}, lambda _id: None)

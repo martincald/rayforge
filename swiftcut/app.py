@@ -365,6 +365,9 @@ def main():
             if self.args.uiscript:
                 self.win.connect("map", self._run_uiscript)
 
+            # After the startup files, so the guide opens over them.
+            self.win.connect("map", self._on_window_mapped_guide)
+
             self.win.present()
 
             # Now that the UI is active, trigger the initial machine
@@ -402,6 +405,12 @@ def main():
             """Runs once, when the main window is first mapped on screen."""
             widget.disconnect_by_func(self._on_window_mapped)
             _close_splash()
+
+        def _on_window_mapped_guide(self, widget):
+            """Opens the first-run guide once the window is up."""
+            widget.disconnect_by_func(self._on_window_mapped_guide)
+            scripted = bool(self.args.uiscript or self.args.exit)
+            GLib.idle_add(widget.maybe_show_getting_started, scripted)
 
         def _load_initial_files(self, widget):
             """
