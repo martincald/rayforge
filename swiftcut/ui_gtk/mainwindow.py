@@ -201,6 +201,9 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self.machine_cmd = MachineCmd(self.doc_editor)
         self.machine_cmd.job_started.connect(self._on_job_started)
+        self.machine_cmd.job_state_changed.connect(
+            self._on_job_state_changed
+        )
 
         # Instantiate and connect the UpdateCommand's notification signal
         self.update_cmd = UpdateCommand(task_mgr, context)
@@ -763,6 +766,21 @@ class MainWindow(Adw.ApplicationWindow):
         logger.debug("Job started")
         self.toolbar.set_job_progress(0.0)
         self._set_inspector_locked(True)
+        self._update_actions_and_ui()
+
+    def _on_job_state_changed(self, sender):
+        """A job started or ended: Start follows it."""
+        self._update_actions_and_ui()
+
+    def _on_send_done(self):
+        """
+        The send task ended, however it ended.
+
+        A failed send never fires the driver's job_finished, so the
+        progress bar and the inspector are released here too.
+        """
+        self.toolbar.set_job_progress(None)
+        self._set_inspector_locked(False)
         self._update_actions_and_ui()
 
     def _set_inspector_locked(self, locked: bool):
@@ -1657,7 +1675,9 @@ class MainWindow(Adw.ApplicationWindow):
                 and not self.doc_editor.pipeline.is_data_stale
             )
             am.get_action("machine-send").set_enabled(send_sensitive)
-            if self.doc_editor.pipeline.is_data_stale:
+            if self.machine_cmd.is_job_running:
+                self.toolbar.send_button.set_tooltip_text(_("Job running"))
+            elif self.doc_editor.pipeline.is_data_stale:
                 self.toolbar.send_button.set_tooltip_text(
                     _(
                         "Pipeline needs recalculation before sending. "
@@ -2227,11 +2247,13 @@ class MainWindow(Adw.ApplicationWindow):
             if focus_state and focus_state.get_boolean():
                 focus_action.change_state(GLib.Variant.new_boolean(False))
 
-            job_coro = self.machine_cmd.send_job(
+            # The panel's Start goes the same way, so one guard
+            # refuses a second Start from either.
+            self.machine_cmd.run_send_job(
                 machine,
                 on_progress=self._on_job_progress_updated,
+                on_done=self._on_send_done,
             )
-            self._run_machine_job(job_coro)
 
         self._run_sanity_check_and_proceed(_proceed)
 

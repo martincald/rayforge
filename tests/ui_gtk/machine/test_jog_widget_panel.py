@@ -28,7 +28,9 @@ def _widget(ui_context_initializer, machine_cmd):
 
 @pytest.mark.ui
 def test_job_controls_are_start_pause_stop(ui_context_initializer):
-    widget, _machine = _widget(ui_context_initializer, MagicMock())
+    widget, _machine = _widget(
+        ui_context_initializer, MagicMock(is_job_running=False)
+    )
 
     assert widget.start_btn.get_tooltip_text() == "Start job"
     assert widget.pause_btn.get_tooltip_text() == "Pause job"
@@ -89,7 +91,9 @@ def test_position_readout_follows_the_polled_position(
 
 @pytest.mark.ui
 def test_job_controls_need_a_connection(ui_context_initializer):
-    widget, machine = _widget(ui_context_initializer, MagicMock())
+    widget, machine = _widget(
+        ui_context_initializer, MagicMock(is_job_running=False)
+    )
 
     widget._update_button_sensitivity()
     assert widget.start_btn.get_sensitive() is False

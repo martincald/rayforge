@@ -10,9 +10,12 @@ import asyncio
 import pytest
 import pytest_asyncio
 from blinker import Signal
+from raygeo.ops import Ops
 
+from swiftcut.core.doc import Doc
 from swiftcut.machine.driver.driver import Axis
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
+from swiftcut.machine.driver.ruida.ruida_encoder import RuidaEncoder
 from swiftcut.machine.driver.ruida.ruida_util import decode35, encode35
 from swiftcut.machine.models.default_profile import ILAB_614_PROFILE
 from swiftcut.machine.models.machine import (
@@ -142,6 +145,53 @@ class TestStopReachesEveryMotion:
         assert len(moves(spy.commands)) == 1
         assert moves_after_stop(spy.commands) == []
         assert spy.blobs == []
+
+    @pytest.mark.asyncio
+    async def test_cancel_ends_a_running_job_with_one_stop(self, driver):
+        """
+        Cancel is the one way a running job ends: a single D8 01, after
+        which the controller's status goes idle and the run returns.
+        """
+        spy = MotionClientSpy(position=(200000, 150000))
+        driver._client = spy
+        driver.STATUS_POLL_INTERVAL = 0.01
+        status_reads = 0
+
+        async def status(address, timeout=2.0):
+            nonlocal status_reads
+            status_reads += 1
+            if STOP in spy.commands:
+                return 0
+            return driver.STATUS_JOB_RUNNING_BIT
+
+        spy._read_memory_wait = status
+        machine = driver._machine
+        doc = Doc()
+        ops = Ops()
+        ops.job_start()
+        ops.layer_start("layer-1")
+        ops.set_power(0.5)
+        ops.set_feed_rate(600)
+        ops.move_to(10.0, 10.0, 0.0)
+        ops.line_to(60.0, 10.0, 0.0)
+        ops.layer_end("layer-1")
+        ops.job_end()
+        run = asyncio.create_task(
+            driver.run(RuidaEncoder().encode(ops, machine, doc), doc, ops)
+        )
+
+        async def until_running():
+            while status_reads < 3:
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(until_running(), 2.0)
+        assert not run.done()
+        await driver.cancel()
+        await asyncio.wait_for(run, 2.0)
+
+        assert len(spy.blobs) == 1
+        assert spy.commands.count(STOP) == 1
+        assert driver._job_running is False
 
     @pytest.mark.asyncio
     async def test_cancel_does_not_let_a_diagonal_restart(self, driver):

@@ -356,6 +356,9 @@ class JogWidget(Gtk.Widget):
             self.machine_cmd.document_settled.disconnect(
                 self._on_document_settled
             )
+            self.machine_cmd.job_state_changed.disconnect(
+                self._on_job_state_changed
+            )
 
         self._release_all_jog_keys()
 
@@ -364,6 +367,9 @@ class JogWidget(Gtk.Widget):
         if self.machine_cmd:
             self.machine_cmd.document_settled.connect(
                 self._on_document_settled
+            )
+            self.machine_cmd.job_state_changed.connect(
+                self._on_job_state_changed
             )
 
         if self.machine:
@@ -444,8 +450,16 @@ class JogWidget(Gtk.Widget):
         )
 
         self.home_all_btn.set_sensitive(connected)
-        # Job controls - always enabled when connected
-        self.start_btn.set_sensitive(connected)
+        # Job controls - enabled when connected, except Start while a
+        # job runs: a second Start would cancel the first behind the
+        # controller's back. Cancel is the way to end it.
+        job_running = bool(
+            self.machine_cmd and self.machine_cmd.is_job_running
+        )
+        self.start_btn.set_sensitive(connected and not job_running)
+        self.start_btn.set_tooltip_text(
+            _("Job running") if job_running else _("Start job")
+        )
         self.pause_btn.set_sensitive(connected)
         self.stop_btn.set_sensitive(connected)
 
@@ -876,6 +890,10 @@ class JogWidget(Gtk.Widget):
         """The scale run finished, was cancelled, or failed."""
         self._scaling = False
         self._update_scale_buttons()
+
+    def _on_job_state_changed(self, sender):
+        """A job started or ended."""
+        self._update_button_sensitivity()
 
     def _on_document_settled(self, sender, **kwargs):
         """A document with no ops has no outline to scale."""

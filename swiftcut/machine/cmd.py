@@ -39,7 +39,13 @@ class MachineCmd:
         self._editor = editor
         self._scheduler = editor.task_manager.schedule_on_main_thread
         self.job_started = Signal()
+        # Sent on the main thread whenever is_job_running may have
+        # changed, so Start can follow it.
+        self.job_state_changed = Signal()
         self._current_monitor: JobMonitor | None = None
+        # From an accepted Start until its send task is done, which
+        # covers the pipeline run before the monitor exists.
+        self._send_active = False
         self._on_progress_callback: Callable[[dict], None] | None = None
         # A Stop pressed while a scale is still measuring its outline
         # has no job on the driver to stop yet, so it is latched here
@@ -49,8 +55,8 @@ class MachineCmd:
 
     @property
     def is_job_running(self) -> bool:
-        """Returns True if a monitored job is currently running."""
-        return self._current_monitor is not None
+        """Whether a job is running, or a Start is preparing one."""
+        return self._current_monitor is not None or self._send_active
 
     def select_tool(self, machine: Machine, head_index: int):
         """Adds a 'select_head' task to the task manager."""
@@ -186,6 +192,7 @@ class MachineCmd:
 
             # Signal that the job has started.
             self._scheduler(self.job_started.send, self)
+            self._scheduler(self.job_state_changed.send, self)
 
             # Pipeline must have produced encoded output.
             if encoded is None:
@@ -221,6 +228,7 @@ class MachineCmd:
             )
         finally:
             cleanup_monitor()
+            self._scheduler(self.job_state_changed.send, self)
 
     async def _run_frame_action(
         self,
@@ -387,18 +395,46 @@ class MachineCmd:
             on_progress=on_progress,
         )
 
-    def run_send_job(self, machine: Machine):
+    def run_send_job(
+        self,
+        machine: Machine,
+        on_progress: Callable[[dict], None] | None = None,
+        on_done: Callable[[], None] | None = None,
+    ):
         """
         Schedules the send_job coroutine to run via the task manager.
+
+        Refused while a job is running: a second "send-job" task would
+        replace the first, cancelling it with no D8 01 while the
+        controller runs on. Cancel is the only way to end a job.
+
+        Args:
+            machine: The machine to send to.
+            on_progress: Optional progress callback, on the main thread.
+            on_done: Optional callback, run on the main thread once the
+                send finishes, is cancelled, or fails.
         """
+        if self.is_job_running:
+            logger.warning("Start ignored: a job is already running")
+            return
+        self._send_active = True
+        self.job_state_changed.send(self)
+
+        def when_done(task):
+            self._send_active = False
+            self.job_state_changed.send(self)
+            if on_done is not None:
+                on_done()
+
         self._editor.task_manager.add_coroutine(
             lambda ctx: self._start_job(
                 machine,
                 job_name="sending",
                 final_job_action=self._run_send_action,
-                on_progress=None,
+                on_progress=on_progress,
             ),
             key="send-job",
+            when_done=when_done,
         )
 
     def set_hold(self, machine: Machine, is_requesting_hold: bool):

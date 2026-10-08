@@ -1,6 +1,8 @@
 import asyncio
+import logging
+import threading
 from functools import partial
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 import pytest_asyncio
@@ -399,3 +401,109 @@ class TestCancelJob:
         cmd.cancel_job(machine)
 
         assert cmd._scale_cancelled
+
+
+class TestOneJobAtATime:
+    """A Start while a job runs neither sends nor cancels anything."""
+
+    def _cmd(self):
+        editor = MagicMock()
+        return MachineCmd(editor), editor.task_manager.add_coroutine
+
+    def test_a_second_start_is_refused_with_a_warning(self, caplog):
+        cmd, add_coroutine = self._cmd()
+        machine = MagicMock()
+
+        cmd.run_send_job(machine)
+        with caplog.at_level(logging.WARNING, logger="swiftcut.machine.cmd"):
+            cmd.run_send_job(machine)
+
+        add_coroutine.assert_called_once()
+        assert "a job is already running" in caplog.text
+
+    def test_start_is_accepted_again_once_the_send_is_done(self):
+        cmd, add_coroutine = self._cmd()
+        machine = MagicMock()
+        states = []
+        cmd.job_state_changed.connect(
+            lambda sender: states.append(cmd.is_job_running), weak=False
+        )
+
+        cmd.run_send_job(machine)
+        assert cmd.is_job_running
+        add_coroutine.call_args.kwargs["when_done"](MagicMock())
+        cmd.run_send_job(machine)
+
+        assert add_coroutine.call_count == 2
+        assert states == [True, False, True]
+
+
+class _JobUntilCancelled:
+    """A driver whose job runs until it is cancelled, and counts both."""
+
+    native_overscan = False
+
+    def __init__(self):
+        self.runs = 0
+        self.cancels = 0
+        self.running = threading.Event()
+        self._stopped = False
+
+    async def run(self, encoded, doc, ops, on_command_done=None):
+        self.runs += 1
+        self.running.set()
+        while not self._stopped:
+            await asyncio.sleep(0.01)
+
+    async def cancel(self):
+        self.cancels += 1
+        self._stopped = True
+
+
+@pytest.mark.asyncio
+async def test_a_second_start_neither_sends_nor_cancels_the_first(
+    task_mgr, machine, simple_ops, caplog
+):
+    """
+    The keyed "send-job" task used to be replaced by a second Start,
+    which cancelled the running one with no D8 01. Now the second
+    Start is refused, the first runs on, and only Cancel ends it.
+    """
+    driver = _JobUntilCancelled()
+    artifact = JobArtifact(
+        ops=simple_ops,
+        distance=simple_ops.distance(),
+        generation_id=1,
+        encoded_output=MagicMock(),
+    )
+    editor = MagicMock()
+    editor.task_manager = task_mgr
+    editor.pipeline.generate_job_artifact_async = AsyncMock(
+        return_value=MagicMock()
+    )
+    store = editor.pipeline.artifact_store
+    store.checkout_handle.return_value.__enter__.return_value = artifact
+    cmd = MachineCmd(editor)
+
+    with patch.object(
+        type(machine), "driver", new_callable=PropertyMock, return_value=driver
+    ):
+        cmd.run_send_job(machine)
+        assert await asyncio.to_thread(driver.running.wait, 5)
+        first = task_mgr.get_task("send-job")
+
+        with caplog.at_level(logging.WARNING, logger="swiftcut.machine.cmd"):
+            cmd.run_send_job(machine)
+        await asyncio.sleep(0.1)
+
+        assert "a job is already running" in caplog.text
+        assert task_mgr.get_task("send-job") is first
+        assert not first.is_cancelled()
+        assert (driver.runs, driver.cancels) == (1, 0)
+
+        cmd.cancel_job(machine)
+        await wait_for_tasks_to_finish(task_mgr)
+        await asyncio.sleep(0.1)
+
+    assert (driver.runs, driver.cancels) == (1, 1)
+    assert not cmd.is_job_running

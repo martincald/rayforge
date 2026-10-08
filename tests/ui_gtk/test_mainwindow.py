@@ -338,6 +338,63 @@ def test_cut_scale_action_asks_for_confirmation_first(app_and_window):
 
 
 @pytest.mark.ui
+def test_start_is_disabled_while_a_job_runs(app_and_window):
+    """Both Starts, toolbar and panel, follow MachineCmd's job state."""
+    _app, win = app_and_window
+    jog = win.bottom_panel.jog_widget
+    machine = jog.machine
+    send = win.action_manager.get_action("machine-send")
+
+    with (
+        _connected(machine, has_ops=True),
+        patch.object(
+            MachineCmd,
+            "is_job_running",
+            new_callable=PropertyMock,
+            return_value=True,
+        ),
+    ):
+        win.machine_cmd.job_state_changed.send(win.machine_cmd)
+
+        assert not send.get_enabled()
+        assert win.toolbar.send_button.get_tooltip_text() == "Job running"
+        assert not jog.start_btn.get_sensitive()
+        assert jog.start_btn.get_tooltip_text() == "Job running"
+
+    with _connected(machine, has_ops=True):
+        win.machine_cmd.job_state_changed.send(win.machine_cmd)
+
+        assert win.toolbar.send_button.get_tooltip_text() != "Job running"
+        assert jog.start_btn.get_sensitive()
+        assert jog.start_btn.get_tooltip_text() == "Start job"
+
+
+@pytest.mark.ui
+def test_both_starts_go_through_one_guarded_method(app_and_window):
+    """The toolbar's Send and the panel's Start reach run_send_job."""
+    _app, win = app_and_window
+    jog = win.bottom_panel.jog_widget
+    machine = get_context().config.machine
+    assert jog.machine is machine
+
+    with (
+        patch.object(
+            win,
+            "_run_sanity_check_and_proceed",
+            side_effect=lambda proceed: proceed(),
+        ),
+        patch.object(win.machine_cmd, "run_send_job") as run_send_job,
+    ):
+        win.on_send_clicked(None, None)
+        jog.start_btn.emit("clicked")
+
+    assert [c.args for c in run_send_job.call_args_list] == [
+        (machine,),
+        (machine,),
+    ]
+
+
+@pytest.mark.ui
 def test_both_stop_buttons_cancel_through_one_method(app_and_window):
     """The toolbar's Stop and the jog panel's reach one cancel_job."""
     _app, win = app_and_window
