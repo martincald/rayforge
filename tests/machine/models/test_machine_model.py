@@ -903,3 +903,55 @@ class TestCutScaleSettings:
 
         assert machine.cut_scale_speed_mm_s == 20.0
         assert machine.cut_scale_power_pct is None
+
+
+class TestLastJobStart:
+    """The last Start job's anchor is kept per profile."""
+
+    def test_the_position_survives_a_round_trip(self, lite_context):
+        machine = Machine(lite_context)
+        machine.set_last_job_start((120.5, 64.25))
+
+        restored = Machine.from_dict(machine.to_dict(), context=lite_context)
+
+        assert restored.last_job_start == (120.5, 64.25)
+
+    def test_a_profile_without_the_key_has_none(self, lite_context):
+        """Every profile from before Crawford mode has no such key."""
+        machine = Machine.from_dict({"machine": {}}, context=lite_context)
+
+        assert machine.last_job_start is None
+
+    def test_an_unset_position_is_not_written(self, lite_context):
+        """Keeps a fresh profile identical to the YAML it came from."""
+        machine = Machine(lite_context)
+
+        assert "last_job_start" not in machine.to_dict()["machine"]
+
+    @pytest.mark.parametrize(
+        "value", ["12", [1.0], [1.0, 2.0, 3.0], ["a", 2.0], [True, 2.0]]
+    )
+    def test_a_malformed_value_is_dropped_with_a_warning(
+        self, lite_context, caplog, value
+    ):
+        with caplog.at_level(logging.WARNING):
+            machine = Machine.from_dict(
+                {"machine": {"last_job_start": value}}, context=lite_context
+            )
+
+        assert machine.last_job_start is None
+        assert "malformed last_job_start" in caplog.text
+
+    def test_setting_it_saves_once_and_an_equal_value_not_at_all(
+        self, lite_context
+    ):
+        machine = Machine(lite_context)
+        sends = []
+        machine.changed.connect(
+            lambda sender, **kw: sends.append(sender), weak=False
+        )
+
+        machine.set_last_job_start((10.0, 20.0))
+        machine.set_last_job_start((10.0, 20.0))
+
+        assert sends == [machine]

@@ -307,12 +307,55 @@ class MachineCmd:
         if not isinstance(artifact, JobArtifact):
             raise TypeError("_run_send_action received a non-JobArtifact")
 
+        # Taken before the run: a Stop mid-job reads the position
+        # again, so afterwards it is wherever the head stopped.
+        anchor = self._job_anchor(artifact.ops, machine)
         await self._execute_monitored_job(
             artifact.ops,
             machine,
             on_progress=on_progress,
             encoded=artifact.encoded_output,
         )
+        self._start_job_ended(machine, anchor)
+
+    def _start_corner_offset(
+        self, ops: Ops, machine: Machine
+    ) -> tuple[float, float]:
+        """How far the driver moves the head before it sends this job."""
+        min_x, min_y, max_x, max_y = ops.rect()
+        return machine.panel.start_corner_offset(
+            machine.start_corner, max_x - min_x, max_y - min_y
+        )
+
+    def _job_anchor(
+        self, ops: Ops, machine: Machine
+    ) -> tuple[float, float] | None:
+        """
+        Where a job about to run is anchored, in machine-space mm.
+
+        That is the head's position plus the start-corner move the
+        driver makes before it sends, so the point the job is cut
+        from. None for an empty job or an unknown position.
+        """
+        x, y = machine.device_state.machine_pos[:2]
+        if ops.is_empty() or x is None or y is None:
+            return None
+        dx, dy = self._start_corner_offset(ops, machine)
+        return x + dx, y + dy
+
+    def _start_job_ended(
+        self, machine: Machine, anchor: tuple[float, float] | None
+    ) -> None:
+        """
+        A Start job's run returned without raising.
+
+        The one place a Start is known to have ended, so anything that
+        follows a job belongs here. The driver also returns quietly
+        when a job is stopped, or refused once its start-corner move
+        fails, so this means "ended", not "cut".
+        """
+        if anchor is not None:
+            self._scheduler(machine.set_last_job_start, anchor)
 
     async def _start_job(
         self,

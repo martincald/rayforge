@@ -6,12 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 import pytest_asyncio
+from blinker import Signal
 from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 
 from swiftcut.core.config import ConfigManager
 from swiftcut.machine.cmd import MachineCmd
-from swiftcut.machine.models.machine import Machine
+from swiftcut.machine.driver.driver import DeviceState
+from swiftcut.machine.models.machine import Machine, Origin, StartCorner
 from swiftcut.pipeline.artifact import JobArtifact
 from swiftcut.shared.tasker.manager import TaskManager
 
@@ -507,3 +509,209 @@ async def test_a_second_start_neither_sends_nor_cancels_the_first(
 
     assert (driver.runs, driver.cancels) == (1, 1)
     assert not cmd.is_job_running
+
+
+class _StartDriver:
+    """A driver whose job ends at once, after an optional side effect."""
+
+    native_overscan = False
+
+    def __init__(self, during_run=None):
+        self.runs = 0
+        self.go_scales = 0
+        self.job_finished = Signal()
+        self._during_run = during_run
+
+    async def run(self, encoded, doc, ops, on_command_done=None):
+        self.runs += 1
+        if self._during_run is not None:
+            self._during_run()
+
+    async def go_scale(self, width, height, speed):
+        self.go_scales += 1
+
+
+def _start_cmd(task_mgr, ops: Ops) -> MachineCmd:
+    """A MachineCmd whose pipeline hands Start the given job."""
+    artifact = JobArtifact(
+        ops=ops,
+        distance=ops.distance(),
+        generation_id=1,
+        encoded_output=MagicMock(),
+    )
+    editor = MagicMock()
+    editor.task_manager = task_mgr
+    editor.pipeline.generate_job_artifact_async = AsyncMock(
+        return_value=MagicMock()
+    )
+    store = editor.pipeline.artifact_store
+    store.checkout_handle.return_value.__enter__.return_value = artifact
+    return MachineCmd(editor)
+
+
+def _head_at(machine: Machine, x: float | None, y: float | None):
+    """Put the head somewhere, as the driver's position reads do."""
+    # Built first: a new controller hands the machine its driver's
+    # (unknown) position.
+    _ = machine.controller
+    machine.set_device_state(DeviceState(machine_pos=(x, y, 0.0)))
+
+
+def _job(width: float = 20.0, height: float = 10.0) -> Ops:
+    ops = Ops()
+    ops.move_to(5, 5, 0)
+    ops.line_to(5 + width, 5, 0)
+    ops.line_to(5 + width, 5 + height, 0)
+    return ops
+
+
+async def _start(task_mgr, cmd, machine, driver, **kwargs):
+    """Press Start and wait until the job and its aftermath are done."""
+    with patch.object(
+        type(machine), "driver", new_callable=PropertyMock, return_value=driver
+    ):
+        cmd.run_send_job(machine, **kwargs)
+        await wait_for_tasks_to_finish(task_mgr)
+        # Main-thread callbacks, like the profile update, land after.
+        await asyncio.sleep(0.05)
+
+
+class TestLastJobStartRecording:
+    """Every Start job leaves where it was anchored in the profile."""
+
+    @pytest.mark.asyncio
+    async def test_with_no_corner_move_the_head_position_is_recorded(
+        self, task_mgr, machine
+    ):
+        """On a top-left origin, a top-right start needs no pre-move."""
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(StartCorner.TOP_RIGHT)
+        assert machine.panel.start_corner_offset(
+            StartCorner.TOP_RIGHT, 20.0, 10.0
+        ) == (0.0, 0.0)
+        _head_at(machine, 100.0, 50.0)
+        driver = _StartDriver()
+
+        await _start(task_mgr, _start_cmd(task_mgr, _job()), machine, driver)
+
+        assert driver.runs == 1
+        assert machine.last_job_start == (100.0, 50.0)
+
+    @pytest.mark.asyncio
+    async def test_top_left_records_where_the_job_is_anchored(
+        self, task_mgr, machine
+    ):
+        """
+        The driver pre-moves the head by the corner offset first, so
+        the start is past it: on the ilab-614 convention, a top-left
+        start is the job's width toward -X.
+        """
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(StartCorner.TOP_LEFT)
+        offset = machine.panel.start_corner_offset(
+            StartCorner.TOP_LEFT, 20.0, 10.0
+        )
+        assert offset == (-20.0, 0.0)
+        _head_at(machine, 100.0, 50.0)
+
+        await _start(
+            task_mgr, _start_cmd(task_mgr, _job()), machine, _StartDriver()
+        )
+
+        assert machine.last_job_start == (80.0, 50.0)
+
+    @pytest.mark.asyncio
+    async def test_the_value_is_saved_with_the_profile(
+        self, task_mgr, machine, lite_context
+    ):
+        _head_at(machine, 100.0, 50.0)
+
+        await _start(
+            task_mgr, _start_cmd(task_mgr, _job()), machine, _StartDriver()
+        )
+
+        path = lite_context.machine_mgr.filename_from_id(machine.id)
+        assert "last_job_start" in path.read_text()
+
+    @pytest.mark.asyncio
+    async def test_a_refused_job_records_nothing(self, task_mgr, machine):
+        """The driver raises when busy: no job ran, nothing to recall."""
+        _head_at(machine, 100.0, 50.0)
+
+        def busy():
+            raise RuntimeError("the machine is busy")
+
+        await _start(
+            task_mgr,
+            _start_cmd(task_mgr, _job()),
+            machine,
+            _StartDriver(during_run=busy),
+        )
+
+        assert machine.last_job_start is None
+
+    @pytest.mark.asyncio
+    async def test_an_empty_job_records_nothing(self, task_mgr, machine):
+        _head_at(machine, 100.0, 50.0)
+        driver = _StartDriver()
+
+        await _start(task_mgr, _start_cmd(task_mgr, Ops()), machine, driver)
+
+        assert driver.runs == 0
+        assert machine.last_job_start is None
+
+    @pytest.mark.asyncio
+    async def test_an_unknown_position_records_nothing(
+        self, task_mgr, machine
+    ):
+        _head_at(machine, None, None)
+        driver = _StartDriver()
+
+        await _start(task_mgr, _start_cmd(task_mgr, _job()), machine, driver)
+
+        assert driver.runs == 1
+        assert machine.last_job_start is None
+
+    @pytest.mark.asyncio
+    async def test_a_stop_mid_job_still_records_where_it_started(
+        self, task_mgr, machine
+    ):
+        """Stop re-reads the position, so the end is not the start."""
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(StartCorner.TOP_RIGHT)
+        _head_at(machine, 100.0, 50.0)
+
+        await _start(
+            task_mgr,
+            _start_cmd(task_mgr, _job()),
+            machine,
+            _StartDriver(during_run=lambda: _head_at(machine, 117.0, 58.0)),
+        )
+
+        assert machine.last_job_start == (100.0, 50.0)
+
+    @pytest.mark.asyncio
+    async def test_scales_and_frame_never_record(self, task_mgr, machine):
+        """Only a Start is a job to start again from."""
+        _head_at(machine, 100.0, 50.0)
+        driver = _StartDriver()
+        cmd = _start_cmd(task_mgr, _job())
+        machine.get_default_laser_head().frame_power_percent = 0.1
+
+        with (
+            patch.object(
+                type(machine),
+                "driver",
+                new_callable=PropertyMock,
+                return_value=driver,
+            ),
+            patch("swiftcut.machine.cmd._create_driver_encoder"),
+        ):
+            cmd.run_cut_scale(machine, 1200, 0.5)
+            cmd.run_go_scale(machine, 6000)
+            await wait_for_tasks_to_finish(task_mgr)
+            await cmd.frame_job(machine)
+            await asyncio.sleep(0.05)
+
+        assert (driver.runs, driver.go_scales) == (2, 1)
+        assert machine.last_job_start is None

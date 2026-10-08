@@ -191,6 +191,9 @@ class Machine:
         self.start_corner: StartCorner = StartCorner.TOP_LEFT
         self.cut_scale_speed_mm_s: float = 20.0
         self.cut_scale_power_pct: float | None = None
+        # Where the last Start job was anchored, in machine-space mm,
+        # so Crawford mode can start the next one there.
+        self.last_job_start: tuple[float, float] | None = None
         self.panel = MachinePanel(self)
         self.rotary_enabled_default: bool = False
         self.default_rotary_module_uid: str | None = None
@@ -831,6 +834,13 @@ class Machine:
             return
         self.cut_scale_speed_mm_s = speed_mm_s
         self.cut_scale_power_pct = power_pct
+        self.changed.send(self)
+
+    def set_last_job_start(self, pos: tuple[float, float]):
+        """Remember where the last Start job was anchored."""
+        if self.last_job_start == pos:
+            return
+        self.last_job_start = pos
         self.changed.send(self)
 
     @property
@@ -1520,6 +1530,10 @@ class Machine:
                 "machine_hours": self.machine_hours.to_dict(),
             }
         }
+        # Only once a job has run, so a fresh profile still matches the
+        # YAML it was seeded from.
+        if self.last_job_start is not None:
+            data["machine"]["last_job_start"] = list(self.last_job_start)
         if include_frozen_dialect and self._hydrated_dialect:
             data["machine"]["frozen_dialect"] = (
                 self._hydrated_dialect.to_dict()
@@ -1727,6 +1741,23 @@ class Machine:
         ma.cut_scale_power_pct = ma_data.get(
             "cut_scale_power_pct", ma.cut_scale_power_pct
         )
+
+        last_job_start = ma_data.get("last_job_start")
+        if last_job_start is not None:
+            if (
+                isinstance(last_job_start, list)
+                and len(last_job_start) == 2
+                and all(
+                    isinstance(v, (int, float)) and not isinstance(v, bool)
+                    for v in last_job_start
+                )
+            ):
+                x, y = last_job_start
+                ma.last_job_start = (float(x), float(y))
+            else:
+                logger.warning(
+                    "Ignoring malformed last_job_start %r", last_job_start
+                )
 
         origin_value = ma_data.get("origin", None)
         if origin_value is not None:
