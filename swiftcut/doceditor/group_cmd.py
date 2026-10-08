@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,8 @@ from ..core.group import Group, GroupingResult
 from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.undo.command import Command
+from ..core.workpiece import WorkPiece
+from .split_cmd import PathSplitStrategy
 
 if TYPE_CHECKING:
     from ..pipeline.pipeline import Pipeline
@@ -176,8 +179,7 @@ class _UngroupCommand(Command):
                         group.uid
                     ]
                 else:
-                    # This path is for safety but should not be used by the
-                    # async command.
+                    # Ungroup computes the matrices from the tree as it is.
                     parent_inv = parent.get_world_transform().invert()
                     new_child_matrices = (
                         _UngroupCommand._calculate_ungroup_transforms(
@@ -230,10 +232,15 @@ class GroupCmd:
         self._editor = editor
         self._task_manager = task_manager
 
-    def group_items(self, layer: Layer, items_to_group: list[DocItem]):
+    def group_items(
+        self,
+        layer: Layer,
+        items_to_group: list[DocItem],
+        on_done: Callable[[Group], None] | None = None,
+    ):
         """
         Creates and executes an undoable command to group items. This operation
-        runs as a background task.
+        runs as a background task; on_done then receives the new group.
         """
         if not items_to_group:
             return
@@ -271,6 +278,8 @@ class GroupCmd:
                     precalculated_result=result,
                 )
                 self._editor.history_manager.execute(command)
+                if on_done and command.new_group:
+                    on_done(command.new_group)
             finally:
                 # Always notify editor when done, even on failure
                 self._editor.notify_task_ended()
@@ -281,72 +290,25 @@ class GroupCmd:
             key="group-items",
         )
 
-    def ungroup_items(self, groups_to_ungroup: list[Group]):
+    def ungroup_items(self, items: list[DocItem]) -> list[DocItem]:
         """
-        Creates and executes an undoable command to ungroup items. This
-        operation runs as a background task.
+        Ungroups the items in one undoable step: each Group is dissolved
+        one level, its children going back to its parent (the inverse of
+        Group), and each WorkPiece of several paths is split into one
+        piece per path (see PathSplitStrategy). Nothing else is touched.
+
+        Returns:
+            The freed children and the new pieces. Empty, with no history
+            entry, when there is nothing to ungroup.
         """
-        if not groups_to_ungroup:
-            return
+        groups = [i for i in items if isinstance(i, Group) and i.parent]
+        workpieces = [i for i in items if isinstance(i, WorkPiece)]
+        children = [child for group in groups for child in group.children]
 
-        # Notify editor that we are starting a background task
-        self._editor.notify_task_started()
-
-        def do_calculation_sync() -> dict[str, dict[str, Matrix]]:
-            results = {}
-            parent_inverses: dict[str, Matrix] = {}
-            for group in groups_to_ungroup:
-                if group.parent and group.parent.uid not in parent_inverses:
-                    parent_inverses[group.parent.uid] = (
-                        group.parent.get_world_transform().invert()
-                    )
-
-            for group in groups_to_ungroup:
-                if group.parent:
-                    parent_inv = parent_inverses[group.parent.uid]
-                    new_matrices = (
-                        _UngroupCommand._calculate_ungroup_transforms(
-                            group, parent_inv
-                        )
-                    )
-                    results[group.uid] = new_matrices
-            return results
-
-        async def ungroup_coro(context: "ExecutionContext"):
-            context.set_message(_("Ungrouping items..."))
-            context.flush()
-            await asyncio.sleep(0.01)
-
-            calculated_matrices = do_calculation_sync()
-
-            context.set_progress(1.0)
-            return calculated_matrices
-
-        def when_done(task: "Task"):
-            try:
-                if task.get_status() != "completed":
-                    logger.error(
-                        "Ungroup task did not complete successfully. "
-                        f"Status: {task.get_status()}",
-                    )
-                    return
-
-                calculated_matrices = task.result()
-                if not calculated_matrices:
-                    return
-
-                command = _UngroupCommand(
-                    groups_to_ungroup=groups_to_ungroup,
-                    pipeline=self._editor.pipeline,
-                    precalculated_matrices=calculated_matrices,
-                )
-                self._editor.history_manager.execute(command)
-            finally:
-                # Always notify editor when done, even on failure
-                self._editor.notify_task_ended()
-
-        self._task_manager.add_coroutine(
-            ungroup_coro,
-            when_done=when_done,
-            key="ungroup-items",
-        )
+        with self._editor.history_manager.transaction(_("Ungroup")) as t:
+            if groups:
+                t.execute(_UngroupCommand(groups, self._editor.pipeline))
+            pieces = self._editor.split.split_in_transaction(
+                t, workpieces, PathSplitStrategy(), drop_dust=False
+            )
+        return children + pieces

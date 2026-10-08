@@ -1,6 +1,8 @@
 import logging
+import math
 import uuid
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
@@ -11,9 +13,13 @@ from ..core.undo import ListItemCommand
 from ..core.workpiece import WorkPiece
 
 if TYPE_CHECKING:
+    from ..core.undo.history import _TransactionContextProxy
     from .editor import DocEditor
 
 logger = logging.getLogger(__name__)
+
+# Open paths whose ends lie this close together (mm) are one shape.
+ENDPOINT_TOLERANCE_MM = 1e-3
 
 
 class SplitStrategy(ABC):
@@ -49,6 +55,55 @@ class ConnectivitySplitStrategy(SplitStrategy):
         return workpiece.boundaries.split_into_components()
 
 
+class PathSplitStrategy(SplitStrategy):
+    """
+    Splits a workpiece into its paths, in drawing order: one fragment
+    per closed path (a hole too), and one per set of open paths joined
+    end to end, their ends within ENDPOINT_TOLERANCE_MM. Paths that
+    only cross or touch mid-path stay apart. Nothing is dropped, unlike
+    ConnectivitySplitStrategy, which keeps holes with their outline and
+    drops open paths; its callers keep every fragment too, dust
+    included (apply_split's drop_dust=False).
+    """
+
+    def calculate_fragments(self, workpiece: "WorkPiece") -> list[Geometry]:
+        geo = workpiece.boundaries
+        if not geo or geo.is_empty():
+            return []
+        contours = geo.split_into_contours()
+        roots = list(range(len(contours)))
+
+        def find(i: int) -> int:
+            while roots[i] != i:
+                roots[i] = roots[roots[i]]
+                i = roots[i]
+            return i
+
+        # The ends of open paths in mm, in a grid of tolerance-sized
+        # cells: an end within the tolerance lies in a neighbouring cell.
+        width, height = workpiece.size
+        tolerance = ENDPOINT_TOLERANCE_MM
+        cells: defaultdict[tuple[int, int], list] = defaultdict(list)
+        for i, contour in enumerate(contours):
+            if contour.is_closed():
+                continue
+            start = contour.get_command_at(0).end
+            for x, y, _z in (start, contour.get_last_point()):
+                x, y = x * width, y * height
+                cx, cy = math.floor(x / tolerance), math.floor(y / tolerance)
+                for nx in (cx - 1, cx, cx + 1):
+                    for ny in (cy - 1, cy, cy + 1):
+                        for j, ox, oy in cells.get((nx, ny), ()):
+                            if math.hypot(ox - x, oy - y) <= tolerance:
+                                roots[find(j)] = find(i)
+                cells[(cx, cy)].append((i, x, y))
+
+        fragments: dict[int, Geometry] = {}
+        for i, contour in enumerate(contours):
+            fragments.setdefault(find(i), Geometry()).extend(contour)
+        return list(fragments.values())
+
+
 class SplitCmd:
     """Handles splitting of document items."""
 
@@ -79,47 +134,63 @@ class SplitCmd:
             return []
 
         history = self._editor.history_manager
-        newly_created_items = []
-
         with history.transaction(_("Split item(s)")) as t:
-            for item in items:
-                # Capture the parent before any modification/removal occurs.
-                # Executing remove_cmd may set item.parent to None.
-                parent = item.parent
-                if not isinstance(item, WorkPiece) or not parent:
-                    continue
+            return self.split_in_transaction(t, items, strategy)
 
-                fragments = strategy.calculate_fragments(item)
-                new_pieces = item.apply_split(fragments)
+    def split_in_transaction(
+        self,
+        t: "_TransactionContextProxy",
+        items: list[WorkPiece],
+        strategy: SplitStrategy,
+        drop_dust: bool = True,
+    ) -> list[DocItem]:
+        """
+        Splits the items like split_items, executing the commands in the
+        caller's open transaction t, so a split can be part of a larger
+        undo step. Without drop_dust, fragments under 0.1 mm are kept.
 
-                # If splitting didn't produce multiple pieces, do nothing for
-                # this item.
-                if len(new_pieces) <= 1:
-                    continue
+        Returns:
+            A list of the newly created items.
+        """
+        newly_created_items: list[DocItem] = []
+        for item in items:
+            # Capture the parent before any modification/removal occurs.
+            # Executing remove_cmd may set item.parent to None.
+            parent = item.parent
+            if not isinstance(item, WorkPiece) or not parent:
+                continue
 
-                # Remove the original
-                remove_cmd = ListItemCommand(
-                    owner_obj=parent,
-                    item=item,
-                    undo_command="add_child",
-                    redo_command="remove_child",
-                    name=_("Remove original item"),
-                )
-                t.execute(remove_cmd)
+            fragments = strategy.calculate_fragments(item)
+            new_pieces = item.apply_split(fragments, drop_dust=drop_dust)
 
-                # Add the new pieces
-                for piece in new_pieces:
-                    # Assign a unique ID to each new piece
-                    piece.uid = str(uuid.uuid4())
+            # If splitting didn't produce multiple pieces, do nothing for
+            # this item.
+            if len(new_pieces) <= 1:
+                continue
 
-                add_cmd = ListItemCommand(
-                    owner_obj=parent,
-                    item=new_pieces,
-                    undo_command="remove_children",
-                    redo_command="add_children",
-                    name=_("Add split fragments"),
-                )
-                t.execute(add_cmd)
-                newly_created_items.extend(new_pieces)
+            # Remove the original
+            remove_cmd = ListItemCommand(
+                owner_obj=parent,
+                item=item,
+                undo_command="add_child",
+                redo_command="remove_child",
+                name=_("Remove original item"),
+            )
+            t.execute(remove_cmd)
+
+            # Add the new pieces
+            for piece in new_pieces:
+                # Assign a unique ID to each new piece
+                piece.uid = str(uuid.uuid4())
+
+            add_cmd = ListItemCommand(
+                owner_obj=parent,
+                item=new_pieces,
+                undo_command="remove_children",
+                redo_command="add_children",
+                name=_("Add split fragments"),
+            )
+            t.execute(add_cmd)
+            newly_created_items.extend(new_pieces)
 
         return newly_created_items

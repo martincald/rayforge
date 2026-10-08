@@ -1383,7 +1383,9 @@ class WorkPiece(DocItem):
 
         self.pos = (model_x, model_y)
 
-    def apply_split(self, fragments: list[Geometry]) -> list[WorkPiece]:
+    def apply_split(
+        self, fragments: list[Geometry], drop_dust: bool = True
+    ) -> list[WorkPiece]:
         """
         Creates new WorkPiece instances from a list of normalized geometry
         fragments. Each fragment represents a subset of this workpiece's
@@ -1396,6 +1398,7 @@ class WorkPiece(DocItem):
             fragments: A list of Geometry objects. Each must be a subset of
                        self.boundaries, defined in the same 0-1 Y-up
                        normalized coordinate space.
+            drop_dust: Drop fragments under 0.1 mm in both directions.
 
         Returns:
             A list of new WorkPiece instances.
@@ -1413,12 +1416,22 @@ class WorkPiece(DocItem):
         for frag_geo in fragments:
             # 1. Calculate bounding box of the fragment in the local 0-1 space.
             min_x, min_y, max_x, max_y = frag_geo.rect()
-            w = max(max_x - min_x, 1e-9)
-            h = max(max_y - min_y, 1e-9)
+            w = max_x - min_x
+            h = max_y - min_y
 
             # 2. Filter out noise / dust.
-            if (w * phys_w < 0.1) and (h * phys_h < 0.1):
+            if drop_dust and (w * phys_w < 0.1) and (h * phys_h < 0.1):
                 continue
+
+            # A flat fragment (a horizontal or vertical line, a dot) gets
+            # 1 mm there, like the importer's guard for degenerate bounds
+            # (NormalizationEngine.calculate_layout_item); the crop window
+            # below follows its box.
+            if w <= 0:
+                w = 1.0 / phys_w
+            if h <= 0:
+                h = 1.0 / phys_h
+            max_y = min_y + h
 
             # 3. Normalize the fragment geometry to its own 1x1 box.
             # This becomes the new canonical shape for this piece.

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, cast
 from gi.repository import Gio, GLib, Gtk
 
 from ..context import get_context
-from ..core.group import Group
 from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.stock import StockItem
@@ -729,25 +728,18 @@ class ActionManager:
         ):
             return
 
-        new_group = self.editor.group.group_items(parent_layer, items_to_group)
-        if new_group:
-            self.win.surface.select_items([new_group])
+        self.editor.group.group_items(
+            parent_layer,
+            items_to_group,
+            on_done=lambda group: self.win.surface.select_items([group]),
+        )
 
     def on_ungroup_action(self, action, param):
         """Handler for the 'ungroup' action."""
-        selected_elements = self.win.surface.get_selected_elements()
-
-        groups_to_ungroup = [
-            elem.data
-            for elem in selected_elements
-            if isinstance(elem.data, Group)
-        ]
-        if not groups_to_ungroup:
-            return
-
-        self.editor.group.ungroup_items(groups_to_ungroup)
-        # The selection will be automatically updated by the history changed
-        # signal handler.
+        items = self.win.surface.get_selected_items()
+        ungrouped = self.editor.group.ungroup_items(list(items))
+        if ungrouped:
+            self.win.surface.select_items(ungrouped)
 
     def on_split_action(self, action, param):
         """Handler for the 'split' action."""

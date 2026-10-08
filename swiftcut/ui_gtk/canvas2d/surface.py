@@ -405,16 +405,18 @@ class WorkSurface(WorldSurface):
         # Now, call the specific function to show the menu.
         if self.right_click_context:
             context_type = self.right_click_context["type"]
+            if context_type in ("item", "geometry") and not hit_elem.selected:
+                self.unselect_all()
+                hit_elem.selected = True
+                self._finalize_selection_state()
             if context_type == "item":
-                if not hit_elem.selected:
-                    self.unselect_all()
-                    hit_elem.selected = True
-                    self._finalize_selection_state()
                 context_menu.show_item_context_menu(
                     self, gesture, item=hit_elem.data
                 )
             elif context_type == "geometry":
-                context_menu.show_geometry_context_menu(self, gesture)
+                context_menu.show_geometry_context_menu(
+                    self, gesture, item=hit_elem.data
+                )
             elif context_type == "tab":
                 context_menu.show_tab_context_menu(self, gesture)
 

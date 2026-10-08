@@ -145,13 +145,6 @@ def _create_item_context_menu() -> Gio.Menu:
     return menu
 
 
-def _create_geometry_context_menu() -> Gio.Menu:
-    """Builds the context menu for interacting with a workpiece's path."""
-    menu = Gio.Menu.new()
-    menu.append_item(Gio.MenuItem.new(_("Add Tab Here"), "win.tab-add"))
-    return menu
-
-
 def _create_tab_context_menu() -> Gio.Menu:
     """Builds the context menu for an existing tab handle."""
     menu = Gio.Menu.new()
@@ -162,7 +155,6 @@ def _create_tab_context_menu() -> Gio.Menu:
 # Pre-build and cache the menu models once when the module is loaded.
 _MENU_MODELS = {
     "item": _create_item_context_menu(),
-    "geometry": _create_geometry_context_menu(),
     "tab": _create_tab_context_menu(),
 }
 
@@ -190,6 +182,7 @@ def show_item_context_menu(
     surface: WorkSurface,
     gesture: Gtk.Gesture,
     item: DocItem | None = None,
+    first_section: Gio.Menu | None = None,
 ):
     """
     Displays the context menu for general items like WorkPieces or Groups.
@@ -197,6 +190,7 @@ def show_item_context_menu(
     Emits the context_menu_requested signal and invokes registered extension
     handlers to allow addons to add custom menu items. The item parameter is
     passed to handlers so they can determine if the menu should be extended.
+    A first_section is shown above the standard items.
     """
     menu = Gio.Menu.new()
     _populate_standard_items(menu)
@@ -204,6 +198,8 @@ def show_item_context_menu(
     menu.insert_submenu(
         2, _("Move to Layer"), build_move_to_layer_menu(surface.doc)
     )
+    if first_section is not None:
+        menu.prepend_section(None, first_section)
 
     # Invoke registered extension handlers
     context_menu_extension_registry.invoke_all(surface, item, gesture, menu)
@@ -216,9 +212,19 @@ def show_item_context_menu(
     _show_popover(surface, gesture, menu)
 
 
-def show_geometry_context_menu(surface: WorkSurface, gesture: Gtk.Gesture):
-    """Displays the context menu for adding a tab to a geometry path."""
-    _show_popover(surface, gesture, _MENU_MODELS["geometry"])
+def show_geometry_context_menu(
+    surface: WorkSurface,
+    gesture: Gtk.Gesture,
+    item: DocItem | None = None,
+):
+    """
+    Displays the item context menu for a right-click on a workpiece's
+    path, with an entry adding a tab where the path was clicked above
+    the standard items.
+    """
+    tab_section = Gio.Menu.new()
+    tab_section.append_item(Gio.MenuItem.new(_("Add Tab Here"), "win.tab-add"))
+    show_item_context_menu(surface, gesture, item, first_section=tab_section)
 
 
 def show_tab_context_menu(surface: WorkSurface, gesture: Gtk.Gesture):

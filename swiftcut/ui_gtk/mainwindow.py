@@ -17,6 +17,7 @@ from ..core.group import Group
 from ..core.item import DocItem
 from ..core.registration import call_registration_hooks
 from ..core.undo import Command, HistoryManager
+from ..core.workpiece import WorkPiece
 from ..doceditor.editor import DocEditor
 from ..machine.cmd import MachineCmd
 from ..machine.driver.driver import DeviceState, DeviceStatus
@@ -1680,12 +1681,25 @@ class MainWindow(Adw.ApplicationWindow):
         am.get_action("remove").set_enabled(has_selection)
         am.get_action("clear").set_enabled(doc.has_workpiece())
 
-        # Update sensitivity for Grouping actions
-        can_group = len(selected_elements) >= 2
+        # Update sensitivity for Grouping actions: Group takes two or
+        # more items sharing one parent; Ungroup a Group, or a shape of
+        # several paths (counted, not joined at their ends: this runs on
+        # every change, and joining thousands of lines takes long).
+        selected_items = self.surface.get_selected_items()
+        can_group = (
+            len(selected_items) >= 2
+            and len({item.parent for item in selected_items}) == 1
+        )
         am.get_action("group").set_enabled(can_group)
 
         can_ungroup = any(
-            isinstance(elem.data, Group) for elem in selected_elements
+            isinstance(item, Group)
+            or (
+                isinstance(item, WorkPiece)
+                and item.boundaries is not None
+                and len(item.boundaries.split_into_contours()) > 1
+            )
+            for item in selected_items
         )
         am.get_action("ungroup").set_enabled(can_ungroup)
 

@@ -6,7 +6,11 @@ from raygeo.geo import Geometry, Matrix
 from swiftcut.core.source_asset_segment import SourceAssetSegment
 from swiftcut.core.vectorization_spec import PassthroughSpec
 from swiftcut.core.workpiece import WorkPiece
-from swiftcut.doceditor.split_cmd import SplitCmd, SplitStrategy
+from swiftcut.doceditor.split_cmd import (
+    PathSplitStrategy,
+    SplitCmd,
+    SplitStrategy,
+)
 
 
 class MockSplitStrategy(SplitStrategy):
@@ -193,3 +197,90 @@ def test_connectivity_strategy_real_split(split_cmd, doc_editor):
     assert wps[1].pos[0] == pytest.approx(20.0, abs=0.1)
     assert wps[1].size[0] == pytest.approx(10.0, abs=0.1)
     assert wps[1].size[1] == pytest.approx(10.0, abs=0.1)
+
+
+def _path_workpiece(geo: Geometry, size=(100.0, 100.0)) -> WorkPiece:
+    """A workpiece of the given normalized paths, size in mm."""
+    wp = WorkPiece(name="Paths")
+    wp._edited_boundaries = geo
+    wp.set_size(*size)
+    return wp
+
+
+def _line(geo: Geometry, start, end):
+    geo.move_to(*start)
+    geo.line_to(*end)
+
+
+def test_path_strategy_one_fragment_per_path_nothing_dropped():
+    """
+    A closed path is a fragment of its own, a hole too; open paths
+    meeting at an end are one fragment; a lone line is one. Fragments
+    follow the drawing order and together hold every path.
+    """
+    geo = Geometry()
+    # Outer square, and a hole in it.
+    for x0, x1 in ((0.0, 1.0), (0.1, 0.3)):
+        geo.move_to(x0, x0)
+        geo.line_to(x1, x0)
+        geo.line_to(x1, x1)
+        geo.line_to(x0, x1)
+        geo.close_path()
+    # A triangle closed by returning to its start, without close_path.
+    geo.move_to(0.5, 0.1)
+    geo.line_to(0.7, 0.1)
+    geo.line_to(0.7, 0.3)
+    geo.line_to(0.5, 0.1)
+    # An L of two lines, the second drawn towards the shared corner.
+    _line(geo, (0.1, 0.6), (0.3, 0.6))
+    _line(geo, (0.3, 0.8), (0.3, 0.6))
+    # A lone line.
+    _line(geo, (0.5, 0.6), (0.8, 0.9))
+
+    fragments = PathSplitStrategy().calculate_fragments(_path_workpiece(geo))
+
+    assert len(fragments) == 5
+    assert [f.is_closed() for f in fragments] == [
+        True,
+        True,
+        True,
+        False,
+        False,
+    ]
+    assert [len(f.split_into_contours()) for f in fragments] == [
+        1,
+        1,
+        1,
+        2,
+        1,
+    ]
+    assert sum(f.distance() for f in fragments) == pytest.approx(
+        geo.distance()
+    )
+
+
+@pytest.mark.parametrize("gap_mm, expected", [(0.0005, 1), (0.01, 2)])
+def test_path_strategy_joins_open_ends_within_a_thousandth_mm(
+    gap_mm, expected
+):
+    """Ends 0.0005 mm apart meet; 0.01 mm apart they do not."""
+    gap = gap_mm / 100.0  # normalized, on a 100 mm wide workpiece
+    geo = Geometry()
+    _line(geo, (0.1, 0.5), (0.2, 0.5))
+    _line(geo, (0.2 + gap, 0.5), (0.3, 0.5))
+
+    fragments = PathSplitStrategy().calculate_fragments(_path_workpiece(geo))
+
+    assert len(fragments) == expected
+
+
+def test_path_strategy_crossing_lines_stay_apart():
+    """Lines that cross, or touch mid-line, share no end: two shapes."""
+    geo = Geometry()
+    _line(geo, (0.0, 0.0), (1.0, 1.0))
+    _line(geo, (0.0, 1.0), (1.0, 0.0))
+    _line(geo, (0.5, 0.5), (0.5, 0.0))
+
+    fragments = PathSplitStrategy().calculate_fragments(_path_workpiece(geo))
+
+    assert len(fragments) == 3
