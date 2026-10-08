@@ -83,23 +83,6 @@ class DriverMaturity(Enum):
     KNOWN_BUGGY = auto()
 
 
-DRIVER_MATURITY_LABELS = {
-    DriverMaturity.STABLE: "",
-    DriverMaturity.UNTESTED: _(
-        "This driver has not been tested. It may or may not "
-        "work. Use it at your own risk."
-    ),
-    DriverMaturity.EXPERIMENTAL: _(
-        "This driver is experimental and may have "
-        "unresolved issues. Use it with caution."
-    ),
-    DriverMaturity.KNOWN_BUGGY: _(
-        "This driver is experimental and almost certainly buggy. It may not "
-        "work reliably. Use it at your own risk."
-    ),
-}
-
-
 class DeviceStatus(Enum):
     UNKNOWN = auto()
     IDLE = auto()

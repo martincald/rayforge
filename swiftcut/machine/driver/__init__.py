@@ -2,7 +2,6 @@ import inspect
 from typing import cast
 
 from .driver import (
-    DRIVER_MATURITY_LABELS,
     Driver,
     DriverMaturity,
     PWMParams,
@@ -35,7 +34,6 @@ def register_driver(driver: type[Driver]):
 
 
 __all__ = [
-    "DRIVER_MATURITY_LABELS",
     "Driver",
     "DriverMaturity",
     "NoDeviceDriver",

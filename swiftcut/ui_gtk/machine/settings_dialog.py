@@ -2,15 +2,9 @@ from gettext import gettext as _
 
 from gi.repository import Adw, Gtk
 
-from ...machine.driver import (
-    DRIVER_MATURITY_LABELS,
-    DriverMaturity,
-    get_driver_cls,
-)
 from ...machine.models.machine import Machine
 from ..icons import get_icon
-from ..layout import SPACE_CONTROL, SPACE_GROUP, stylesheet
-from ..shared.gtk import apply_css
+from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from .advanced_preferences_page import AdvancedPreferencesPage
 from .capabilities_page import CapabilitiesPage
@@ -22,15 +16,6 @@ from .hooks_macros_page import HooksMacrosPage
 from .maintenance_page import MaintenancePage
 from .nogo_zones_page import NogoZonesPage
 from .rotary_module_page import RotaryModulePage
-
-apply_css(
-    stylesheet("""
-.maturity-warning {
-    background-color: alpha(@warning_color, 0.15);
-    padding: $space_group $space_page;
-}
-""")
-)
 
 
 class MachineSettingsDialog(PatchedDialogWindow):
@@ -69,23 +54,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         # Header bar
         header_bar = Adw.HeaderBar()
         main_box.append(header_bar)
-
-        # Maturity warning banner
-        self.maturity_banner = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=SPACE_GROUP,
-            hexpand=True,
-        )
-        self.maturity_banner.add_css_class("maturity-warning")
-        self._maturity_icon = get_icon("warning-symbolic")
-        self._maturity_icon.add_css_class("warning")
-        self._maturity_label = Gtk.Label(wrap=True, xalign=0, hexpand=True)
-        self._maturity_label.add_css_class("warning-label")
-
-        self.maturity_banner.append(self._maturity_icon)
-        self.maturity_banner.append(self._maturity_label)
-        self.maturity_banner.set_visible(False)
-        main_box.append(self.maturity_banner)
 
         # Navigation Split View for sidebar and content
         split_view = Adw.NavigationSplitView(vexpand=True)
@@ -193,14 +161,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
         # Connect sidebar selection
         self.sidebar_list.connect("row-selected", self._on_row_selected)
 
-        self.connect("destroy", self._on_destroy)
-
-        # React to driver changes (e.g. maturity banner)
-        self.machine.changed.connect(self._on_machine_changed)
-
-        # Initial population of the maturity banner
-        self._update_maturity_banner()
-
         # Select the specified page or first row by default
         if self._initial_page:
             for row, page_name in self._row_to_page_name.items():
@@ -209,21 +169,6 @@ class MachineSettingsDialog(PatchedDialogWindow):
                     break
         else:
             self.sidebar_list.select_row(self.sidebar_list.get_row_at_index(0))
-
-    def _on_machine_changed(self, sender=None, **kwargs):
-        self._update_maturity_banner()
-
-    def _update_maturity_banner(self):
-        maturity = DriverMaturity.STABLE
-        if self.machine.driver_name:
-            driver_cls = get_driver_cls(self.machine.driver_name)
-            maturity = driver_cls.maturity
-        label = DRIVER_MATURITY_LABELS.get(maturity, "")
-        if label:
-            self._maturity_label.set_text(label)
-            self.maturity_banner.set_visible(True)
-        else:
-            self.maturity_banner.set_visible(False)
 
     def _add_sidebar_row(
         self, label_text: str, icon_name: str, page_name: str
@@ -264,7 +209,3 @@ class MachineSettingsDialog(PatchedDialogWindow):
         Handler to show the toast when requested by the child page.
         """
         self.toast_overlay.add_toast(Adw.Toast(title=message, timeout=5))
-
-    def _on_destroy(self, *args):
-        """Disconnects signals to prevent memory leaks."""
-        self.machine.changed.disconnect(self._on_machine_changed)
