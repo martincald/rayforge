@@ -135,7 +135,7 @@ später aus den Maschineneinstellungen hinzuzufügen.
 
 Aktiviere optional alle Kameras, die du für Vorschau und Ausrichtung
 verwenden möchtest. Wenn du eine Kamera aktivierst und fortfährst, öffnet sich
-der [Kamera-Assistent](../machine/camera.md#schritt-2-kamera-assistent), der
+der Kamera-Assistent, der
 dich durch Bildeinstellungen, Linsenkalibrierung und Bildausrichtung führt.
 Du kannst dies überspringen und Kameras später über die Kamera-Einstellungen
 der Maschine einrichten.

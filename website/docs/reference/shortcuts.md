@@ -389,5 +389,3 @@ Some lesser-known shortcuts:
 
 - [Main Window](../ui/main-window.md) - UI overview
 - [Canvas Tools](../ui/canvas-tools.md) - Canvas interaction
-- [3D Preview](../ui/3d-preview.md) - 3D view controls
-- [3D Preview](../ui/3d-preview.md) - 3D view controls

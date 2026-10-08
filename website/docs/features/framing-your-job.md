@@ -85,8 +85,6 @@ If your machine has camera support, you can:
 3. **Adjust position** virtually before framing
 4. **Frame to confirm** physical alignment
 
-See [Camera Integration](../machine/camera.md) for details.
-
 ## Troubleshooting
 
 **Frame doesn't match design**: Check job origin and coordinate system settings
@@ -108,5 +106,4 @@ See [Camera Integration](../machine/camera.md) for details.
 
 - [Workpiece Positioning](workpiece-positioning) - Comprehensive
   positioning guide
-- [Camera Integration](../machine/camera.md)
 - [Quick Start Guide](../getting-started/quick-start.md)

@@ -125,8 +125,6 @@ Ahora que has completado tu primer trabajo, explora estas funciones:
   operaciones a las capas
 - **[Pestañas de Sujeción](../features/holding-tabs.md)**: Mantén las piezas cortadas
   en su lugar durante el corte
-- **[Integración de Cámara](../machine/camera.md)**: Usa una cámara para
-  alineación precisa
 - **[Hooks y Macros](../machine/hooks-macros.md)**: Automatiza tareas repetitivas
 
 ## Consejos para el Éxito

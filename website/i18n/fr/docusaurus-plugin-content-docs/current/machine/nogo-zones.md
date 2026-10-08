@@ -32,4 +32,3 @@ les sessions.
 
 - [Paramètres Matériel](hardware) - Dimensions de la machine et configuration des axes
 - [Vérifications de cohérence](../features/sanity-checks.md) - Validation avant travail
-- [Vue 3D](../ui/3d-preview.md) - Visualisation du trajet d'outil 3D

@@ -46,5 +46,4 @@ são compartilhadas com terceiros.
 ## Tópicos Relacionados
 
 - [Addons](addons) - Instalar e gerenciar addons
-- [Máquinas](machines) - Configuração de máquinas
 - [Materiais](materials) - Bibliotecas de materiais

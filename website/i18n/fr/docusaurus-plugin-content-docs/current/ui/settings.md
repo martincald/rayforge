@@ -45,17 +45,12 @@ commande remplaceront toujours ces paramètres.
 Rayforge peut envoyer des données d'utilisation anonymes pour aider à
 améliorer l'application. Aucune information personnelle n'est collectée. Tu
 peux activer ou désactiver **Rapporter l'utilisation anonyme** à tout moment.
-Consulte la page
-[suivi d'utilisation](https://rayforge.org/docs/general-info/usage-tracking)
-pour en savoir plus sur les données collectées et leur utilisation.
 
 ## Autres paramètres
 
 La boîte de dialogue des paramètres inclut également des pages pour gérer
 d'autres parties de l'application. Chacune possède sa propre documentation :
 
-- [Machines](../application-settings/machines.md) — ajouter, supprimer et
-  configurer tes découpeurs laser
 - [Matériaux](../application-settings/materials.md) — gérer tes bibliothèques
   de matériaux
 - [Recettes](../application-settings/recipes.md) — gérer les recettes

@@ -224,4 +224,3 @@ Du musst dasselbe Teil 10-mal an verschiedenen Positionen schneiden:
   Positionierungsleitfaden
 - [Steuerungsfeld](../ui/bottom-panel.md) - Manuelle Steuerung und WCS-Verwaltung
 - [Maschineneinrichtung](../machine/general.md) - Deine Maschine konfigurieren
-- [3D-Vorschau](../ui/3d-preview.md) - Deine Jobs visualisieren

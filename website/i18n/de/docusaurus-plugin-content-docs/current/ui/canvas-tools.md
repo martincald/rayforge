@@ -161,7 +161,3 @@ Vektorsegmente des Werkstücks auswählen und löschen.
 
 Um den Vektorbearbeitungsmodus zu verlassen, klicke außerhalb des Werkstücks
 oder drücke <kbd>Escape</kbd>.
-
----
-
-**Weiter**: [3D-Vorschau →](3d-preview)

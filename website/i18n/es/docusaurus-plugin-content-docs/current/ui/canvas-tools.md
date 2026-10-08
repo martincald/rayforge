@@ -161,7 +161,3 @@ vector individuales de la pieza de trabajo.
 
 Para salir del modo de edición de vectores, haz clic fuera de la pieza de
 trabajo o presiona <kbd>Escape</kbd>.
-
----
-
-**Siguiente**: [Vista Previa 3D →](3d-preview)

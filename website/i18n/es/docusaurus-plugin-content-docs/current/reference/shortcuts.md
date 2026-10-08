@@ -385,5 +385,4 @@ Algunos atajos menos conocidos:
 
 - [Ventana Principal](../ui/main-window.md) - Resumen de UI
 - [Herramientas del Lienzo](../ui/canvas-tools.md) - Interacción con el lienzo
-- [Vista Previa 3D](../ui/3d-preview.md) - Controles de vista 3D
 

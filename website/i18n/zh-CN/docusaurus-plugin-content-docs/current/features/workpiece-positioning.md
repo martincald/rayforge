@@ -188,8 +188,6 @@ Rayforge 使用多个坐标系：
 - **精确放置**：亚毫米精度要求
 - **复杂布局**：具有特定间距的多个元素
 
-有关完整文档，请参阅 [相机集成](../machine/camera.md)。
-
 ---
 
 ## 推荐工作流程
@@ -264,6 +262,5 @@ Rayforge 使用多个坐标系：
 
 - [作业边框预览](framing-your-job) - 详细的边框文档
 - [工件坐标系](../general-info/coordinate-systems.md) - WCS 参考
-- [相机集成](../machine/camera.md) - 相机设置和对齐
 - [控制面板](../ui/bottom-panel.md) - 移动控制和 WCS 管理
 - [快速入门指南](../getting-started/quick-start.md) - 基本工作流程

@@ -92,9 +92,6 @@ mas reservar um momento para visualizar pode economizar tempo e materiais.
 Para abrir a visualização 3D, clique no botão **Visualização 3D** na barra
 de ferramentas principal após gerar seu G-code.
 
-Saiba mais sobre a visualização 3D em nossa
-[documentação de UI](/docs/ui/3d-preview).
-
 ## 5. Use Ganchos de G-code Personalizados para Fluxos de Trabalho Consistentes
 
 Se você se encontra executando os mesmos comandos G-code antes ou depois

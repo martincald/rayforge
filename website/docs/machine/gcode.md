@@ -47,5 +47,4 @@ G-code commands executed at the end of every job, after all cutting operations. 
 ## See Also
 
 - [G-code Basics](../general-info/gcode-basics.md) - Understanding G-code
-- [G-code Dialects](../reference/gcode-dialects.md) - Detailed dialect differences
 - [Hooks & Macros](hooks-macros) - Custom G-code injection points

@@ -65,8 +65,6 @@ Una de las funciones más valiosas de Rayforge es la vista previa 3D de G-code. 
 
 Para abrir la vista previa 3D, haz clic en el botón **3D Preview** en la barra de herramientas principal después de generar tu G-code.
 
-Aprende más sobre la vista previa 3D en nuestra [documentación de UI](/docs/ui/3d-preview).
-
 ## 5. Usa Ganchos de G-code Personalizados para Flujos de Trabajo Consistentes
 
 Si te encuentras ejecutando los mismos comandos G-code antes o después de cada trabajo—como hacer homing, activar una asistencia de aire, o ejecutar una rutina de enfoque—puedes automatizar esto con **Macros y Ganchos de G-code**.

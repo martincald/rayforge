@@ -72,5 +72,4 @@ le canevas. La boîte de dialogue se ferme après la création des éléments.
 
 ## Sujets associés
 
-- [Configuration de la caméra](../machine/camera.md) - Configurer et calibrer votre caméra
 - [Gestion du matériel](../features/stock-handling.md) - Travailler avec les éléments de matériel dans votre document

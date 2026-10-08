@@ -544,11 +544,7 @@ export default function Devices() {
                   grblGeneric: <strong>Generic GRBL</strong>,
                   ruidaGeneric: <strong>Generic Ruida</strong>,
                   smoothieGeneric: <strong>Generic Smoothieware</strong>,
-                  firmwareLink: (
-                    <Link to="/docs/reference/firmware">
-                      supported firmware
-                    </Link>
-                  ),
+                  firmwareLink: "supported firmware",
                   configWizard: (
                     <Link to="/docs/getting-started/first-time-setup">
                       configuration wizard

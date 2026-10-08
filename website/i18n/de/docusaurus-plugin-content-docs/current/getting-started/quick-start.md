@@ -126,8 +126,6 @@ Nachdem du deinen ersten Job abgeschlossen hast, erkunde diese Funktionen:
   Operationen Ebenen zuweisen
 - **[Halte-Laschen](../features/holding-tabs.md)**: Geschnittene Teile während des Schneidens an Ort
   und Stelle halten
-- **[Kamera-Integration](../machine/camera.md)**: Eine Kamera zur präzisen
-  Ausrichtung verwenden
 - **[Hooks & Makros](../machine/hooks-macros.md)**: Wiederkehrende Aufgaben automatisieren
 
 ## Tipps für den Erfolg

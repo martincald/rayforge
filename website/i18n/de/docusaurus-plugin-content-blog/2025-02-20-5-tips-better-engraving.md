@@ -92,9 +92,6 @@ sparen.
 Um die 3D-Vorschau zu öffnen, klicke nach dem Generieren deines G-Codes auf
 die **3D-Vorschau**-Schaltfläche in der Hauptsymbolleiste.
 
-Erfahre mehr über die 3D-Vorschau in unserer
-[UI-Dokumentation](/docs/ui/3d-preview).
-
 ## 5. Verwende eigene G-Code-Hooks für konsistente Workflows
 
 Wenn du feststellst, dass du vor oder nach jedem Auftrag dieselben G-Code-Befehle

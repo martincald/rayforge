@@ -125,8 +125,6 @@ Agora que você completou seu primeiro trabalho, explore estes recursos:
   diferentes às camadas
 - **[Abas de Fixação](../features/holding-tabs.md)**: Mantenha peças cortadas
   no lugar durante o corte
-- **[Integração com Câmera](../machine/camera.md)**: Use uma câmera para
-  alinhamento preciso
 - **[Hooks & Macros](../machine/hooks-macros.md)**: Automatize tarefas repetitivas
 
 ## Dicas para o Sucesso

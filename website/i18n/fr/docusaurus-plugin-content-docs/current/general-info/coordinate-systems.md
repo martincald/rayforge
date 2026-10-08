@@ -226,4 +226,3 @@ Vous devez couper la même pièce 10 fois à différents endroits :
   Guide complet de positionnement
 - [Panneau de Contrôle](../ui/bottom-panel.md) - Contrôle manuel et gestion des WCS
 - [Configuration Machine](../machine/general.md) - Configurez votre machine
-- [Aperçu 3D](../ui/3d-preview.md) - Visualiser vos travaux

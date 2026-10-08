@@ -15,7 +15,6 @@ module.exports = {
       label: 'Application Settings',
       items: [
         'ui/settings',
-        'application-settings/machines',
         'application-settings/materials',
         'application-settings/recipes',
         'application-settings/color-rules',
@@ -36,7 +35,6 @@ module.exports = {
         'machine/laser',
         'machine/rotary',
         'machine/nogo-zones',
-        'machine/camera',
         'machine/maintenance',
       ],
     },
@@ -46,7 +44,6 @@ module.exports = {
       items: [
         'ui/main-window',
         'ui/canvas-tools',
-        'ui/3d-preview',
         'ui/bottom-panel',
       ],
     },
@@ -117,7 +114,6 @@ module.exports = {
         'general-info/laser-safety',
         'general-info/coordinate-systems',
         'general-info/gcode-basics',
-        'general-info/usage-tracking',
       ],
     },
     {
@@ -134,8 +130,6 @@ module.exports = {
       label: 'Reference',
       items: [
         'reference/shortcuts',
-        'reference/gcode-dialects',
-        'reference/firmware',
       ],
     },
   ],

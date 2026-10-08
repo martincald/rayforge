@@ -148,7 +148,7 @@ overridden per step if needed.
 #### 3D Model
 
 Each laser head can have a 3D model assigned to it. This model is rendered in
-the [3D view](../ui/3d-preview.md) and follows the toolpath during simulation.
+the 3D view and follows the toolpath during simulation.
 
 Click the model selection row to browse available models. Once a model is
 selected, you can adjust its scale, rotation (X/Y/Z), and focal distance to

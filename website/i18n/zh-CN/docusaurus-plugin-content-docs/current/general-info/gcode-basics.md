@@ -69,6 +69,5 @@ G0 X0 Y0 ;返回原点
 
 ## 相关页面
 
-- [G 代码方言](../reference/gcode-dialects.md) - 固件差异
 - [导出 G 代码](../files/exporting.md) - 导出设置和选项
 - [钩子和宏](../machine/hooks-macros.md) - 自定义 G 代码注入

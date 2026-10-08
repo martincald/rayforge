@@ -125,4 +125,3 @@ Customize the interface in **Edit → Settings**:
 - [Work Coordinate Systems](../general-info/coordinate-systems.md) - WCS
 - [Canvas Tools](canvas-tools) - Tools for manipulating designs
 - [Bottom Panel](bottom-panel) - Manual machine control, status, and logs
-- [3D View](3d-preview) - Visualize toolpaths in 3D

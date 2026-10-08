@@ -44,18 +44,13 @@ Dateien diese Einstellungen immer außer Kraft setzen.
 
 Rayforge kann anonyme Nutzungsdaten senden, um die Anwendung zu verbessern.
 Es werden keine persönlichen Informationen gesammelt. Du kannst **Anonyme
-Nutzung melden** jederzeit ein- oder ausschalten. Siehe die
-[Nutzungsverfolgung](https://rayforge.org/docs/general-info/usage-tracking)-Seite,
-um mehr darüber zu erfahren, welche Daten gesammelt und wie sie verwendet
-werden.
+Nutzung melden** jederzeit ein- oder ausschalten.
 
 ## Weitere Einstellungen
 
 Der Einstellungsdialog enthält weitere Seiten zur Verwaltung anderer
 Teile der Anwendung. Jede verfügt über eine eigene Dokumentation:
 
-- [Maschinen](../application-settings/machines.md) — Maschinen hinzufügen,
-  entfernen und konfigurieren
 - [Materialien](../application-settings/materials.md) — Materialbibliotheken
   verwalten
 - [Rezepte](../application-settings/recipes.md) — gespeicherte

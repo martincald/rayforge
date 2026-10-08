@@ -127,5 +127,4 @@ durante el grabado.
 
 - [Macros y Hooks](../machine/hooks-macros.md) - Hooks a nivel de capa
   para automatización
-- [Vista previa 3D](../ui/3d-preview.md) - Visualizar la pila de capas
 - [Navegador de activos](../ui/bottom-panel.md) - Gestión de activos con menús contextuales

@@ -154,7 +154,7 @@ peuvent être remplacées par étape si nécessaire.
 #### Modèle 3D
 
 Chaque tête laser peut avoir un modèle 3D attribué. Ce modèle est affiché dans
-la [vue 3D](../ui/3d-preview.md) et suit le trajet d'outil pendant la simulation.
+la vue 3D et suit le trajet d'outil pendant la simulation.
 
 Clique sur la ligne de sélection du modèle pour parcourir les modèles disponibles. Une fois un modèle
 sélectionné, tu peux ajuster son échelle, sa rotation (X/Y/Z) et sa distance focale pour

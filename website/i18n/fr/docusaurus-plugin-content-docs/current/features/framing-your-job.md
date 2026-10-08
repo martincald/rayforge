@@ -88,8 +88,6 @@ Si votre machine prend en charge la caméra, vous pouvez :
 3. **Ajuster la position** virtuellement avant le cadrage
 4. **Cadrer pour confirmer** l'alignement physique
 
-Voir [Intégration de la caméra](../machine/camera.md) pour plus de détails.
-
 ## Dépannage
 
 **Le cadre ne correspond pas au design** : Vérifiez l'origine du travail et
@@ -115,5 +113,4 @@ de travail de la machine
 
 - [Positionnement de la pièce](workpiece-positioning) - Guide complet de
   positionnement
-- [Intégration de la caméra](../machine/camera.md)
 - [Guide de démarrage rapide](../getting-started/quick-start.md)

@@ -48,5 +48,4 @@ with third parties.
 ## Related Topics
 
 - [Addons](addons) - Install and manage addons
-- [Machines](machines) - Machine configuration
 - [Materials](materials) - Material libraries

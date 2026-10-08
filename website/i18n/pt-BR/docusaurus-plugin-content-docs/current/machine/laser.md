@@ -151,7 +151,7 @@ substituídos por etapa, se necessário.
 #### Modelo 3D
 
 Cada cabeça de laser pode ter um modelo 3D atribuído a ela. Este modelo é
-renderizado na [visualização 3D](../ui/3d-preview.md) e segue o caminho da
+renderizado na visualização 3D e segue o caminho da
 ferramenta durante a simulação.
 
 Clique na linha de seleção de modelo para navegar pelos modelos disponíveis.

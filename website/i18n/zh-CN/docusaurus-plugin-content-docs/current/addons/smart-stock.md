@@ -36,5 +36,4 @@ Smart Stock 使用计算机视觉技术检测放置在激光平台上的材料�
 
 ## 相关主题
 
-- [摄像头设置](../machine/camera.md) - 配置和校准您的摄像头
 - [库存处理](../features/stock-handling.md) - 在文档中使用材料项目

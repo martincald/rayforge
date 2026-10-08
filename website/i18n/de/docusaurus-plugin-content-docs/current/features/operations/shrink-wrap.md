@@ -268,7 +268,6 @@ Schrumpfumhüllungs-Operationen unterstützen mehrere Nachbearbeitungsoptionen:
 
 - Überprüfen, dass die Grenze keine Teile überlappt
 - Verifizieren, dass der Offset ausreichend ist
-- Vorschau in der [3D-Vorschau](../../ui/3d-preview.md)
 - Zuerst auf Abfallmaterial testen
 
 **Achten auf:**
@@ -313,10 +312,9 @@ Schrumpfumhüllung innerhalb einer größeren Grenze:
 Vor dem Produktionslauf:
 
 1. Schrumpfumhüllung erstellen
-2. Mit der [3D-Vorschau](../../ui/3d-preview.md) vorschauen
-3. Verifizieren, dass der Spielraum ausreichend ist
-4. Prüfen, dass keine Teile geschnitten werden
-5. Test auf Abfallmaterial durchführen
+2. Verifizieren, dass der Spielraum ausreichend ist
+3. Prüfen, dass keine Teile geschnitten werden
+4. Test auf Abfallmaterial durchführen
 
 ## Fehlerbehebung
 
@@ -382,5 +380,4 @@ Der Grenzpfad wird optimiert für:
 - **[Kontur-Schneiden](contour)** - Einzelne Objektumrisse schneiden
 - **[Mehrschicht-Workflow](../multi-layer.md)** - Operationen effektiv kombinieren
 - **[Halte-Laschen](../holding-tabs.md)** - Teile während des Schneidens sichern
-- **[3D-Vorschau](../../ui/3d-preview.md)** - Schneidepfade vorschauen
 - **[Materialtest-Raster](material-test-grid)** - Optimale Schneideeinstellungen finden

@@ -33,4 +33,3 @@ recuerda entre sesiones.
 
 - [Ajustes de Hardware](hardware) - Dimensiones de máquina y configuración de ejes
 - [Comprobaciones de Sanity del Trabajo](../features/sanity-checks.md) - Validación previa al trabajo
-- [Vista 3D](../ui/3d-preview.md) - Visualización de trayectorias en 3D

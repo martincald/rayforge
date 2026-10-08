@@ -34,4 +34,3 @@ wird zwischen Sitzungen gespeichert.
 
 - [Hardware-Einstellungen](hardware) - Maschinenabmessungen und Achsenkonfiguration
 - [Auftrags-Plausibilitätsprüfungen](../features/sanity-checks.md) - Vorab-Validierung von Aufträgen
-- [3D-Ansicht](../ui/3d-preview.md) - 3D-Werkzeugweg-Visualisierung

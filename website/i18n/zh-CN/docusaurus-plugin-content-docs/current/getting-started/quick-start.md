@@ -124,7 +124,6 @@ Rayforge 支持多种文件格式，包括 SVG、DXF、PDF、Ruida (.rd) 和光�
   （对焦模式、边框预览、WCS、相机）
 - **[多层操作](../features/multi-layer.md)**：为图层分配不同操作
 - **[固定标签](../features/holding-tabs.md)**：在切割期间保持切割件固定
-- **[相机集成](../machine/camera.md)**：使用相机进行精确对齐
 - **[钩子和宏](../machine/hooks-macros.md)**：自动化重复任务
 
 ## 成功提示

@@ -56,6 +56,5 @@ Addons können installiert werden aus:
 
 ## Verwandte Themen
 
-- [Maschinen](machines) - Maschinenkonfiguration
 - [Materialien](materials) - Material-Bibliotheken
 - [Rezepte](recipes) - Operations-Rezepte

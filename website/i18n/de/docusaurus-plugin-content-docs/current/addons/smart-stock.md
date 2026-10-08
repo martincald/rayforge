@@ -69,5 +69,4 @@ Leinwand. Der Dialog schließt sich, nachdem die Elemente erstellt wurden.
 
 ## Verwandte Themen
 
-- [Kamera-Einrichtung](../machine/camera.md) - Kamera konfigurieren und kalibrieren
 - [Material-Handhabung](../features/stock-handling.md) - Mit Bestandselementen im Dokument arbeiten

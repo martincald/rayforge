@@ -126,5 +126,4 @@ permaneçam no lugar durante a gravação.
 
 - [Macros e Hooks](../machine/hooks-macros.md) - Hooks em nível de camada
   para automação
-- [Visualização 3D](../ui/3d-preview.md) - Visualizar pilha de camadas
 - [Navegador de Ativos](../ui/bottom-panel.md) - Gerenciando ativos com menus de contexto

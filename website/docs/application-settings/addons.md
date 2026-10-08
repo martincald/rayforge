@@ -62,6 +62,5 @@ Addons can be installed from:
 
 ## Related Topics
 
-- [Machines](machines) - Machine configuration
 - [Materials](materials) - Material libraries
 - [Recipes](recipes) - Operation recipes

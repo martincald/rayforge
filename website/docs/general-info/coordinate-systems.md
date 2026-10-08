@@ -247,4 +247,3 @@ You need to cut the same part 10 times in different locations:
   positioning guide
 - [Control Panel](../ui/bottom-panel.md) - Manual control and WCS management
 - [Machine Setup](../machine/general.md) - Configure your machine
-- [3D Preview](../ui/3d-preview.md) - Visualizing your jobs

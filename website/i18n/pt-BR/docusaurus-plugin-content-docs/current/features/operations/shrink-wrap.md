@@ -268,7 +268,6 @@ Operações Shrink Wrap suportam várias opções de pós-processamento:
 
 - Verifique se o limite não sobrepõe peças
 - Verifique se o deslocamento é suficiente
-- Pré-visualize na [Visualização 3D](../../ui/3d-preview.md)
 - Teste em sucata primeiro
 
 **Fique atento a:**
@@ -313,10 +312,9 @@ Shrink wrap dentro de um limite maior:
 Antes da execução de produção:
 
 1. Crie shrink wrap
-2. Pré-visualize com [Visualização 3D](../../ui/3d-preview.md)
-3. Verifique se a folga é adequada
-4. Verifique se nenhuma peça é intersectada
-5. Execute teste em material de sucata
+2. Verifique se a folga é adequada
+3. Verifique se nenhuma peça é intersectada
+4. Execute teste em material de sucata
 
 ## Solução de Problemas
 
@@ -382,5 +380,4 @@ O caminho do limite é otimizado para:
 - **[Corte de Contorno](contour)** - Cortando contornos de objetos individuais
 - **[Fluxo de Trabalho Multi-Camadas](../multi-layer.md)** - Combinando operações de forma eficaz
 - **[Abas de Fixação](../holding-tabs.md)** - Mantendo peças seguras durante o corte
-- **[Visualização 3D](../../ui/3d-preview.md)** - Pré-visualizando caminhos de corte
 - **[Grade de Teste de Material](material-test-grid)** - Encontrando configurações de corte ideais

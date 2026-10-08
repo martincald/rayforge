@@ -125,4 +125,3 @@ Personalize a interface em **Editar → Configurações**:
 - [Sistemas de Coordenadas de Trabalho](../general-info/coordinate-systems.md) - WCS
 - [Ferramentas da Tela](canvas-tools) - Ferramentas para manipular designs
 - [Painel Inferior](bottom-panel) - Controle manual da máquina, status e logs
-- [Visualização 3D](3d-preview) - Visualizar caminhos de ferramenta em 3D

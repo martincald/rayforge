@@ -93,7 +93,6 @@ Rayforge 是控制软件 - 它无法覆盖激光硬件的物理安全要求。
 
 Rayforge 提供工具帮助安全操作：
 
-- **[3D 预览](../ui/3d-preview.md)** - 在运行前预览作业以识别问题
 - **[材料测试网格](../features/operations/material-test-grid.md)** - 为新材料找到安全设置
 - **框选作业** - 切割前验证定位
 
@@ -208,7 +207,6 @@ Rayforge 提供工具帮助安全操作：
 
 ## 相关页面
 
-- **[3D 预览](../ui/3d-preview.md)** - 安全预览作业
 - **[材料测试网格](../features/operations/material-test-grid.md)** - 找到安全设置
 - **[G 代码基础](gcode-basics)** - 理解激光控制命令
 

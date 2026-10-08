@@ -44,5 +44,4 @@
 ## Дивіться також
 
 - [Основи G-code](../general-info/gcode-basics.md) - Розуміння G-code
-- [Діалекти G-code](../reference/gcode-dialects.md) - Детальні відмінності діалектів
 - [Хуки та макроси](hooks-macros) - Точки вставки власного G-code

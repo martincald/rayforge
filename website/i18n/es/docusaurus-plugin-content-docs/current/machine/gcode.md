@@ -44,5 +44,4 @@ Comandos de código G ejecutados al final de cada trabajo, después de todas las
 ## Ver También
 
 - [Fundamentos de Código G](../general-info/gcode-basics.md) - Entendiendo el código G
-- [Dialectos de Código G](../reference/gcode-dialects.md) - Diferencias detalladas de dialectos
 - [Hooks y Macros](hooks-macros) - Puntos de inyección de código G personalizado

@@ -88,9 +88,6 @@ taking a moment to preview can save you time and materials.
 To open the 3D preview, click the **3D Preview** button in the main
 toolbar after generating your G-code.
 
-Learn more about the 3D preview in our
-[UI documentation](/docs/ui/3d-preview).
-
 ## 5. Use Custom G-code Hooks for Consistent Workflows
 
 If you find yourself running the same G-code commands before or after

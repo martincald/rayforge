@@ -161,7 +161,3 @@ vectoriels individuels de la pièce.
 
 Pour quitter le mode d'édition vectorielle, cliquez en dehors de la pièce ou
 appuyez sur <kbd>Échap</kbd>.
-
----
-
-**Suivant** : [Prévisualisation 3D →](3d-preview)

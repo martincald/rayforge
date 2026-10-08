@@ -84,8 +84,6 @@ Wenn deine Maschine Kamera-Unterstützung hat, kannst du:
 3. **Position virtuell anpassen** vor dem Einrahmen
 4. **Einrahmen zur Bestätigung** der physischen Ausrichtung
 
-Siehe [Kamera-Integration](../machine/camera.md) für Details.
-
 ## Fehlerbehebung
 
 **Rahmen stimmt nicht mit Design überein**: Job-Ursprung und
@@ -110,5 +108,4 @@ Maschinen-Arbeitsbereichs ist
 
 - [Werkstückpositionierung](workpiece-positioning) - Umfassender
   Positionierungsleitfaden
-- [Kamera-Integration](../machine/camera.md)
 - [Schnellstart-Anleitung](../getting-started/quick-start.md)

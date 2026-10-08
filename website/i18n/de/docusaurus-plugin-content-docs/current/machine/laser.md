@@ -150,7 +150,7 @@ Bedarf pro Schritt überschrieben werden können.
 #### 3D-Modell
 
 Jedem Laserkopf kann ein 3D-Modell zugewiesen werden. Dieses Modell wird in
-der [3D-Ansicht](../ui/3d-preview.md) gerendert und folgt dem Werkzeugweg
+der 3D-Ansicht gerendert und folgt dem Werkzeugweg
 während der Simulation.
 
 Klicke auf die Modellauswahlzeile, um verfügbare Modelle zu durchsuchen.

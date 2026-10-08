@@ -123,4 +123,3 @@ Personnalisez l'interface dans **Édition → Paramètres** :
 - [Systèmes de coordonnées de travail](../general-info/coordinate-systems.md) - WCS
 - [Outils du canevas](canvas-tools) - Outils pour manipuler les conceptions
 - [Panneau inférieur](bottom-panel) - Contrôle manuel de la machine, état et journaux
-- [Prévisualisation 3D](3d-preview) - Visualiser les trajets d'outil en 3D

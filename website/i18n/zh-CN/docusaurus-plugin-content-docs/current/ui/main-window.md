@@ -107,4 +107,3 @@ WCS 下拉菜单允许您在坐标系之间快速切换。有关更多信息，�
 - [工作坐标系](../general-info/coordinate-systems.md) - WCS
 - [画布工具](canvas-tools) - 操作设计的工具
 - [底部面板](bottom-panel) - 手动机器控制、状态和日志
-- [3D 视图](3d-preview) - 在 3D 中可视化刀具路径

@@ -58,6 +58,5 @@ Addons podem ser instalados de:
 
 ## Tópicos Relacionados
 
-- [Máquinas](machines) - Configuração de máquina
 - [Materiais](materials) - Bibliotecas de materiais
 - [Receitas](recipes) - Receitas de operação

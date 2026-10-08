@@ -225,4 +225,3 @@ Você precisa cortar a mesma peça 10 vezes em diferentes locais:
   Guia completo de posicionamento
 - [Painel de Controle](../ui/bottom-panel.md) - Controle manual e gerenciamento do WCS
 - [Configuração de Máquina](../machine/general.md) - Configure sua máquina
-- [Visualização 3D](../ui/3d-preview.md) - Visualizando seus trabalhos

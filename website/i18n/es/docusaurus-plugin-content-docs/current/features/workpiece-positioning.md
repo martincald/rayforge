@@ -218,8 +218,6 @@ mundo real:
 - **Colocación precisa**: Requisitos de precisión sub-milimétrica
 - **Diseños complejos**: Múltiples elementos con espaciado específico
 
-Ver [Integración de Cámara](../machine/camera.md) para documentación completa.
-
 ---
 
 ## Flujos de Trabajo Recomendados
@@ -297,8 +295,6 @@ Para ejecutar el mismo trabajo en diferentes ubicaciones:
   enmarcado
 - [Sistemas de Coordenadas de Trabajo](../general-info/coordinate-systems.md) -
   Referencia SCF
-- [Integración de Cámara](../machine/camera.md) - Configuración y alineación de
-  cámara
 - [Panel de Control](../ui/bottom-panel.md) - Controles de movimiento y gestión
   SCF
 - [Guía de Inicio Rápido](../getting-started/quick-start.md) - Flujo de trabajo

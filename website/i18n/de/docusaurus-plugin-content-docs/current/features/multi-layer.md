@@ -130,5 +130,4 @@ Gravur an ihrem Platz bleiben.
 
 - [Makros & Hooks](../machine/hooks-macros.md) - Ebenenbezogene Hooks
   zur Automatisierung
-- [3D-Vorschau](../ui/3d-preview.md) - Ebenen-Stack visualisieren
 - [Asset-Browser](../ui/bottom-panel.md) - Assets mit Kontextmenüs verwalten

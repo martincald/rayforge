@@ -161,7 +161,3 @@ vetor individuais da peça de trabalho.
 
 Para sair do modo de edição de vetores, clique fora da peça de trabalho ou
 pressione <kbd>Escape</kbd>.
-
----
-
-**Próximo**: [Visualização 3D →](3d-preview)

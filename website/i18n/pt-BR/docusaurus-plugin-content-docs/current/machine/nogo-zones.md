@@ -34,4 +34,3 @@ de visibilidade é lembrada entre sessões.
 
 - [Configurações de Hardware](hardware) - Dimensões da máquina e configuração de eixos
 - [Verificações de Sanidade do Trabalho](../features/sanity-checks.md) - Validação pré-trabalho
-- [Visualização 3D](../ui/3d-preview.md) - Visualização de caminhos de ferramenta em 3D

@@ -35,4 +35,3 @@ hide them. The visibility setting is remembered between sessions.
 
 - [Hardware Settings](hardware) - Machine dimensions and axis configuration
 - [Job Sanity Checks](../features/sanity-checks.md) - Pre-job validation
-- [3D View](../ui/3d-preview.md) - 3D toolpath visualization

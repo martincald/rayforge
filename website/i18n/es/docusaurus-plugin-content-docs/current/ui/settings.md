@@ -42,17 +42,13 @@ en la línea de comandos siempre anularán estos ajustes.
 
 Rayforge puede enviar datos de uso anónimos para ayudar a mejorar la
 aplicación. No se recopila información personal. Puedes activar o desactivar
-**Informar uso anónimo** en cualquier momento. Visita la página de
-[seguimiento de uso](https://rayforge.org/docs/general-info/usage-tracking)
-para obtener más información sobre qué datos se recopilan y cómo se usan.
+**Informar uso anónimo** en cualquier momento.
 
 ## Otros ajustes
 
 El diálogo de ajustes también incluye páginas para gestionar otras partes de
 la aplicación. Cada una tiene su propia documentación:
 
-- [Máquinas](../application-settings/machines.md) — añadir, eliminar y
-  configurar tus cortadores láser
 - [Materiales](../application-settings/materials.md) — gestionar tus
   bibliotecas de materiales
 - [Recetas](../application-settings/recipes.md) — gestionar las recetas de

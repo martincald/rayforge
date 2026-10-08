@@ -32,4 +32,3 @@ pouvez tout examiner avant de décider de continuer ou non.
 
 - [Zones interdites](../machine/nogo-zones.md) - Définir des zones restreintes
   sur la surface de travail
-- [Vue 3D](../ui/3d-preview.md) - Visualisation 3D des trajets d'outil

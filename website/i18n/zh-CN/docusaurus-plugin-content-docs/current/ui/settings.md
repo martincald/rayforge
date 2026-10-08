@@ -36,15 +36,12 @@ Rayforge 可以在启动时**自动检查更新**。启用后，当有新版本�
 ### 隐私
 
 Rayforge 可以发送匿名使用数据以帮助改进应用程序。不会收集任何个人信息。
-您可以随时开启或关闭**报告匿名使用**。请参阅
-[使用追踪](https://rayforge.org/docs/general-info/usage-tracking)页面，
-了解更多关于收集哪些数据以及如何使用这些数据的信息。
+您可以随时开启或关闭**报告匿名使用**。
 
 ## 其他设置
 
 设置对话框还包含管理应用程序其他部分的页面。每个页面都有自己的专门文档：
 
-- [机器](../application-settings/machines.md) — 添加、移除和配置您的激光切割机
 - [材料](../application-settings/materials.md) — 管理您的材料库
 - [配方](../application-settings/recipes.md) — 管理保存的操作配方
 - [颜色规则](../application-settings/color-rules.md) — 将 SVG 颜色映射到步骤类型

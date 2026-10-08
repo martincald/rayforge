@@ -124,8 +124,8 @@ flag. Skip this step to add a rotary module later from machine settings.
 ### Cameras
 
 Optionally enable any cameras you want to use for preview and alignment.
-When you enable a camera and continue, the [camera
-wizard](../machine/camera.md#step-2-camera-wizard) opens to guide you
+When you enable a camera and continue, the camera
+wizard opens to guide you
 through image settings, lens calibration, and image alignment. You can skip
 this and set up cameras later from the machine's camera settings.
 

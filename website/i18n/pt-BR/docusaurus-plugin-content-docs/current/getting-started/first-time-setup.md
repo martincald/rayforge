@@ -130,7 +130,7 @@ rotativo mais tarde nas configurações da máquina.
 
 Opcionalmente, habilite qualquer câmera que você queira usar para
 visualização e alinhamento. Quando você habilita uma câmera e continua, o
-[Assistente de Câmera](../machine/camera.md#etapa-2-assistente-de-câmera)
+Assistente de Câmera
 abre para orientá-lo nas configurações de imagem, calibração de lente e
 alinhamento de imagem. Você pode pular isso e configurar câmeras mais tarde
 nas configurações de câmera da máquina.

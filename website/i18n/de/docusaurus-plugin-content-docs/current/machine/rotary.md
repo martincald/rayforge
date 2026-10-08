@@ -68,7 +68,7 @@ welche Ebenen im Rotationsmodus ausgeführt werden.
 
 ## 3D-Vorschau im Rotationsmodus
 
-Wenn der Rotationsmodus aktiv ist, zeigt die [3D-Ansicht](../ui/3d-preview.md) deinen
+Wenn der Rotationsmodus aktiv ist, zeigt die 3D-Ansicht deinen
 Werkzeugpfad um einen Zylinder gewickelt statt auf einer flachen Oberfläche. Die 2D-Arbeitsfläche passt sich ebenfalls automatisch dem Rotationsmodus an, und die 3D-Ansicht gibt Rotationswerkzeugpfade in jeder Konfiguration genau wieder — einschließlich während der Simulationswiedergabe.
 
 ![3D-Vorschau im Rotationsmodus](/screenshots/main-3d-rotary.png)
@@ -80,7 +80,7 @@ bevor du mit dem Schneiden beginnst.
 ### Rotationsmodul 3D-Modell
 
 Jedem Rotationsmodul kann ein 3D-Modell zugewiesen werden. Das Modell erscheint in
-der [3D-Ansicht](../ui/3d-preview.md) neben deinem Werkzeugpfad und gibt dir einen
+der 3D-Ansicht neben deinem Werkzeugpfad und gibt dir einen
 besseren Eindruck davon, wie das physische Setup aussieht. Du kannst Skalierung,
 Position und Rotation des Modells an deine tatsächliche Hardware anpassen.
 
@@ -103,5 +103,4 @@ Der Rotationsmodus unterstützt Z-Abtrag, sodass du auf zylindrischen Werkstück
 ## Verwandte Seiten
 
 - [Mehrebenen-Workflow](../features/multi-layer.md) - Ebenen-Einstellungen inklusive Rotation
-- [3D-Ansicht](../ui/3d-preview.md) - Werkzeugpfade in 3D vorschauen
 - [Maschineneinstellungen](general) - Allgemeine Maschinenkonfiguration

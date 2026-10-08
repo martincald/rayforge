@@ -221,8 +221,6 @@ monde réel :
 - **Dispositions complexes** : Plusieurs éléments avec un espacement
   spécifique
 
-Voir [Intégration Caméra](../machine/camera.md) pour la documentation complète.
-
 ---
 
 ## Flux de Travail Recommandés
@@ -301,8 +299,6 @@ Pour exécuter le même travail à différents emplacements :
   cadrage
 - [Systèmes de Coordonnées de Travail](../general-info/coordinate-systems.md) -
   Référence SCF
-- [Intégration Caméra](../machine/camera.md) - Configuration et alignement de la
-  caméra
 - [Panneau de Contrôle](../ui/bottom-panel.md) - Contrôles de déplacement et
   gestion SCF
 - [Guide de Démarrage Rapide](../getting-started/quick-start.md) - Flux de

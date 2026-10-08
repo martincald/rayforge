@@ -134,8 +134,8 @@ desde la configuración de la máquina.
 ### Cámaras
 
 Activa opcionalmente cualquier cámara que quieras usar para previsualización y
-alineación. Cuando activas una cámara y continúas, se abre el [asistente de
-cámara](../machine/camera.md#paso-2-asistente-de-cámara) para guiarte a través
+alineación. Cuando activas una cámara y continúas, se abre el asistente de
+cámara para guiarte a través
 de la configuración de imagen, la calibración de lente y la alineación de
 imagen. Puedes omitir esto y configurar cámaras más tarde desde los ajustes de
 cámara de la máquina.

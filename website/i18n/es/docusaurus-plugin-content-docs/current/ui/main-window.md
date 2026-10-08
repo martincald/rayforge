@@ -122,4 +122,3 @@ Personaliza la interfaz en **Editar → Ajustes**:
 - [Sistemas de Coordenadas de Trabajo](../general-info/coordinate-systems.md) - WCS
 - [Herramientas del Lienzo](canvas-tools) - Herramientas para manipular diseños
 - [Panel Inferior](bottom-panel) - Control manual de máquina, estado y registros
-- [Vista Previa 3D](3d-preview) - Visualizar trayectorias en 3D

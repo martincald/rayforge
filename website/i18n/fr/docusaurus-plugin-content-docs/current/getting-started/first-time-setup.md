@@ -139,8 +139,8 @@ plus tard depuis les paramètres de la machine.
 
 Activez facultativement les caméras que vous souhaitez utiliser pour la
 prévisualisation et l'alignement. Lorsque vous activez une caméra et
-continuez, l'[assistant de
-caméra](../machine/camera.md#étape-2--assistant-de-caméra) s'ouvre pour vous
+continuez, l'assistant de
+caméra s'ouvre pour vous
 guider à travers les paramètres d'image, la calibration d'objectif et
 l'alignement d'image. Vous pouvez ignorer cette étape et configurer les
 caméras plus tard depuis les paramètres caméra de la machine.

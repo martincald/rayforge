@@ -103,7 +103,3 @@ mode, you can select and delete individual vector segments of the workpiece.
 
 To exit vector editing mode, click outside the workpiece or press
 <kbd>Escape</kbd>.
-
----
-
-**Next**: [3D View →](3d-preview)

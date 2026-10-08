@@ -48,5 +48,4 @@ jamais partagées avec des tiers.
 ## Sujets Connexes
 
 - [Addons](addons) - Installer et gérer les modules
-- [Machines](machines) - Configuration des machines
 - [Matériaux](materials) - Bibliothèques de matériaux

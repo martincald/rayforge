@@ -30,5 +30,3 @@ e avisos, e você pode revisar tudo antes de decidir se deve prosseguir.
 
 - [Zonas de Restrição](../machine/nogo-zones.md) - Defina áreas restritas na
   superfície de trabalho
-- [Visualização 3D](../ui/3d-preview.md) - Visualização de caminhos de ferramenta
-  em 3D

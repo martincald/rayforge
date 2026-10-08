@@ -26,4 +26,3 @@
 
 - [硬件设置](hardware) - 机器尺寸和轴配置
 - [作业完整性检查](../features/sanity-checks.md) - 作业前验证
-- [3D 视图](../ui/3d-preview.md) - 3D 刀具路径可视化

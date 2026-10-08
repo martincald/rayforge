@@ -31,4 +31,3 @@ bevor du entscheidest, ob du fortfahren möchtest.
 
 - [No-Go-Zonen](../machine/nogo-zones.md) - Eingeschränkte Bereiche auf der
   Arbeitsfläche definieren
-- [3D-Ansicht](../ui/3d-preview.md) - 3D-Werkzeugweg-Visualisierung

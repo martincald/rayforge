@@ -115,5 +115,4 @@ place during engraving.
 
 - [Macros & Hooks](../machine/hooks-macros.md) - Layer-level hooks for
   automation
-- [3D Preview](../ui/3d-preview.md) - Visualize layer stack
 - [Asset Browser](../ui/bottom-panel.md) - Managing assets with context menus

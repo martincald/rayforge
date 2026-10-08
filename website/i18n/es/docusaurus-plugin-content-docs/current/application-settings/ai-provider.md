@@ -46,5 +46,4 @@ comparten con terceros.
 ## Temas Relacionados
 
 - [Addons](addons) - Instalar y gestionar addons
-- [Máquinas](machines) - Configuración de máquinas
 - [Materiales](materials) - Bibliotecas de materiales

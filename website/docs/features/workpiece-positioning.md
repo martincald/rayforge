@@ -202,8 +202,6 @@ Camera alignment maps camera pixels to real-world coordinates:
 - **Precise placement**: Sub-millimeter accuracy requirements
 - **Complex layouts**: Multiple items with specific spacing
 
-See [Camera Integration](../machine/camera.md) for complete documentation.
-
 ---
 
 ## Recommended Workflows
@@ -279,7 +277,6 @@ For running the same job at different locations:
 - [Framing Your Job](framing-your-job) - Detailed framing documentation
 - [Work Coordinate Systems](../general-info/coordinate-systems.md) - WCS
   reference
-- [Camera Integration](../machine/camera.md) - Camera setup and alignment
 - [Control Panel](../ui/bottom-panel.md) - Jog controls and WCS
   management
 - [Quick Start Guide](../getting-started/quick-start.md) - Basic workflow

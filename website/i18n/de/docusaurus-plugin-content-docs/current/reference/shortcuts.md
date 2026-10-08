@@ -385,5 +385,4 @@ Einige weniger bekannte Kürzel:
 
 - [Hauptfenster](../ui/main-window.md) - UI-Übersicht
 - [Canvas-Werkzeuge](../ui/canvas-tools.md) - Canvas-Interaktion
-- [3D-Vorschau](../ui/3d-preview.md) - 3D-Ansicht-Steuerung
 

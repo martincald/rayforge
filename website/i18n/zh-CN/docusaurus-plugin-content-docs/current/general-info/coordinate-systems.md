@@ -216,4 +216,3 @@ G53 代表您机器的绝对位置，零点在机器的原点位置。这由您�
 - [工件定位](../features/workpiece-positioning.md) - 综合定位指南
 - [控制面板](../ui/bottom-panel.md) - 手动控制和 WCS 管理
 - [机器设置](../machine/general.md) - 配置您的机器
-- [3D 预览](../ui/3d-preview.md) - 可视化您的作业

@@ -69,7 +69,7 @@ rapidamente quais camadas serão executadas no modo rotativo.
 
 ## Pré-visualização 3D no Modo Rotativo
 
-Quando o modo rotativo está ativo, a [visualização 3D](../ui/3d-preview.md) mostra
+Quando o modo rotativo está ativo, a visualização 3D mostra
 seu caminho de ferramenta envolvido ao redor de um cilindro em vez de uma
 superfície plana. A tela 2D também se adapta automaticamente ao modo rotativo,
 e a tela 3D renderiza os caminhos de ferramenta rotativos com precisão em todas
@@ -84,7 +84,7 @@ antes de começar a cortar.
 ### Modelo 3D do Módulo Rotativo
 
 Cada módulo rotativo pode ter um modelo 3D atribuído. O modelo aparece na
-[visualização 3D](../ui/3d-preview.md) junto com seu caminho de ferramenta, dando
+visualização 3D junto com seu caminho de ferramenta, dando
 a você uma melhor noção de como a configuração física fica. Você pode ajustar a
 escala, posição e rotação do modelo para corresponder ao seu hardware real.
 
@@ -109,6 +109,4 @@ fundo em peças cilíndricas ao longo de múltiplas passagens.
 
 - [Fluxo de trabalho multicamadas](../features/multi-layer.md) - Configurações por
   camada incluindo rotativo
-- [Visualização 3D](../ui/3d-preview.md) - Pré-visualizar caminhos de ferramenta em
-  3D
 - [Configurações da máquina](general) - Configuração geral da máquina

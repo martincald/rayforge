@@ -50,5 +50,4 @@ niemals an Dritte weitergegeben.
 ## Verwandte Themen
 
 - [Addons](addons) - Addons installieren und verwalten
-- [Maschinen](machines) - Maschinenkonfiguration
 - [Materialien](materials) - Materialbibliotheken

@@ -73,6 +73,5 @@ G0 X0 Y0 ;Return to origin
 
 ## Related Pages
 
-- [G-code Dialects](../reference/gcode-dialects.md) - Firmware differences
 - [Exporting G-code](../files/exporting.md) - Export settings and options
 - [Hooks & Macros](../machine/hooks-macros.md) - Custom G-code injection

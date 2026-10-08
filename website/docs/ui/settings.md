@@ -44,17 +44,13 @@ files specified on the command line will always override these settings.
 
 Rayforge can send anonymous usage data to help improve the application. No
 personal information is collected. You can toggle **Report Anonymous Usage**
-on or off at any time. See the
-[usage tracking](https://rayforge.org/docs/general-info/usage-tracking)
-page to learn more about what data is collected and how it is used.
+on or off at any time.
 
 ## Other Settings
 
 The settings dialog also includes pages for managing other parts of the
 application. Each has its own dedicated documentation:
 
-- [Machines](../application-settings/machines.md) — add, remove, and configure
-  your laser cutters
 - [Materials](../application-settings/materials.md) — manage your material
   libraries
 - [Recipes](../application-settings/recipes.md) — manage saved operation recipes

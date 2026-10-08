@@ -331,6 +331,5 @@ Siempre prueba macros y hooks en **modo simulación** o con el láser **deshabil
 ## Páginas Relacionadas
 
 - [Ajustes de Dispositivo](device) - Referencia de comandos GRBL
-- [Dialectos de Código G](../reference/gcode-dialects.md) - Compatibilidad de código G
 - [Ajustes Generales](general) - Configuración de máquina
 - [Flujo de Trabajo Multi-Capa](../features/multi-layer.md) - Usando hooks con capas

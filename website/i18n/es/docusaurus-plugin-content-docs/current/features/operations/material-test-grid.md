@@ -241,6 +241,5 @@ Ejecuta la misma configuración de cuadrícula en diferentes materiales para con
 
 ## Temas Relacionados
 
-- **[Vista Previa 3D](../../ui/3d-preview.md)** - Previsualizar ejecución de prueba antes de ejecutar
 - **[Grabado](engrave)** - Entender operaciones de grabado
 - **[Corte de Contorno](contour)** - Entender operaciones de corte

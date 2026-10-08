@@ -97,5 +97,4 @@ Rayforge 的多图层系统允许您将作业组织到独立的处理阶段。�
 - [操作](./operations/contour.md) - 图层工作流程的操作类型
 
 - [宏和钩子](../machine/hooks-macros.md) - 用于自动化的图层级钩子
-- [3D 预览](../ui/3d-preview.md) - 可视化图层堆叠
 - [资产浏览器](../ui/bottom-panel.md) - 使用上下文菜单管理资产

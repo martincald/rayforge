@@ -96,9 +96,6 @@ peut vous faire gagner du temps et des matériaux.
 Pour ouvrir l'aperçu 3D, cliquez sur le bouton **Aperçu 3D** dans la
 barre d'outils principale après avoir généré votre G-code.
 
-En savoir plus sur l'aperçu 3D dans notre
-[documentation de l'interface](/docs/ui/3d-preview).
-
 ## 5. Utilisez des hooks G-code personnalisés pour des flux de travail cohérents
 
 Si vous vous retrouvez à exécuter les mêmes commandes G-code avant ou

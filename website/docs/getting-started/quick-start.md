@@ -130,8 +130,6 @@ Now that you've completed your first job, explore these features:
   operations to layers
 - **[Holding Tabs](../features/holding-tabs.md)**: Keep cut pieces in place
   during cutting
-- **[Camera Integration](../machine/camera.md)**: Use a camera for precise
-  alignment
 - **[Hooks & Macros](../machine/hooks-macros.md)**: Automate repetitive tasks
 
 ## Tips for Success

@@ -124,4 +124,3 @@ Passe die Oberfläche an in **Bearbeiten → Einstellungen**:
 - [Werkstückkoordinatensysteme](../general-info/coordinate-systems.md) - WCS
 - [Canvas-Werkzeuge](canvas-tools) - Werkzeuge zum Bearbeiten von Designs
 - [Unteres Panel](bottom-panel) - Manuelle Maschinensteuerung, Status und Protokolle
-- [3D-Vorschau](3d-preview) - Werkzeugwege in 3D visualisieren

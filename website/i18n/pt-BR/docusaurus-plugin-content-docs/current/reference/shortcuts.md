@@ -397,5 +397,4 @@ Alguns atalhos menos conhecidos:
 
 - [Janela Principal](../ui/main-window.md) - Visão geral da UI
 - [Ferramentas da Tela](../ui/canvas-tools.md) - Interação com a tela
-- [Visualização 3D](../ui/3d-preview.md) - Controles de visão 3D
 

@@ -211,8 +211,6 @@ real:
 - **Posicionamento preciso**: Requisitos de precisão sub-milimétrica
 - **Layouts complexos**: Múltiplos elementos com espaçamento específico
 
-Veja [Integração de Câmera](../machine/camera.md) para documentação completa.
-
 ---
 
 ## Fluxos de Trabalho Recomendados
@@ -290,8 +288,6 @@ Para executar o mesmo trabalho em diferentes locais:
   enquadramento
 - [Sistemas de Coordenadas de Trabalho](../general-info/coordinate-systems.md) -
   Referência SCT
-- [Integração de Câmera](../machine/camera.md) - Configuração e alinhamento de
-  câmera
 - [Painel de Controle](../ui/bottom-panel.md) - Controles de movimento e gestão
   SCT
 - [Guia de Início Rápido](../getting-started/quick-start.md) - Fluxo de trabalho

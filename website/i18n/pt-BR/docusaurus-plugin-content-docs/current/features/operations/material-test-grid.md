@@ -258,6 +258,5 @@ ambos extremos
 
 ## Tópicos Relacionados
 
-- **[Visualização 3D](../../ui/3d-preview.md)** - Pré-visualize execução do teste antes de rodar
 - **[Gravação](engrave)** - Entendendo operações de gravação
 - **[Corte de Contorno](contour)** - Entendendo operações de corte

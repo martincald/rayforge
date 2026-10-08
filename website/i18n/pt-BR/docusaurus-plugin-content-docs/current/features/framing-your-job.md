@@ -87,8 +87,6 @@ Se sua máquina possui suporte para câmera, você pode:
 3. **Ajustar a posição** virtualmente antes de enquadrar
 4. **Enquadrar para confirmar** o alinhamento físico
 
-Consulte [Integração com câmera](../machine/camera.md) para detalhes.
-
 ## Solução de problemas
 
 **O quadro não corresponde ao design**: Verifique a origem do trabalho e as
@@ -114,5 +112,4 @@ de trabalho da máquina
 
 - [Posicionamento de peça](workpiece-positioning) - Guia completo de
   posicionamento
-- [Integração com câmera](../machine/camera.md)
 - [Guia de início rápido](../getting-started/quick-start.md)

@@ -131,4 +131,3 @@ pendant la gravure.
 - [Macros et Hooks](../machine/hooks-macros.md) - Hooks au niveau du
   calque pour l'automatisation
 - [Navigateur d'actifs](../ui/bottom-panel.md) - Gérer les actifs avec les menus contextuels
-- [Aperçu 3D](../ui/3d-preview.md) - Visualiser la pile de calques

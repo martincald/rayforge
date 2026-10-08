@@ -69,6 +69,5 @@ G0 X0 Y0 ;Retour à l'origine
 
 ## Pages connexes
 
-- [Dialectes G-code](../reference/gcode-dialects.md) - Différences entre firmwares
 - [Exporter du G-code](../files/exporting.md) - Paramètres et options d'exportation
 - [Hooks et Macros](../machine/hooks-macros.md) - Injection de G-code personnalisé

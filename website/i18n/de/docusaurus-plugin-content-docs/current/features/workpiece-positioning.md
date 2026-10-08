@@ -210,8 +210,6 @@ Die Kamera-Ausrichtung ordnet Kamerapixel den realen Koordinaten zu:
 - **Präzise Platzierung**: Sub-Millimeter-Genauigkeitsanforderungen
 - **Komplexe Layouts**: Mehrere Elemente mit spezifischem Abstand
 
-Siehe [Kamera-Integration](../machine/camera.md) für vollständige Dokumentation.
-
 ---
 
 ## Empfohlene Arbeitsabläufe
@@ -286,6 +284,5 @@ Für denselben Job an verschiedenen Positionen:
 
 - [Deinen Job einrahmen](framing-your-job) - Detaillierte Rahmen-Dokumentation
 - [Arbeitskoordinatensysteme](../general-info/coordinate-systems.md) - WKS-Referenz
-- [Kamera-Integration](../machine/camera.md) - Kamera-Setup und Ausrichtung
 - [Kontrollpanel](../ui/bottom-panel.md) - Bewegungssteuerung und WKS-Verwaltung
 - [Schnellstart-Anleitung](../getting-started/quick-start.md) - Grundlegender Workflow

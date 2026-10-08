@@ -331,6 +331,5 @@ Teste Makros und Hooks immer im **Simulationsmodus** oder mit **deaktiviertem La
 ## Verwandte Seiten
 
 - [Geräteeinstellungen](device) - GRBL-Befehlsreferenz
-- [G-Code-Dialekte](../reference/gcode-dialects.md) - G-Code-Kompatibilität
 - [Allgemeine Einstellungen](general) - Maschinenkonfiguration
 - [Mehrschicht-Workflow](../features/multi-layer.md) - Hooks mit Ebenen verwenden

@@ -29,4 +29,3 @@ proceed.
 
 - [No-Go Zones](../machine/nogo-zones.md) - Define restricted areas on the work
   surface
-- [3D View](../ui/3d-preview.md) - 3D toolpath visualization

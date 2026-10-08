@@ -126,8 +126,6 @@ Maintenant que vous avez terminé votre premier travail, explorez ces fonctionna
   opérations aux calques
 - **[Ponts de Maintien](../features/holding-tabs.md)** : Maintenir les pièces coupées
   en place pendant la coupe
-- **[Intégration Caméra](../machine/camera.md)** : Utiliser une caméra pour
-  un alignement précis
 - **[Hooks & Macros](../machine/hooks-macros.md)** : Automatiser les tâches répétitives
 
 ## Conseils pour Réussir

@@ -331,6 +331,5 @@ Rayforge 目前不支持每个图层自定义钩子。要实现这一点，请�
 ## 相关页面
 
 - [设备设置](device) - GRBL 命令参考
-- [G 代码方言](../reference/gcode-dialects.md) - G 代码兼容性
 - [常规设置](general) - 机器配置
 - [多层工作流程](../features/multi-layer.md) - 使用钩子和图层

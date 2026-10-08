@@ -239,6 +239,5 @@ Führe dieselbe Rasterkonfiguration auf verschiedenen Materialien aus, um deine 
 
 ## Verwandte Themen
 
-- **[3D-Vorschau](../../ui/3d-preview.md)** - Testausführung vor dem Ausführen vorschauen
 - **[Gravur](engrave)** - Gravur-Operationen verstehen
 - **[Kontur-Schneiden](contour)** - Schneide-Operationen verstehen
