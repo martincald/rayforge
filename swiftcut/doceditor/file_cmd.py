@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from gettext import gettext as _
+from gettext import ngettext
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -25,7 +26,7 @@ from raygeo.geo.types import Point, Rect
 from raygeo.ops.state import CoolantMode
 
 from ..context import get_context
-from ..core.bed_bounds import bed_rect, fits
+from ..core.bed_bounds import bed_rect, fits, items_outside
 from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.source_asset import SourceAsset
@@ -1278,6 +1279,8 @@ class FileCmd:
                     persistent=True,
                 )
 
+            self.check_machine_fit()
+
             logger.info(f"Successfully loaded project from {file_path}")
             return True
         except json.JSONDecodeError as e:
@@ -1297,6 +1300,54 @@ class FileCmd:
                 self, message=_("Load failed: {error}").format(error=str(e))
             )
             return False
+
+    def off_bed_workpieces(self) -> list[WorkPiece]:
+        """The workpieces that lie outside the active machine's bed."""
+        machine = self._editor.context.machine
+        if not machine:
+            return []
+        workpieces = self._editor.doc.all_workpieces
+        return items_outside(workpieces, bed_rect(machine))
+
+    def check_machine_fit(self) -> list[WorkPiece]:
+        """
+        Says, in persistent notices, when the document was last run on
+        another machine and when workpieces lie outside the active
+        machine's bed, and returns those workpieces. Nothing is moved
+        or scaled.
+        """
+        machine = self._editor.context.machine
+        if not machine:
+            return []
+        last_machine = self._editor.doc.last_machine
+        if last_machine and last_machine != machine.name:
+            self._editor.notification_requested.send(
+                self,
+                message=_("Last run on {last}; this is {machine}.").format(
+                    last=last_machine, machine=machine.name
+                ),
+                persistent=True,
+            )
+        outside = self.off_bed_workpieces()
+        if outside:
+            width, height = machine.axis_extents
+            self._editor.notification_requested.send(
+                self,
+                message=ngettext(
+                    "{count} shape lies outside the {machine} bed "
+                    "({width:g} x {height:g} mm).",
+                    "{count} shapes lie outside the {machine} bed "
+                    "({width:g} x {height:g} mm).",
+                    len(outside),
+                ).format(
+                    count=len(outside),
+                    machine=machine.name,
+                    width=width,
+                    height=height,
+                ),
+                persistent=True,
+            )
+        return outside
 
     def reimport_from_source_asset(
         self,

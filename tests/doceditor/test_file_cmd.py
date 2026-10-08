@@ -1922,3 +1922,93 @@ class TestExportRdToPath:
         self._export(file_cmd, context_initializer, machine, ops, export_path)
 
         assert export_path.read_bytes()
+
+
+# ── The machine a project meets ──
+
+
+def _make_active(context, name, extents):
+    machine = Machine(context)
+    machine.name = name
+    machine.set_axis_extents(*extents)
+    context.machine_mgr.add_machine(machine)
+    context.config.set_machine(machine)
+    return machine
+
+
+def _notices(editor):
+    notices = []
+
+    def on_notice(sender, message, persistent=False, **kwargs):
+        notices.append((message, persistent))
+
+    editor.notification_requested.connect(on_notice, weak=False)
+    return notices
+
+
+def _save_project(file_cmd, path, size, last_machine):
+    """Saves the editor's doc with one piece of the given size."""
+    doc = file_cmd._editor.doc
+    wp = WorkPiece(name="Piece")
+    wp.set_size(*size)
+    wp.pos = (100.0, 100.0)
+    doc.active_layer.add_child(wp)
+    doc.last_machine = last_machine
+    assert file_cmd.save_project_to_path(path)
+    return wp.matrix.copy()
+
+
+def test_a_wide_project_opened_on_the_smaller_bed_is_flagged(
+    file_cmd, tmp_path
+):
+    """
+    A 1200 mm-wide project last run on ilab-614, opened with ilab-626
+    (900 x 900) active: one notice names the machine it ran on, one
+    the count of pieces off the bed and its size. Nothing is scaled
+    or moved.
+    """
+    context = file_cmd._editor.context
+    _make_active(context, "ilab-614", (1400, 900))
+    path = tmp_path / "wide.ryp"
+    saved_matrix = _save_project(file_cmd, path, (1200.0, 100.0), "ilab-614")
+    _make_active(context, "ilab-626", (900, 900))
+    notices = _notices(file_cmd._editor)
+
+    assert file_cmd.load_project_from_path(path) is True
+
+    assert notices == [
+        ("Last run on ilab-614; this is ilab-626.", True),
+        ("1 shape lies outside the ilab-626 bed (900 x 900 mm).", True),
+    ]
+    [wp] = file_cmd._editor.doc.all_workpieces
+    assert wp.matrix == saved_matrix
+    assert wp.size == pytest.approx((1200.0, 100.0))
+    assert file_cmd.off_bed_workpieces() == [wp]
+
+
+def test_the_wide_project_on_the_machine_it_ran_on_is_not_flagged(
+    file_cmd, tmp_path
+):
+    context = file_cmd._editor.context
+    _make_active(context, "ilab-614", (1400, 900))
+    path = tmp_path / "wide.ryp"
+    _save_project(file_cmd, path, (1200.0, 100.0), "ilab-614")
+    notices = _notices(file_cmd._editor)
+
+    assert file_cmd.load_project_from_path(path) is True
+
+    assert notices == []
+    assert file_cmd.off_bed_workpieces() == []
+
+
+def test_a_project_never_run_names_no_machine(file_cmd, tmp_path):
+    context = file_cmd._editor.context
+    _make_active(context, "ilab-626", (900, 900))
+    path = tmp_path / "small.ryp"
+    _save_project(file_cmd, path, (100.0, 100.0), None)
+    notices = _notices(file_cmd._editor)
+
+    assert file_cmd.load_project_from_path(path) is True
+
+    assert notices == []
+    assert file_cmd._editor.doc.last_machine is None

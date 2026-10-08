@@ -1,3 +1,4 @@
+import asyncio
 import math
 from unittest.mock import MagicMock, patch
 
@@ -7,6 +8,7 @@ from swiftcut.core.bed_bounds import inside
 from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.transform_cmd import TransformCmd
+from swiftcut.machine.models.machine import Machine
 
 
 @pytest.fixture
@@ -961,3 +963,36 @@ def test_a_nudge_past_an_edge_stops_on_it(doc_editor, bed_200x100):
     TransformCmd(doc_editor).nudge_items([wp], 10.0, 0.0)
 
     assert wp.pos == pytest.approx((180.0, 40.0))
+
+
+@pytest.mark.asyncio
+async def test_a_nudge_stops_on_the_active_bed_after_a_switch(
+    doc_editor, task_mgr
+):
+    """The clamp reads the active machine: once ilab-626 (900 x 900) is
+    active, a nudge stops on its edge, not on ilab-614's."""
+    context = doc_editor.context
+    machines = {}
+    for name, extents in (
+        ("ilab-614", (1400, 900)),
+        ("ilab-626", (900, 900)),
+    ):
+        machine = Machine(context)
+        machine.name = name
+        machine.set_axis_extents(*extents)
+        context.machine_mgr.add_machine(machine)
+        machines[name] = machine
+    context.config.set_machine(machines["ilab-614"])
+    a = _piece(doc_editor, "A", (20, 10), (850, 40))
+    TransformCmd(doc_editor).nudge_items([a], 100.0, 0.0)
+    assert a.pos == pytest.approx((950.0, 40.0))
+
+    context.config.set_machine(machines["ilab-626"])
+    b = _piece(doc_editor, "B", (20, 10), (850, 40))
+    TransformCmd(doc_editor).nudge_items([b], 100.0, 0.0)
+
+    assert b.pos == pytest.approx((880.0, 40.0))
+    # The switch rebuilds the pipeline after its debounce: wait for
+    # the rebuild, not only for the tasks already running.
+    assert await asyncio.to_thread(doc_editor.wait_until_settled_sync, 10)
+    await asyncio.to_thread(task_mgr.wait_until_settled, 10000)

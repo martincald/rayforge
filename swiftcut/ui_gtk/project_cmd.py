@@ -184,6 +184,10 @@ class ProjectCmd:
         success = self._editor.file.load_project_from_path(file_path)
         if success:
             self._win.on_doc_changed(self._editor.doc)
+            # The load said so already; the pieces off the bed are shown.
+            off_bed = self._editor.file.off_bed_workpieces()
+            if off_bed:
+                self._win.surface.select_items(off_bed)
             self.add_to_recent_manager(file_path)
             context = get_context()
             context.config.set_last_opened_project(file_path)

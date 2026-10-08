@@ -786,6 +786,13 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_job_started(self, sender):
         logger.debug("Job started")
         self._exit_job_preview()
+        # The document remembers the machine it last ran on. No doc
+        # signal: the job is already encoded.
+        machine = get_context().config.machine
+        doc = self.doc_editor.doc
+        if machine and doc.last_machine != machine.name:
+            doc.last_machine = machine.name
+            self.doc_editor.mark_as_unsaved()
         self.toolbar.set_job_progress(0.0)
         self._set_inspector_locked(True)
         self._update_actions_and_ui()
@@ -1473,7 +1480,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_config_changed(self, sender, **kwargs):
         config = get_context().config
-        machine_changed = config.machine is not self._current_machine
+        previous_machine = self._current_machine
+        machine_changed = config.machine is not previous_machine
 
         if machine_changed:
             self._exit_job_preview()
@@ -1491,6 +1499,13 @@ class MainWindow(Adw.ApplicationWindow):
         self.action_manager.get_action("select-machine").set_state(
             GLib.Variant.new_string(machine_id)
         )
+
+        # A switch to another machine: the document is checked against
+        # it, and the pieces off its bed are shown, never moved.
+        if machine_changed and previous_machine is not None:
+            off_bed = self.doc_editor.file.check_machine_fit()
+            if off_bed:
+                self.surface.select_items(off_bed)
 
         # Check for any pending notifications from the new machine immediately
         if self._current_machine:

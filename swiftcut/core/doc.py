@@ -53,6 +53,11 @@ class Doc(DocItem):
         # The new workpiece layer should be active by default
         self._active_layer_index: int = 0
 
+        # The name of the machine the document was last run on, or None
+        # if it never was. A name, not an id: ilab-614's id differs
+        # per install.
+        self.last_machine: str | None = None
+
     @classmethod
     def from_dict(cls, data: dict) -> "Doc":
         """Deserializes the document from a dictionary."""
@@ -145,6 +150,7 @@ class Doc(DocItem):
 
         doc.set_children(children)
         doc._active_layer_index = data.get("active_layer_index", 0)
+        doc.last_machine = data.get("last_machine")
 
         return doc
 
@@ -165,13 +171,17 @@ class Doc(DocItem):
 
     def to_dict(self) -> dict:
         """Serializes the document and its children to a dictionary."""
-        return {
+        data = {
             "uid": self.uid,
             "type": "doc",
             "active_layer_index": self._active_layer_index,
             "children": [child.to_dict() for child in self.children],
             "assets": [asset.to_dict() for asset in self.get_all_assets()],
         }
+        # Only once run, so a document never run saves as before.
+        if self.last_machine is not None:
+            data["last_machine"] = self.last_machine
+        return data
 
     def add_asset(
         self, asset: IAsset, index: int | None = None, silent: bool = False

@@ -575,3 +575,23 @@ def test_a_plain_world_surface_does_not_hold_a_move():
 
     assert s._drag_bounds() is None
     assert elem.get_world_bounding_box()[0] < -100
+
+
+def test_a_drag_stops_on_the_active_bed_after_a_switch(
+    surface, ui_context_initializer
+):
+    """The drag clamp reads the surface's machine, which a machine
+    switch replaces: the smaller bed's edge stops the move."""
+    _, s, add = surface
+    smaller = Machine(ui_context_initializer)
+    smaller.set_axis_extents(120, 120)
+    s.set_machine(smaller)
+    assert s._tracked_axis_extents == (120, 120)
+    wp, elem = add((30, 20), (60, 50))
+    _select(s, elem)
+
+    gesture, start = _press(s, elem)
+    offset = _drag_by(s, gesture, start, FAR, 0.0)
+    s.on_drag_end(gesture, *offset)
+
+    assert wp.pos == pytest.approx((90.0, 50.0))

@@ -945,3 +945,22 @@ def test_get_layer_uid_for_step_distinguishes_layers(doc):
 
     assert doc.get_layer_uid_for_step(step1.uid) == layer1.uid
     assert doc.get_layer_uid_for_step(step2.uid) == layer2.uid
+
+
+def test_last_machine_round_trips(doc):
+    doc.last_machine = "ilab-614"
+
+    data = doc.to_dict()
+
+    assert data["last_machine"] == "ilab-614"
+    assert Doc.from_dict(data).last_machine == "ilab-614"
+
+
+def test_a_doc_never_run_saves_without_last_machine(doc):
+    """Documents never run, and every older file, keep their shape."""
+    data = doc.to_dict()
+
+    assert doc.last_machine is None
+    assert "last_machine" not in data
+    assert Doc.from_dict(data).last_machine is None
+    assert Doc.from_dict(data).to_dict() == data

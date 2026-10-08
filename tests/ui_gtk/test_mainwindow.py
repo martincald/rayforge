@@ -870,3 +870,115 @@ def test_select_machine_is_disabled_while_a_job_or_task_runs(
 
     win._update_actions_and_ui()
     assert action.get_enabled()
+
+
+# The document and the machine it meets.
+
+
+def _bed_notices(editor):
+    """Records the machine and bed notices the editor sends."""
+    notices = []
+
+    def on_notice(sender, message, persistent=False, **kwargs):
+        if "bed" in message or message.startswith("Last run on"):
+            notices.append((message, persistent))
+
+    editor.notification_requested.connect(on_notice, weak=False)
+    return notices
+
+
+def _add_piece(doc, name, size, pos):
+    from swiftcut.core.workpiece import WorkPiece
+
+    wp = WorkPiece(name=name)
+    wp.set_size(*size)
+    wp.pos = pos
+    doc.active_layer.add_child(wp)
+    return wp
+
+
+@pytest.mark.ui
+def test_a_job_start_records_the_machine_on_the_document(app_and_window):
+    _app, win = app_and_window
+    editor = win.doc_editor
+    machine = get_context().config.machine
+    editor.mark_as_saved()
+    assert editor.doc.last_machine is None
+
+    win._on_job_started(win.machine_cmd)
+
+    assert editor.doc.last_machine == machine.name
+    assert not editor.is_saved
+
+    # Run again on the same machine: nothing to save.
+    editor.mark_as_saved()
+    win._on_job_started(win.machine_cmd)
+    assert editor.is_saved
+    win._on_send_done()
+
+
+@pytest.mark.ui
+def test_a_switch_to_the_smaller_bed_flags_the_pieces_off_it(
+    bundled_machines, app_and_window
+):
+    """Nothing is scaled or moved; the pieces off the bed are selected."""
+    _app, win = app_and_window
+    _ilab_614, ilab_626 = bundled_machines
+    doc = win.doc_editor.doc
+    wide = _add_piece(doc, "Wide", (1200.0, 100.0), (100.0, 100.0))
+    _add_piece(doc, "Small", (100.0, 100.0), (100.0, 300.0))
+    wide_matrix = wide.matrix.copy()
+    notices = _bed_notices(win.doc_editor)
+    _wait_for(_settled)
+    win._update_actions_and_ui()
+
+    win.activate_action(
+        "win.select-machine", GLib.Variant.new_string(ilab_626.id)
+    )
+    _wait_for(
+        lambda: get_context().config.machine is ilab_626 and _settled()
+    )
+
+    assert notices == [
+        ("1 shape lies outside the ilab-626 bed (900 x 900 mm).", True)
+    ]
+    assert win.surface.get_selected_workpieces() == [wide]
+    assert wide.matrix == wide_matrix
+
+
+@pytest.mark.ui
+def test_a_wide_project_opened_on_ilab_626_is_flagged(
+    bundled_machines, app_and_window, tmp_path
+):
+    """A 1200 mm-wide project last run on ilab-614, opened with
+    ilab-626 active: both notices, the wide piece selected, nothing
+    scaled or moved."""
+    _app, win = app_and_window
+    ilab_614, ilab_626 = bundled_machines
+    context = get_context()
+    editor = win.doc_editor
+    wide = _add_piece(editor.doc, "Wide", (1200.0, 100.0), (100.0, 100.0))
+    wide_matrix = wide.matrix.copy()
+    editor.doc.last_machine = ilab_614.name
+    path = tmp_path / "wide.ryp"
+    assert editor.file.save_project_to_path(path)
+    _wait_for(_settled)
+    win._update_actions_and_ui()
+    win.activate_action(
+        "win.select-machine", GLib.Variant.new_string(ilab_626.id)
+    )
+    _wait_for(lambda: context.config.machine is ilab_626 and _settled())
+    notices = _bed_notices(editor)
+
+    # Not into the user's own Gtk recent files list.
+    with patch.object(win.project_cmd, "add_to_recent_manager"):
+        win.load_project(path)
+    process_events_for_duration(0.2)
+
+    assert notices == [
+        ("Last run on ilab-614; this is ilab-626.", True),
+        ("1 shape lies outside the ilab-626 bed (900 x 900 mm).", True),
+    ]
+    [loaded] = editor.doc.all_workpieces
+    assert loaded.matrix == wide_matrix
+    assert win.surface.get_selected_workpieces() == [loaded]

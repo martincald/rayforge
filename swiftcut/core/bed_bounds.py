@@ -5,12 +5,16 @@ placement and the workspace bounds.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, TypeVar
 
 from raygeo.geo.types import Rect
 
 if TYPE_CHECKING:
     from ..machine.models.machine import Machine
+    from .item import DocItem
+
+Item = TypeVar("Item", bound="DocItem")
 
 # Float slack in mm, so a size equal to the bed still fits.
 _EPSILON_MM = 1e-6
@@ -34,6 +38,23 @@ def fits(size: tuple[float, float], bed: Rect) -> bool:
 def inside(box: Rect, bed: Rect) -> bool:
     """Whether an (x, y, width, height) box lies inside the bed."""
     return clamp_offset(box, bed) == (0.0, 0.0) and fits(box[2:], bed)
+
+
+def world_box(item: DocItem) -> Rect:
+    """An item's axis-aligned world box as (x, y, width, height)."""
+    transform = item.get_world_transform()
+    corners = [
+        transform.transform_point(corner)
+        for corner in ((0, 0), (1, 0), (1, 1), (0, 1))
+    ]
+    xs = [x for x, _y in corners]
+    ys = [y for _x, y in corners]
+    return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
+
+
+def items_outside(items: Iterable[Item], bed: Rect) -> list[Item]:
+    """The items whose world box does not lie inside the bed."""
+    return [item for item in items if not inside(world_box(item), bed)]
 
 
 def clamp_offset(box: Rect, bed: Rect) -> tuple[float, float]:

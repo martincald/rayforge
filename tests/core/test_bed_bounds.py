@@ -3,7 +3,14 @@ import math
 import pytest
 from raygeo.geo import Matrix
 
-from swiftcut.core.bed_bounds import bed_rect, clamp_offset, fits, inside
+from swiftcut.core.bed_bounds import (
+    bed_rect,
+    clamp_offset,
+    fits,
+    inside,
+    items_outside,
+    world_box,
+)
 
 BED = (0.0, 0.0, 1400.0, 900.0)
 
@@ -92,3 +99,32 @@ def test_a_frame_turned_45_degrees_is_held_by_its_rotated_box():
 )
 def test_inside(box, expected):
     assert inside(box, BED) is expected
+
+
+def _workpiece(size, pos, angle=0.0):
+    from swiftcut.core.workpiece import WorkPiece
+
+    wp = WorkPiece(name="wp")
+    wp.set_size(*size)
+    wp.pos = pos
+    wp.angle = angle
+    return wp
+
+
+def test_world_box_is_the_turned_frame_box():
+    wp = _workpiece((100.0, 20.0), (10.0, 10.0), angle=90.0)
+
+    assert world_box(wp) == pytest.approx((50.0, -30.0, 20.0, 100.0))
+
+
+def test_items_outside_are_those_not_inside_the_bed():
+    """A 1200 mm piece is outside a 900 x 900 bed, not a 1400 x 900 one."""
+    wide = _workpiece((1200.0, 100.0), (10.0, 10.0))
+    small = _workpiece((100.0, 100.0), (10.0, 10.0))
+    past_the_edge = _workpiece((100.0, 100.0), (850.0, 10.0))
+    turned_out = _workpiece((100.0, 20.0), (10.0, 10.0), angle=90.0)
+
+    assert items_outside(
+        [wide, small, past_the_edge, turned_out], (0.0, 0.0, 900.0, 900.0)
+    ) == [wide, past_the_edge, turned_out]
+    assert items_outside([wide, small], BED) == []

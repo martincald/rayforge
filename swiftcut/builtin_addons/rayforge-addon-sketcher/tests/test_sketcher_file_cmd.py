@@ -15,8 +15,10 @@ from swiftcut.shared.tasker.manager import TaskManager
 
 @pytest.fixture
 def context_initializer():
-    """Mock context initializer."""
-    return MagicMock()
+    """Mock context initializer, its machine on a 200 x 200 mm bed."""
+    context = MagicMock()
+    context.machine.axis_extents = (200.0, 200.0)
+    return context
 
 
 @pytest.fixture
