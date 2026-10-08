@@ -18,8 +18,6 @@ css = """
     border-radius: 5px;
 }
 .gcode-status-label {
-    background-color: alpha(@window_bg_color, 0.8);
-    border-radius: 5px;
     padding: 4px 8px;
 }
 """
@@ -61,6 +59,7 @@ class GcodeViewer(Gtk.Box):
 
         self.status_label = Gtk.Label()
         self.status_label.add_css_class("gcode-status-label")
+        self.status_label.add_css_class("sc-overlay")
         self.status_label.set_halign(Gtk.Align.END)
         self.status_label.set_valign(Gtk.Align.END)
         self.status_label.set_margin_bottom(3)

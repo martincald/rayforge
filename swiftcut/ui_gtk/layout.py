@@ -271,14 +271,12 @@ CSS_LENGTHS = {
     "radius_cell": "6px",
     "radius_button": "7px",
     "radius_inner": "8px",
-    "radius_overlay": "9px",
+    "radius_overlay": "10px",
     "radius_card": "10px",
     "radius_group": "12px",
-    # Fixed: shadows.
-    "shadow_card": "0 4px 10px alpha(black, 0.06)",
-    "shadow_panel": "0 2px 12px alpha(black, 0.2)",
-    "shadow_toast": "0 2px 6px alpha(black, 0.15)",
-    "shadow_drop_overlay": "0 4px 12px rgba(0, 0, 0, 0.3)",
+    # Fixed: shadows. The overlay's is geometry only; its colour is
+    # the theme's (sc_overlay_shadow).
+    "shadow_overlay": "0 2px 6px",
     "shadow_fab": (
         "0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23)"
     ),

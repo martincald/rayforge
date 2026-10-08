@@ -63,11 +63,7 @@ class DragDropCmd:
         .drop-overlay {
             font-size: $display_font;
             font-weight: bold;
-            color: white;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: $radius_card;
             padding: $space_page $space_page_wide;
-            box-shadow: $shadow_drop_overlay;
         }
         """)
 
@@ -304,11 +300,9 @@ class DragDropCmd:
         # Create overlay label with styling
         self._drop_overlay_label = Gtk.Label(label=_("Drop files to import"))
         self._drop_overlay_label.add_css_class("drop-overlay")
+        self._drop_overlay_label.add_css_class("sc-overlay")
         self._drop_overlay_label.set_halign(Gtk.Align.CENTER)
         self._drop_overlay_label.set_valign(Gtk.Align.CENTER)
-
-        # Make it semi-transparent
-        self._drop_overlay_label.set_opacity(0.9)
         self._drop_overlay_label.set_can_target(False)
 
         # Find the parent overlay (surface_overlay from MainWindow)

@@ -16,7 +16,7 @@ css = stylesheet("""
 .material-list>row {
     background-color: transparent;
     transition: background-color 0.2s ease;
-    border-bottom: $hairline solid #00000020;
+    border-bottom: $hairline solid @sc_hairline_soft;
 }
 .material-list>row:last-child {
     border: 0;

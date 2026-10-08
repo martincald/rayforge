@@ -6,10 +6,9 @@ from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_TIGHT, stylesheet
 from .gtk import apply_css
 
-# Size and radius come from the layout layer (.sc-overlay).
+# Size, radius and material come from the theme's .sc-overlay.
 css = stylesheet("""
 .visibility-overlay {
-    background-color: alpha(@theme_bg_color, 0.75);
     padding: $space_tight;
 }
 """)

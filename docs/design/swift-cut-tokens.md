@@ -64,6 +64,12 @@ are swapped wholesale when the colour scheme changes (§3.4).
 | `sc_ok` | `#34C759` | `#34C759` |
 | `sc_danger` | `#FF3B30` | `#FF3B30` |
 | `sc_layer_magenta` | `#D63AD6` | `#D63AD6` |
+| `sc_overlay_solid` | `#F6F6F8` | `#2C2C2E` |
+| `sc_overlay_bg` | `alpha(@sc_overlay_solid, 0.92)` | same |
+| `sc_overlay_border` | `@sc_hairline` | same |
+| `sc_overlay_shadow` | `@sc_shadow` | same |
+
+The four `sc_overlay_*` tokens are the one floating material (§3.6).
 
 ### 1.3 Bezel — the "half-pixel edge"
 
@@ -88,7 +94,7 @@ Separators are 1px `@sc_hairline`, never a decorative bar.
 | Jog button | 6px | `6px` |
 | Panel, workflow card | 10px | `10px` |
 | Inner card, wcs group | 8px | `8px` |
-| Canvas overlay | 9px | `9px` |
+| Canvas overlay | 9px | `10px`, one radius for every floating surface (§3.6) |
 | Chip, spinner, dock pip | 5px | `5px` |
 
 ### 1.5 Typography
@@ -213,13 +219,17 @@ The deck's header, canvas overlay and job card use
 **Fallback, in order:**
 
 1. Where the compositor gives the window an alpha channel, the
-   header and the canvas overlay use their rgba token
-   (`@sc_header_bg` at 0.88) so they at least sit *lighter* than the
-   window and pick up the window background beneath them.
+   header uses its rgba token (`@sc_header_bg` at 0.88) so it at
+   least sits *lighter* than the window and picks up the window
+   background beneath it.
 2. Otherwise the alpha composites against the opaque window
    background, which lands on solid `#F6F6F8` / `#2C2C2E` — the
    glass-white / glass-shade fallback the brief asks for. This is
    what will happen on Windows in practice.
+
+The canvas overlay and every other floating surface no longer use
+`@sc_header_bg`: they are the one material of §3.6, the same
+glass-white / glass-shade at 0.92 over the work itself.
 
 No blur, no saturation boost. Documented, not attempted.
 
@@ -261,6 +271,95 @@ provider and leaves `apply_css()` alone.
 | **Kerf gradient on the workpiece contour** | Canvas-drawn, and Commit D territory. Only attempted if A–C land clean. |
 
 ---
+
+### 3.6 One material for floating surfaces
+
+**The rule.** Everything that floats over the work is one surface,
+with one fill, one rim, one radius and one shadow, and only the
+theme's `.sc-overlay` class paints it. A floating widget adds the
+class and declares no background, border colour, radius or shadow of
+its own (widget stylesheets load after the theme at the same
+priority, so one that did would win). The surfaces that wear it:
+
+* the Workflow card and the Workpiece Properties cards (`Expander`);
+* the canvas toolbar (`VisibilityOverlay`) and the time estimate
+  (`TimeEstimateOverlay`);
+* the "Drop files to import" HUD and the status message label;
+* the G-code viewer's line/size label.
+
+The right pane that holds the two cards is a transparent column, not
+a surface. Its left margin sits inside its scroller so the cards'
+shadows are not clipped. Toasts, popovers and menus stay
+libadwaita's.
+
+**The token set**, colours in `theme.py`, lengths in `layout.py`:
+
+| Part | Token | Light | Dark |
+| --- | --- | --- | --- |
+| Blur fallback colour | `sc_overlay_solid` | `#F6F6F8` glass-white | `#2C2C2E` glass-shade |
+| Background alpha | `sc_overlay_bg` | 0.92 of the solid | 0.92 of the solid |
+| 1px hairline rim | `sc_overlay_border` = `@sc_hairline` | `rgba(0,0,0,0.10)` | `rgba(255,255,255,0.12)` |
+| Radius | `$radius_overlay` | 10px | 10px |
+| Shadow | `$shadow_overlay` `@sc_overlay_shadow` | `0 2px 6px` shadow-blue 0.10 | `0 2px 6px` black 0.40 |
+
+`.sc-overlay list` is transparent: libadwaita paints a `list` with
+the opaque view colour, which made the Properties card's body a
+second, solid surface inside the glass one.
+
+**Why 0.92.** The work beneath a panel can be anything, so contrast
+is measured with the surface composited over black, white and the
+canvas colour (WCAG 2 relative luminance):
+
+| Alpha | Body text, worst case | Dim caption, worst case |
+| --- | --- | --- |
+| 0.75 (the old canvas toolbar's alpha) | 5.70:1 | 2.58:1 |
+| 0.88 (`@sc_header_bg`) | 8.74:1 | 2.99:1 |
+| 0.90 | 9.34:1 | 3.05:1 |
+| **0.92** | **9.97:1** | **3.11:1** |
+| 1.00 (opaque) | 12.80:1 | 3.34:1 |
+
+The worst case is a light panel over a black shape for captions and a
+dark panel over white for body text. The dim caption (`@sc_fg_dim`)
+is 3.34:1 even on the opaque glass colour, so it is the binding
+constraint: 3:1 is crossed near 0.89. At 0.92 body text keeps WCAG
+AAA (7:1) with room, a caption keeps 3.1:1 (it loses under 7% of its
+opaque contrast), and 8% of the work still shows through, enough to
+read the panel as a layer above it.
+`tests/ui_gtk/test_overlay_material.py` re-checks these from the
+tokens.
+
+**Research** (2026-10-08):
+
+* Apple HIG, Materials
+  (<https://developer.apple.com/design/human-interface-guidelines/materials>):
+  Liquid Glass "forms a distinct functional layer for controls and
+  navigation elements … that floats above the content layer". Its
+  *regular* variant "blurs and adjusts the luminosity of background
+  content to maintain legibility"; use it "when components have a
+  significant amount of text, such as alerts, sidebars, or popovers".
+  The *clear* variant is for media backgrounds only. "Thicker
+  materials, which are more opaque, can provide better contrast for
+  text and other elements with fine features." Both variants change
+  when people turn on Reduce Transparency or Increase Contrast. Our
+  panels are text-heavy, so the regular variant is the model; without
+  blur, a thick tint is its honest approximation. Also: WWDC25 "Meet Liquid Glass"
+  (<https://developer.apple.com/videos/play/wwdc2025/219/>).
+* libadwaita style classes
+  (<https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html>):
+  `.osd` "usually makes the widget background dark and partially
+  transparent"; with `.toolbar` it makes a floating toolbar. The
+  installed libadwaita 1.9.3 paints `.osd` `rgb(0 0 0 / 70%)` with
+  90% white text, `border: none`, and `toolbar.osd` gets `padding:
+  12px; border-radius: 15px`. It is dark in both themes; the old drop
+  HUD copied it (black at 0.7, white text) and so read as a different
+  family. The one-material rule rejects it for our surfaces. Its `.card` is a 1px hairline
+  ring plus a soft two-layer shadow (`0 1px 3px 1px`, `0 2px 6px
+  2px`), the same rim-and-shadow anatomy used here.
+* GTK 4 CSS properties
+  (<https://docs.gtk.org/gtk4/css-properties.html>): there is no
+  `backdrop-filter`; `filter` applies to the widget itself. So the
+  solid colour per theme *is* the material, and the alpha is a tint,
+  not glass.
 
 ## 4. Commit plan
 

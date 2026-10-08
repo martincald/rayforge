@@ -46,6 +46,7 @@ _LIGHT_TOKENS = """
 @define-color sc_accent_soft rgba(47, 123, 255, 0.14);
 @define-color sc_fill_subtle rgba(0, 0, 0, 0.03);
 @define-color sc_shadow rgba(4, 34, 122, 0.10);
+@define-color sc_overlay_solid #F6F6F8;
 """
 
 # Artboard 3b. Only the surfaces move; the accent, the danger red and
@@ -68,6 +69,7 @@ _DARK_TOKENS = """
 @define-color sc_accent_soft rgba(47, 123, 255, 0.28);
 @define-color sc_fill_subtle rgba(255, 255, 255, 0.035);
 @define-color sc_shadow rgba(0, 0, 0, 0.40);
+@define-color sc_overlay_solid #2C2C2E;
 """
 
 #: blue-brand (``docs/design/swift-cut-tokens.md``). The stylesheet's
@@ -84,6 +86,15 @@ _SHARED_TOKENS = f"""
 @define-color sc_ok #34C759;
 @define-color sc_spark_top #FFF6DC;
 @define-color sc_spark_bottom #FFE9AB;
+
+/* One material for every floating surface (swift-cut-tokens.md 3.6).
+   GTK cannot blur what is behind a widget, so the theme's solid
+   glass colour is the material and the alpha only lets the work
+   show through faintly; 0.92 keeps every caption at 3:1 or better
+   over a black shape. */
+@define-color sc_overlay_bg alpha(@sc_overlay_solid, 0.92);
+@define-color sc_overlay_border @sc_hairline;
+@define-color sc_overlay_shadow @sc_shadow;
 
 @define-color window_bg_color @sc_window_bg;
 @define-color window_fg_color @sc_fg;
@@ -256,6 +267,21 @@ _RULES = stylesheet("""
 .visibility-overlay button:checked {
     background-color: @sc_accent_soft;
     color: @sc_accent_text;
+}
+
+/* --- Floating surfaces: one material ----------------------------- */
+/* Everything that floats over the canvas wears .sc-overlay and paints
+   nothing itself: the Workflow and Workpiece Properties cards, the
+   canvas toolbars, the drop HUD and the status message. A list inside
+   a card would otherwise paint libadwaita's opaque view colour. */
+.sc-overlay {
+    background-color: @sc_overlay_bg;
+    border: $hairline solid @sc_overlay_border;
+    box-shadow: $shadow_overlay @sc_overlay_shadow;
+}
+
+.sc-overlay list {
+    background-color: transparent;
 }
 
 /* --- Cut Scale sheet --------------------------------------------- */

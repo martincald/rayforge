@@ -72,9 +72,10 @@ def test_a_step_row_in_the_panel_shows_every_label_whole(editor):
     draglist.add_row(row)
     window = Gtk.Window(child=draglist)
 
-    # The list is as wide as the panel less its end margin, and the
-    # list adds its drag handle and margins, as in the main window.
-    _allocate(draglist, layout.OVERLAY_PANEL_WIDTH - layout.SPACE_GROUP)
+    # The list is as wide as the panel less its end margin and the
+    # card's two 1px rims, and the list adds its drag handle and
+    # margins, as in the main window.
+    _allocate(draglist, layout.OVERLAY_PANEL_WIDTH - layout.SPACE_GROUP - 2)
 
     for label in _labels(box):
         natural = label.measure(Gtk.Orientation.HORIZONTAL, -1)[1]

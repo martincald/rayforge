@@ -134,14 +134,15 @@ extras predating the reskin.
 | --- | --- | --- |
 | Toolbar / panel button | 7 | `.sc-toolbar button`, panel row buttons |
 | Jog button | 6 | `.sc-jog button` |
-| Panel, workflow card | 10 | `.card`, preferences groups, expanders |
+| Panel, workflow card | 10 | `.card`, preferences groups |
 | Inner card, wcs group | 8 | nested cards |
-| Canvas overlay | 9 | `.sc-overlay` |
+| Floating surface | 10 | `.sc-overlay`: the Workflow and Properties cards, canvas toolbars, drop HUD, status labels (`swift-cut-tokens.md` §3.6) |
 | Chip, spinner, dock pip | 5 | `.sc-rail button`, tags, badges |
 
 Retired: 12 (was preferences groups and expanders), 4 (dock rail), 1
-(workflow row), 3 (G-code viewer). `round_button`'s 32px stays — it
-is a circle, not a radius.
+(workflow row), 3 (G-code viewer), 9 (canvas overlays, now the one
+floating radius). `round_button`'s 32px stays — it is a circle, not
+a radius.
 
 ---
 
@@ -256,7 +257,7 @@ that already exist:
 | `.sc-jog` | jog grid | existing |
 | `.sc-panel` | a settings group in a dock panel | existing |
 | `.sc-rail` | dock icon strip | **new** — the rule existed, nothing wore the class |
-| `.sc-overlay` | canvas overlays | **new** |
+| `.sc-overlay` | every floating surface: canvas toolbars, the Workflow and Properties cards, drop HUD, status labels; also the one material (`swift-cut-tokens.md` §3.6) | **new** |
 | `.sc-split` | split menu buttons | **new** — same, the rule existed and matched nothing |
 
 ---

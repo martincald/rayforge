@@ -83,11 +83,11 @@ _NARROW_WIDTH = 1100
 
 
 css = stylesheet("""
+/* A transparent column; each card in it is its own .sc-overlay. Its
+   left margin is right_pane_box's, inside the scroller. */
 .right-panel-overlay {
     background-color: transparent;
-    border-radius: $radius_card;
-    margin: $space_control $space_group $space_group $space_control;
-    box-shadow: $shadow_panel;
+    margin: $space_control $space_group $space_group 0;
 }
 
 /* The floating panels take the dock's density: a row is one compact
@@ -123,10 +123,7 @@ css = stylesheet("""
 }
 
 .status-message-overlay {
-    background-color: @theme_bg_color;
-    border-radius: $radius_overlay;
     padding: $space_tight $space_group;
-    box-shadow: $shadow_toast;
 }
 
 .in-header-menubar {
@@ -256,6 +253,7 @@ class MainWindow(Adw.ApplicationWindow):
             margin_bottom=SPACE_CONTROL,
         )
         self._status_message_label.add_css_class("status-message-overlay")
+        self._status_message_label.add_css_class("sc-overlay")
         self._status_message_label.set_visible(False)
         self._status_overlay.add_overlay(self._status_message_label)
 
@@ -429,6 +427,8 @@ class MainWindow(Adw.ApplicationWindow):
             OVERLAY_PANEL_WIDTH, orientation=Gtk.Orientation.VERTICAL
         )
         right_pane_box.set_size_request(OVERLAY_PANEL_WIDTH, -1)
+        # Room for the cards' shadows inside the scroller's clip.
+        right_pane_box.set_margin_start(SPACE_CONTROL)
         self._right_pane.set_child(right_pane_box)
 
         # The WorkflowView will be updated when a layer is activated.

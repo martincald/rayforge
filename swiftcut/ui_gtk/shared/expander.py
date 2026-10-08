@@ -9,30 +9,28 @@ from ..layout import (
 )
 from .gtk import apply_css
 
+# The card's fill, rim, radius and shadow are the theme's .sc-overlay.
 css = stylesheet("""
 .expander-card {
-    background-color: @headerbar_bg_color;
-    border-radius: $radius_card;
-    box-shadow: $shadow_card;
     margin-bottom: $space_control;
 }
 
 .expander-header {
-    border-radius: $radius_card;
+    border-radius: $radius_overlay;
     min-height: $compact_row;
 }
 
 .expander-header:hover {
-    background-color: shade(@headerbar_bg_color, 0.95);
+    background-color: shade(@sc_overlay_bg, 0.95);
 }
 
 .expander-card.expanded .expander-header {
-    border-radius: $radius_card $radius_card 0 0;
+    border-radius: $radius_overlay $radius_overlay 0 0;
     border-bottom: $hairline solid @borders;
 }
 
 .expander-card.expanded .expander-header:hover {
-    border-radius: $radius_card $radius_card 0 0;
+    border-radius: $radius_overlay $radius_overlay 0 0;
 }
 
 .expander-title, .expander-subtitle {
@@ -71,6 +69,7 @@ class Expander(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
         apply_css(css)
         self.add_css_class("expander-card")
+        self.add_css_class("sc-overlay")
 
         # Header
         self.header = Gtk.Box()

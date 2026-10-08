@@ -4,10 +4,9 @@ from ...shared.util.time_format import format_clock
 from ..layout import SPACE_CONTROL, SPACE_TIGHT, stylesheet
 from .gtk import apply_css
 
-# The radius comes from the layout layer (.sc-overlay).
+# The radius and material come from the theme's .sc-overlay.
 css = stylesheet("""
 .time-estimate-overlay {
-    background-color: @theme_bg_color;
     padding: $space_tight $space_control;
 }
 """)
