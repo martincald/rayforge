@@ -2,7 +2,6 @@ import logging
 import warnings
 from gettext import gettext as _
 
-from blinker import Signal
 from gi.repository import Gdk, GLib, Gtk
 
 from ...logging_setup import (
@@ -10,7 +9,6 @@ from ...logging_setup import (
     get_ui_formatter,
     get_ui_log_records,
 )
-from ...machine.driver.dummy import NoDeviceDriver
 from ...machine.models.machine import Machine
 from ..icons import get_icon
 from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP, stylesheet
@@ -22,17 +20,6 @@ css = stylesheet("""
 .terminal {
     font-family: Monospace;
     font-size: $caption_font;
-}
-.console-input {
-    font-family: Monospace;
-    font-size: $caption_font;
-    background-color: transparent;
-    border: none;
-    padding: $compact_space_control;
-}
-.console-input-scrolled {
-    background-color: alpha(@window_fg_color, 0.05);
-    border-radius: $radius_chip;
 }
 """)
 
@@ -47,17 +34,11 @@ class Console(Gtk.Box):
         self.set_margin_bottom(COMPACT_SPACE_CONTROL)
 
         self._show_verbose = False
-        self._command_history: list[str] = []
-        self._history_index = -1
-        self._history_max = 1000
         self._machine: Machine | None = None
-        self._max_input_lines = 5
-        self._single_line_height = 24
         self._auto_scroll = True
 
         self._setup_ui()
         self._setup_tags()
-        self.command_submitted = Signal()
         self._populate_history()
 
     def _setup_ui(self):
@@ -108,38 +89,6 @@ class Console(Gtk.Box):
         search_ctrl = Gtk.EventControllerKey()
         search_ctrl.connect("key-pressed", self._on_search_key_pressed)
         self.add_controller(search_ctrl)
-
-        entry_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        entry_box.set_margin_top(0)
-
-        self.input_scrolled = Gtk.ScrolledWindow()
-        self.input_scrolled.set_policy(
-            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
-        )
-        self.input_scrolled.set_min_content_height(self._single_line_height)
-        self.input_scrolled.set_max_content_height(
-            self._single_line_height * self._max_input_lines
-        )
-        self.input_scrolled.set_propagate_natural_height(True)
-        self.input_scrolled.add_css_class("console-input-scrolled")
-
-        self.console_input = Gtk.TextView()
-        self.console_input.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        self.console_input.add_css_class("console-input")
-        self.console_input.set_hexpand(True)
-        apply_css(css)
-
-        self.input_buffer = self.console_input.get_buffer()
-        self.input_buffer.connect("changed", self._on_input_changed)
-
-        key_controller = Gtk.EventControllerKey()
-        key_controller.connect("key-pressed", self._on_input_key_pressed)
-        self.console_input.add_controller(key_controller)
-
-        self.input_scrolled.set_child(self.console_input)
-        entry_box.append(self.input_scrolled)
-
-        self.append(entry_box)
 
     def _setup_tags(self):
         tag_table = self.terminal.get_buffer().get_tag_table()
@@ -231,7 +180,6 @@ class Console(Gtk.Box):
 
     def set_machine(self, machine: Machine | None):
         self._machine = machine
-        self._update_sensitivity()
 
     def _populate_history(self):
         ui_formatter = get_ui_formatter()
@@ -470,102 +418,3 @@ class Console(Gtk.Box):
             self.search_entry.grab_focus()
             return True
         return False
-
-    def _get_input_text(self) -> str:
-        start = self.input_buffer.get_start_iter()
-        end = self.input_buffer.get_end_iter()
-        return self.input_buffer.get_text(start, end, False)
-
-    def _set_input_text(self, text: str):
-        self.input_buffer.set_text(text, -1)
-
-    def _on_input_changed(self, buffer):
-        line_count = buffer.get_line_count()
-        height = min(
-            line_count * self._single_line_height,
-            self._single_line_height * self._max_input_lines,
-        )
-        self.input_scrolled.set_min_content_height(
-            max(height, self._single_line_height)
-        )
-
-    def _on_input_key_pressed(
-        self, controller, keyval, keycode, state
-    ) -> bool:
-        if keyval == Gdk.KEY_Return or keyval == Gdk.KEY_KP_Enter:
-            if state & Gdk.ModifierType.SHIFT_MASK:
-                return False
-            self._send_commands()
-            return True
-        elif keyval == Gdk.KEY_Up:
-            self._navigate_history(-1)
-            return True
-        elif keyval == Gdk.KEY_Down:
-            self._navigate_history(1)
-            return True
-        return False
-
-    def _send_commands(self):
-        machine = self._machine
-        if not machine:
-            return
-
-        text = self._get_input_text().strip()
-        if not text:
-            return
-
-        is_dummy = isinstance(machine.driver, NoDeviceDriver)
-        is_connected = machine.is_connected()
-
-        if not is_connected and not is_dummy:
-            logger.error(
-                "Machine not connected",
-                extra={"log_category": "ERROR", "machine_id": machine.id},
-            )
-            return
-
-        commands = [line.strip() for line in text.split("\n") if line.strip()]
-        self._set_input_text("")
-
-        for command in commands:
-            self._add_to_history(command)
-            self.command_submitted.send(self, command=command, machine=machine)
-
-    def _add_to_history(self, command: str):
-        if self._command_history and self._command_history[-1] == command:
-            return
-        self._command_history.append(command)
-        if len(self._command_history) > self._history_max:
-            self._command_history.pop(0)
-        self._history_index = len(self._command_history)
-
-    def _navigate_history(self, direction: int):
-        if not self._command_history:
-            return
-
-        new_index = self._history_index + direction
-
-        if new_index < 0:
-            new_index = 0
-        elif new_index >= len(self._command_history):
-            new_index = len(self._command_history)
-            self._set_input_text("")
-            self._history_index = new_index
-            return
-
-        self._history_index = new_index
-        command = self._command_history[new_index]
-        self._set_input_text(command)
-
-    def _update_sensitivity(self):
-        if not self._machine:
-            sensitive = False
-        else:
-            is_dummy = isinstance(self._machine.driver, NoDeviceDriver)
-            is_connected = self._machine.is_connected()
-            sensitive = is_connected or is_dummy
-
-        self.console_input.set_sensitive(sensitive)
-
-    def on_machine_state_changed(self, machine, state):
-        self._update_sensitivity()

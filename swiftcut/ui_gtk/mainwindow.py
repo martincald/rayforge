@@ -1113,15 +1113,6 @@ class MainWindow(Adw.ApplicationWindow):
         message: str | None = None,
     ):
         """Called when the active machine's connection status changes."""
-        if (
-            status == TransportStatus.CONNECTED
-            and machine.clear_alarm_on_connect
-            and machine.device_state.status == DeviceStatus.ALARM
-        ):
-            logger.info(
-                "Machine connected in ALARM state. Auto-clearing alarm."
-            )
-            self.machine_cmd.clear_alarm(machine)
         self._update_actions_and_ui()
 
     def _on_machine_hours_changed(self, sender, **kwargs):
@@ -1554,23 +1545,15 @@ class MainWindow(Adw.ApplicationWindow):
         doc = self.doc_editor.doc
 
         if not active_machine:
-            am.get_action("export").set_enabled(False)
             am.get_action("machine-settings").set_enabled(False)
             am.get_action("machine-home").set_enabled(False)
             am.get_action("machine-frame").set_enabled(False)
             am.get_action("machine-send").set_enabled(False)
             am.get_action("machine-hold").set_enabled(False)
             am.get_action("machine-cancel").set_enabled(False)
-            am.get_action("machine-clear-alarm").set_enabled(False)
             am.get_action("machine-focus-z").set_enabled(False)
             am.get_action("zero-here").set_enabled(False)
 
-            self.toolbar.export_button.set_tooltip_text(
-                _("Select a machine to enable G-code export")
-            )
-            self.toolbar.clear_alarm_button.set_tooltip_text(
-                _("Clear machine alarm (unlock)")
-            )
             self.toolbar.machine_warning_box.set_visible(False)
             self.surface.set_laser_dot_visible(False)
         else:
@@ -1579,30 +1562,6 @@ class MainWindow(Adw.ApplicationWindow):
             state = active_machine.device_state
             active_driver = active_machine.driver
             is_dummy = isinstance(active_driver, NoDeviceDriver)
-
-            can_export = (
-                doc.has_result()
-                and not task_mgr.has_tasks()
-                and not self.doc_editor.pipeline.is_data_stale
-            )
-            am.get_action("export").set_enabled(can_export)
-            export_tooltip = _("Generate G-code")
-            if task_mgr.has_tasks():
-                export_tooltip = _(
-                    "Cannot export while other tasks are running"
-                )
-            elif self.doc_editor.pipeline.is_data_stale:
-                export_tooltip = _(
-                    "Pipeline needs recalculation before export. "
-                    "Press F5 to recalculate."
-                )
-            elif not doc.has_workpiece():
-                export_tooltip = _("Add a workpiece to enable export")
-            elif not doc.has_result():
-                export_tooltip = _(
-                    "Add or enable a processing step to enable export"
-                )
-            self.toolbar.export_button.set_tooltip_text(export_tooltip)
 
             if active_driver and active_driver.state.error:
                 self.toolbar.set_machine_warning(
@@ -1679,30 +1638,6 @@ class MainWindow(Adw.ApplicationWindow):
 
             cancel_sensitive = conn_status == TransportStatus.CONNECTED
             am.get_action("machine-cancel").set_enabled(cancel_sensitive)
-
-            can_clear_alarm = bool(
-                active_driver and active_driver.can_clear_alarm()
-            )
-            clear_alarm_sensitive = can_clear_alarm and bool(
-                device_status == DeviceStatus.ALARM
-                or (active_driver and active_driver.state.error)
-            )
-            am.get_action("machine-clear-alarm").set_enabled(
-                clear_alarm_sensitive
-            )
-            self.toolbar.clear_alarm_button.set_tooltip_text(
-                _("Clear machine alarm (unlock)")
-                if can_clear_alarm
-                else _("Not supported on this controller")
-            )
-            if clear_alarm_sensitive:
-                self.toolbar.clear_alarm_button.add_css_class(
-                    "suggested-action"
-                )
-            else:
-                self.toolbar.clear_alarm_button.remove_css_class(
-                    "suggested-action"
-                )
 
             # Update focus button sensitivity
             head = active_machine.get_default_laser_head()
@@ -2023,17 +1958,6 @@ class MainWindow(Adw.ApplicationWindow):
             when_done=_on_artifact_ready
         )
 
-    def on_export_clicked(self, action, param=None):
-        def _proceed():
-            initial_name = None
-            if self.doc_editor.file_path:
-                initial_name = f"{self.doc_editor.file_path.stem}.gcode"
-            file_dialogs.show_export_gcode_dialog(
-                self, self._on_save_dialog_response, initial_name
-            )
-
-        self._run_sanity_check_and_proceed(_proceed)
-
     def on_export_rd_clicked(self, action, param=None):
         def _proceed():
             initial_name = None
@@ -2104,19 +2028,6 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
         self.doc_editor.file.export_document_to_path(file_path)
-
-    def _on_save_dialog_response(self, dialog, result, user_data):
-        try:
-            file = dialog.save_finish(result)
-            if not file:
-                return
-            file_path = Path(file.get_path())
-        except GLib.Error as e:
-            logger.error(f"Error saving file: {e.message}")
-            return
-
-        # This is now a non-blocking call.
-        self.doc_editor.file.export_gcode_to_path(file_path)
 
     def on_home_clicked(self, action, param):
         config = get_context().config
@@ -2245,12 +2156,6 @@ class MainWindow(Adw.ApplicationWindow):
         if not config.machine:
             return
         self.machine_cmd.cancel_job(config.machine)
-
-    def on_clear_alarm_clicked(self, action, param):
-        config = get_context().config
-        if not config.machine:
-            return
-        self.machine_cmd.clear_alarm(config.machine)
 
     def on_focus_z_clicked(self, action, param):
         config = get_context().config

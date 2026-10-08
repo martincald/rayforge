@@ -66,7 +66,6 @@ TOOLBAR_ICONS = [
     "jog-symbolic",
     "align-horizontal-center-symbolic",
     "tabs-equidistant-symbolic",
-    "clear-alarm-symbolic",
     "laser-off-symbolic",
     "play-arrow-symbolic",
 ]

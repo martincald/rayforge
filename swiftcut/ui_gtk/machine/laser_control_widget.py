@@ -1,111 +1,22 @@
 from gettext import gettext as _
 
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gtk
 
 from ...machine.cmd import MachineCmd
-from ...machine.models.laser import Laser, LaserHead
 from ...machine.models.machine import Machine
-from ..icons import get_icon
-from ..layout import COMPACT_SPACE_CONTROL, compact_spin_button
-from ..shared.gtk import apply_css
-from ..shared.pref_rows.base import SpinRow
-from ..shared.slider import create_slider
-
-_POWER_CSS = """
-entry.power-value {
-    min-width: 4em;
-}
-"""
-apply_css(_POWER_CSS)
 
 
 class LaserControlWidget(Gtk.Box):
-    """Widget for manual laser on/off control with power and duration."""
+    """Widget for the controller's own Z focus routine."""
 
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
 
         self.machine: Machine | None = None
         self.machine_cmd: MachineCmd | None = None
-        self._is_on = False
-        self._timer_source_id: int | None = None
-        self._remaining_ms: int = 0
 
         self._group = Adw.PreferencesGroup()
         self._group.add_css_class("compact")
-
-        self._head_row = Adw.ComboRow(title=_("Laser Head"))
-        self._head_row.connect(
-            "notify::selected", self._on_head_selection_changed
-        )
-        self._toggle_btn = Gtk.ToggleButton()
-        self._toggle_btn.set_child(get_icon("laser-off-symbolic"))
-        self._toggle_btn.add_css_class("flat")
-        self._toggle_btn.add_css_class("sc-laser-live")
-        self._toggle_btn.set_valign(Gtk.Align.CENTER)
-        self._toggle_btn.set_tooltip_text(_("Toggle laser on/off"))
-        self._toggle_btn.connect("clicked", self._on_toggle_clicked)
-        self._head_row.add_suffix(self._toggle_btn)
-        self._group.add(self._head_row)
-
-        self._power_adj = Gtk.Adjustment(
-            value=1.0,
-            lower=0,
-            upper=100,
-            step_increment=0.5,
-            page_increment=10,
-        )
-        self._power_scale = create_slider(
-            adjustment=self._power_adj,
-            digits=1,
-            draw_value=False,
-        )
-        self._power_entry = Gtk.Entry()
-        self._power_entry.set_width_chars(5)
-        self._power_entry.set_max_width_chars(5)
-        self._power_entry.set_hexpand(False)
-        self._power_entry.set_halign(Gtk.Align.END)
-        self._power_entry.set_alignment(1.0)
-        self._power_entry.set_has_frame(False)
-        self._power_entry.add_css_class("power-value")
-
-        def update_power_entry(s):
-            self._power_entry.set_text(f"{s.get_value():.1f} %")
-
-        self._power_scale.connect("value-changed", update_power_entry)
-        update_power_entry(self._power_scale)
-
-        def commit_power_entry(e):
-            text = e.get_text().rstrip(" %")
-            try:
-                self._power_adj.set_value(float(text))
-            except ValueError:
-                update_power_entry(self._power_scale)
-
-        self._power_entry.connect("activate", commit_power_entry)
-        focus_ctrl = Gtk.EventControllerFocus()
-        focus_ctrl.connect(
-            "leave", lambda c: commit_power_entry(self._power_entry)
-        )
-        self._power_entry.add_controller(focus_ctrl)
-
-        self._power_row = Adw.ActionRow(title=_("Power"))
-        self._power_row.set_subtitle(_("Laser power in percent"))
-        suffix_box = Gtk.Box(spacing=COMPACT_SPACE_CONTROL)
-        suffix_box.set_hexpand(False)
-        suffix_box.append(self._power_entry)
-        suffix_box.append(self._power_scale)
-        self._power_row.add_suffix(suffix_box)
-        self._group.add(self._power_row)
-
-        self._duration_row = SpinRow(
-            _("Duration"),
-            _("Seconds (0 = continuous)"),
-            upper=3600,
-            step_increment=0.5,
-            digits=1,
-        )
-        self._group.add(self._duration_row)
 
         self._focus_btn = Gtk.Button(label=_("Focus"))
         self._focus_btn.set_valign(Gtk.Align.CENTER)
@@ -118,194 +29,10 @@ class LaserControlWidget(Gtk.Box):
         self._focus_row.add_suffix(self._focus_btn)
         self._group.add(self._focus_row)
 
-        # This panel lives in the dock, so its fields are the dock's.
-        compact_spin_button(self._duration_row.get_spin_button())
-
         self.append(self._group)
-
-        self._countdown_label = Gtk.Label()
-        self._countdown_label.add_css_class("dim-label")
-        self._countdown_label.set_visible(False)
-        self.append(self._countdown_label)
-
-        self.connect("destroy", self._on_destroy)
-        self._update_sensitivity()
 
     def set_machine(
         self, machine: Machine | None, machine_cmd: MachineCmd | None
     ):
-        if self.machine:
-            self.machine.connection_status_changed.disconnect(
-                self._on_connection_status_changed
-            )
-            self.machine.changed.disconnect(self._on_machine_changed)
-            self.machine.controller.laser_power_changed.disconnect(
-                self._on_laser_power_changed
-            )
         self.machine = machine
         self.machine_cmd = machine_cmd
-        if self.machine:
-            self.machine.connection_status_changed.connect(
-                self._on_connection_status_changed
-            )
-            self.machine.changed.connect(self._on_machine_changed)
-            self.machine.controller.laser_power_changed.connect(
-                self._on_laser_power_changed
-            )
-            self._rebuild_head_model()
-        self._update_sensitivity()
-
-    def _rebuild_head_model(self):
-        if not self.machine:
-            return
-        laser_heads = [
-            h for h in self.machine.heads if isinstance(h, LaserHead)
-        ]
-        model = Gtk.StringList.new([h.name for h in laser_heads])
-        self._head_row.set_model(model)
-        if laser_heads:
-            self._head_row.set_selected(0)
-            self._sync_head_fields(laser_heads[0])
-
-    def _get_selected_head(self) -> Laser | None:
-        if not self.machine:
-            return None
-        laser_heads = [
-            h for h in self.machine.heads if isinstance(h, LaserHead)
-        ]
-        idx = self._head_row.get_selected()
-        if 0 <= idx < len(laser_heads):
-            return laser_heads[idx]
-        return None
-
-    def _sync_head_fields(self, head: Laser):
-        self._head_row.set_subtitle(
-            _("Tool {tool_number}, max power {max_power}").format(
-                tool_number=head.tool_number, max_power=head.max_power
-            )
-        )
-        self._power_adj.set_value(head.focus_power_percent * 100)
-
-    def _on_head_selection_changed(self, row, _pspec):
-        head = self._get_selected_head()
-        if head:
-            self._sync_head_fields(head)
-
-    def _on_machine_changed(self, sender):
-        self._rebuild_head_model()
-
-    def _on_laser_power_changed(self, sender, *, head, percent):
-        is_on = percent > 0
-        if is_on != self._is_on:
-            self._cancel_timer()
-            self._is_on = is_on
-            self._update_toggle_ui()
-            self._update_sensitivity()
-
-    def _on_connection_status_changed(self, sender, **kwargs):
-        if self.machine and not self.machine.is_connected() and self._is_on:
-            self._cancel_timer()
-            self._is_on = False
-            self._update_toggle_ui()
-        self._update_sensitivity()
-
-    def _update_sensitivity(self):
-        has_heads = self.machine is not None and len(self.machine.heads) > 0
-        connected = self.machine is not None and self.machine.is_connected()
-        # Only a machine whose driver says so is "not supported". A
-        # removed machine reports its last disconnect after its
-        # controller is gone, and there is no driver left to ask.
-        can_pulse = (
-            self.machine is None
-            or not self.machine.has_controller
-            or self.machine.driver.can_pulse()
-        )
-        # Off stays available while something else has the laser on.
-        can_toggle = can_pulse or self._is_on
-        self._head_row.set_sensitive(has_heads)
-        self._power_row.set_sensitive(has_heads and can_pulse)
-        self._duration_row.set_sensitive(has_heads and can_pulse)
-        self._toggle_btn.set_sensitive(connected and has_heads and can_toggle)
-        unsupported = _("Not supported on this controller")
-        self._toggle_btn.set_tooltip_text(
-            _("Toggle laser on/off") if can_toggle else unsupported
-        )
-        for row in (self._power_row, self._duration_row):
-            row.set_tooltip_text(None if can_pulse else unsupported)
-
-    def _on_toggle_clicked(self, button):
-        if self._is_on:
-            self._turn_off()
-        else:
-            self._turn_on()
-
-    def _turn_on(self):
-        head = self._get_selected_head()
-        if not head or not self.machine or not self.machine_cmd:
-            return
-        if not self.machine.is_connected():
-            return
-
-        percent = self._power_adj.get_value() / 100.0
-        self.machine_cmd.set_focus_power(head, percent, self.machine)
-
-        self._is_on = True
-        self._update_toggle_ui()
-        self._update_sensitivity()
-
-        duration_s = self._duration_row.get_value()
-        if duration_s > 0:
-            self._remaining_ms = int(duration_s * 1000)
-            self._update_countdown_label()
-            self._countdown_label.set_visible(True)
-            self._timer_source_id = GLib.timeout_add(100, self._on_timer_tick)
-
-    def _turn_off(self):
-        self._cancel_timer()
-        head = self._get_selected_head()
-        if (
-            head
-            and self.machine
-            and self.machine.is_connected()
-            and self.machine_cmd
-        ):
-            self.machine_cmd.set_focus_power(head, 0, self.machine)
-        self._is_on = False
-        self._update_toggle_ui()
-        self._update_sensitivity()
-
-    def _cancel_timer(self):
-        if self._timer_source_id is not None:
-            GLib.source_remove(self._timer_source_id)
-            self._timer_source_id = None
-        self._countdown_label.set_visible(False)
-        self._remaining_ms = 0
-
-    def _on_timer_tick(self) -> bool:
-        self._remaining_ms -= 100
-        if self._remaining_ms <= 0:
-            self._turn_off()
-            return GLib.SOURCE_REMOVE
-        self._update_countdown_label()
-        return GLib.SOURCE_CONTINUE
-
-    def _update_countdown_label(self):
-        secs = max(0, self._remaining_ms / 1000.0)
-        self._countdown_label.set_label(
-            _("{seconds:.1f} s remaining").format(seconds=secs)
-        )
-
-    def _update_toggle_ui(self):
-        if self._is_on:
-            self._toggle_btn.set_active(True)
-            self._toggle_btn.set_child(get_icon("laser-off-symbolic"))
-            self._toggle_btn.add_css_class("destructive-action")
-        else:
-            self._toggle_btn.set_active(False)
-            self._toggle_btn.set_child(get_icon("laser-on-symbolic"))
-            self._toggle_btn.remove_css_class("destructive-action")
-
-    def _on_destroy(self, widget):
-        if self._timer_source_id is not None:
-            GLib.source_remove(self._timer_source_id)
-            self._timer_source_id = None

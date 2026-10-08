@@ -180,8 +180,8 @@ def test_every_dock_spin_button_is_the_compact_size(
         )
         spins = _descendants(panel, Gtk.SpinButton)
 
-        # Jog speed and distance, and the laser tab's Duration field.
-        assert len(spins) == 3
+        # Jog speed and distance; the laser tab has no spin field.
+        assert len(spins) == 2
         assert {tuple(s.get_size_request()) for s in spins} == {
             (layout.SPIN_WIDTH, layout.SPIN_HEIGHT)
         }

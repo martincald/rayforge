@@ -57,8 +57,8 @@ class MainToolbar(Gtk.Box):
         self.append(open_button)
 
         self.export_button = Gtk.Button(child=get_icon("export-symbolic"))
-        self.export_button.set_tooltip_text(_("Generate G-code"))
-        self.export_button.set_action_name("win.export")
+        self.export_button.set_tooltip_text(_("Export Ruida job (.rd)"))
+        self.export_button.set_action_name("win.export-rd")
         self.append(self.export_button)
 
         # Undo/Redo Buttons
@@ -169,15 +169,6 @@ class MainToolbar(Gtk.Box):
         self.cancel_button.set_tooltip_text(_("Cancel running job"))
         self.cancel_button.set_action_name("win.machine-cancel")
         self.append(self.cancel_button)
-
-        self.clear_alarm_button = Gtk.Button(
-            child=get_icon("clear-alarm-symbolic")
-        )
-        self.clear_alarm_button.set_tooltip_text(
-            _("Clear machine alarm (unlock)")
-        )
-        self.clear_alarm_button.set_action_name("win.machine-clear-alarm")
-        self.append(self.clear_alarm_button)
 
         # Add clickable warning for misconfigured machine
         self.machine_warning_box = Gtk.Box(spacing=SPACE_CONTROL)

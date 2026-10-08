@@ -199,7 +199,6 @@ def test_scale_buttons_take_the_frame_slot(app_and_window):
         "win.machine-send",
         "win.machine-hold",
         "win.machine-cancel",
-        "win.machine-clear-alarm",
     ]
     # Frame keeps its action for the Machine menu.
     assert win.action_manager.get_action("machine-frame") is not None
@@ -418,10 +417,7 @@ def test_both_stop_buttons_cancel_through_one_method(app_and_window):
         ]
 
 
-# Focus Z runs from the dock's Laser tab; pulse and clear alarm are
-# offered only by a driver that has a command for them.
-
-UNSUPPORTED = "Not supported on this controller"
+# Focus Z runs from the dock's Laser tab, which offers nothing else.
 
 
 @pytest.mark.ui
@@ -513,138 +509,6 @@ def test_laser_tab_focus_needs_a_driver_that_can_focus(app_and_window):
         ).get_enabled()
 
 
-@pytest.mark.ui
-def test_laser_tab_pulse_says_it_is_not_supported(app_and_window):
-    _app, win = app_and_window
-    laser = win.bottom_panel.laser_control
-    machine = laser.machine
-    assert machine.heads
-    pulse_rows = (laser._power_row, laser._duration_row)
-
-    with _connected(machine, has_ops=False):
-        with patch.object(
-            type(machine.driver), "can_pulse", return_value=False
-        ):
-            laser._update_sensitivity()
-
-            assert not laser._toggle_btn.get_sensitive()
-            assert laser._toggle_btn.get_tooltip_text() == UNSUPPORTED
-            for row in pulse_rows:
-                assert not row.get_sensitive()
-                assert row.get_tooltip_text() == UNSUPPORTED
-
-        with patch.object(
-            type(machine.driver), "can_pulse", return_value=True
-        ):
-            laser._update_sensitivity()
-
-            assert laser._toggle_btn.get_sensitive()
-            assert laser._toggle_btn.get_tooltip_text() == (
-                "Toggle laser on/off"
-            )
-            for row in pulse_rows:
-                assert row.get_sensitive()
-                assert row.get_tooltip_text() is None
-
-
-@pytest.mark.ui
-def test_laser_tab_can_switch_off_a_laser_turned_on_elsewhere(
-    app_and_window,
-):
-    """Print-and-Cut's focus toggle turns it on; off stays available."""
-    _app, win = app_and_window
-    laser = win.bottom_panel.laser_control
-    machine = laser.machine
-    head = machine.heads[0]
-    controller = machine.controller
-
-    with (
-        _connected(machine, has_ops=False),
-        patch.object(type(machine.driver), "can_pulse", return_value=False),
-        patch.object(laser.machine_cmd, "set_focus_power") as set_power,
-    ):
-        controller.laser_power_changed.send(
-            controller, head=head, percent=0.2
-        )
-
-        assert laser._toggle_btn.get_active()
-        assert laser._toggle_btn.get_sensitive()
-
-        laser._toggle_btn.emit("clicked")
-
-        set_power.assert_called_once_with(head, 0, machine)
-        assert not laser._toggle_btn.get_sensitive()
-        assert laser._toggle_btn.get_tooltip_text() == UNSUPPORTED
-
-
-@pytest.mark.ui
-def test_laser_tab_survives_a_removed_machines_last_disconnect(
-    app_and_window,
-):
-    """Its controller is gone by then, so the driver cannot be asked."""
-    _app, win = app_and_window
-    laser = win.bottom_panel.laser_control
-    machine = laser.machine
-
-    with (
-        patch.object(
-            type(machine),
-            "has_controller",
-            new_callable=PropertyMock,
-            return_value=False,
-        ),
-        patch.object(
-            type(machine),
-            "driver",
-            new_callable=PropertyMock,
-            side_effect=ValueError("No machine found"),
-        ),
-    ):
-        laser._update_sensitivity()
-
-    assert not laser._toggle_btn.get_sensitive()
-
-
-@pytest.mark.ui
-def test_clear_alarm_says_it_is_not_supported(app_and_window):
-    _app, win = app_and_window
-    action = win.action_manager.get_action("machine-clear-alarm")
-    button = win.toolbar.clear_alarm_button
-    machine = win.bottom_panel.laser_control.machine
-    alarm = DeviceState(status=DeviceStatus.ALARM)
-
-    with patch.object(machine, "device_state", alarm):
-        with patch.object(
-            type(machine.driver), "can_clear_alarm", return_value=False
-        ):
-            win._update_actions_and_ui()
-
-            assert not action.get_enabled()
-            assert not button.get_sensitive()
-            assert button.get_tooltip_text() == UNSUPPORTED
-
-        with patch.object(
-            type(machine.driver), "can_clear_alarm", return_value=True
-        ):
-            win._update_actions_and_ui()
-
-            assert action.get_enabled()
-            assert button.get_tooltip_text() == (
-                "Clear machine alarm (unlock)"
-            )
-
-    # With no machine there is no controller to be unsupported.
-    with patch.object(
-        type(machine.driver), "can_clear_alarm", return_value=False
-    ):
-        win._update_actions_and_ui()
-        with patch.object(get_context().config, "machine", None):
-            win._update_actions_and_ui()
-
-    assert not action.get_enabled()
-    assert button.get_tooltip_text() == "Clear machine alarm (unlock)"
-
-
 def _menu_actions(menu) -> list[str]:
     """Every action name in a menu model, including submenus/sections."""
     actions = []
@@ -659,6 +523,138 @@ def _menu_actions(menu) -> list[str]:
             if child is not None:
                 actions.extend(_menu_actions(child))
     return actions
+
+
+def _submenu(menu, label: str):
+    """The submenu of a top-level menu entry, by its label."""
+    for i in range(menu.get_n_items()):
+        title = menu.get_item_attribute_value(
+            i, "label", GLib.VariantType.new("s")
+        )
+        if title is not None and title.get_string() == label:
+            return menu.get_item_link(i, "submenu")
+    raise AssertionError(f"no {label} menu")
+
+
+@pytest.mark.ui
+def test_machine_menu_offers_only_what_ruida_runs(app_and_window):
+    """No macros, no clear alarm: the Ruida driver runs neither."""
+    _app, win = app_and_window
+
+    machine_menu = _submenu(win.menu_model, "_Machine")
+    entries = [
+        a for a in _menu_actions(machine_menu) if a.startswith("win.machine")
+    ]
+
+    assert entries == [
+        "win.machine-home",
+        "win.machine-frame",
+        "win.machine-send",
+        "win.machine-hold",
+        "win.machine-cancel",
+        "win.machine-settings",
+    ]
+
+
+@pytest.mark.ui
+def test_export_means_the_ruida_job(app_and_window):
+    """The File menu, the toolbar's export button and the primary+E
+    shortcut all export the .rd job; there is no G-code export."""
+    from swiftcut.ui_gtk.actions import SHORTCUTS
+    from swiftcut.ui_gtk.shared.keyboard import PRIMARY_ACCEL
+
+    _app, win = app_and_window
+
+    file_menu = _submenu(win.menu_model, "_File")
+    entries = [
+        a
+        for a in _menu_actions(file_menu)
+        if not a.startswith("win.open-recent")
+    ]
+    assert entries == [
+        "win.new",
+        "win.open",
+        "win.save",
+        "win.save-as",
+        "win.import",
+        "win.export-rd",
+        "win.export_document",
+        "win.quit",
+    ]
+    assert win.toolbar.export_button.get_action_name() == "win.export-rd"
+    assert win.toolbar.export_button.get_tooltip_text() == (
+        "Export Ruida job (.rd)"
+    )
+    assert [
+        name
+        for name, accel in SHORTCUTS.items()
+        if accel == f"{PRIMARY_ACCEL}e"
+    ] == ["win.export-rd"]
+
+
+@pytest.mark.ui
+def test_laser_tab_holds_only_focus_z(app_and_window):
+    """No pulse controls: the Ruida driver cannot fire a pulse."""
+    _app, win = app_and_window
+    laser = win.bottom_panel.laser_control
+
+    rows = []
+    child = laser._group.get_first_child()
+    stack = [child] if child is not None else []
+    while stack:
+        widget = stack.pop()
+        if isinstance(widget, Adw.PreferencesRow):
+            rows.append(widget.get_title())
+        nxt = widget.get_next_sibling()
+        if nxt is not None:
+            stack.append(nxt)
+        inner = widget.get_first_child()
+        if inner is not None:
+            stack.append(inner)
+
+    assert rows == ["Focus Z"]
+
+
+@pytest.mark.ui
+def test_console_is_a_log_with_no_command_line(app_and_window):
+    """RuidaDriver.run_raw sends nothing, so there is nothing to type."""
+    _app, win = app_and_window
+    console = win.bottom_panel.console
+
+    editable = []
+    stack = [console.get_first_child()]
+    while stack:
+        widget = stack.pop()
+        if widget is None:
+            continue
+        if isinstance(widget, Gtk.TextView) and widget.get_editable():
+            editable.append(widget)
+        stack.append(widget.get_next_sibling())
+        stack.append(widget.get_first_child())
+
+    assert editable == []
+    assert not console.terminal.get_editable()
+
+
+@pytest.mark.ui
+def test_zero_axes_row_has_no_z(app_and_window):
+    """The Ruida driver ignores a Z work offset."""
+    _app, win = app_and_window
+    panel = win.bottom_panel
+
+    labels = []
+    stack = [panel.zero_row.get_first_child()]
+    while stack:
+        widget = stack.pop()
+        if widget is None:
+            continue
+        if isinstance(widget, Gtk.Button) and widget.get_label():
+            labels.append(widget.get_label())
+        stack.append(widget.get_next_sibling())
+        stack.append(widget.get_first_child())
+
+    assert "X" in labels and "Y" in labels
+    assert "Z" not in labels
 
 
 @pytest.mark.ui

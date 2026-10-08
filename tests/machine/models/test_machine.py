@@ -681,7 +681,6 @@ class TestMachine:
         home_spy = mocker.spy(machine.driver, "home")
         cancel_spy = mocker.spy(machine.driver, "cancel")
         set_hold_spy = mocker.spy(machine.driver, "set_hold")
-        clear_alarm_spy = mocker.spy(machine.driver, "clear_alarm")
         select_tool_spy = mocker.spy(machine.driver, "select_tool")
 
         # Home
@@ -704,11 +703,6 @@ class TestMachine:
         await wait_for_tasks_to_finish(task_mgr)
         assert set_hold_spy.call_count == 2
         set_hold_spy.assert_called_with(False)
-
-        # Clear Alarm
-        machine_cmd.clear_alarm(machine)
-        await wait_for_tasks_to_finish(task_mgr)
-        clear_alarm_spy.assert_called_once()
 
         # Select Tool
         laser2 = Laser()

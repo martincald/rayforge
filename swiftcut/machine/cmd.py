@@ -466,13 +466,6 @@ class MachineCmd:
             lambda ctx: driver.cancel(), key="cancel-job", when_done=when_done
         )
 
-    def clear_alarm(self, machine: Machine):
-        """Adds a task to clear any active alarm on the machine."""
-        driver = machine.driver
-        self._editor.task_manager.add_coroutine(
-            lambda ctx: driver.clear_alarm(), key="clear-alarm"
-        )
-
     def focus_z(self, machine: Machine):
         """Adds a task to run the controller's Z focus routine."""
         driver = machine.driver

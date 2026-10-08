@@ -37,7 +37,6 @@ class MainMenu(Gio.Menu):
 
         import_export_group = Gio.Menu()
         import_export_group.append(_("Import..."), "win.import")
-        import_export_group.append(_("Export G-code..."), "win.export")
         import_export_group.append(
             _("Export Ruida Job (.rd)..."), "win.export-rd"
         )
@@ -183,7 +182,6 @@ class MainMenu(Gio.Menu):
         job_group.append(_("Send Job"), "win.machine-send")
         job_group.append(_("Pause / Resume Job"), "win.machine-hold")
         job_group.append(_("Cancel Job"), "win.machine-cancel")
-        job_group.append(_("Clear Alarm"), "win.machine-clear-alarm")
         machine_menu.append_section(None, job_group)
 
         machine_settings_group = Gio.Menu()

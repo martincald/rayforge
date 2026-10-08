@@ -117,7 +117,6 @@ class BottomPanel(Gtk.Box):
         self.console.set_vexpand(True)
         if machine:
             self.console.set_machine(machine)
-        self.console.command_submitted.connect(self._on_command_submitted)
 
         ui_log_event_received.connect(self.console.on_log_received)
 
@@ -341,15 +340,6 @@ class BottomPanel(Gtk.Box):
         if self.machine:
             self._update_wcs_ui()
 
-    def _on_command_submitted(self, sender, command: str, machine: Machine):
-        async def send_command(ctx):
-            try:
-                await machine.run_raw(command)
-            except Exception as e:  # noqa: BLE001 - fire-and-forget task
-                logger.error(str(e), extra={"log_category": "ERROR"})
-
-        task_mgr.add_coroutine(send_command)
-
     def _setup_wcs_controls(self):
         self.wcs_group = Adw.PreferencesGroup()
         self.wcs_group.add_css_class("compact")
@@ -439,11 +429,6 @@ class BottomPanel(Gtk.Box):
         )
         self.zero_y_btn.connect("clicked", self._on_zero_axis_clicked, Axis.Y)
 
-        self.zero_z_btn = axis_button(
-            _("Z"), _("Set current Z position as 0 for active WCS")
-        )
-        self.zero_z_btn.connect("clicked", self._on_zero_axis_clicked, Axis.Z)
-
         self.zero_here_btn = icon_button(
             "zero-here-symbolic", _("Set Work Zero at Current Position")
         )
@@ -462,7 +447,6 @@ class BottomPanel(Gtk.Box):
             suffix_box(
                 self.zero_x_btn,
                 self.zero_y_btn,
-                self.zero_z_btn,
                 self.zero_here_btn,
                 self.click_to_zero_btn,
             )
@@ -715,7 +699,6 @@ class BottomPanel(Gtk.Box):
 
     def _on_machine_state_changed(self, machine, state):
         self._update_wcs_ui()
-        self.console.on_machine_state_changed(machine, state)
 
     def _on_wcs_factory_setup(self, factory, list_item):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -808,7 +791,6 @@ class BottomPanel(Gtk.Box):
 
         self.zero_x_btn.set_sensitive(can_zero)
         self.zero_y_btn.set_sensitive(can_zero)
-        self.zero_z_btn.set_sensitive(can_zero)
         self.zero_here_btn.set_sensitive(can_zero)
         self.edit_offsets_btn.set_sensitive(can_manual)
 

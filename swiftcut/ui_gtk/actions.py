@@ -35,7 +35,7 @@ SHORTCUTS = {
     "win.save": f"{PRIMARY_ACCEL}s",
     "win.save-as": f"{PRIMARY_ACCEL}<Shift>s",
     "win.import": f"{PRIMARY_ACCEL}i",
-    "win.export": f"{PRIMARY_ACCEL}e",
+    "win.export-rd": f"{PRIMARY_ACCEL}e",
     "win.quit": f"{PRIMARY_ACCEL}q",
     # Edit
     "win.undo": f"{PRIMARY_ACCEL}z",
@@ -240,7 +240,6 @@ class ActionManager:
             GLib.VariantType.new("s"),
         )
         self._add_action("import", self.win.on_menu_import)
-        self._add_action("export", self.win.on_export_clicked)
         self._add_action("export-rd", self.win.on_export_rd_clicked)
         self._add_action("export-object", self.win.on_export_object_clicked)
         self._add_action("about", self.win.show_about_dialog)
@@ -420,9 +419,6 @@ class ActionManager:
         self._add_action("machine-cut-scale", self.win.on_cut_scale_clicked)
         self._add_action("machine-send", self.win.on_send_clicked)
         self._add_action("machine-cancel", self.win.on_cancel_clicked)
-        self._add_action(
-            "machine-clear-alarm", self.win.on_clear_alarm_clicked
-        )
         self._add_action("machine-focus-z", self.win.on_focus_z_clicked)
 
         # Stateful action for the hold/pause button

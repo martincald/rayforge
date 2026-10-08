@@ -980,26 +980,6 @@ class TestImportPlacement:
         assert 0 <= x and x + w <= 1400 and 0 <= y and y + h <= 900
 
 
-class TestExportGcodeToPath:
-    """Tests for export_gcode_to_path method."""
-
-    def test_export_gcode_failure(self, file_cmd, tmp_path):
-        """Test G-code export failure."""
-        export_path = tmp_path / "output.gcode"
-
-        with patch.object(
-            file_cmd._editor.pipeline, "generate_job_artifact"
-        ) as mock_generate:
-
-            def failure_callback(when_done):
-                when_done(None, Exception("Export failed"))
-
-            mock_generate.side_effect = failure_callback
-            file_cmd.export_gcode_to_path(export_path)
-
-            assert not export_path.exists()
-
-
 class TestGetImporterInfo:
     """Tests for the get_importer_info method."""
 

@@ -64,41 +64,6 @@ def show_import_dialog(
     dialog.open(win, None, callback, user_data)
 
 
-def show_export_gcode_dialog(
-    win: "MainWindow",
-    callback: Callable,
-    initial_name: str | None = None,
-):
-    """
-    Shows the save file dialog for exporting G-code.
-
-    Args:
-        win: The parent Gtk.Window.
-        callback: The function to call with (dialog, result, user_data) upon
-                  response. The window instance is passed as user_data.
-        initial_name: Optional initial file name for the dialog.
-    """
-    initial_name = initial_name or "output.gcode"
-    dialog = Gtk.FileDialog.new()
-    dialog.set_title(_("Save G-code File"))
-
-    dialog.set_initial_name(initial_name)
-
-    # Create a Gio.ListModel for the filters
-    filter_list = Gio.ListStore.new(Gtk.FileFilter)
-    gcode_filter = Gtk.FileFilter()
-    gcode_filter.set_name(_("G-code files"))
-    gcode_filter.add_mime_type("text/x.gcode")
-    filter_list.append(gcode_filter)
-
-    # Set the filters for the dialog
-    dialog.set_filters(filter_list)
-    dialog.set_default_filter(gcode_filter)
-
-    # Show the dialog and handle the response
-    dialog.save(win, None, callback, win)
-
-
 def show_export_rd_dialog(
     win: "MainWindow",
     callback: Callable,

@@ -968,53 +968,6 @@ class FileCmd:
         """
         self._editor.pipeline.generate_job_artifact(when_done=when_done)
 
-    def export_gcode_to_path(self, file_path: Path):
-        """
-        Asynchronously generates and exports G-code to a specific path.
-        This is a non-blocking, fire-and-forget method for the UI.
-        """
-        artifact_store = self._editor.pipeline.artifact_store
-
-        def _on_export_assembly_done(
-            handle: BaseArtifactHandle | None,
-            error: Exception | None,
-        ):
-            try:
-                if error:
-                    raise error
-
-                with artifact_store.checkout_handle(handle) as artifact:
-                    if not artifact:
-                        raise ValueError(
-                            "Assembly process returned no artifact."
-                        )
-                    if not isinstance(artifact, JobArtifact):
-                        raise TypeError("Expected a JobArtifact for export.")
-                    if artifact.machine_code is None:
-                        raise ValueError(
-                            "Final artifact is missing G-code data."
-                        )
-
-                    file_path.write_text(
-                        artifact.machine_code, encoding="utf-8"
-                    )
-
-                    logger.info(f"Successfully exported G-code to {file_path}")
-                    msg = _("Export successful: {name}").format(
-                        name=file_path.name
-                    )
-                    self._editor.notification_requested.send(self, message=msg)
-
-            except Exception as e:
-                logger.error(
-                    f"G-code export to {file_path} failed.", exc_info=e
-                )
-                self._editor.notification_requested.send(
-                    self, message=_("Export failed: {error}").format(error=e)
-                )
-
-        self.assemble_job_in_background(when_done=_on_export_assembly_done)
-
     def export_rd_to_path(self, file_path: Path):
         """
         Asynchronously generates and exports a Ruida .rd job to a
