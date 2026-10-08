@@ -762,6 +762,18 @@ class RuidaEncoder(OpsEncoder):
         return box
 
     @staticmethod
+    def _arc_points(
+        ops: Ops, idx: int, start: Point3D
+    ) -> list[tuple[float, float]]:
+        """Every point _handle_arc_to cuts an arc through."""
+        sub_ops = ops.linearize(idx, start)
+        return [
+            (sub_ops.endpoint(j)[0], sub_ops.endpoint(j)[1])
+            for j in range(sub_ops.len())
+            if sub_ops.command_type(j) == CommandType.LINE_TO
+        ]
+
+    @staticmethod
     def _overscan_points(
         points: list[tuple[float, float]],
         speed_mm_min: float | None,
@@ -816,9 +828,11 @@ class RuidaEncoder(OpsEncoder):
 
         The bounds cover every motion the controller will make, not
         just the cutting geometry: travel moves count (``ops.rect()``
-        excludes them), and raster rows carry the controller's own
-        overscan. Under-declaring either makes the controller reject
-        the job for exceeding its stated limits.
+        excludes them), raster rows carry the controller's own
+        overscan, and an arc counts by every segment the body cuts it
+        into, not by its endpoints -- its bulge can reach past both.
+        Under-declaring any of them makes the controller reject the
+        job for exceeding its stated limits.
         """
         ox, oy = self.origin_um
         acceleration = float(machine.acceleration or 0)
@@ -844,6 +858,9 @@ class RuidaEncoder(OpsEncoder):
         cur_power: float | None = None
         cur_air: bool = False
         pos: tuple[float, float] | None = None
+        # Where the body's current_pos is, which an arc is linearized
+        # from: the same start gives the same segments.
+        start = (0.0, 0.0, 0.0)
         job_box: list[float] | None = None
 
         def open_part(index: int) -> dict:
@@ -897,6 +914,8 @@ class RuidaEncoder(OpsEncoder):
             elif ct in motion:
                 end = ops.endpoint(i)
                 points = [(end[0], end[1])]
+                if ct == CommandType.ARC_TO:
+                    points += self._arc_points(ops, i, start)
                 if pos is not None:
                     points.insert(0, pos)
                 if ct == CommandType.SCAN_LINE:
@@ -909,6 +928,7 @@ class RuidaEncoder(OpsEncoder):
                     if ct in cutting:
                         current["has_cut"] = True
                 pos = (end[0], end[1])
+                start = end
 
         if job_box is None:
             job_box = [0.0, 0.0, 0.0, 0.0]

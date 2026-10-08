@@ -12,6 +12,7 @@ Tests cover:
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 from raygeo.ops import Ops
 from raygeo.ops.state import AirAssistMode
@@ -23,7 +24,11 @@ from swiftcut.machine.driver.ruida.ruida_encoder import (
     commands_to_rd_bytes,
     export_rd,
 )
-from swiftcut.machine.driver.ruida.ruida_util import encode14, encode35
+from swiftcut.machine.driver.ruida.ruida_util import (
+    decode14,
+    encode14,
+    encode35,
+)
 from swiftcut.machine.models.laser import Laser
 from swiftcut.pipeline.encoder.base import EncodedOutput, MachineCodeOpMap
 
@@ -1466,3 +1471,182 @@ class TestDeclaredMotionExtent:
         ).driver_data["commands"]
 
         assert _bounds(commands) == (0, 0, 20000, 20000)
+
+
+DXF_3MM2X = (
+    Path(__file__).parents[3] / "image" / "dxf" / "3mm2x.dxf"
+)
+
+
+def _visited(commands: list[bytes]) -> list[tuple[int, int]]:
+    """Every position the head is commanded to, job-local micrometers.
+
+    Absolute 88/A8 set it; 89/A9 move both axes, 8A/AA X and 8B/AB Y
+    by a signed delta. The body after the prologue is all that moves.
+    """
+    x = y = 0
+    visited = []
+    for c in commands:
+        op = c[0]
+        if op in (0x88, 0xA8):
+            x, y = _decode_s35(c[1:6]), _decode_s35(c[6:11])
+        elif op in (0x89, 0xA9):
+            x, y = x + decode14(c[1:3]), y + decode14(c[3:5])
+        elif op in (0x8A, 0xAA):
+            x += decode14(c[1:3])
+        elif op in (0x8B, 0xAB):
+            y += decode14(c[1:3])
+        else:
+            continue
+        visited.append((x, y))
+    return visited
+
+
+def _assert_declared_extent_is_the_emitted_one(commands: list[bytes]):
+    """Nothing emitted lies outside E7 03/07, and its extremes are them."""
+    xs, ys = zip(*_visited(commands), strict=True)
+    assert _bounds(commands) == (min(xs), min(ys), max(xs), max(ys))
+
+
+def _half_circle_ops(clockwise: bool) -> Ops:
+    """(0, 0) to (20, 0) round (10, 0): the bulge reaches y = +-10."""
+    ops = Ops()
+    ops.job_start()
+    ops.layer_start("layer-1")
+    ops.set_power(0.5)
+    ops.set_feed_rate(600)
+    ops.move_to(0.0, 0.0, 0.0)
+    ops.arc_to(20.0, 0.0, 10.0, 0.0, clockwise=clockwise, z=0.0)
+    ops.layer_end("layer-1")
+    ops.job_end()
+    return ops
+
+
+class TestArcsAreDeclaredByWhatIsCut:
+    """
+    An arc goes out as the segments linearize() cuts it into, and its
+    bulge reaches past both endpoints. The declared bounds come from
+    those segments, the same points the body emits.
+    """
+
+    def test_a_half_circle_declares_its_bulge(
+        self, encoder, mock_machine, doc
+    ):
+        commands = encoder.encode(
+            _half_circle_ops(clockwise=True), mock_machine, doc
+        ).driver_data["commands"]
+
+        min_x, min_y, max_x, max_y = _bounds(commands)
+        assert (min_x, min_y, max_x) == (0, 0, 20000)
+        # linearize() comes within 0.13 um of the apex; the encoder
+        # truncates to whole micrometers, so 10 mm is 9999 or 10000.
+        assert 9999 <= max_y <= 10000
+        _assert_declared_extent_is_the_emitted_one(commands)
+
+    def test_a_downward_bulge_is_declared_too(
+        self, encoder, mock_machine, doc
+    ):
+        """Job-local (0, 0) is the arc's own bottom, from ops.rect()."""
+        commands = encoder.encode(
+            _half_circle_ops(clockwise=False), mock_machine, doc
+        ).driver_data["commands"]
+
+        min_x, min_y, max_x, max_y = _bounds(commands)
+        assert (min_x, max_x) == (0, 20000)
+        assert 0 <= min_y <= 1
+        assert 9999 <= max_y <= 10000
+        _assert_declared_extent_is_the_emitted_one(commands)
+
+    def test_part_bounds_declare_the_bulge_too(
+        self, encoder, mock_machine, doc
+    ):
+        commands = encoder.encode(
+            _half_circle_ops(clockwise=True), mock_machine, doc
+        ).driver_data["commands"]
+
+        e7_53 = next(c for c in commands if c[:2] == b"\xe7\x53")
+        assert 9999 <= _decode_s35(e7_53[8:13]) <= 10000
+
+    def test_checksum_still_holds_over_the_arc_bounds(
+        self, encoder, mock_machine, doc
+    ):
+        commands = encoder.encode(
+            _half_circle_ops(clockwise=True), mock_machine, doc
+        ).driver_data["commands"]
+
+        e5_idx = next(
+            i for i, c in enumerate(commands) if c[:2] == b"\xe5\x05"
+        )
+        running = sum(sum(c) for c in commands[:e5_idx])
+        assert commands[e5_idx][2:] == encode35(running + 0xD7)
+
+
+def _dxf_job_ops(path: Path, machine, context, contour_step_class) -> Ops:
+    """A DXF's geometry cut by one contour step, through the pipeline."""
+    from raygeo.pipeline.execute import execute_stages
+
+    from swiftcut.core.workpiece import WorkPiece
+    from swiftcut.image.dxf.importer import DxfImporter
+    from swiftcut.pipeline.intent_builder import (
+        IntentBuilder,
+        job_machinexform_key,
+    )
+
+    importer = DxfImporter(path.read_bytes())
+    importer.parse()
+    geometry = importer._merged_geometry()
+    x0, y0, x1, y1 = geometry.rect()
+    width, height = x1 - x0, y1 - y0
+    # A workpiece's boundaries are unit-sized; set_size scales them.
+    geometry.transform(
+        np.array(
+            [
+                [1 / width, 0, 0, -x0 / width],
+                [0, 1 / height, 0, -y0 / height],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
+    )
+    workpiece = WorkPiece(name=path.name)
+    workpiece._edited_boundaries = geometry
+    workpiece.set_size(width, height)
+    workpiece.pos = 100, 100
+    pipeline_doc = Doc()
+    pipeline_doc.active_layer.workflow.add_child(
+        contour_step_class.create(context, name="cut")
+    )
+    pipeline_doc.active_layer.add_child(workpiece)
+
+    nodes = IntentBuilder(machine=machine, generation_id=1).build(
+        pipeline_doc
+    )
+    completed = []
+    execute_stages(nodes, completed.append)
+    result = next(c for c in completed if c.key == job_machinexform_key())
+    assert result.error is None, result.error
+    return getattr(result.output, "ops", result.output)
+
+
+def test_the_3mm2x_dxf_declares_its_full_width(
+    contour_step_class, test_machine_and_config
+):
+    """
+    The owner's 3mm2x.dxf: its circles reach the job as arcs, and the
+    declared width used to stop at their endpoints, 218.52 mm of a
+    234.02 mm job -- the head pre-moved the true 233.8.
+    """
+    machine, context = test_machine_and_config
+    machine.set_supports_curves(False)
+    ops = _dxf_job_ops(DXF_3MM2X, machine, context, contour_step_class)
+    assert any(
+        ops.command_type(i).name == "ARC_TO" for i in range(ops.len())
+    )
+
+    commands = RuidaEncoder().encode(ops, machine, Doc()).driver_data[
+        "commands"
+    ]
+
+    min_x, _, max_x, _ = _bounds(commands)
+    assert max_x - min_x >= 233800
+    _assert_declared_extent_is_the_emitted_one(commands)
