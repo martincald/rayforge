@@ -1,7 +1,6 @@
 """Tests for the bundled default recipes and the context's sync."""
 
-from types import SimpleNamespace
-
+import pytest
 import yaml
 
 from swiftcut import config
@@ -10,6 +9,7 @@ from swiftcut.core.recipe import Recipe
 from swiftcut.core.recipe_manager import (
     DEFAULTS_VERSION_FILE,
     RecipeManager,
+    bundle_recipe_dicts,
 )
 from swiftcut.core.step_registry import step_registry
 from swiftcut.machine.models.default_profile import BUNDLED_NAMES
@@ -36,73 +36,80 @@ def _bundled_material_uids() -> set[str]:
     return uids
 
 
+def _translated() -> dict[str, dict]:
+    """The shipped lab list as Recipe dicts, by uid."""
+    return {d["uid"]: d for d in bundle_recipe_dicts(_shipped())}
+
+
 def test_shipped_defaults_are_valid(context_initializer):
-    """defaults.yaml has a version and well-formed, unique recipes."""
+    """defaults.yaml is a well-formed lab list that translates cleanly."""
     data = _shipped()
-    assert isinstance(data["version"], int) and data["version"] >= 2
+    assert isinstance(data["version"], int) and data["version"] >= 3
     entries = data["recipes"]
     assert entries
-    uids = [entry["uid"] for entry in entries]
-    assert len(set(uids)) == len(uids)
+    ids = [entry["id"] for entry in entries]
+    assert len(set(ids)) == len(ids)
+    translated = _translated()
+    assert set(translated) == set(ids)
 
+    steps = step_registry.all_steps().values()
     for entry in entries:
-        recipe = Recipe.from_dict(entry)
+        assert set(entry["machines"]) == set(BUNDLED_NAMES), entry["id"]
+        step = data["operations"][entry["operation"]]["step"]
+        matches = [c for c in steps if c.ASSEMBLER_NAME == step]
+        assert len(matches) == 1, step
+
+        recipe = Recipe.from_dict(translated[entry["id"]])
         assert recipe.extra == {}, recipe.name
-        assert entry["color"] == normalize_color(entry["color"])
-        assert recipe.target_step_types, recipe.name
-        # Each lab machine has its own numbers, and only those.
-        assert set(recipe.machine_settings) == set(BUNDLED_NAMES)
-        for name in BUNDLED_NAMES:
-            assert set(recipe.machine_settings[name]) == {
-                "power",
-                "min_power",
-                "cut_speed",
-            }, recipe.name
-        layers = [recipe.settings, *recipe.machine_settings.values()]
+        assert matches[0].__name__ == recipe.target_step_types[0], recipe.name
+        assert normalize_color(entry["color"]) is not None, recipe.name
         for step_type in recipe.target_step_types:
             step_class = step_registry.get(step_type)
             assert step_class is not None, step_type
-            for settings in layers:
-                assert set(settings) <= set(step_class.recipe_keys())
-        for settings in layers:
-            for key in ("power", "min_power", "tab_power"):
-                if key in settings:
-                    assert 0.0 <= settings[key] <= 1.0, recipe.name
+            assert {"power", "min_power", "cut_speed"} <= set(
+                step_class.recipe_keys()
+            )
         for name in BUNDLED_NAMES:
-            values = recipe.settings_for(SimpleNamespace(name=name))
-            assert values["min_power"] <= values["power"], (recipe.name, name)
+            values = recipe.machine_settings[name]
+            assert set(values) == {"power", "min_power", "cut_speed"}
+            assert 0.0 <= values["power"] <= 1.0, (recipe.name, name)
+            # The owner's rule: the minimum power equals the power.
+            assert values["min_power"] == values["power"], (recipe.name, name)
         assert recipe.material_uid in _bundled_material_uids(), recipe.name
         assert recipe.min_thickness_mm == recipe.max_thickness_mm
 
 
-def test_shipped_numbers_differ_per_machine(context_initializer):
-    """The two lab machines do not share speed and power."""
-    for entry in _shipped()["recipes"]:
-        per_machine = Recipe.from_dict(entry).machine_settings
-        assert per_machine["ilab-614"] != per_machine["ilab-626"]
+def test_operations_map_to_step_types():
+    """Cut and scan are contours, engrave is a raster fill."""
+    translated = _translated()
+    for uid in (
+        "mdf-6-cut",
+        "mdf-3-cut",
+        "mdf-scan",
+        "acrylic-scan",
+        "foamboard-3-scan",
+    ):
+        assert translated[uid]["target_step_types"] == ["ContourStep"], uid
+    for uid in ("mdf-engrave", "acrylic-3-engrave"):
+        assert translated[uid]["target_step_types"] == ["EngraveStep"], uid
 
 
-def test_engrave_recipes_fill_the_engrave_settings(context_initializer):
-    """An engrave recipe sets every shared engrave setting."""
-    engrave_keys = {
-        "engrave_mode",
-        "scan_angle",
-        "depth_mode",
-        "invert",
-        "min_power_level",
-        "max_power_level",
-    }
-    engraves = [
-        Recipe.from_dict(entry)
-        for entry in _shipped()["recipes"]
-        if entry["target_step_types"] == ["EngraveStep"]
-    ]
-    assert engraves
-    for recipe in engraves:
-        assert set(recipe.settings) == engrave_keys, recipe.name
+def test_lab_numbers_in_model_units():
+    """mm/s and percent become the model's mm/min and 0..1."""
+    translated = _translated()
+    mdf_cut = translated["mdf-6-cut"]["machine_settings"]
+    assert mdf_cut["ilab-614"]["cut_speed"] == 1200
+    assert mdf_cut["ilab-614"]["power"] == pytest.approx(0.65)
+    assert mdf_cut["ilab-614"]["min_power"] == pytest.approx(0.65)
+    assert mdf_cut["ilab-626"]["cut_speed"] == 750
+    assert mdf_cut["ilab-626"]["power"] == pytest.approx(0.75)
+    assert mdf_cut["ilab-626"]["min_power"] == pytest.approx(0.75)
+    for uid in ("mdf-scan", "mdf-engrave", "acrylic-scan"):
+        assert translated[uid]["min_thickness_mm"] is None, uid
+        assert translated[uid]["max_thickness_mm"] is None, uid
 
 
-# The bundle as shipped at version 1, before per-machine values.
+# Placeholder recipes of the old shape, standing in for an installed set.
 _V1_RECIPES = [
     {
         "uid": "fcc9c750-5441-497c-ab74-c9d6702645b8",
@@ -140,22 +147,23 @@ _V1_RECIPES = [
 ]
 
 
-def test_install_synced_at_v1_takes_the_per_machine_set(tmp_path):
-    """An existing install re-syncs: no copies, per-machine values."""
-    v1 = tmp_path / "v1.yaml"
-    v1.write_text(yaml.safe_dump({"version": 1, "recipes": _V1_RECIPES}))
-    RecipeManager(tmp_path / "recipes", v1)
+def test_install_synced_at_placeholder_v2_takes_the_lab_list(tmp_path):
+    """An install that already synced placeholders at version 2 is replaced."""
+    v2 = tmp_path / "v2.yaml"
+    v2.write_text(yaml.safe_dump({"version": 2, "recipes": _V1_RECIPES}))
+    RecipeManager(tmp_path / "recipes", v2)
+    shipped = _shipped()
+    # A version 1 file would never replace the version 2 install.
+    assert shipped["version"] > 2
 
     recipe_mgr = RecipeManager(tmp_path / "recipes", SHIPPED_DEFAULTS)
 
     recipes = recipe_mgr.get_all_recipes()
-    assert {r.uid for r in recipes} == {
-        e["uid"] for e in _shipped()["recipes"]
-    }
+    assert {r.uid for r in recipes} == {e["id"] for e in shipped["recipes"]}
     assert all(r.builtin and r.modified_from is None for r in recipes)
-    plywood_cut = recipe_mgr.recipes[_V1_RECIPES[0]["uid"]]
-    assert plywood_cut.settings == {}
-    assert set(plywood_cut.machine_settings) == set(BUNDLED_NAMES)
+    mdf_cut = recipe_mgr.recipes["mdf-6-cut"]
+    assert set(mdf_cut.machine_settings) == set(BUNDLED_NAMES)
+    assert mdf_cut.settings == {}
 
 
 def test_version_bump_keeps_no_copy_of_unedited_shipped_recipes(tmp_path):
@@ -168,7 +176,7 @@ def test_version_bump_keeps_no_copy_of_unedited_shipped_recipes(tmp_path):
     recipe_mgr = RecipeManager(tmp_path / "recipes", bumped)
 
     recipes = recipe_mgr.get_all_recipes()
-    assert {r.uid for r in recipes} == {e["uid"] for e in data["recipes"]}
+    assert {r.uid for r in recipes} == {e["id"] for e in data["recipes"]}
     assert all(r.builtin and r.modified_from is None for r in recipes)
 
 
@@ -184,7 +192,7 @@ def test_context_syncs_shipped_defaults(
 
     data = _shipped()
     assert {r.uid for r in recipe_mgr.get_all_recipes() if r.builtin} == {
-        entry["uid"] for entry in data["recipes"]
+        entry["id"] for entry in data["recipes"]
     }
     version_file = tmp_path / "recipes" / DEFAULTS_VERSION_FILE
     assert version_file.read_text() == f"{data['version']}\n"

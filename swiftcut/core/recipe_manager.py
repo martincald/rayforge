@@ -23,12 +23,61 @@ DEFAULTS_VERSION_FILE = ".defaults-version"
 # Built-in bookkeeping, left out of a recipe's content hash.
 _BUILTIN_KEYS = ("builtin", "builtin_hash", "modified_from")
 
+# The step class each "step" of the lab's authoring format stands for,
+# by the step's ASSEMBLER_NAME. Hardcoded because the step registry can
+# be empty when the bundle is synced; tests check it against the steps.
+_BUNDLE_STEP_TYPES = {"contour": "ContourStep", "raster": "EngraveStep"}
+
 
 def content_hash(data: dict) -> str:
     """A hash of a recipe's data, without its built-in bookkeeping."""
     data = {k: v for k, v in data.items() if k not in _BUILTIN_KEYS}
     text = yaml.safe_dump(data, sort_keys=True)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def bundle_recipe_dicts(bundle: dict) -> list[dict]:
+    """
+    The recipes of a bundled defaults file, as Recipe dicts.
+
+    A bundle with an ``operations`` key is in the lab's authoring
+    format: speeds in mm/s, powers in percent, one value pair per
+    machine. This is the ONE place those become the model's mm/min and
+    0..1. The minimum power is written equal to the power on purpose:
+    a step's min_power only follows its power until set explicitly.
+    Any other bundle holds Recipe dicts already and is returned as is.
+    """
+    if "operations" not in bundle:
+        return bundle.get("recipes") or []
+    result = []
+    for entry in bundle.get("recipes") or []:
+        step = bundle["operations"][entry["operation"]]["step"]
+        thickness = entry["thickness_mm"]
+        if thickness is not None:
+            thickness = float(thickness)
+        machine_settings = {
+            name: {
+                "power": values["power_pct"] / 100,
+                "min_power": values["power_pct"] / 100,
+                "cut_speed": round(values["speed_mm_s"] * 60),
+            }
+            for name, values in entry["machines"].items()
+        }
+        result.append(
+            {
+                "uid": entry["id"],
+                "name": entry["name"],
+                "description": entry.get("notes") or "",
+                "color": entry["color"],
+                "target_step_types": [_BUNDLE_STEP_TYPES[step]],
+                "material_uid": entry["material"].lower(),
+                "min_thickness_mm": thickness,
+                "max_thickness_mm": thickness,
+                "settings": {},
+                "machine_settings": machine_settings,
+            }
+        )
+    return result
 
 
 class RecipeManager:
@@ -59,7 +108,7 @@ class RecipeManager:
         outside the app; it is kept as a user copy marked modified.
         Recipes the user created are not touched.
         """
-        with open(defaults_file, "r") as f:
+        with open(defaults_file, "r", encoding="utf-8") as f:
             bundle = yaml.safe_load(f)
         version = int(bundle["version"])
         version_file = self.base_dir / DEFAULTS_VERSION_FILE
@@ -70,6 +119,11 @@ class RecipeManager:
         if version <= synced:
             return
 
+        # Translate first: a malformed bundle must raise before the
+        # store or the version file is touched.
+        new_recipes = [
+            Recipe.from_dict(data) for data in bundle_recipe_dicts(bundle)
+        ]
         self.load()
         old_builtins = [r for r in self.recipes.values() if r.builtin]
         for recipe in old_builtins:
@@ -81,8 +135,7 @@ class RecipeManager:
                 self._keep_modified_copy(recipe)
         for recipe in old_builtins:
             self.delete_recipe(recipe.uid)
-        for data in bundle.get("recipes") or []:
-            recipe = Recipe.from_dict(data)
+        for recipe in new_recipes:
             if recipe.uid in self.recipes:
                 # A user recipe with a bundled uid, e.g. a built-in
                 # unlocked by hand: keep it rather than overwrite it.

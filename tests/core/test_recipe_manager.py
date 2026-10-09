@@ -469,6 +469,45 @@ def _write_bundle(path: Path, version: int, recipes: list[dict]) -> Path:
     return path
 
 
+def _write_lab_bundle(path: Path, version: int, recipes: list[dict]) -> Path:
+    """Writes a bundle in the lab's authoring format."""
+    operations = {
+        "cut": {"step": "contour"},
+        "engrave": {"step": "raster"},
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.safe_dump(
+            {"version": version, "operations": operations, "recipes": recipes},
+            f,
+            allow_unicode=True,
+        )
+    return path
+
+
+LAB_CUT = {
+    "id": "mdf-6-cut",
+    "name": "MDF 6 mm · Cut",
+    "material": "MDF",
+    "thickness_mm": 6,
+    "operation": "cut",
+    "color": "#8B5A2B",
+    "machines": {
+        "ilab-614": {"speed_mm_s": 20, "power_pct": 65},
+        "ilab-626": {"speed_mm_s": 12.5, "power_pct": 75},
+    },
+}
+LAB_ENGRAVE = {
+    "id": "mdf-engrave",
+    "name": "MDF · Engrave (base)",
+    "material": "MDF",
+    "thickness_mm": None,
+    "operation": "engrave",
+    "color": "#D9B892",
+    "notes": "Base setting.",
+    "machines": {"ilab-614": {"speed_mm_s": 200, "power_pct": 10}},
+}
+
+
 def _edit_file(recipes_dir: Path, uid: str, **changes):
     """Edits a recipe file on disk, outside the manager."""
     path = recipes_dir / f"{uid}.yaml"
@@ -506,6 +545,79 @@ class TestBuiltinSync:
         assert cut.color == "#ff0000"
         assert cut.settings == {"power": 0.5, "cut_speed": 600}
         assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "1\n"
+
+    def test_lab_bundle_is_translated_to_model_units(
+        self, tmp_path, recipes_dir
+    ):
+        """mm/s and percent become mm/min and 0..1; min power = power."""
+        bundle = _write_lab_bundle(
+            tmp_path / "defaults.yaml", 3, [LAB_CUT, LAB_ENGRAVE]
+        )
+
+        manager = RecipeManager(recipes_dir, bundle)
+
+        assert set(manager.recipes) == {"mdf-6-cut", "mdf-engrave"}
+        cut = manager.recipes["mdf-6-cut"]
+        assert cut.builtin
+        assert cut.name == "MDF 6 mm · Cut"
+        assert cut.color == "#8b5a2b"
+        assert cut.target_step_types == ["ContourStep"]
+        assert cut.material_uid == "mdf"
+        assert cut.min_thickness_mm == cut.max_thickness_mm == 6.0
+        assert cut.description == ""
+        assert cut.settings == {}
+        assert cut.machine_settings == {
+            "ilab-614": {
+                "power": pytest.approx(0.65),
+                "min_power": pytest.approx(0.65),
+                "cut_speed": 1200,
+            },
+            "ilab-626": {
+                "power": pytest.approx(0.75),
+                "min_power": pytest.approx(0.75),
+                "cut_speed": 750,
+            },
+        }
+        engrave = manager.recipes["mdf-engrave"]
+        assert engrave.builtin
+        assert engrave.target_step_types == ["EngraveStep"]
+        assert engrave.material_uid == "mdf"
+        assert engrave.min_thickness_mm is None
+        assert engrave.max_thickness_mm is None
+        assert engrave.description == "Base setting."
+        assert engrave.settings == {}
+        assert engrave.machine_settings == {
+            "ilab-614": {
+                "power": pytest.approx(0.1),
+                "min_power": pytest.approx(0.1),
+                "cut_speed": 12000,
+            }
+        }
+        for recipe in manager.recipes.values():
+            on_disk = yaml.safe_load(
+                (recipes_dir / f"{recipe.uid}.yaml").read_text()
+            )
+            assert recipe.builtin_hash == content_hash(on_disk)
+        assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "3\n"
+
+    def test_malformed_lab_bundle_leaves_the_store_alone(
+        self, tmp_path, recipes_dir
+    ):
+        """An unknown operation raises before anything is deleted."""
+        manager = RecipeManager(
+            recipes_dir,
+            _write_lab_bundle(tmp_path / "v3.yaml", 3, [LAB_CUT]),
+        )
+        before = _snapshot(recipes_dir)
+        bad = {**LAB_ENGRAVE, "operation": "weld"}
+
+        with pytest.raises(KeyError):
+            manager.sync_builtins(
+                _write_lab_bundle(tmp_path / "v4.yaml", 4, [LAB_CUT, bad])
+            )
+
+        assert _snapshot(recipes_dir) == before
+        assert (recipes_dir / DEFAULTS_VERSION_FILE).read_text() == "3\n"
 
     def test_newer_bundle_replaces_builtins(self, tmp_path, recipes_dir):
         """v2 over v1: built-ins follow the bundle, user recipes stay."""

@@ -1,123 +1,127 @@
-# Built-in recipes shipped with SwiftCut.
-#
-# PLACEHOLDER: the recipes below are examples, not tested settings. The
-# owner will replace them with the real defaults. Every per-machine
-# number (power, min_power, cut_speed) is a placeholder too.
-#
-# On startup the app syncs these into the user's recipe directory when
-# `version` is higher than the version recorded there. Bump `version`
-# whenever this list changes. Built-ins are replaced by this set; user
-# recipes are untouched; a built-in the user edited is kept as a copy.
-#
-# Each recipe needs a fixed `uid`. Units are the model's: speeds in
-# mm/min, power 0..1. `target_step_types` are step class names. Every
-# placeholder is tied to a material and thickness so it is only picked
-# for matching stock, and is offered in the layer's Material picker.
-#
-# `settings` are shared by every machine. `machine_settings` holds each
-# lab machine's own values, keyed by machine name; on that machine they
-# win over `settings`. A machine not listed gets `settings` only.
-version: 2
+# SwiftCut bundled material recipes.
+# Built-in recipes are read-only in the app; bump `version` whenever
+# values change so updated apps replace the built-in set.
+# Versions 1 and 2 were placeholder sets; this list is version 3.
+version: 3
+
+operations:
+  cut:     { step: contour, description: "Vector cut through the material" }
+  scan:    { step: contour, description: "Line scan: outline at low power" }
+  engrave: { step: raster,  description: "Raster fill engrave; adjust manually for depth or color" }
+
 recipes:
-- uid: 4a6c7f7c-2e0d-4550-b055-efd36a8f88f3
-  name: MDF 3 mm Cut
-  description: Placeholder, not tested.
-  color: '#cc6600'
-  target_step_types: [ContourStep]
-  material_uid: mdf
-  min_thickness_mm: 3.0
-  max_thickness_mm: 3.0
-  settings: {}
-  machine_settings:
-    ilab-614:
-      power: 0.6
-      min_power: 0.5
-      cut_speed: 1200
-    ilab-626:
-      power: 0.65
-      min_power: 0.55
-      cut_speed: 1000
-- uid: 88fc61ad-9e85-4a69-9121-67719cbdb5aa
-  name: MDF 3 mm Engrave
-  description: Placeholder, not tested.
-  color: '#3366ff'
-  target_step_types: [EngraveStep]
-  material_uid: mdf
-  min_thickness_mm: 3.0
-  max_thickness_mm: 3.0
-  settings:
-    engrave_mode: BOTH
-    scan_angle: 0.0
-    depth_mode: POWER_MODULATION
-    invert: false
-    min_power_level: 0.0
-    max_power_level: 1.0
-  machine_settings:
-    ilab-614:
-      power: 0.25
-      min_power: 0.15
-      cut_speed: 18000
-    ilab-626:
-      power: 0.3
-      min_power: 0.2
-      cut_speed: 15000
-- uid: fcc9c750-5441-497c-ab74-c9d6702645b8
-  name: Plywood 3 mm Cut
-  description: Placeholder, not tested.
-  color: '#ff6600'
-  target_step_types: [ContourStep]
-  material_uid: plywood
-  min_thickness_mm: 3.0
-  max_thickness_mm: 3.0
-  settings: {}
-  machine_settings:
-    ilab-614:
-      power: 0.65
-      min_power: 0.55
-      cut_speed: 1200
-    ilab-626:
-      power: 0.7
-      min_power: 0.6
-      cut_speed: 1000
-- uid: dd26a12f-28d4-4591-a00a-281ad7d650e5
-  name: Plywood 3 mm Engrave
-  description: Placeholder, not tested.
-  color: '#00ccff'
-  target_step_types: [EngraveStep]
-  material_uid: plywood
-  min_thickness_mm: 3.0
-  max_thickness_mm: 3.0
-  settings:
-    engrave_mode: BOTH
-    scan_angle: 0.0
-    depth_mode: POWER_MODULATION
-    invert: false
-    min_power_level: 0.0
-    max_power_level: 1.0
-  machine_settings:
-    ilab-614:
-      power: 0.2
-      min_power: 0.1
-      cut_speed: 18000
-    ilab-626:
-      power: 0.25
-      min_power: 0.15
-      cut_speed: 15000
-- uid: fa1c565c-b875-471c-bdb6-1800d14b5f2a
-  name: Acrylic 3 mm Cut
-  description: Placeholder, not tested.
-  color: '#cc3366'
-  target_step_types: [ContourStep]
-  material_uid: acrylic
-  min_thickness_mm: 3.0
-  max_thickness_mm: 3.0
-  settings: {}
-  machine_settings:
-    ilab-614:
-      power: 0.7
-      min_power: 0.6
-      cut_speed: 600
-    ilab-626:
-      power: 0.75
-      min_power: 0.65
-      cut_speed: 500
+  # ---------------- MDF ----------------
+  - id: mdf-6-cut
+    name: "MDF 6 mm · Cut"
+    material: MDF
+    thickness_mm: 6
+    operation: cut
+    color: "#8B5A2B"
+    machines:
+      ilab-614: { speed_mm_s: 20,   power_pct: 65 }
+      ilab-626: { speed_mm_s: 12.5, power_pct: 75 }
+
+  - id: mdf-3-cut
+    name: "MDF 3 mm · Cut"
+    material: MDF
+    thickness_mm: 3
+    operation: cut
+    color: "#A0693A"
+    machines:
+      ilab-614: { speed_mm_s: 30, power_pct: 50 }
+      ilab-626: { speed_mm_s: 35, power_pct: 65 }
+
+  - id: mdf-scan
+    name: "MDF · Scan"
+    material: MDF
+    thickness_mm: null
+    operation: scan
+    color: "#C8A27A"
+    machines:
+      ilab-614: { speed_mm_s: 500, power_pct: 18 }
+      ilab-626: { speed_mm_s: 500, power_pct: 18 }
+
+  - id: mdf-engrave
+    name: "MDF · Engrave (base)"
+    material: MDF
+    thickness_mm: null
+    operation: engrave
+    color: "#D9B892"
+    notes: "Base setting. For deeper or darker engraving the user adjusts power/speed."
+    machines:
+      ilab-614: { speed_mm_s: 200, power_pct: 10 }
+      ilab-626: { speed_mm_s: 200, power_pct: 10 }
+
+  # ---------------- Acrylic ----------------
+  - id: acrylic-6-cut
+    name: "Acrylic 6 mm · Cut"
+    material: Acrylic
+    thickness_mm: 6
+    operation: cut
+    color: "#1E6FD9"
+    machines:
+      ilab-614: { speed_mm_s: 20, power_pct: 70 }
+      ilab-626: { speed_mm_s: 20, power_pct: 70 }
+
+  - id: acrylic-3-cut
+    name: "Acrylic 3 mm · Cut"
+    material: Acrylic
+    thickness_mm: 3
+    operation: cut
+    color: "#3A8BE8"
+    machines:
+      ilab-614: { speed_mm_s: 30, power_pct: 55 }
+      ilab-626: { speed_mm_s: 30, power_pct: 55 }
+
+  - id: acrylic-scan
+    name: "Acrylic · Scan"
+    material: Acrylic
+    thickness_mm: null
+    operation: scan
+    color: "#7FB6F2"
+    machines:
+      ilab-614: { speed_mm_s: 500, power_pct: 10 }
+      ilab-626: { speed_mm_s: 500, power_pct: 10 }
+
+  - id: acrylic-3-engrave
+    name: "Acrylic 3 mm · Engrave (base)"
+    material: Acrylic
+    thickness_mm: 3
+    operation: engrave
+    color: "#A9CDF6"
+    notes: "Base setting; adjust manually for depth."
+    machines:
+      ilab-614: { speed_mm_s: 300, power_pct: 10 }
+      ilab-626: { speed_mm_s: 300, power_pct: 10 }
+
+  # ---------------- Foamboard ----------------
+  - id: foamboard-3-cut
+    name: "Foamboard 3 mm · Cut"
+    material: Foamboard
+    thickness_mm: 3
+    operation: cut
+    color: "#2E9E5B"
+    machines:
+      ilab-614: { speed_mm_s: 15, power_pct: 10 }
+      ilab-626: { speed_mm_s: 15, power_pct: 10 }
+
+  - id: foamboard-3-cut-one-side
+    name: "Foamboard 3 mm · Cut one side only"
+    material: Foamboard
+    thickness_mm: 3
+    operation: cut
+    color: "#4FB87A"
+    notes: "Scores the top paper layer only."
+    machines:
+      ilab-614: { speed_mm_s: 30, power_pct: 8 }
+      ilab-626: { speed_mm_s: 30, power_pct: 8 }
+
+  - id: foamboard-3-scan
+    name: "Foamboard 3 mm · Scan"
+    material: Foamboard
+    thickness_mm: 3
+    operation: scan
+    color: "#8ED3A9"
+    machines:
+      ilab-614: { speed_mm_s: 220, power_pct: 8 }
+      ilab-626: { speed_mm_s: 220, power_pct: 8 }

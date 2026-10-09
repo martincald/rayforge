@@ -4,11 +4,16 @@ import threading
 import pytest
 import pytest_asyncio
 
+from swiftcut import config
 from swiftcut.core.doc import Doc
 from swiftcut.core.recipe import Recipe
 from swiftcut.core.recipe_manager import RecipeManager
 from swiftcut.core.step import Step
 from swiftcut.doceditor.step_cmd import StepCmd
+
+# Read at import, before the autouse no_builtin_recipe_sync fixture
+# clears it for each test.
+SHIPPED_DEFAULTS = config.BUILTIN_RECIPES_FILE
 
 
 @pytest.fixture
@@ -698,3 +703,94 @@ async def test_a_switch_through_the_machine_manager_refills_on_main_thread(
     assert _numbers(contour) == MDF_CUT["ilab-626"]
     assert _numbers(engrave) == MDF_ENGRAVE["ilab-626"]
     assert _stacks(doc_editor.history_manager) == (1, 0)
+
+
+# --- Shipped lab recipes, through the real apply path -----------------
+
+
+@pytest.fixture
+def lab_recipes(recipe_mgr):
+    """The recipe manager, synced with the shipped lab recipes."""
+    recipe_mgr.sync_builtins(SHIPPED_DEFAULTS)
+    return recipe_mgr
+
+
+def test_a_6_mm_mdf_pick_fills_the_contour_from_the_shipped_cut(
+    step_cmd, doc_editor, machines, lab_recipes, layer_steps
+):
+    layer, contour, _ = layer_steps
+
+    step_cmd.apply_material(layer, ("mdf", 6.0))
+
+    assert contour.applied_recipe_uid == "mdf-6-cut"
+    assert contour.cut_speed == 1200
+    assert contour.cut_speed / 60 == 20  # mm/s in the file, mm/min here
+    assert contour.power == pytest.approx(0.65)
+    assert contour.min_power == pytest.approx(0.65)
+    # The file says "#8B5A2B"; the app stores colors in lower case.
+    assert layer.color == "#8b5a2b"
+
+    doc_editor.context.config.set_machine(machines["ilab-626"])
+
+    assert contour.cut_speed == 750
+    assert contour.cut_speed / 60 == 12.5
+    assert contour.power == pytest.approx(0.75)
+    assert contour.min_power == pytest.approx(0.75)
+
+
+def test_a_mdf_pick_engraves_with_the_shipped_base_engrave(
+    step_cmd, doc_editor, machines, lab_recipes, layer_steps
+):
+    layer, _, engrave = layer_steps
+    recipe = lab_recipes.recipes["mdf-engrave"]
+    assert recipe.target_step_types == ["EngraveStep"]
+
+    step_cmd.apply_material(layer, ("mdf", 6.0))
+
+    assert engrave.applied_recipe_uid == "mdf-engrave"
+    assert engrave.cut_speed == 12000
+    assert engrave.power == pytest.approx(0.10)
+    assert engrave.min_power == pytest.approx(0.10)
+
+
+def test_the_shipped_scan_applies_to_a_contour_step(
+    step_cmd, doc_editor, machines, lab_recipes, layer_steps
+):
+    _, contour, _ = layer_steps
+    recipe = lab_recipes.recipes["mdf-scan"]
+    assert recipe.target_step_types == ["ContourStep"]
+
+    with doc_editor.history_manager.transaction("test") as t:
+        step_cmd.apply_recipe(contour, recipe, t)
+
+    assert contour.applied_recipe_uid == "mdf-scan"
+    assert contour.cut_speed == 30000  # 500 mm/s
+    assert contour.power == pytest.approx(0.18)
+    assert contour.min_power == pytest.approx(0.18)
+
+
+def test_a_material_pick_prefers_the_cut_over_the_scan(machines, lab_recipes):
+    machine = machines["ilab-614"]
+
+    def picked(material, thickness):
+        recipe = lab_recipes.find_material_recipe(
+            material, thickness, machine, "ContourStep"
+        )
+        return recipe.uid
+
+    assert picked("mdf", 6.0) == "mdf-6-cut"
+    assert picked("foamboard", 3.0) == "foamboard-3-cut"
+    assert picked("mdf", 4.5) == "mdf-scan"
+
+
+def test_acrylic_has_the_same_numbers_on_both_machines(
+    step_cmd, doc_editor, machines, lab_recipes, layer_steps
+):
+    layer, contour, _ = layer_steps
+    doc_editor.context.config.set_machine(machines["ilab-626"])
+
+    step_cmd.apply_material(layer, ("acrylic", 3.0))
+
+    assert contour.applied_recipe_uid == "acrylic-3-cut"
+    assert contour.cut_speed == 1800  # 30 mm/s
+    assert contour.power == pytest.approx(0.55)

@@ -1,0 +1,10 @@
+uid: foamboard
+name:
+  default: Foamboard
+description:
+  default: Foam core board, a foam layer between two paper faces
+category:
+  default: Paper
+appearance:
+  color: "#F5F1E6"
+  pattern: solid
