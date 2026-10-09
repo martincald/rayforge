@@ -28,6 +28,7 @@ from ..machine.transport import TransportStatus
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder import MachineCodeOpMap
+from ..pipeline.job_preview import JobPreviewModel
 from ..pipeline.pipeline import NoVisibleStepsError
 from ..shared.tasker import task_mgr
 from ..shared.util.time_format import format_hours_to_hm
@@ -386,6 +387,18 @@ class MainWindow(Adw.ApplicationWindow):
         self.surface_overlay.add_overlay(self._surface_vis_overlay)
         self._time_estimate_overlay = TimeEstimateOverlay()
         self.surface_overlay.add_overlay(self._time_estimate_overlay)
+        # The job preview: the request a pending preview answers, the
+        # job handle a shown one was built from, and its frame tick.
+        self._job_preview_request = 0
+        self._job_preview_handle: BaseArtifactHandle | None = None
+        self._job_preview_tick_id: int | None = None
+        self._job_preview_frame_us: int | None = None
+        preview_bar = self._time_estimate_overlay.preview_bar
+        preview_bar.preview_toggled.connect(self._on_job_preview_toggled)
+        preview_bar.time_changed.connect(self._on_job_preview_time_changed)
+        preview_bar.playing_changed.connect(
+            self._on_job_preview_playing_changed
+        )
         self.view_stack.add_named(self.surface_overlay, "2d")
 
         # Add a click handler to unfocus when clicking the "dead space" of the
@@ -753,6 +766,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_job_started(self, sender):
         logger.debug("Job started")
+        self._exit_job_preview()
         self.toolbar.set_job_progress(0.0)
         self._set_inspector_locked(True)
         self._update_actions_and_ui()
@@ -1152,6 +1166,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.on_doc_changed(self.doc_editor.doc)
 
     def on_doc_changed(self, sender, **kwargs):
+        self._exit_job_preview()
         # Synchronize UI elements that depend on the document model
         self.surface.update_from_doc()
         doc = self.doc_editor.doc
@@ -1200,6 +1215,7 @@ class MainWindow(Adw.ApplicationWindow):
         Handles when a new document is set on the DocEditor.
         Reconnects signal handlers to the new document and updates the UI.
         """
+        self._exit_job_preview()
         new_doc = self.doc_editor.doc
 
         # Disconnect from old document signals if they were connected
@@ -1389,6 +1405,11 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_job_generation_finished_for_preview(self, sender, **kwargs):
         """Refresh G-code preview after the pipeline finishes a
         rebuild (e.g. triggered by a machine setting change)."""
+        # A job preview shows the job it was built from; a newer one
+        # ends it. One still waiting is answered by this generation.
+        shown = self._job_preview_handle
+        if shown is not None and shown is not kwargs.get("handle"):
+            self._exit_job_preview()
         if self.bottom_panel.is_item_visible("gcode"):
             self.refresh_previews()
 
@@ -1436,6 +1457,7 @@ class MainWindow(Adw.ApplicationWindow):
         machine_changed = config.machine is not self._current_machine
 
         if machine_changed:
+            self._exit_job_preview()
             self._on_machine_signals_changed(config)
 
         # Update the control panel to use the new machine
@@ -2340,3 +2362,80 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_job_time_updated(self, sender, *, total_seconds):
         self._time_estimate_overlay.set_estimated_time(total_seconds)
+
+    def _exit_job_preview(self):
+        """Leave the job preview, if it is on; the bar resets with it."""
+        self._time_estimate_overlay.preview_bar.reset()
+
+    def _on_job_preview_toggled(self, sender, *, active: bool):
+        # Whatever was shown or asked for before is over.
+        self._job_preview_request += 1
+        self._job_preview_handle = None
+        self.surface.clear_job_preview()
+        if active:
+            # The same job a Start checks out: same handle, same ops.
+            self.doc_editor.pipeline.generate_job_artifact(
+                when_done=partial(
+                    self._on_job_preview_artifact, self._job_preview_request
+                )
+            )
+
+    def _on_job_preview_artifact(
+        self,
+        request: int,
+        handle: BaseArtifactHandle | None,
+        error: Exception | None,
+    ):
+        """
+        The job is ready: preview its ops. Runs on the main thread,
+        from the pipeline's job generation or straight from the
+        request when the job is current.
+        """
+        if request != self._job_preview_request:
+            # The preview was left, or asked for again, since.
+            return
+        if handle is None:
+            logger.info(f"No job to preview: {error}")
+            self._exit_job_preview()
+            return
+        pipeline = self.doc_editor.pipeline
+        try:
+            with pipeline.artifact_store.checkout_handle(handle) as artifact:
+                assert isinstance(artifact, JobArtifact)
+                model = JobPreviewModel.from_ops(
+                    artifact.ops, pipeline.machine, artifact.time_estimate
+                )
+        except Exception:
+            # This runs inside the pipeline's job_generation_finished:
+            # a raise here would skip the listeners after it, a waiting
+            # Start among them.
+            logger.exception("Job preview failed")
+            self._exit_job_preview()
+            return
+        self._job_preview_handle = handle
+        self.surface.set_job_preview(model)
+        self._time_estimate_overlay.preview_bar.load(model.total_time)
+
+    def _on_job_preview_time_changed(self, sender, *, time: float):
+        self.surface.set_job_preview_time(time)
+
+    def _on_job_preview_playing_changed(self, sender, *, playing: bool):
+        """Playback runs on the canvas' frame clock."""
+        if playing and self._job_preview_tick_id is None:
+            self._job_preview_frame_us = None
+            self._job_preview_tick_id = self.surface.add_tick_callback(
+                self._on_job_preview_tick
+            )
+        elif not playing and self._job_preview_tick_id is not None:
+            self.surface.remove_tick_callback(self._job_preview_tick_id)
+            self._job_preview_tick_id = None
+
+    def _on_job_preview_tick(self, widget, frame_clock) -> bool:
+        """One frame of playback: the time since the last one, played."""
+        now = frame_clock.get_frame_time()
+        last, self._job_preview_frame_us = self._job_preview_frame_us, now
+        if last is not None:
+            self._time_estimate_overlay.preview_bar.advance(
+                (now - last) / 1_000_000
+            )
+        return GLib.SOURCE_CONTINUE

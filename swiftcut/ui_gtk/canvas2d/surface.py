@@ -28,6 +28,7 @@ from .elements.axis_extent_frame import (
 )
 from .elements.dot import DotElement
 from .elements.group import GroupElement
+from .elements.job_preview import JobPreviewElement
 from .elements.layer import LayerElement
 from .elements.nogo_zone import NogoZoneElement
 from .elements.start_corner import StartCornerElement
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
     from raygeo.geo.types import Rect
 
     from ...doceditor.editor import DocEditor
+    from ...pipeline.job_preview import JobPreviewModel
     from .drag_drop_cmd import DragDropCmd
 
 logger = logging.getLogger(__name__)
@@ -145,6 +147,10 @@ class WorkSurface(WorldSurface):
         self.root.add(self._start_corner_element)
         # The corner last shown, so only a change flashes the overlay.
         self._start_corner_seen: StartCorner | None = None
+
+        # The job preview: the job's ops drawn as far as a time
+        self._job_preview_element = JobPreviewElement()
+        self.root.add(self._job_preview_element)
 
         # Add the Workarea Background element (gray background for workarea)
         self._workarea_bg_element = WorkareaBackgroundElement()
@@ -1234,6 +1240,17 @@ class WorkSurface(WorldSurface):
     def set_start_corner_hovered(self, hovered: bool):
         """Show the start-corner overlay while its selector is hovered."""
         self._start_corner_element.set_hovered(hovered)
+
+    def set_job_preview(self, model: "JobPreviewModel"):
+        """Show a job preview, from its start."""
+        self._job_preview_element.set_model(model)
+
+    def set_job_preview_time(self, t: float):
+        """Draw the job preview as it is t seconds after Start."""
+        self._job_preview_element.set_time(t)
+
+    def clear_job_preview(self):
+        self._job_preview_element.set_model(None)
 
     def reset_view(self):
         """

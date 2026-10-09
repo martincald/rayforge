@@ -3,6 +3,7 @@ from gi.repository import Gtk
 from ...shared.util.time_format import format_clock
 from ..layout import SPACE_CONTROL, SPACE_TIGHT, stylesheet
 from .gtk import apply_css
+from .job_preview_bar import JobPreviewBar
 
 # The radius and material come from the theme's .sc-overlay.
 css = stylesheet("""
@@ -27,6 +28,12 @@ class TimeEstimateOverlay(Gtk.Box):
         self.set_margin_bottom(SPACE_CONTROL)
         self.set_margin_end(SPACE_CONTROL)
 
+        # The job preview's transport rides on the same surface, and
+        # only while there is a job to preview.
+        self.preview_bar = JobPreviewBar()
+        self.preview_bar.set_visible(False)
+        self.append(self.preview_bar)
+
         self._label = Gtk.Label()
         self._label.set_visible(False)
         self.append(self._label)
@@ -37,3 +44,4 @@ class TimeEstimateOverlay(Gtk.Box):
         else:
             self._label.set_text("~" + format_clock(time_seconds))
             self._label.set_visible(True)
+        self.preview_bar.set_visible(self._label.get_visible())
