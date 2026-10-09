@@ -621,10 +621,11 @@ async def test_a_switch_swaps_per_machine_settings_and_keeps_shared_ones(
 ):
     """
     Per machine, in each profile's own file: the bed, the Cut Scale
-    values, the connection and USB device, the start corner and the
-    machine hours. Shared, in config.yaml and the materials and
-    recipes dirs: everything else. A switch changes which profile is
-    active and nothing else; no value is copied between profiles.
+    values, the connection and USB device, the start corner, the
+    machine hours and the last job's start. Shared, in config.yaml and
+    the materials and recipes dirs: everything else. A switch changes
+    which profile is active and nothing else; no value is copied
+    between profiles.
     """
     from swiftcut import config as config_module
     from swiftcut.machine.models.machine import StartCorner
@@ -635,6 +636,7 @@ async def test_a_switch_swaps_per_machine_settings_and_keeps_shared_ones(
     ilab_626.driver_args = {**ilab_626.driver_args, "usb_serial": "BBB"}
     ilab_626.cut_scale_speed_mm_s = 15.0
     ilab_626.start_corner = StartCorner.BOTTOM_RIGHT
+    ilab_626.set_last_job_start((120.0, 80.0))
     manager.save_machine(ilab_626)
     config = lite_context.config
     config.set_machine(ilab_614)
@@ -660,7 +662,9 @@ async def test_a_switch_swaps_per_machine_settings_and_keeps_shared_ones(
     assert active.driver_args["usb_serial"] == "BBB"
     assert active.start_corner == StartCorner.BOTTOM_RIGHT
     assert active.machine_hours.total_hours == 0.0
+    assert active.last_job_start == (120.0, 80.0)
     assert ilab_614.axis_extents == (1400.0, 900.0)
+    assert ilab_614.last_job_start is None
     assert "usb_serial" not in ilab_614.driver_args
     assert ilab_614.start_corner == StartCorner.TOP_LEFT
     assert ilab_614.machine_hours.total_hours > 0
