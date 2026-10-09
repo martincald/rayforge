@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import cairo
 import pytest
-from gi.repository import Adw, GLib
+from gi.repository import Adw, GLib, Gtk
 from raygeo.geo import Geometry
 from raygeo.ops import Ops
 from raygeo.ops.types import CommandCategory
@@ -235,6 +235,11 @@ def win(ui_context_initializer):
     window.present()
     _pump(0.5)
     yield window
+    # A sheet the window raised (Missing Features, when a test's project
+    # names a step type this context lacks) goes with it.
+    for toplevel in Gtk.Window.list_toplevels():
+        if toplevel.get_transient_for() is window:
+            toplevel.destroy()
     window.doc_editor.cleanup()
     window.destroy()
     app.quit()

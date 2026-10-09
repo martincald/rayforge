@@ -79,6 +79,11 @@ def main_window(ui_context_initializer, tmp_path, monkeypatch):
     _pump(0.3)
     assert win.job_history.root == tmp_path / "history"
     yield win
+    # A sheet the window raised (Missing Features, when a test's project
+    # names a step type this context lacks) goes with it.
+    for window in Gtk.Window.list_toplevels():
+        if window.get_transient_for() is win:
+            window.destroy()
     win.doc_editor.cleanup()
     win.destroy()
     app.quit()
