@@ -436,6 +436,28 @@ class MachinePanel:
                     offset[axis] -= extents[axis]
         return offset[Axis.X], offset[Axis.Y]
 
+    def visual_offset_to_native(
+        self, dx: float, dy: float
+    ) -> tuple[float, float]:
+        """Native (dx, dy) for an offset seen on the canvas.
+
+        The canvas world runs right and up, so a positive dx is a move
+        east and a positive dy a move north. Both go through
+        calculate_jog, so the offset moves the head the way the arrow
+        keys would.
+        """
+        # Local import, for the same reason as in calculate_jog.
+        from .machine import JogDirection
+
+        native = {Axis.X: 0.0, Axis.Y: 0.0}
+        for direction, distance in (
+            (JogDirection.EAST if dx >= 0 else JogDirection.WEST, abs(dx)),
+            (JogDirection.NORTH if dy >= 0 else JogDirection.SOUTH, abs(dy)),
+        ):
+            for axis, delta in self.calculate_jog(direction, distance).items():
+                native[axis] += delta
+        return native[Axis.X], native[Axis.Y]
+
     # -- Rect / position / label helpers ------------------------------
 
     def get_workarea_world_rect(self) -> Rect:

@@ -12,6 +12,7 @@ from raygeo.ops.axis import Axis
 from raygeo.ops.types import CommandType
 
 from ..context import get_context
+from ..core.doc import Doc
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.encoder.base import EncodedOutput
@@ -20,8 +21,10 @@ from .driver.dummy import NoDeviceDriver
 from .driver.ruida.ruida_driver import _job_size_mm
 from .job_monitor import JobMonitor
 from .models.coordspace import MachineSpace
+from .models.machine import StartCorner
 
 if TYPE_CHECKING:
+    from ..core.step import Step
     from ..doceditor.editor import DocEditor
     from .models.laser import Laser
     from .models.machine import Machine
@@ -32,6 +35,11 @@ logger = logging.getLogger(__name__)
 # How close the head has to come to the last job's start before a
 # Crawford Start runs: the driver's own jog settle tolerance.
 PREMOVE_TOLERANCE_MM = 0.5
+
+# The test cut: a square this size, by default this far outside the
+# job's start-corner X edge.
+TEST_CUT_SIZE_MM = 10.0
+TEST_CUT_GAP_MM = 15.0
 
 
 class MachineCmd:
@@ -46,7 +54,8 @@ class MachineCmd:
         self.job_state_changed = Signal()
         self._current_monitor: JobMonitor | None = None
         # From an accepted Start until its send task is done, which
-        # covers the pipeline run before the monitor exists.
+        # covers the pipeline run before the monitor exists. A test cut
+        # holds it the same way, from its request until it is done.
         self._send_active = False
         self._on_progress_callback: Callable[[dict], None] | None = None
         # A Stop pressed while a scale is still measuring its outline
@@ -55,6 +64,7 @@ class MachineCmd:
         self._scale_cancelled = False
         # The same for a Start still moving the head to the last job's
         # start: Stop ends the move, and the job must not follow it.
+        # A test cut uses it too, for its moves there and back.
         self._premove_cancelled = False
         self._cancel_in_flight = False
 
@@ -151,10 +161,14 @@ class MachineCmd:
         machine: Machine,
         on_progress: Callable[[dict], None] | None = None,
         encoded: EncodedOutput | None = None,
+        doc: Doc | None = None,
     ):
         """
         Internal helper to execute a job on a driver while managing
         a JobMonitor for progress reporting.
+
+        doc is what the driver encodes the job against, the editor's
+        document unless given.
         """
         if self._current_monitor:
             msg = "Tried to start a job while another is running."
@@ -203,17 +217,19 @@ class MachineCmd:
             if encoded is None:
                 raise RuntimeError("Pipeline did not produce encoded output.")
 
+            if doc is None:
+                doc = self._editor.doc
             if machine.reports_granular_progress:
                 await machine.driver.run(
                     encoded,
-                    self._editor.doc,
+                    doc,
                     ops,
                     on_command_done=self._current_monitor.update_progress,
                 )
             else:
                 await machine.driver.run(
                     encoded,
-                    self._editor.doc,
+                    doc,
                     ops,
                     on_command_done=None,
                 )
@@ -757,6 +773,214 @@ class MachineCmd:
 
         await run(max_x - min_x, max_y - min_y)
 
+    def run_test_cut(
+        self,
+        machine: Machine,
+        step: Step,
+        offset: tuple[float, float],
+        speed: int,
+        on_done: Callable[[], None] | None = None,
+    ):
+        """
+        Schedules a test square cut at a laser step's settings.
+
+        Jobs are anchored at the head, so the square is placed by
+        moving the head: offset is the canvas (dx, dy) in mm, x right
+        and y up, from the job's start corner, where the head is taken
+        to be, to the square's own start corner. The head is jogged
+        there, the square runs as a one-layer job, and unless Stop was
+        pressed the head is jogged back to where it was.
+
+        Counts as a running job until it is done, so Start and a
+        second test cut are refused meanwhile. It is not a Start, so
+        it is not remembered as the last job's start.
+
+        Args:
+            machine: The machine to cut on.
+            step: The laser step whose settings the square is cut at.
+                They are copied here, so an edit or an Undo from now
+                on does not reach the cut.
+            offset: Where the square goes, as above.
+            speed: The speed of both moves in mm/min, the jog panel's.
+            on_done: Optional callback, run on the main thread once the
+                test cut finishes, is stopped, or fails.
+        """
+        if self.is_job_running:
+            logger.warning("Test cut ignored: a job is already running")
+            return
+        doc, step = snapshot_for_test_cut(step)
+        self._send_active = True
+        self._premove_cancelled = False
+        self.job_state_changed.send(self)
+
+        def when_done(task):
+            self._send_active = False
+            self.job_state_changed.send(self)
+            if on_done is not None:
+                on_done()
+
+        self._editor.task_manager.add_coroutine(
+            lambda ctx: self._test_cut(machine, step, doc, offset, speed),
+            key="test-cut",
+            when_done=when_done,
+        )
+
+    async def _test_cut(
+        self,
+        machine: Machine,
+        step: Step,
+        doc: Doc,
+        offset: tuple[float, float],
+        speed: int,
+    ):
+        """
+        Move to the square, cut it, and move back.
+
+        step and doc are run_test_cut's copies, which nothing edits.
+        """
+        x, y = machine.device_state.machine_pos[:2]
+        if x is None or y is None:
+            self._refuse_test_cut(
+                "the head position is unknown",
+                _("Test cut not run: the head position is unknown."),
+            )
+            return
+
+        # Built and encoded before the head moves, so a failure here
+        # moves nothing.
+        try:
+            ops = _test_cut_ops(machine, step)
+            encoder = _create_driver_encoder(machine)
+            encoded = encoder.encode(ops, machine, doc)
+        except Exception as e:
+            logger.exception("Test cut not run: it could not be encoded")
+            self._test_cut_failed(_("Test cut not run: {error}"), e)
+            return
+
+        dx, dy = machine.panel.visual_offset_to_native(*offset)
+        logger.info(f"Test cut: moving the head by ({dx:.2f}, {dy:.2f}) mm")
+        try:
+            there = await self._jog_head_to(machine, (x + dx, y + dy), speed)
+        except Exception as e:
+            logger.exception("Test cut not run: the move to its spot failed")
+            self._test_cut_failed(
+                _(
+                    "Test cut not run: the move to its spot failed: "
+                    "{error}. The head may have stopped on the way."
+                ),
+                e,
+            )
+            return
+        if not there:
+            if self._premove_cancelled:
+                self._refuse_test_cut(
+                    "the move to its spot was stopped",
+                    _("Test cut not run: the move to its spot was stopped."),
+                )
+            else:
+                self._refuse_test_cut(
+                    f"the head did not reach its spot; it is at "
+                    f"{machine.device_state.machine_pos}",
+                    _("Test cut not run: the head did not reach its spot."),
+                )
+            return
+
+        try:
+            await self._execute_monitored_job(
+                ops, machine, encoded=encoded, doc=doc
+            )
+        except Exception as e:
+            logger.exception("Test cut failed: the head stays at its spot")
+            self._test_cut_failed(
+                _(
+                    "Test cut failed: {error}. The head was left at the "
+                    "test spot: a Start from the head's position would "
+                    "begin there."
+                ),
+                e,
+            )
+            return
+
+        # A Stop, during the cut or the way back, leaves the head be.
+        try:
+            back = await self._jog_head_to(machine, (x, y), speed)
+        except Exception as e:
+            logger.exception("Test cut: the move back failed")
+            self._test_cut_failed(
+                _(
+                    "The test cut ran, but the move back failed: {error}. "
+                    "A Start from the head's position would begin where "
+                    "it stopped."
+                ),
+                e,
+            )
+            return
+        if not back:
+            if self._premove_cancelled:
+                logger.info("Test cut stopped: the head stays where it is")
+                return
+            logger.warning(
+                f"Test cut: the head did not return to ({x:.2f}, "
+                f"{y:.2f}) mm; it is at {machine.device_state.machine_pos}"
+            )
+            self._scheduler(
+                self._editor.notification_requested.send,
+                self,
+                message=_(
+                    "The test cut ran, but the head did not return to "
+                    "where it was."
+                ),
+            )
+
+    async def _jog_head_to(
+        self,
+        machine: Machine,
+        target: tuple[float, float],
+        speed: int,
+    ) -> bool:
+        """
+        Jog the head to a machine-space point; whether it is there.
+
+        The move a Crawford Start makes, with the jog panel's
+        primitive: ignored while the machine is busy, waited out until
+        it settles, ended by Stop. A Stop before or during it, or a
+        head that ends up more than PREMOVE_TOLERANCE_MM away, is a
+        failure.
+        """
+        x, y = machine.device_state.machine_pos[:2]
+        if x is None or y is None:
+            return False
+
+        def arrived() -> bool:
+            hx, hy = machine.device_state.machine_pos[:2]
+            return (
+                hx is not None
+                and hy is not None
+                and abs(target[0] - hx) <= PREMOVE_TOLERANCE_MM
+                and abs(target[1] - hy) <= PREMOVE_TOLERANCE_MM
+            )
+
+        if not self._premove_cancelled and not arrived():
+            await machine.jog(
+                {Axis.X: target[0] - x, Axis.Y: target[1] - y}, speed
+            )
+        return not self._premove_cancelled and arrived()
+
+    def _refuse_test_cut(self, reason: str, message: str) -> None:
+        """Log and show why a test cut cut nothing."""
+        logger.warning(f"Test cut not run: {reason}")
+        self._scheduler(
+            self._editor.notification_requested.send, self, message=message
+        )
+
+    def _test_cut_failed(self, message: str, error: Exception) -> None:
+        """Show the error that ended a test cut, in message."""
+        self._scheduler(
+            self._editor.notification_requested.send,
+            self,
+            message=message.format(error=error),
+        )
+
     def jog_key_down(self, machine: Machine, axis: str, direction: int):
         """
         Adds a task to start a press-and-hold jog on one axis.
@@ -885,6 +1109,56 @@ def _cut_scale_ops(
     for x, y in corners[1:]:
         ops.line_to(x, y, 0.0)
     ops.layer_end("cut-scale")
+    ops.job_end()
+    return ops
+
+
+def default_test_cut_offset(corner: StartCorner) -> tuple[float, float]:
+    """
+    Where the test square goes unless one is picked, as an offset for
+    MachineCmd.run_test_cut.
+
+    Outside the job, beside its start-corner X edge with a gap of
+    TEST_CUT_GAP_MM, and level with the start corner's Y edge.
+    """
+    reach = TEST_CUT_GAP_MM + TEST_CUT_SIZE_MM
+    if corner in (StartCorner.TOP_LEFT, StartCorner.BOTTOM_LEFT):
+        return -reach, 0.0
+    return reach, 0.0
+
+
+def snapshot_for_test_cut(step: Step) -> tuple[Doc, Step]:
+    """
+    A copy of a step as it is now, with its uid, in a document of its
+    own.
+
+    The test cut is built from the copy and encoded against the
+    document, where the encoder finds its Min Power by the uid, so an
+    edit or an Undo after the copy is taken changes neither.
+    """
+    copy = type(step).from_dict(step.to_dict())
+    doc = Doc()
+    workflow = doc.active_layer.workflow
+    assert workflow is not None
+    workflow.set_steps([copy])
+    return doc, copy
+
+
+def _test_cut_ops(machine: Machine, step: Step) -> Ops:
+    """Build a one-layer job that cuts the test square as the step."""
+    ops = Ops()
+    ops.job_start()
+    # The step's uid, as in a job, so the encoder reads its Min Power.
+    ops.layer_start(step.uid)
+    head = step.get_selected_head(machine)
+    if head is not None:
+        ops.set_head(head.uid)
+    ops.extend(step.create_initial_ops())
+    corners = _rect_corners(TEST_CUT_SIZE_MM, TEST_CUT_SIZE_MM)
+    ops.move_to(corners[0][0], corners[0][1], 0.0)
+    for x, y in corners[1:]:
+        ops.line_to(x, y, 0.0)
+    ops.layer_end(step.uid)
     ops.job_end()
     return ops
 

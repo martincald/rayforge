@@ -127,7 +127,8 @@ class MainToolbar(Gtk.Box):
         self.tab_menu_button.set_tooltip_text(_("Add Tabs to selection"))
         self.append(self.tab_menu_button)
 
-        # Control buttons: home, go scale, cut scale, send, pause, stop
+        # Control buttons: home, go scale, cut scale, test cut, send,
+        # pause, stop
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         self.append(sep)
 
@@ -151,6 +152,15 @@ class MainToolbar(Gtk.Box):
         )
         self.cut_scale_button.set_action_name("win.machine-cut-scale")
         self.append(self.cut_scale_button)
+
+        self.test_cut_button = Gtk.Button(
+            child=get_icon("sketch-rect-symbolic")
+        )
+        self.test_cut_button.set_tooltip_text(
+            _("Cut a test square at the active layer's settings")
+        )
+        self.test_cut_button.set_action_name("win.machine-test-cut")
+        self.append(self.test_cut_button)
 
         self.send_button = Gtk.Button(child=get_icon("send-symbolic"))
         self.send_button.set_tooltip_text(_("Send to machine"))

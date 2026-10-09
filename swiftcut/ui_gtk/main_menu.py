@@ -188,6 +188,7 @@ class MainMenu(Gio.Menu):
         machine_menu.append_section(None, jog_group)
 
         job_group = Gio.Menu()
+        job_group.append(_("Test Cut…"), "win.machine-test-cut")
         job_group.append(_("Send Job"), "win.machine-send")
         job_group.append(_("Pause / Resume Job"), "win.machine-hold")
         job_group.append(_("Cancel Job"), "win.machine-cancel")

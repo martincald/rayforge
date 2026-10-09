@@ -15,6 +15,7 @@ from ...core.stock import StockItem
 from ...core.stock_asset import StockAsset
 from ...core.workpiece import WorkPiece
 from ...doceditor.transform_cmd import TransformCmd
+from ...machine.cmd import TEST_CUT_SIZE_MM
 from ...machine.models.machine import Machine, StartCorner
 from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
@@ -34,6 +35,10 @@ from .elements.nogo_zone import NogoZoneElement
 from .elements.start_corner import StartCornerElement
 from .elements.stock import StockElement
 from .elements.tab_handle import TabHandleElement
+from .elements.testcut_marker import (
+    TestCutMarkerElement,
+    square_from_corner,
+)
 from .elements.work_origin import WorkOriginElement
 from .elements.workpiece import WorkPieceElement
 from .projection import CanvasProjection
@@ -94,6 +99,8 @@ class WorkSurface(WorldSurface):
 
         # Click-to-zero mode state
         self._click_to_zero_mode = False
+        # Picking where a test cut goes: the next click places it
+        self._test_cut_pick_mode = False
 
         # Ops rendering suppression for lazy ops rendering (Idea 5).
         # During pan/zoom/drag, ops drawing and pipeline context updates
@@ -148,6 +155,10 @@ class WorkSurface(WorldSurface):
         # The corner last shown, so only a change flashes the overlay.
         self._start_corner_seen: StartCorner | None = None
 
+        # Where a test cut goes, while it is being asked about
+        self._test_cut_marker = TestCutMarkerElement()
+        self.root.add(self._test_cut_marker)
+
         # The job preview: the job's ops drawn as far as a time
         self._job_preview_element = JobPreviewElement()
         self.root.add(self._job_preview_element)
@@ -185,6 +196,11 @@ class WorkSurface(WorldSurface):
 
         # Signal to cancel click-to-zero mode
         self.click_to_zero_cancelled = Signal()
+
+        # The click that places a test cut, and giving up on it.
+        # Sends: offset=(dx, dy), as MachineCmd.run_test_cut takes it
+        self.test_cut_spot_picked = Signal()
+        self.test_cut_pick_cancelled = Signal()
 
         # Signal for context menu extension - addons can connect to add items
         # Sends: (item, gesture, menu)
@@ -364,6 +380,9 @@ class WorkSurface(WorldSurface):
         """
         if self._click_to_zero_mode and n_press == 1:
             self.click_to_zero_cancelled.send(self)
+            return
+        if self._test_cut_pick_mode and n_press == 1:
+            self.test_cut_pick_cancelled.send(self)
             return
 
         self.right_click_context = None  # Reset context on each click
@@ -666,6 +685,15 @@ class WorkSurface(WorldSurface):
             self.work_zero_requested.send(self, x=machine_x, y=machine_y)
             return
 
+        # The click is the test square's center.
+        if (
+            self._test_cut_pick_mode
+            and gesture.get_button() == Gdk.BUTTON_PRIMARY
+            and n_press == 1
+        ):
+            self._pick_test_cut_spot(*self._get_world_coords(x, y))
+            return
+
         # A left-click should clear any lingering right-click context.
         if (
             gesture.get_button() == Gdk.BUTTON_PRIMARY
@@ -720,13 +748,13 @@ class WorkSurface(WorldSurface):
                 self.editor.layer.set_active_layer(active_layer)
 
     def on_motion(self, gesture: Gtk.Gesture, x: float, y: float) -> None:
-        if self._click_to_zero_mode:
+        if self._click_to_zero_mode or self._test_cut_pick_mode:
             self.set_cursor(Gdk.Cursor.new_from_name("crosshair"))
             return
         super().on_motion(gesture, x, y)
 
     def on_motion_leave(self, controller: Gtk.EventControllerMotion) -> None:
-        if self._click_to_zero_mode:
+        if self._click_to_zero_mode or self._test_cut_pick_mode:
             self.set_cursor(None)
         super().on_motion_leave(controller)
 
@@ -959,6 +987,35 @@ class WorkSurface(WorldSurface):
         self._click_to_zero_mode = active
         if not active:
             self.set_cursor(None)
+
+    def set_test_cut_pick_mode(self, active: bool):
+        """
+        Sets whether the next click places the test cut. Escape and a
+        right-click give up instead.
+        """
+        self._test_cut_pick_mode = active
+        if active:
+            # Clicks do not focus the canvas, and Escape needs it.
+            self.grab_focus()
+        else:
+            self.set_cursor(None)
+
+    def _pick_test_cut_spot(self, world_x: float, world_y: float):
+        """Send the offset that centers the test square on a point."""
+        start = self.job_start_corner()
+        if start is None or not self.machine:
+            self.test_cut_pick_cancelled.send(self)
+            return
+        # The square's own start corner, half its size from the center.
+        half = TEST_CUT_SIZE_MM / 2
+        corner = self.machine.start_corner
+        left = corner in (StartCorner.TOP_LEFT, StartCorner.BOTTOM_LEFT)
+        top = corner in (StartCorner.TOP_LEFT, StartCorner.TOP_RIGHT)
+        x = world_x - half if left else world_x + half
+        y = world_y + half if top else world_y - half
+        self.test_cut_spot_picked.send(
+            self, offset=(x - start[0], y - start[1])
+        )
 
     def _update_pipeline_view_context(self) -> None:
         """
@@ -1241,6 +1298,41 @@ class WorkSurface(WorldSurface):
         """Show the start-corner overlay while its selector is hovered."""
         self._start_corner_element.set_hovered(hovered)
 
+    def job_start_corner(self) -> tuple[float, float] | None:
+        """
+        The world point the start-corner overlay marks as the head's
+        place when the job starts; None with no job.
+        """
+        element = self._start_corner_element
+        if not element.has_job:
+            return None
+        x, y, _, _ = element.rect()
+        (hx, hy), _ = element.head_and_opposite()
+        return x + hx, y + hy
+
+    def show_test_cut_marker(self, offset: tuple[float, float]):
+        """
+        Show the test square where MachineCmd.run_test_cut cuts it for
+        this offset: its start corner that far from the job's.
+        """
+        start = self.job_start_corner()
+        if start is None or not self.machine:
+            self.hide_test_cut_marker()
+            return
+        point = (start[0] + offset[0], start[1] + offset[1])
+        self._test_cut_marker.set_square(
+            square_from_corner(
+                point, self.machine.start_corner, TEST_CUT_SIZE_MM
+            )
+        )
+        self._test_cut_marker.set_visible(True)
+        self.queue_draw()
+
+    def hide_test_cut_marker(self):
+        """Hide the test square."""
+        self._test_cut_marker.set_visible(False)
+        self.queue_draw()
+
     def set_job_preview(self, model: "JobPreviewModel"):
         """Show a job preview, from its start."""
         self._job_preview_element.set_model(model)
@@ -1466,6 +1558,10 @@ class WorkSurface(WorldSurface):
         state: Gdk.ModifierType,
     ) -> bool:
         """Handles key press events for the work surface."""
+        if self._test_cut_pick_mode and keyval == Gdk.KEY_Escape:
+            self.test_cut_pick_cancelled.send(self)
+            return True
+
         # Let the base WorldSurface class handle generic keys (e.g., '1')
         if super().on_key_pressed(controller, keyval, keycode, state):
             return True

@@ -418,6 +418,7 @@ class ActionManager:
         self._add_action("machine-frame", self.win.on_frame_clicked)
         self._add_action("machine-go-scale", self.win.on_go_scale_clicked)
         self._add_action("machine-cut-scale", self.win.on_cut_scale_clicked)
+        self._add_action("machine-test-cut", self.win.on_test_cut_clicked)
         self._add_action("machine-send", self.win.on_send_clicked)
         self._add_action("machine-cancel", self.win.on_cancel_clicked)
         self._add_action("machine-focus-z", self.win.on_focus_z_clicked)

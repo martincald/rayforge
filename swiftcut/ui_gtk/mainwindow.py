@@ -21,7 +21,11 @@ from ..core.undo import Command, HistoryManager
 from ..core.workpiece import WorkPiece
 from ..doceditor.editor import DocEditor
 from ..doceditor.job_history import JobHistory
-from ..machine.cmd import MachineCmd
+from ..machine.cmd import (
+    MachineCmd,
+    default_test_cut_offset,
+    snapshot_for_test_cut,
+)
 from ..machine.driver.driver import DeviceState, DeviceStatus
 from ..machine.driver.dummy import NoDeviceDriver
 from ..machine.models.machine import Machine
@@ -74,6 +78,7 @@ from .machine.job_history_dialog import JobHistoryWindow
 from .machine.job_history_recorder import JobHistoryRecorder
 from .machine.settings_dialog import MachineSettingsDialog
 from .machine.start_position_dialog import request_start
+from .machine.testcut_dialog import TestCutDialog
 from .main_menu import MainMenu
 from .project_cmd import ProjectCmd
 from .settings.settings_dialog import SettingsWindow
@@ -213,6 +218,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.machine_cmd.job_state_changed.connect(
             self._on_job_state_changed
         )
+        # Where the test cut goes, once picked: kept for the session.
+        self._test_cut_offset: tuple[float, float] | None = None
 
         # Instantiate and connect the UpdateCommand's notification signal
         self.update_cmd = UpdateCommand(task_mgr, context)
@@ -512,6 +519,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.surface.work_zero_requested.connect(self._on_work_zero_requested)
         self.surface.click_to_zero_cancelled.connect(
             self._on_click_to_zero_cancelled
+        )
+        self.surface.test_cut_spot_picked.connect(
+            self._on_test_cut_spot_picked
+        )
+        self.surface.test_cut_pick_cancelled.connect(
+            self._on_test_cut_pick_cancelled
         )
 
         # Connect new signal from WorkSurface for edit item requests
@@ -1258,6 +1271,9 @@ class MainWindow(Adw.ApplicationWindow):
             # new workflow
             self.workflowview.set_workflow(activated_layer.workflow)
 
+        # The test cut uses the active layer's settings.
+        self._update_test_cut_action()
+
     def _on_document_changed(self, sender):
         """
         Handles when a new document is set on the DocEditor.
@@ -1756,6 +1772,7 @@ class MainWindow(Adw.ApplicationWindow):
             am.get_action("zero-here").set_enabled(can_zero)
 
         self._update_scale_actions()
+        self._update_test_cut_action()
 
         # Update actions that don't depend on the machine state
         selected_elements = self.surface.get_selected_elements()
@@ -2210,6 +2227,103 @@ class MainWindow(Adw.ApplicationWindow):
                 button.set_tooltip_text(panel_button.get_tooltip_text())
             else:
                 button.set_tooltip_text(reason.format(name=name))
+
+    def _test_cut_step(self):
+        """
+        The step a test cut takes its settings from: the first visible
+        step with a power on the active layer, or None.
+        """
+        workflow = self.doc_editor.doc.active_layer.workflow
+        if workflow is None:
+            return None
+        for step in workflow.steps:
+            if step.visible and getattr(step, "power", None) is not None:
+                return step
+        return None
+
+    def _update_test_cut_action(self):
+        """Enable Test Cut when it can run, and say why when not."""
+        machine = get_context().config.machine
+        if not machine or not machine.is_connected():
+            reason = _("Test Cut: connect to the machine first")
+        elif not self.machine_cmd.has_job_ops:
+            reason = _("Test Cut: the job has no operations")
+        elif self._test_cut_step() is None:
+            reason = _("Test Cut: the active layer has no visible laser step")
+        elif machine.driver is not None and machine.driver.state.error:
+            reason = _("Test Cut: the machine reports an error")
+        elif (
+            self.machine_cmd.is_job_running
+            or task_mgr.has_tasks()
+            or machine.device_state.status != DeviceStatus.IDLE
+        ):
+            reason = _("Test Cut: the machine is busy")
+        else:
+            reason = None
+        self.action_manager.get_action("machine-test-cut").set_enabled(
+            reason is None
+        )
+        self.toolbar.test_cut_button.set_tooltip_text(
+            reason or _("Cut a test square at the active layer's settings")
+        )
+
+    def on_test_cut_clicked(self, action, param):
+        """Ask before a test cut, showing where it goes."""
+        # Pressed again while a spot is being picked: start over.
+        self.surface.set_test_cut_pick_mode(False)
+        machine = get_context().config.machine
+        step = self._test_cut_step()
+        # Also reached from a picked spot, which no action guards.
+        test_cut = self.action_manager.get_action("machine-test-cut")
+        if not machine or step is None or not test_cut.get_enabled():
+            self.surface.hide_test_cut_marker()
+            return
+        offset = self._test_cut_offset or default_test_cut_offset(
+            machine.start_corner
+        )
+        self.surface.show_test_cut_marker(offset)
+        # The sheet shows this copy and Cut cuts it, so what is cut is
+        # what was shown, whatever changes while the sheet is up.
+        _doc, confirmed = snapshot_for_test_cut(step)
+
+        def cut():
+            # Locked from Cut, not from job_started, which comes only
+            # after the head has moved to the spot.
+            self._set_inspector_locked(True)
+            self.machine_cmd.run_test_cut(
+                machine,
+                confirmed,
+                offset,
+                self.bottom_panel.jog_widget.jog_speed_base,
+                on_done=self._on_send_done,
+            )
+
+        dialog = TestCutDialog(
+            self.doc_editor.doc.active_layer.name,
+            confirmed.cut_speed,
+            confirmed.power,
+            confirmed.min_power,
+            on_cut=cut,
+            on_pick=lambda: self.surface.set_test_cut_pick_mode(True),
+            transient_for=self,
+        )
+        dialog.connect("response", self._on_test_cut_response)
+        dialog.present()
+
+    def _on_test_cut_response(self, dialog, response):
+        """The marker stays up only while a spot is being picked."""
+        if response != "pick":
+            self.surface.hide_test_cut_marker()
+
+    def _on_test_cut_spot_picked(self, sender, *, offset):
+        """Remember the picked spot and ask again, with it."""
+        self._test_cut_offset = offset
+        self.on_test_cut_clicked(None, None)
+
+    def _on_test_cut_pick_cancelled(self, sender):
+        """No spot picked: no test cut."""
+        self.surface.set_test_cut_pick_mode(False)
+        self.surface.hide_test_cut_marker()
 
     def on_send_clicked(self, action, param):
         config = get_context().config

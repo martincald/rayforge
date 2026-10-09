@@ -30,10 +30,17 @@ gi.require_version("Gdk", "4.0")
 from gi.repository import Adw, GLib, Gtk
 
 from swiftcut.context import get_context
-from swiftcut.machine.cmd import MachineCmd
-from swiftcut.machine.driver.driver import DeviceState, DeviceStatus
+from swiftcut.machine.cmd import MachineCmd, default_test_cut_offset
+from swiftcut.machine.driver.driver import (
+    DeviceError,
+    DeviceState,
+    DeviceStatus,
+)
 from swiftcut.machine.transport import TransportStatus
 from swiftcut.shared.tasker import task_mgr
+from swiftcut.ui_gtk.canvas2d.elements.testcut_marker import (
+    square_from_corner,
+)
 from swiftcut.ui_gtk.mainwindow import MainWindow
 
 logger = logging.getLogger(__name__)
@@ -193,6 +200,7 @@ def test_scale_buttons_take_the_frame_slot(app_and_window):
         "win.machine-home",
         "win.machine-go-scale",
         "win.machine-cut-scale",
+        "win.machine-test-cut",
         "win.machine-send",
         "win.machine-hold",
         "win.machine-cancel",
@@ -471,6 +479,336 @@ def test_both_stop_buttons_cancel_through_one_method(app_and_window):
         ]
 
 
+# The test cut: a 10 mm square at the active layer's settings, asked
+# for first, where the canvas marks it.
+
+
+def _with_laser_step(win):
+    """Give the active layer one contour step, 45%/20% at 20 mm/s."""
+    from swiftcut.core.step_registry import step_registry
+
+    step = step_registry.get("ContourStep").create(get_context(), name="cut")
+    step.set_power(0.45)
+    step.set_min_power(0.2)
+    step.set_cut_speed(1200)
+    win.doc_editor.doc.active_layer.workflow.set_steps([step])
+    return step
+
+
+@contextmanager
+def _test_cut_ready(machine):
+    """Connected, idle, with ops, and no task running."""
+    with (
+        _connected(machine, has_ops=True),
+        patch.object(
+            machine, "device_state", DeviceState(status=DeviceStatus.IDLE)
+        ),
+        patch(
+            "swiftcut.ui_gtk.mainwindow.task_mgr.has_tasks",
+            return_value=False,
+        ),
+    ):
+        yield
+
+
+@contextmanager
+def _test_cut_sheets(win, start=(60.0, 80.0)):
+    """
+    Record the real sheets the test cut opens, without showing them,
+    on a job whose start corner is at start.
+    """
+    from swiftcut.ui_gtk.machine import testcut_dialog
+
+    real = testcut_dialog.TestCutDialog
+    sheets = []
+
+    def make(*args, **kwargs):
+        sheets.append(real(*args, **kwargs))
+        return sheets[-1]
+
+    with (
+        patch("swiftcut.ui_gtk.mainwindow.TestCutDialog", side_effect=make),
+        patch.object(real, "present"),
+        patch.object(win.surface, "job_start_corner", return_value=start),
+    ):
+        yield sheets
+
+
+@pytest.mark.ui
+def test_test_cut_says_why_it_is_disabled(app_and_window):
+    _app, win = app_and_window
+    action = win.action_manager.get_action("machine-test-cut")
+    button = win.toolbar.test_cut_button
+    machine = win.bottom_panel.jog_widget.machine
+    step = _with_laser_step(win)
+    _refresh(win)
+
+    assert not action.get_enabled()
+    assert button.get_tooltip_text() == (
+        "Test Cut: connect to the machine first"
+    )
+
+    with _connected(machine, has_ops=False):
+        _refresh(win)
+        assert not action.get_enabled()
+        assert button.get_tooltip_text() == (
+            "Test Cut: the job has no operations"
+        )
+
+    with _test_cut_ready(machine):
+        step.set_visible(False)
+        _refresh(win)
+        assert not action.get_enabled()
+        assert button.get_tooltip_text() == (
+            "Test Cut: the active layer has no visible laser step"
+        )
+
+        step.set_visible(True)
+        with patch.object(
+            MachineCmd,
+            "is_job_running",
+            new_callable=PropertyMock,
+            return_value=True,
+        ):
+            win.machine_cmd.job_state_changed.send(win.machine_cmd)
+            assert not action.get_enabled()
+            assert button.get_tooltip_text() == (
+                "Test Cut: the machine is busy"
+            )
+
+        # Like Start: not while the controller is busy on its own.
+        with patch.object(
+            machine, "device_state", DeviceState(status=DeviceStatus.RUN)
+        ):
+            _refresh(win)
+            assert not action.get_enabled()
+            assert button.get_tooltip_text() == (
+                "Test Cut: the machine is busy"
+            )
+
+        # Like Start: not while the driver reports an error.
+        error = DeviceError(1, "Door open", "Close the lid.")
+        with patch.object(
+            machine.driver,
+            "state",
+            DeviceState(status=DeviceStatus.IDLE, error=error),
+        ):
+            _refresh(win)
+            assert not action.get_enabled()
+            assert button.get_tooltip_text() == (
+                "Test Cut: the machine reports an error"
+            )
+
+        win.machine_cmd.job_state_changed.send(win.machine_cmd)
+        assert action.get_enabled()
+        assert button.get_tooltip_text() == (
+            "Cut a test square at the active layer's settings"
+        )
+
+        win.doc_editor.doc.active_layer.workflow.set_steps([])
+        _refresh(win)
+        assert not action.get_enabled()
+
+
+@pytest.mark.ui
+def test_test_cut_asks_first_then_cuts_at_the_default_spot(app_and_window):
+    """
+    Not a Start: the sheet's Cut goes to run_test_cut, never to the
+    Start path, at the default spot and the jog panel's speed.
+    """
+    _app, win = app_and_window
+    jog = win.bottom_panel.jog_widget
+    machine = jog.machine
+    step = _with_laser_step(win)
+    jog.jog_speed_base = 3000
+    offset = default_test_cut_offset(machine.start_corner)
+    marker = win.surface._test_cut_marker
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut") as run_test_cut,
+        patch.object(win.machine_cmd, "run_send_job") as run_send_job,
+        patch("swiftcut.ui_gtk.mainwindow.request_start") as request_start,
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+
+        (sheet,) = sheets
+        assert win.doc_editor.doc.active_layer.name in sheet.get_body()
+        assert "20.0 mm/s" in sheet.get_body()
+        assert "Max Power 45%" in sheet.get_body()
+        assert "Min Power 20%" in sheet.get_body()
+        assert marker.visible
+        assert win._right_pane.get_sensitive()
+        run_test_cut.assert_not_called()
+
+        sheet.response("cut")
+
+        # Locked at Cut, before the head moves to the spot.
+        assert not win._right_pane.get_sensitive()
+
+    ((sent_machine, confirmed, sent_offset, speed),) = [
+        c.args for c in run_test_cut.call_args_list
+    ]
+    assert (sent_machine, sent_offset, speed) == (machine, offset, 3000)
+    assert run_test_cut.call_args.kwargs == {"on_done": win._on_send_done}
+    # A copy of the step, as the sheet showed it.
+    assert confirmed is not step
+    assert confirmed.uid == step.uid
+    assert (confirmed.power, confirmed.min_power, confirmed.cut_speed) == (
+        0.45,
+        0.2,
+        1200,
+    )
+    run_send_job.assert_not_called()
+    request_start.assert_not_called()
+    assert not marker.visible
+
+
+@pytest.mark.ui
+def test_test_cut_cuts_what_the_sheet_showed(app_and_window):
+    """A step edited while the sheet is up: the shown values are cut."""
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    step = _with_laser_step(win)
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut") as run_test_cut,
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+        step.set_power(0.9)
+        step.set_min_power(0.8)
+        step.set_cut_speed(3000)
+
+        sheets[0].response("cut")
+
+    confirmed = run_test_cut.call_args.args[1]
+    assert "Max Power 45%" in sheets[0].get_body()
+    assert (confirmed.power, confirmed.min_power, confirmed.cut_speed) == (
+        0.45,
+        0.2,
+        1200,
+    )
+
+
+@pytest.mark.ui
+def test_test_cut_pressed_while_picking_starts_over(app_and_window):
+    """Pick mode ends on entry, whatever happens next."""
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    _with_laser_step(win)
+    surface = win.surface
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut"),
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+        sheets[0].response("pick")
+        assert surface._test_cut_pick_mode
+
+        win.toolbar.test_cut_button.emit("clicked")
+
+        assert not surface._test_cut_pick_mode
+        assert len(sheets) == 2
+
+
+@pytest.mark.ui
+def test_cancel_cuts_nothing_and_hides_the_marker(app_and_window):
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    _with_laser_step(win)
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut") as run_test_cut,
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+        assert win.surface._test_cut_marker.visible
+
+        sheets[0].response("cancel")
+
+    run_test_cut.assert_not_called()
+    assert not win.surface._test_cut_marker.visible
+
+
+@pytest.mark.ui
+def test_a_picked_spot_is_cut_and_kept_for_the_session(app_and_window):
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    _with_laser_step(win)
+    surface = win.surface
+    marker = surface._test_cut_marker
+    picked = (5.0, -40.0)
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut") as run_test_cut,
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+        sheets[0].response("pick")
+
+        # The sheet is gone, the marker stays while a spot is picked.
+        assert surface._test_cut_pick_mode
+        assert marker.visible
+        run_test_cut.assert_not_called()
+
+        surface.test_cut_spot_picked.send(surface, offset=picked)
+
+        assert not surface._test_cut_pick_mode
+        assert len(sheets) == 2
+        # The start corner is at (60, 80): the square's is at (65, 40).
+        assert marker.visible
+        assert marker.rect() == pytest.approx(
+            square_from_corner((65.0, 40.0), machine.start_corner, 10.0)
+        )
+        sheets[1].response("cut")
+        assert run_test_cut.call_args.args[2] == picked
+
+        win.toolbar.test_cut_button.emit("clicked")
+        assert len(sheets) == 3
+        sheets[2].response("cut")
+
+    assert run_test_cut.call_count == 2
+    assert run_test_cut.call_args.args[2] == picked
+
+
+@pytest.mark.ui
+def test_giving_up_on_a_spot_cuts_nothing(app_and_window):
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    _with_laser_step(win)
+    surface = win.surface
+
+    with (
+        _test_cut_ready(machine),
+        _test_cut_sheets(win) as sheets,
+        patch.object(win.machine_cmd, "run_test_cut") as run_test_cut,
+    ):
+        _refresh(win)
+        win.toolbar.test_cut_button.emit("clicked")
+        sheets[0].response("pick")
+
+        surface.test_cut_pick_cancelled.send(surface)
+
+        assert len(sheets) == 1
+
+    run_test_cut.assert_not_called()
+    assert not surface._test_cut_pick_mode
+    assert not surface._test_cut_marker.visible
+    assert win._test_cut_offset is None
+
+
 # Focus Z runs from the dock's Laser tab, which offers nothing else.
 
 
@@ -603,6 +941,7 @@ def test_machine_menu_offers_only_what_ruida_runs(app_and_window):
     assert entries == [
         "win.machine-home",
         "win.machine-frame",
+        "win.machine-test-cut",
         "win.machine-send",
         "win.machine-hold",
         "win.machine-cancel",
