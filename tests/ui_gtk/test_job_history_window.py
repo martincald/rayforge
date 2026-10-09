@@ -80,7 +80,7 @@ def main_window(ui_context_initializer, tmp_path, monkeypatch):
     assert win.job_history.root == tmp_path / "history"
     yield win
     win.doc_editor.cleanup()
-    win.close()
+    win.destroy()
     app.quit()
     _pump(0.2)
 

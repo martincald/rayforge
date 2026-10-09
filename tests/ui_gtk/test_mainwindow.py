@@ -121,7 +121,7 @@ def app_and_window(ui_context_initializer, request):
     # Teardown
     if win:
         win.doc_editor.cleanup()
-        win.close()
+        win.destroy()
         app.quit()
     process_events_for_duration(0.2)
 

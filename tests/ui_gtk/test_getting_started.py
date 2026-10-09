@@ -63,7 +63,7 @@ def main_window(ui_context_initializer):
     for guide in _open_guides():
         guide.destroy()
     win.doc_editor.cleanup()
-    win.close()
+    win.destroy()
     app.quit()
     _pump(0.2)
 

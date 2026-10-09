@@ -236,7 +236,7 @@ def win(ui_context_initializer):
     _pump(0.5)
     yield window
     window.doc_editor.cleanup()
-    window.close()
+    window.destroy()
     app.quit()
     _pump(0.2)
 
