@@ -159,8 +159,9 @@ class TestThePathMenu:
         wp = _shape(layer, (50, 50), paths=2)
         win.surface.select_items([other])
         _iterate()
-        # On the square's left edge.
-        x, y = _screen(win, wp, 0.0, 0.5)
+        # On the square's left edge, a hair inside: a point exactly on
+        # the frame can round to just outside it at some zoom levels.
+        x, y = _screen(win, wp, 0.01, 0.5)
 
         with patch.object(context_menu, "_show_popover") as show:
             win.surface.on_right_click_pressed(MagicMock(), 1, x, y)
@@ -179,7 +180,7 @@ class TestThePathMenu:
         b = _shape(layer, (50, 50))
         win.surface.select_items([a, b])
         _iterate()
-        x, y = _screen(win, b, 0.0, 0.5)
+        x, y = _screen(win, b, 0.01, 0.5)
 
         with patch.object(context_menu, "_show_popover"):
             win.surface.on_right_click_pressed(MagicMock(), 1, x, y)
