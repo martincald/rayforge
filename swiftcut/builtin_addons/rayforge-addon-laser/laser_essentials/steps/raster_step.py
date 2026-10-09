@@ -72,6 +72,16 @@ class EngraveStep(LaserStep):
         return VarSet(
             vars=[
                 *LaserStep.recipe_varset().vars,
+                LabeledChoiceVar(
+                    key="engrave_mode",
+                    label=_("Engrave"),
+                    choices=[
+                        (_("Fill"), "FILL"),
+                        (_("Outline"), "OUTLINE"),
+                        (_("Both"), "BOTH"),
+                    ],
+                    default="BOTH",
+                ),
                 FloatVar(
                     key="scan_angle",
                     label=_("Scan Angle"),

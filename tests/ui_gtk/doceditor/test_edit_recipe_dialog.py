@@ -374,6 +374,46 @@ def test_duplicated_builtin_is_an_editable_copy(
     assert reloaded.recipes["shipped"].builtin
 
 
+def test_editor_shows_and_saves_the_active_machines_values(
+    laser_machine, recipe_mgr, monkeypatch
+):
+    """The editor shows the active machine's numbers; a save keeps an
+    edited one for that machine only, and the rest shared."""
+    laser_machine.name = "ilab-626"
+    dialogs = []
+    monkeypatch.setattr(
+        AddEditRecipeDialog, "present", lambda d: dialogs.append(d)
+    )
+    recipe = Recipe(
+        name="MDF Cut",
+        target_step_types=["ContourStep"],
+        settings={"cut_side": "INSIDE"},
+        machine_settings={
+            "ilab-614": {"power": 0.6},
+            "ilab-626": {"power": 0.65},
+        },
+    )
+    recipe_mgr.add_recipe(recipe)
+    widget = RecipeListWidget()
+
+    widget._on_edit_recipe(recipe)
+    dialog = dialogs[-1]
+    assert dialog.get_recipe_data()["settings"]["power"] == pytest.approx(
+        0.65
+    )
+    (page,) = [
+        p for p in dialog._settings_pages.values() if "power" in p.keys
+    ]
+    page.set_values({"power": 0.7})
+    dialog._send_response("save")
+
+    saved = RecipeManager(recipe_mgr.base_dir).recipes[recipe.uid]
+    assert saved.machine_settings["ilab-614"] == {"power": 0.6}
+    assert saved.machine_settings["ilab-626"]["power"] == pytest.approx(0.7)
+    assert "power" not in saved.settings
+    assert saved.settings["cut_side"] == "INSIDE"
+
+
 def _group_for_transformer(page, name):
     """The settings group backing the named transformer, if any."""
     for group, t_dict in page._group_dicts.items():

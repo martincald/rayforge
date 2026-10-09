@@ -729,3 +729,158 @@ class TestBuiltinSync:
         reloaded = RecipeManager(recipes_dir)
         assert not reloaded.recipes[dup.uid].builtin
         assert reloaded.recipes["builtin-cut"].builtin
+
+
+class TestMaterialRecipes:
+    """The materials recipes are made for, and their recipe per step."""
+
+    @staticmethod
+    def _recipe(uid, material, thickness, step_type, **kwargs) -> Recipe:
+        return Recipe(
+            uid=uid,
+            name=uid,
+            material_uid=material,
+            min_thickness_mm=thickness,
+            max_thickness_mm=thickness,
+            target_step_types=[step_type],
+            **kwargs,
+        )
+
+    @pytest.fixture
+    def manager(self, tmp_path) -> RecipeManager:
+        manager = RecipeManager(tmp_path / "recipes")
+        for recipe in (
+            self._recipe("mdf-cut", "mdf", 3.0, "ContourStep"),
+            self._recipe("mdf-engrave", "mdf", 3.0, "EngraveStep"),
+            self._recipe("mdf-6-cut", "mdf", 6.0, "ContourStep"),
+            self._recipe("acrylic-cut", "acrylic", 3.0, "ContourStep"),
+            Recipe(
+                uid="range",
+                material_uid="plywood",
+                min_thickness_mm=3.0,
+                max_thickness_mm=6.0,
+            ),
+            Recipe(uid="generic", name="Generic"),
+        ):
+            manager.add_recipe(recipe)
+        return manager
+
+    def test_choices_are_distinct_exact_pairs_sorted(self, manager):
+        assert manager.material_choices() == [
+            ("acrylic", 3.0),
+            ("mdf", 3.0),
+            ("mdf", 6.0),
+        ]
+
+    def test_finds_the_recipe_per_step_type(self, manager):
+        assert (
+            manager.find_material_recipe("mdf", 3.0, None, "ContourStep").uid
+            == "mdf-cut"
+        )
+        assert (
+            manager.find_material_recipe("mdf", 3.0, None, "EngraveStep").uid
+            == "mdf-engrave"
+        )
+        assert (
+            manager.find_material_recipe("mdf", 6.0, None, "ContourStep").uid
+            == "mdf-6-cut"
+        )
+
+    def test_no_recipe_for_the_material_and_step(self, manager):
+        assert (
+            manager.find_material_recipe("mdf", 6.0, None, "EngraveStep")
+            is None
+        )
+        assert (
+            manager.find_material_recipe("cork", 3.0, None, "ContourStep")
+            is None
+        )
+
+    def test_a_recipe_for_the_machine_wins(self, manager, machine_b):
+        manager.add_recipe(
+            self._recipe(
+                "mdf-cut-b",
+                "mdf",
+                3.0,
+                "ContourStep",
+                target_machine_id="machine-b",
+            )
+        )
+
+        assert (
+            manager.find_material_recipe(
+                "mdf", 3.0, machine_b, "ContourStep"
+            ).uid
+            == "mdf-cut-b"
+        )
+        assert (
+            manager.find_material_recipe("mdf", 3.0, None, "ContourStep").uid
+            == "mdf-cut"
+        )
+
+    def test_a_user_recipe_beats_a_builtin_one_as_specific(self, manager):
+        # The built-in sorts first by name; the user's recipe wins.
+        shipped = self._recipe(
+            "mdf-cut-shipped", "mdf", 3.0, "ContourStep", builtin=True
+        )
+        shipped.name = "A shipped MDF cut"
+        manager.add_recipe(shipped)
+        manager.recipes["mdf-cut"].name = "My MDF cut"
+
+        assert (
+            manager.find_material_recipe("mdf", 3.0, None, "ContourStep").uid
+            == "mdf-cut"
+        )
+
+    def test_choices_leave_out_recipes_for_another_machine(
+        self, manager, machine_b
+    ):
+        manager.add_recipe(
+            self._recipe(
+                "cork-cut-b",
+                "cork",
+                3.0,
+                "ContourStep",
+                target_machine_id="machine-b",
+            )
+        )
+        other = Mock(spec=Machine)
+        other.id = "machine-c"
+        other.name = "Machine C"
+
+        assert ("cork", 3.0) in manager.material_choices(machine_b)
+        assert ("cork", 3.0) not in manager.material_choices(other)
+        assert ("cork", 3.0) not in manager.material_choices(None)
+        assert manager.material_choices(other) == [
+            ("acrylic", 3.0),
+            ("mdf", 3.0),
+            ("mdf", 6.0),
+        ]
+
+    @pytest.fixture
+    def machine_b(self) -> Mock:
+        mock = Mock(spec=Machine)
+        mock.id = "machine-b"
+        mock.name = "Machine B"
+        return mock
+
+
+def test_edited_machine_settings_are_kept_as_modified_copy(tmp_path):
+    """Per-machine values edited on disk count as an edit at a bump."""
+    cut = {**CUT, "machine_settings": {"ilab-614": {"power": 0.6}}}
+    recipes_dir = tmp_path / "recipes"
+    RecipeManager(recipes_dir, _write_bundle(tmp_path / "v1.yaml", 1, [cut]))
+    _edit_file(
+        recipes_dir, "builtin-cut", machine_settings={"ilab-614": {"power": 1}}
+    )
+
+    manager = RecipeManager(
+        recipes_dir, _write_bundle(tmp_path / "v2.yaml", 2, [cut])
+    )
+
+    (kept,) = [r for r in manager.recipes.values() if not r.builtin]
+    assert kept.name == "Cut (modified)"
+    assert kept.machine_settings == {"ilab-614": {"power": 1}}
+    assert manager.recipes["builtin-cut"].machine_settings == {
+        "ilab-614": {"power": 0.6}
+    }

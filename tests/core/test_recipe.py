@@ -1,5 +1,6 @@
 """Tests for the Recipe class."""
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -763,3 +764,131 @@ class TestRecipe:
         stock = stock_item_factory("any-material", 10.0)
         assert generic_recipe.matches([], mock_machine_a) is True
         assert generic_recipe.matches([stock], mock_machine_a) is True
+
+
+class TestMachineSettings:
+    """Per-machine values, keyed by machine name, over shared ones."""
+
+    @staticmethod
+    def _machine(name: str, uid: str = "id") -> SimpleNamespace:
+        return SimpleNamespace(name=name, id=uid, heads=[])
+
+    @pytest.fixture
+    def recipe(self) -> Recipe:
+        return Recipe(
+            name="MDF 3 mm Engrave",
+            target_step_types=["EngraveStep"],
+            material_uid="mdf",
+            min_thickness_mm=3.0,
+            max_thickness_mm=3.0,
+            settings={"scan_angle": 45.0, "power": 0.5},
+            machine_settings={
+                "ilab-614": {"power": 0.25, "cut_speed": 18000},
+                "ilab-626": {"power": 0.3, "cut_speed": 15000},
+            },
+        )
+
+    def test_each_machine_gets_its_own_values_over_shared(self, recipe):
+        on_614 = recipe.settings_for(self._machine("ilab-614"))
+        on_626 = recipe.settings_for(self._machine("ilab-626"))
+
+        assert on_614 == {
+            "scan_angle": 45.0,
+            "power": 0.25,
+            "cut_speed": 18000,
+        }
+        assert on_626 == {
+            "scan_angle": 45.0,
+            "power": 0.3,
+            "cut_speed": 15000,
+        }
+
+    @pytest.mark.parametrize("name", ["Default Machine", None])
+    def test_unknown_or_no_machine_gets_shared_only(self, recipe, name):
+        machine = self._machine(name) if name else None
+
+        assert recipe.settings_for(machine) == {
+            "scan_angle": 45.0,
+            "power": 0.5,
+        }
+
+    def test_settings_for_does_not_change_the_recipe(self, recipe):
+        recipe.settings_for(self._machine("ilab-614"))["power"] = 1.0
+
+        assert recipe.settings["power"] == 0.5
+        assert recipe.machine_settings["ilab-614"]["power"] == 0.25
+
+    def test_update_routes_machine_keys_to_that_machine(self, recipe):
+        recipe.update_settings(
+            {"scan_angle": 90.0, "power": 0.4, "invert": True},
+            self._machine("ilab-626"),
+        )
+
+        assert recipe.machine_settings["ilab-626"] == {
+            "power": 0.4,
+            "cut_speed": 15000,
+        }
+        assert recipe.machine_settings["ilab-614"] == {
+            "power": 0.25,
+            "cut_speed": 18000,
+        }
+        assert recipe.settings == {"scan_angle": 90.0, "invert": True}
+
+    def test_update_on_unknown_machine_is_all_shared(self, recipe):
+        recipe.update_settings(
+            {"scan_angle": 90.0, "power": 0.4},
+            self._machine("Default Machine"),
+        )
+
+        assert recipe.settings == {"scan_angle": 90.0, "power": 0.4}
+        assert recipe.machine_settings["ilab-614"]["power"] == 0.25
+        assert recipe.machine_settings["ilab-626"]["power"] == 0.3
+
+    def test_update_reads_back_through_settings_for(self, recipe):
+        machine = self._machine("ilab-614")
+        values = recipe.settings_for(machine)
+        values["cut_speed"] = 12000
+
+        recipe.update_settings(values, machine)
+
+        assert recipe.settings_for(machine) == values
+
+    def test_machine_settings_round_trip(self, recipe):
+        restored = Recipe.from_dict(recipe.to_dict())
+
+        assert restored.machine_settings == recipe.machine_settings
+        assert "machine_settings" not in restored.extra
+
+    def test_missing_machine_settings_load_empty(self):
+        assert Recipe.from_dict({"name": "Old"}).machine_settings == {}
+
+    def test_step_settings_compare_on_the_machine(self, recipe):
+        step = SimpleNamespace(scan_angle=45.0, power=0.3, cut_speed=15000)
+
+        assert recipe.matches_step_settings(
+            step, machine=self._machine("ilab-626")
+        )
+        assert not recipe.matches_step_settings(
+            step, machine=self._machine("ilab-614")
+        )
+
+    def test_matches_material_needs_that_material(self, recipe):
+        machine = self._machine("ilab-614")
+
+        assert recipe.matches_material("mdf", 3.0, machine, "EngraveStep")
+        assert not recipe.matches_material(
+            "plywood", 3.0, machine, "EngraveStep"
+        )
+        assert not recipe.matches_material("mdf", 6.0, machine, "EngraveStep")
+        assert not recipe.matches_material("mdf", 3.0, machine, "ContourStep")
+        assert not Recipe(name="Generic").matches_material("mdf", 3.0)
+
+    def test_matches_material_respects_a_target_machine(self, recipe):
+        recipe.target_machine_id = "id-626"
+
+        assert recipe.matches_material(
+            "mdf", 3.0, self._machine("ilab-626", "id-626"), "EngraveStep"
+        )
+        assert not recipe.matches_material(
+            "mdf", 3.0, self._machine("ilab-614", "id-614"), "EngraveStep"
+        )

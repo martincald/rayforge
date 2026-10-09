@@ -366,3 +366,75 @@ class TestLayerRotary:
         restored = Layer.from_dict(data)
         assert restored.rotary_enabled is True
         assert restored.rotary_diameter == 50.0
+
+
+class TestLayerMaterial:
+    def test_a_new_layer_has_no_material(self, layer):
+        assert layer.material is None
+        assert layer.material_uid is None
+        assert layer.material_thickness_mm is None
+        assert layer.material_machine is None
+
+    def test_set_material_sends_updated(self, layer):
+        received = []
+        layer.updated.connect(
+            lambda sender: received.append(sender), weak=False
+        )
+
+        layer.set_material(("mdf", 3.0))
+        layer.set_material(("mdf", 3.0))
+
+        assert layer.material == ("mdf", 3.0)
+        assert (layer.material_uid, layer.material_thickness_mm) == (
+            "mdf",
+            3.0,
+        )
+        assert received == [layer]
+
+    def test_none_forgets_the_material(self, layer):
+        layer.set_material(("mdf", 3.0))
+
+        layer.set_material(None)
+
+        assert layer.material is None
+        assert layer.material_uid is None
+        assert layer.material_thickness_mm is None
+
+    def test_material_round_trips(self):
+        layer = Layer("MDF")
+        layer.set_material(("mdf", 3.0))
+        layer.material_machine = "ilab-614"
+
+        data = layer.to_dict()
+        restored = Layer.from_dict(data)
+
+        assert data["material_uid"] == "mdf"
+        assert data["material_thickness_mm"] == 3.0
+        assert data["material_machine"] == "ilab-614"
+        assert restored.material == ("mdf", 3.0)
+        assert restored.material_machine == "ilab-614"
+        assert restored.extra == {}
+
+    def test_a_document_from_before_materials_loads_without(self):
+        data = Layer("Old").to_dict()
+        del data["material_uid"]
+        del data["material_thickness_mm"]
+        del data["material_machine"]
+
+        restored = Layer.from_dict(data)
+
+        assert restored.material is None
+        assert restored.material_machine is None
+        assert restored.extra == {}
+
+    def test_a_material_without_its_machine_loads_as_unknown(self):
+        layer = Layer("MDF")
+        layer.set_material(("mdf", 3.0))
+        data = layer.to_dict()
+        del data["material_machine"]
+
+        restored = Layer.from_dict(data)
+
+        assert restored.material == ("mdf", 3.0)
+        assert restored.material_machine is None
+        assert restored.extra == {}

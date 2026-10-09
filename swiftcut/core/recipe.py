@@ -70,6 +70,9 @@ class Recipe:
     # --- Payload ---
     # A single dictionary of settings to be applied.
     settings: dict[str, Any] = field(default_factory=dict)
+    # Settings a machine has its own values for, keyed by machine name
+    # ("ilab-614"), laid over ``settings`` on that machine.
+    machine_settings: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     # Post-processor (transformer) settings captured by this recipe.
     # Each dict carries ``name``, ``enabled``, ``recipe_apply`` (False =
@@ -79,16 +82,46 @@ class Recipe:
     # Forward compatibility: store unknown attributes
     extra: dict[str, Any] = field(default_factory=dict)
 
+    def settings_for(self, machine: Optional["Machine"]) -> dict[str, Any]:
+        """
+        The settings this recipe applies on a machine: the shared
+        settings with that machine's own values over them. A machine
+        the recipe has no values for gets the shared settings only.
+        """
+        result = dict(self.settings)
+        if machine is not None:
+            result.update(self.machine_settings.get(machine.name, {}))
+        return result
+
+    def update_settings(
+        self, values: dict[str, Any], machine: Optional["Machine"]
+    ):
+        """
+        Replaces the settings with edited ones, as read from
+        :meth:`settings_for`: a key the machine has its own value for
+        keeps it per machine, every other key is shared.
+        """
+        own = self.machine_settings.get(machine.name) if machine else None
+        shared = {}
+        for key, value in values.items():
+            if own is not None and key in own:
+                own[key] = value
+            else:
+                shared[key] = value
+        self.settings = shared
+
     def matches_step_settings(
         self,
         step: "Step",
         tolerance=1e-6,
+        machine: Optional["Machine"] = None,
     ) -> bool:
         """
-        Compares this recipe's settings against a Step object's current
-        settings. Only keys present in the recipe are checked.
+        Compares this recipe's settings on the given machine against a
+        Step object's current settings. Only keys present in the recipe
+        are checked.
         """
-        for key, recipe_val in self.settings.items():
+        for key, recipe_val in self.settings_for(machine).items():
             if not hasattr(step, key):
                 return False  # Step is missing an attribute the recipe defines
 
@@ -178,31 +211,8 @@ class Recipe:
         Returns:
             True if the recipe is a valid match, False otherwise.
         """
-        # 1. Check step type compatibility
-        if self.target_step_types and step_type not in self.target_step_types:
-            # This recipe targets specific step classes. It can only
-            # match when a step type context is provided and is one of
-            # the targeted classes.
-            return False
-
-        # 2. Check machine compatibility
-        if self.target_machine_id and (
-            not machine or machine.id != self.target_machine_id
-        ):
-            # This recipe requires a specific machine.
-            return False
-
-        # A recipe is considered compatible up to this point, so now check
-        # secondary constraints like laser head.
-
-        # 3. Check head compatibility (if specified in settings)
-        target_head_uid = self.settings.get("selected_head_uid")
-        if target_head_uid and (
-            not machine
-            or not any(head.uid == target_head_uid for head in machine.heads)
-        ):
-            # This recipe requires a specific head. It can only match if
-            # a machine context is provided and that machine has the head.
+        # 1-3. Check step type, machine and head compatibility
+        if not self._matches_target(machine, step_type):
             return False
 
         # 4. If no stock items to check against, only match generic recipes
@@ -224,19 +234,78 @@ class Recipe:
 
         return False
 
+    def matches_material(
+        self,
+        material_uid: str,
+        thickness_mm: float,
+        machine: Optional["Machine"] = None,
+        step_type: str | None = None,
+    ) -> bool:
+        """
+        Checks if this recipe is made for a material picked by hand,
+        such as a layer's: like :meth:`matches` with a stock item of
+        that material and thickness, except that only a recipe for that
+        very material matches.
+        """
+        return (
+            self.material_uid == material_uid
+            and self._matches_target(machine, step_type)
+            and self._matches_material(material_uid, thickness_mm)
+        )
+
+    def _matches_target(
+        self, machine: Optional["Machine"], step_type: str | None
+    ) -> bool:
+        """
+        Checks the step type, machine and head this recipe targets.
+        """
+        # 1. Check step type compatibility
+        if self.target_step_types and step_type not in self.target_step_types:
+            # This recipe targets specific step classes. It can only
+            # match when a step type context is provided and is one of
+            # the targeted classes.
+            return False
+
+        # 2. Check machine compatibility
+        if self.target_machine_id and (
+            not machine or machine.id != self.target_machine_id
+        ):
+            # This recipe requires a specific machine.
+            return False
+
+        # A recipe is considered compatible up to this point, so now check
+        # secondary constraints like laser head.
+
+        # 3. Check head compatibility (if specified in settings)
+        target_head_uid = self.settings.get("selected_head_uid")
+        # A recipe that requires a specific head can only match if a
+        # machine context is provided and that machine has the head.
+        return not target_head_uid or bool(
+            machine
+            and any(head.uid == target_head_uid for head in machine.heads)
+        )
+
     def _matches_stock(self, stock_item: "StockItem") -> bool:
         """
         Checks if this recipe matches a single stock item.
         """
+        return self._matches_material(
+            stock_item.material_uid if stock_item else None,
+            stock_item.thickness if stock_item else None,
+        )
+
+    def _matches_material(
+        self, material_uid: str | None, thickness_mm: float | None
+    ) -> bool:
+        """
+        Checks if this recipe matches a material and thickness.
+        """
         # Check material compatibility
-        if self.material_uid and (
-            not stock_item or stock_item.material_uid != self.material_uid
-        ):
+        if self.material_uid and material_uid != self.material_uid:
             # This recipe requires a specific material.
             return False
 
         # Check thickness compatibility
-        thickness_mm = stock_item.thickness if stock_item else None
         if (
             self.min_thickness_mm is not None
             or self.max_thickness_mm is not None
@@ -355,6 +424,7 @@ class Recipe:
             "min_thickness_mm",
             "max_thickness_mm",
             "settings",
+            "machine_settings",
             "transformer_dicts",
             # Legacy targeting keys, consumed by the migration below.
             "target_capability_name",
@@ -395,6 +465,7 @@ class Recipe:
             min_thickness_mm=data.get("min_thickness_mm"),
             max_thickness_mm=data.get("max_thickness_mm"),
             settings=settings,
+            machine_settings=data.get("machine_settings") or {},
             transformer_dicts=transformer_dicts,
             extra=extra,
         )

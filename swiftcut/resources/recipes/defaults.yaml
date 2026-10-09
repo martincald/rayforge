@@ -1,7 +1,8 @@
 # Built-in recipes shipped with SwiftCut.
 #
 # PLACEHOLDER: the recipes below are examples, not tested settings. The
-# owner will replace them with the real defaults.
+# owner will replace them with the real defaults. Every per-machine
+# number (power, min_power, cut_speed) is a placeholder too.
 #
 # On startup the app syncs these into the user's recipe directory when
 # `version` is higher than the version recorded there. Bump `version`
@@ -11,9 +12,55 @@
 # Each recipe needs a fixed `uid`. Units are the model's: speeds in
 # mm/min, power 0..1. `target_step_types` are step class names. Every
 # placeholder is tied to a material and thickness so it is only picked
-# for matching stock.
-version: 1
+# for matching stock, and is offered in the layer's Material picker.
+#
+# `settings` are shared by every machine. `machine_settings` holds each
+# lab machine's own values, keyed by machine name; on that machine they
+# win over `settings`. A machine not listed gets `settings` only.
+version: 2
 recipes:
+- uid: 4a6c7f7c-2e0d-4550-b055-efd36a8f88f3
+  name: MDF 3 mm Cut
+  description: Placeholder, not tested.
+  color: '#cc6600'
+  target_step_types: [ContourStep]
+  material_uid: mdf
+  min_thickness_mm: 3.0
+  max_thickness_mm: 3.0
+  settings: {}
+  machine_settings:
+    ilab-614:
+      power: 0.6
+      min_power: 0.5
+      cut_speed: 1200
+    ilab-626:
+      power: 0.65
+      min_power: 0.55
+      cut_speed: 1000
+- uid: 88fc61ad-9e85-4a69-9121-67719cbdb5aa
+  name: MDF 3 mm Engrave
+  description: Placeholder, not tested.
+  color: '#3366ff'
+  target_step_types: [EngraveStep]
+  material_uid: mdf
+  min_thickness_mm: 3.0
+  max_thickness_mm: 3.0
+  settings:
+    engrave_mode: BOTH
+    scan_angle: 0.0
+    depth_mode: POWER_MODULATION
+    invert: false
+    min_power_level: 0.0
+    max_power_level: 1.0
+  machine_settings:
+    ilab-614:
+      power: 0.25
+      min_power: 0.15
+      cut_speed: 18000
+    ilab-626:
+      power: 0.3
+      min_power: 0.2
+      cut_speed: 15000
 - uid: fcc9c750-5441-497c-ab74-c9d6702645b8
   name: Plywood 3 mm Cut
   description: Placeholder, not tested.
@@ -22,9 +69,16 @@ recipes:
   material_uid: plywood
   min_thickness_mm: 3.0
   max_thickness_mm: 3.0
-  settings:
-    power: 0.65
-    cut_speed: 1200
+  settings: {}
+  machine_settings:
+    ilab-614:
+      power: 0.65
+      min_power: 0.55
+      cut_speed: 1200
+    ilab-626:
+      power: 0.7
+      min_power: 0.6
+      cut_speed: 1000
 - uid: dd26a12f-28d4-4591-a00a-281ad7d650e5
   name: Plywood 3 mm Engrave
   description: Placeholder, not tested.
@@ -34,8 +88,21 @@ recipes:
   min_thickness_mm: 3.0
   max_thickness_mm: 3.0
   settings:
-    power: 0.2
-    cut_speed: 18000
+    engrave_mode: BOTH
+    scan_angle: 0.0
+    depth_mode: POWER_MODULATION
+    invert: false
+    min_power_level: 0.0
+    max_power_level: 1.0
+  machine_settings:
+    ilab-614:
+      power: 0.2
+      min_power: 0.1
+      cut_speed: 18000
+    ilab-626:
+      power: 0.25
+      min_power: 0.15
+      cut_speed: 15000
 - uid: fa1c565c-b875-471c-bdb6-1800d14b5f2a
   name: Acrylic 3 mm Cut
   description: Placeholder, not tested.
@@ -44,6 +111,13 @@ recipes:
   material_uid: acrylic
   min_thickness_mm: 3.0
   max_thickness_mm: 3.0
-  settings:
-    power: 0.7
-    cut_speed: 600
+  settings: {}
+  machine_settings:
+    ilab-614:
+      power: 0.7
+      min_power: 0.6
+      cut_speed: 600
+    ilab-626:
+      power: 0.75
+      min_power: 0.65
+      cut_speed: 500

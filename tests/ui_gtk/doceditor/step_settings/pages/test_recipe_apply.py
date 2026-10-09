@@ -103,6 +103,32 @@ def test_update_is_offered_only_for_user_recipes(
 
 
 @pytest.mark.ui
+def test_applying_recipe_uses_the_active_machines_values(
+    editor, step, ui_context, tmp_path, monkeypatch
+):
+    """Choose applies the active machine's values over the shared ones,
+    and the step then matches the recipe: nothing to update."""
+    recipe_mgr = RecipeManager(tmp_path / "recipes")
+    monkeypatch.setattr(ui_context, "_recipe_mgr", recipe_mgr)
+    recipe = Recipe(
+        name="Per machine",
+        settings={"count": 5, "power": 0.4},
+        machine_settings={
+            ui_context.machine.name: {"power": 0.9},
+            "elsewhere": {"power": 0.1},
+        },
+    )
+    recipe_mgr.add_recipe(recipe)
+    page = StepSettingsPage(editor, step)
+
+    page.recipe_control._apply_recipe(recipe)
+
+    assert step.count == 5
+    assert step.power == pytest.approx(0.9)
+    assert not page.recipe_control.update_button.get_visible()
+
+
+@pytest.mark.ui
 def test_resync_overrides_pending_edit(editor, step):
     row = SpinRow(
         editor, step, "count", "Count", None, 1, 10, 1, 0, is_int=True

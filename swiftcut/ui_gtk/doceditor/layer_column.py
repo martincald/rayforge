@@ -27,6 +27,7 @@ from ..shared.gtk import apply_css
 from . import import_handler
 from .group_row import GroupRow
 from .layer_settings_dialog import LayerSettingsDialog
+from .material_picker import MaterialPicker
 from .workflow_row import WorkflowRow
 from .workpiece_row import WorkpieceRow
 
@@ -56,6 +57,10 @@ css = stylesheet("""
 }
 .layer-column.active-layer-column .layer-column-header {
     background-color: alpha(@accent_bg_color, 0.1);
+}
+.layer-material-row {
+    min-height: $compact_row;
+    padding: 0 $compact_space_control;
 }
 .layer-workpiece-list {
     background-color: transparent;
@@ -141,6 +146,7 @@ class LayerColumn(Gtk.Box):
         self.move_to_layer_requested = Signal()
 
         self._build_header(can_delete)
+        self._build_material_row()
         self._build_workflow_row()
         self._build_workpiece_list()
         self._setup_layer_drag_source()
@@ -252,6 +258,21 @@ class LayerColumn(Gtk.Box):
 
         self.card.append(self.header)
         self._update_icon()
+
+    def _build_material_row(self):
+        row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=COMPACT_SPACE_CONTROL,
+        )
+        row.add_css_class("layer-material-row")
+        label = Gtk.Label(label=_("Material"))
+        label.add_css_class("sc-caption")
+        row.append(label)
+        self.material_picker = MaterialPicker(self.editor, self.layer)
+        self.material_picker.set_hexpand(True)
+        self.material_picker.set_valign(Gtk.Align.CENTER)
+        row.append(self.material_picker)
+        self.card.append(row)
 
     def _build_workflow_row(self):
         self.workflow_row = WorkflowRow(self.editor, self.layer)
@@ -442,6 +463,7 @@ class LayerColumn(Gtk.Box):
 
     def _on_layer_updated(self, sender, **kwargs):
         self._update_ui()
+        self.material_picker.sync()
         self._rebuild_workpiece_list()
 
     def _on_layer_structure_changed(self, sender, **kwargs):

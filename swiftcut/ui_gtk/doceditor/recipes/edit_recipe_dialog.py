@@ -5,6 +5,7 @@ from typing import Any
 from blinker import Signal
 from gi.repository import Adw, Gtk
 
+from ....context import get_context
 from ....core.recipe import Recipe
 from ....core.step import Step
 from ....core.step_registry import step_registry
@@ -267,7 +268,9 @@ class AddEditRecipeDialog(PatchedDialogWindow):
             page = RecipeSettingsPage(group_title)
             page.populate(varset)
             if self.recipe:
-                page.set_values(self.recipe.settings)
+                page.set_values(
+                    self.recipe.settings_for(get_context().machine)
+                )
             self._add_page(page, name, group_title, icon_name)
             self._settings_pages[name] = page
 

@@ -54,6 +54,13 @@ class Layer(DocItem):
         self.rotary_module_uid: str | None = None
         self.color: str = self.DEFAULT_COLOR
         self.wcs: str | None = None
+        # The material picked for the layer, whose recipes fill its
+        # steps; None when its settings are set by hand.
+        self.material_uid: str | None = None
+        self.material_thickness_mm: float | None = None
+        # The machine (by name) the steps were last filled for from the
+        # material; None when unknown.
+        self.material_machine: str | None = None
 
         # Signals for notifying other parts of the application of changes.
         # This one is special and is bubbled manually.
@@ -79,6 +86,9 @@ class Layer(DocItem):
             "rotary_module_uid": self.rotary_module_uid,
             "color": self.color,
             "wcs": self.wcs,
+            "material_uid": self.material_uid,
+            "material_thickness_mm": self.material_thickness_mm,
+            "material_machine": self.material_machine,
             "children": [child.to_dict() for child in self.children],
         }
         result.update(self.extra)
@@ -98,6 +108,9 @@ class Layer(DocItem):
             "rotary_module_uid",
             "color",
             "wcs",
+            "material_uid",
+            "material_thickness_mm",
+            "material_machine",
             "children",
         }
         extra = {k: v for k, v in data.items() if k not in known_keys}
@@ -111,6 +124,9 @@ class Layer(DocItem):
         layer.rotary_module_uid = data.get("rotary_module_uid")
         layer.color = data.get("color", cls.DEFAULT_COLOR)
         layer.wcs = data.get("wcs")
+        layer.material_uid = data.get("material_uid")
+        layer.material_thickness_mm = data.get("material_thickness_mm")
+        layer.material_machine = data.get("material_machine")
         layer.extra = extra
 
         children = []
@@ -274,6 +290,22 @@ class Layer(DocItem):
         if self.color == color:
             return
         self.color = color
+        self.updated.send(self)
+
+    @property
+    def material(self) -> tuple[str, float] | None:
+        """The picked material as (uid, thickness in mm), or None."""
+        if self.material_uid is None or self.material_thickness_mm is None:
+            return None
+        return (self.material_uid, self.material_thickness_mm)
+
+    def set_material(self, material: tuple[str, float] | None):
+        """Picks a material (uid, thickness in mm); None forgets it."""
+        if material == self.material:
+            return
+        uid, thickness = material if material else (None, None)
+        self.material_uid = uid
+        self.material_thickness_mm = thickness
         self.updated.send(self)
 
     def get_subtitle(self, rotary_module_name: str | None = None) -> str:

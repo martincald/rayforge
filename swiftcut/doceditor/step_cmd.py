@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from gettext import gettext as _
+from gettext import ngettext
 from typing import TYPE_CHECKING, Any
 
 from ..core.color_preset import get_color_preset_mgr
@@ -77,7 +78,8 @@ class StepCmd:
         document via an undoable command.
 
         If a layer is given and the recipe has a color, the layer takes
-        that color through an undoable command.
+        that color through an undoable command. A layer with a picked
+        material gives the step that material's recipe, if it has one.
         """
         # Get the stock items from the document
         stock_items = self._doc.stock_items
@@ -86,7 +88,14 @@ class StepCmd:
         # Query the RecipeManager for the best match for this step type.
         matching_recipes: list = []
         recipe_mgr = self._context.recipe_mgr
-        if recipe_mgr is not None:
+        material_recipe = (
+            self._material_recipe(layer.material, step)
+            if layer is not None and layer.material is not None
+            else None
+        )
+        if material_recipe is not None:
+            matching_recipes = [material_recipe]
+        elif recipe_mgr is not None:
             matching_recipes = recipe_mgr.find_recipes(
                 stock_items=stock_items,
                 machine=machine,
@@ -99,17 +108,7 @@ class StepCmd:
             logger.info(
                 f"Applying best recipe '{best_recipe.name}' to new step."
             )
-            # Apply the settings to the step object
-            for key, value in best_recipe.settings.items():
-                if hasattr(step, key):
-                    setattr(step, key, value)
-
-            # Apply transformer settings directly to the freshly-created
-            # step. Per-workpiece and per-step dicts are mutated in place.
-            self._apply_recipe_transformers_to_step(step, best_recipe)
-
-            # Store a reference to the applied recipe
-            step.applied_recipe_uid = best_recipe.uid
+            self._fill_step(step, best_recipe)
 
             if (
                 layer is not None
@@ -125,6 +124,246 @@ class StepCmd:
                         name=_("Set layer color"),
                     )
                 )
+
+    def _fill_step(self, step: Step, recipe: Recipe) -> None:
+        """
+        Applies a recipe to a step directly, not undoably: its settings
+        for the active machine, its transformer settings and its uid.
+        """
+        # Apply the settings to the step object
+        for key, value in recipe.settings_for(self._context.machine).items():
+            if hasattr(step, key):
+                setattr(step, key, value)
+
+        # Apply transformer settings directly to the step. Per-workpiece
+        # and per-step dicts are mutated in place.
+        self._apply_recipe_transformers_to_step(step, recipe)
+
+        # Store a reference to the applied recipe
+        step.applied_recipe_uid = recipe.uid
+
+    def apply_recipe(self, step: Step, recipe: Recipe, transaction: Any):
+        """
+        Applies a recipe to a step inside a history transaction: its
+        uid, its settings for the active machine and its transformer
+        settings. The layer color is left to the caller.
+        """
+
+        def send_updated():
+            step.updated.send(step)
+
+        transaction.execute(
+            ChangePropertyCommand(
+                target=step,
+                property_name="applied_recipe_uid",
+                new_value=recipe.uid,
+                on_change_callback=send_updated,
+            )
+        )
+        # Set each setting the recipe carries; skip keys this step
+        # does not own.
+        for key, value in recipe.settings_for(self._context.machine).items():
+            if not hasattr(step, key):
+                continue
+            transaction.execute(
+                ChangePropertyCommand(
+                    target=step,
+                    property_name=key,
+                    new_value=value,
+                    on_change_callback=send_updated,
+                )
+            )
+        # Apply transformer settings: for each recipe transformer with
+        # recipe_apply=True, find the step's matching dict by name and
+        # overwrite its params with undoable commands.
+        self._apply_recipe_transformers(step, recipe.transformer_dicts)
+
+    def _apply_recipe_transformers(
+        self, step: Step, transformer_dicts: list[dict[str, Any]]
+    ) -> None:
+        """Apply recipe transformer settings to the step's transformers.
+
+        For each recipe dict with ``recipe_apply=True``, find the
+        matching step dict by ``name`` (searching
+        ``per_step_transformers_dicts`` first, then
+        ``per_workpiece_transformers_dicts``). For each param key
+        (except ``name`` and ``recipe_apply``), emit an undoable
+        ``set_step_param`` command. The appropriate step callback
+        matches the step-mode post-processing page's logic.
+        """
+        step_dicts_by_name: dict[str, dict[str, Any]] = {}
+        for d in list(step.per_step_transformers_dicts) + list(
+            step.per_workpiece_transformers_dicts
+        ):
+            name = d.get("name")
+            if name and name not in step_dicts_by_name:
+                step_dicts_by_name[name] = d
+
+        for recipe_dict in transformer_dicts or []:
+            if not recipe_dict.get("recipe_apply", True):
+                continue
+            name = recipe_dict.get("name")
+            if not name:
+                continue
+            step_dict = step_dicts_by_name.get(name)
+            if step_dict is None:
+                continue
+            is_per_step = step_dict in (step.per_step_transformers_dicts)
+            callback = (
+                step.per_step_transformer_changed.send
+                if is_per_step
+                else lambda: step.updated.send(step)
+            )
+            for key, value in recipe_dict.items():
+                if key in ("name", "recipe_apply"):
+                    continue
+                self.set_step_param(
+                    target_dict=step_dict,
+                    key=key,
+                    new_value=value,
+                    name=_("Apply Recipe Transformer"),
+                    on_change_callback=callback,
+                )
+
+    def apply_material(self, layer: Layer, material: tuple[str, float] | None):
+        """
+        Picks a material for a layer, in one undo step. Each of its
+        steps takes the settings of the material's recipe for its type
+        on the active machine, the layer records that machine as the one
+        its steps were filled for, and it takes the color of the first
+        recipe applied that has one. A step the material has no recipe
+        for keeps its settings, and a notification names it. None
+        ("Manual") forgets the material and leaves the steps as they
+        are.
+        """
+        if material == layer.material:
+            return
+        machine = self._context.machine
+        unchanged = []
+        with self._editor.history_manager.transaction(
+            _("Set layer material")
+        ) as t:
+            t.execute(
+                ChangePropertyCommand(
+                    target=layer,
+                    property_name="material",
+                    new_value=material,
+                    setter_method_name="set_material",
+                )
+            )
+            t.execute(
+                ChangePropertyCommand(
+                    target=layer,
+                    property_name="material_machine",
+                    new_value=machine.name if material and machine else None,
+                )
+            )
+            color = None
+            for step, recipe in self._material_recipes(layer):
+                if recipe is None:
+                    unchanged.append(step.name)
+                    continue
+                self.apply_recipe(step, recipe, t)
+                color = color or recipe.color
+            if color:
+                t.execute(
+                    ChangePropertyCommand(
+                        target=layer,
+                        property_name="color",
+                        new_value=color,
+                        setter_method_name="set_color",
+                    )
+                )
+        if unchanged:
+            self._editor.notification_requested.send(
+                self,
+                message=ngettext(
+                    "This material has no recipe for {steps}; its "
+                    "settings stay as they were.",
+                    "This material has no recipe for {steps}; their "
+                    "settings stay as they were.",
+                    len(unchanged),
+                ).format(steps=", ".join(unchanged)),
+            )
+
+    def refill_layer_materials(self):
+        """
+        Fills the steps of every layer whose material was filled for
+        another machine than the active one, or for an unknown one,
+        from that material's recipes for the active machine, and
+        records the active machine on the layer: after a machine
+        switch, an undo or redo, and when a document is set. Applied
+        directly, outside the undo history; edits made by hand on such
+        a layer are overwritten.
+        """
+        machine = self._context.machine
+        if machine is None:
+            return
+        for layer in self._editor.doc.layers:
+            if layer.material is None:
+                continue
+            if layer.material_machine == machine.name:
+                continue
+            layer.material_machine = machine.name
+            for step, recipe in self._material_recipes(layer):
+                if recipe is not None:
+                    self._refill_step(step, recipe)
+
+    def _refill_step(self, step: Step, recipe: Recipe) -> None:
+        """
+        Fills a step directly and sends what the undoable apply sends
+        for what changed: the step's updated signal, and its per-step
+        transformer signal when a per-step transformer changed. A step
+        that is already filled so sends nothing.
+        """
+        keys = [
+            key
+            for key in recipe.settings_for(self._context.machine)
+            if hasattr(step, key)
+        ]
+
+        def state():
+            return (
+                [getattr(step, key) for key in keys],
+                step.applied_recipe_uid,
+                [dict(d) for d in step.per_workpiece_transformers_dicts],
+                [dict(d) for d in step.per_step_transformers_dicts],
+            )
+
+        before = state()
+        self._fill_step(step, recipe)
+        after = state()
+        if after != before:
+            step.updated.send(step)
+        if after[3] != before[3]:
+            step.per_step_transformer_changed.send()
+
+    def _material_recipes(
+        self, layer: Layer
+    ) -> list[tuple[Step, Recipe | None]]:
+        """
+        The layer's steps, each with its recipe for the layer's
+        material on the active machine, or None if it has none.
+        """
+        material = layer.material
+        if material is None or layer.workflow is None:
+            return []
+        return [
+            (step, self._material_recipe(material, step))
+            for step in layer.workflow.steps
+        ]
+
+    def _material_recipe(
+        self, material: tuple[str, float], step: Step
+    ) -> Recipe | None:
+        """The recipe for a material and a step's type, or None."""
+        uid, thickness = material
+        return self._context.recipe_mgr.find_material_recipe(
+            uid,
+            thickness,
+            self._context.machine,
+            step_type=type(step).__name__,
+        )
 
     @staticmethod
     def _apply_recipe_transformers_to_step(step: Step, recipe: Recipe) -> None:

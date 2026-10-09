@@ -234,6 +234,8 @@ class DocEditor:
             self.pipeline.set_machine(new_machine)
             new_machine.changed.connect(self._on_machine_changed)
             self._on_machine_changed(self)
+            # The picked materials take the new machine's numbers.
+            self.step.refill_layer_materials()
 
     def add_tab_from_context(self, context: dict[str, Any]):
         """
@@ -451,6 +453,8 @@ class DocEditor:
         self.doc = new_doc
         self._reconcile_step_heads()
         self._reconcile_rotary_modules()
+        # Materials filled on another machine take this one's numbers.
+        self.step.refill_layer_materials()
         self.history_manager = self.doc.history_manager
         # The Pipeline's setter handles cleanup and reconnection
         self.pipeline.doc = new_doc
@@ -599,6 +603,9 @@ class DocEditor:
         Handles history manager changes (undo/redo/new commands).
         Updates saved state based on checkpoint position.
         """
+        # An undo or redo can bring back a material filled on another
+        # machine; it takes the active machine's numbers.
+        self.step.refill_layer_materials()
         new_is_saved = self.history_manager.is_at_checkpoint()
         if self._is_saved != new_is_saved:
             self._is_saved = new_is_saved

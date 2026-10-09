@@ -219,6 +219,57 @@ class RecipeManager:
 
         return candidates
 
+    def material_choices(
+        self, machine: Optional["Machine"] = None
+    ) -> list[tuple[str, float]]:
+        """
+        The materials recipes are made for, as distinct
+        (material uid, thickness in mm) pairs, sorted. Only recipes for
+        one exact thickness count; a thickness range is not a choice.
+        A recipe made for another machine than the given one does not
+        count.
+        """
+        pairs = {
+            (r.material_uid, r.min_thickness_mm)
+            for r in self.recipes.values()
+            if r.material_uid
+            and r.min_thickness_mm is not None
+            and r.min_thickness_mm == r.max_thickness_mm
+            and (
+                not r.target_machine_id
+                or (machine is not None and machine.id == r.target_machine_id)
+            )
+        }
+        return sorted(pairs)
+
+    def find_material_recipe(
+        self,
+        material_uid: str,
+        thickness_mm: float,
+        machine: Optional["Machine"] = None,
+        step_type: str | None = None,
+    ) -> Recipe | None:
+        """
+        The most specific recipe made for a material and thickness, for
+        a machine and step type, or None. On equal specificity a user's
+        recipe wins over a built-in one.
+        """
+        candidates = [
+            r
+            for r in self.get_all_recipes()
+            if r.matches_material(
+                material_uid, thickness_mm, machine, step_type=step_type
+            )
+        ]
+        candidates.sort(
+            key=lambda r: (
+                r.get_specificity_score(),
+                r.builtin,
+                r.name.lower(),
+            )
+        )
+        return candidates[0] if candidates else None
+
     def is_material_in_use(self, material_uid: str) -> bool:
         """
         Checks if any recipe in the library references the given material UID.
