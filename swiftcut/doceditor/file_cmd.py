@@ -90,6 +90,24 @@ def _unsupported_coolant_labels(
     return [_COOLANT_MODE_LABELS[m] for m in ordered]
 
 
+def project_json(doc: "Doc") -> str:
+    """A document as the project.json text of a .ryp project file."""
+    return json.dumps(doc.to_dict(), indent=2)
+
+
+def write_project(file_path: Path, text: str) -> None:
+    """
+    Writes a .ryp project file: a zip holding project.json.
+
+    The one project writer, so a copy kept anywhere else (the job
+    history keeps one per job) opens with File > Open like any project.
+    """
+    with zipfile.ZipFile(
+        file_path, "w", compression=zipfile.ZIP_DEFLATED
+    ) as zf:
+        zf.writestr("project.json", text.encode("utf-8"))
+
+
 @dataclass
 class PreviewResult:
     """
@@ -1202,12 +1220,7 @@ class FileCmd:
         This is a synchronous method for the UI.
         """
         try:
-            doc_dict = self._editor.doc.to_dict()
-            json_bytes = json.dumps(doc_dict, indent=2).encode("utf-8")
-            with zipfile.ZipFile(
-                file_path, "w", compression=zipfile.ZIP_DEFLATED
-            ) as zf:
-                zf.writestr("project.json", json_bytes)
+            write_project(file_path, project_json(self._editor.doc))
             self._editor.set_file_path(file_path)
             self._editor.mark_as_saved()
             logger.info(f"Successfully saved project to {file_path}")
@@ -1228,10 +1241,13 @@ class FileCmd:
                 return zf.read("project.json").decode("utf-8")
         return file_path.read_text(encoding="utf-8")
 
-    def load_project_from_path(self, file_path: Path):
+    def load_project_from_path(self, file_path: Path, untitled=False):
         """
         Loads a .ryp project file and replaces the current document.
         This is a synchronous method for the UI.
+
+        With untitled, the document opens as a copy: no file path, so
+        a save asks where, and the file read is never written over.
         """
         try:
             if not file_path.exists():
@@ -1248,7 +1264,7 @@ class FileCmd:
             new_doc = Doc.from_dict(doc_dict)
 
             self._editor.set_doc(new_doc)
-            self._editor.set_file_path(file_path)
+            self._editor.set_file_path(None if untitled else file_path)
             self._editor.mark_as_saved()
             self._editor.doc.updated.send(self._editor.doc)
 

@@ -105,8 +105,13 @@ def test_with_the_mode_on_start_asks_first(ui_context_initializer):
         start_position_dialog.request_start(None, machine, run)
 
     run.assert_not_called()
-    cls.assert_called_once_with(LAST, run)
+    cls.assert_called_once()
+    last_job_start, on_start = cls.call_args.args
+    assert last_job_start == LAST
     cls.return_value.present.assert_called_once()
+    # The sheet's answer is the Start.
+    on_start(LAST)
+    run.assert_called_once_with(LAST)
 
 
 def _general_page(context):

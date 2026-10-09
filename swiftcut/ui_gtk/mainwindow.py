@@ -10,6 +10,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 from raygeo.ops.axis import Axis
 
 from .. import __version__, const
+from .. import config as app_config
 from ..addon_mgr.update_cmd import UpdateCommand
 from ..context import get_context
 from ..core.asset_registry import asset_type_registry
@@ -19,6 +20,7 @@ from ..core.registration import call_registration_hooks
 from ..core.undo import Command, HistoryManager
 from ..core.workpiece import WorkPiece
 from ..doceditor.editor import DocEditor
+from ..doceditor.job_history import JobHistory
 from ..machine.cmd import MachineCmd
 from ..machine.driver.driver import DeviceState, DeviceStatus
 from ..machine.driver.dummy import NoDeviceDriver
@@ -68,6 +70,8 @@ from .layout import (
     SPACE_GROUP,
     stylesheet,
 )
+from .machine.job_history_dialog import JobHistoryWindow
+from .machine.job_history_recorder import JobHistoryRecorder
 from .machine.settings_dialog import MachineSettingsDialog
 from .machine.start_position_dialog import request_start
 from .main_menu import MainMenu
@@ -599,6 +603,19 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self.doc_editor.pipeline.job_generation_finished.connect(
             self._on_job_generation_finished_for_preview
+        )
+
+        # The job history follows every Start from here, and a Stop
+        # from either button marks the job stopped.
+        self.job_history = JobHistory(app_config.JOB_HISTORY_DIR)
+        self.job_history_recorder = JobHistoryRecorder(
+            self, self.job_history
+        )
+        self.action_manager.get_action("machine-cancel").connect(
+            "activate", self._on_stop_pressed
+        )
+        self.bottom_panel.jog_widget.stop_btn.connect(
+            "clicked", self._on_stop_pressed
         )
 
         # Set up config signals.
@@ -2377,6 +2394,48 @@ class MainWindow(Adw.ApplicationWindow):
     def show_about_dialog(self, action, param):
         dialog = AboutDialog(transient_for=self)
         dialog.present()
+
+    def show_job_history(self, action, param):
+        """Opens Machine > Job History for the active machine."""
+        JobHistoryWindow(self, transient_for=self).present()
+
+    def _on_stop_pressed(self, *args):
+        self.job_history_recorder.stop_pressed()
+
+    def start_when_settled(self):
+        """
+        Starts the document once its job is ready, through
+        win.machine-send like Start: its checks, the sanity check and,
+        in Crawford mode, the Start sheet all come first. Job
+        history's Run Again, right after a load.
+        """
+        editor = self.doc_editor
+        doc = editor.doc
+
+        def on_settled(sender):
+            editor.document_settled.disconnect(on_settled)
+            # After every other settled handler has updated Start.
+            GLib.idle_add(self._start_settled_doc, doc)
+
+        if editor.is_processing:
+            editor.document_settled.connect(on_settled, weak=False)
+        else:
+            GLib.idle_add(self._start_settled_doc, doc)
+
+    def _start_settled_doc(self, doc):
+        if self.doc_editor.doc is not doc:
+            return GLib.SOURCE_REMOVE
+        if self.action_manager.get_action("machine-send").get_enabled():
+            self.activate_action("win.machine-send", None)
+        else:
+            self._on_editor_notification(
+                self,
+                message=_(
+                    "The job is loaded, but the machine cannot start it "
+                    "now."
+                ),
+            )
+        return GLib.SOURCE_REMOVE
 
     def show_getting_started(self, action, param):
         """Opens the first-run guide, whether or not it was seen."""

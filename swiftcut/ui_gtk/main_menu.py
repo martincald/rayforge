@@ -193,6 +193,10 @@ class MainMenu(Gio.Menu):
         job_group.append(_("Cancel Job"), "win.machine-cancel")
         machine_menu.append_section(None, job_group)
 
+        history_group = Gio.Menu()
+        history_group.append(_("Job History…"), "win.job-history")
+        machine_menu.append_section(None, history_group)
+
         machine_settings_group = Gio.Menu()
         machine_settings_group.append(
             _("Machine Settings"), "win.machine-settings"

@@ -1,14 +1,25 @@
+import logging
 from collections.abc import Callable
 from gettext import gettext as _
 
+from blinker import Signal
 from gi.repository import Adw, Gtk
 
 from ...context import get_context
 from ...machine.models.machine import Machine
 
+logger = logging.getLogger(__name__)
+
 # Runs a Start: with None from the head's current position, or with a
 # machine-space (x, y) in mm, from the last job's start position.
 StartRun = Callable[[tuple[float, float] | None], None]
+
+# Sent on the main thread just before a chosen Start runs, from the
+# toolbar or the jog panel alike, with the window it was asked from as
+# sender and machine=. Watching only, for the job history: a watcher
+# that fails never stops the Start, and a Start that is refused still
+# goes on to be refused.
+start_chosen = Signal()
 
 
 class StartPositionDialog(Adw.MessageDialog):
@@ -63,10 +74,18 @@ def request_start(
     With Crawford mode off, this is Start as it always was: run(None),
     straight away and with no sheet. With it on, the sheet asks first.
     """
+
+    def start(start_at: tuple[float, float] | None):
+        try:
+            start_chosen.send(parent, machine=machine)
+        except Exception:
+            logger.exception("A Start watcher failed")
+        run(start_at)
+
     if not get_context().config.crawford_mode:
-        run(None)
+        start(None)
         return
-    dialog = StartPositionDialog(machine.last_job_start, run)
+    dialog = StartPositionDialog(machine.last_job_start, start)
     if isinstance(parent, Gtk.Window):
         dialog.set_transient_for(parent)
     dialog.present()

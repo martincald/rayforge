@@ -192,6 +192,41 @@ class ProjectCmd:
             context = get_context()
             context.config.set_last_opened_project(file_path)
 
+    def load_project_copy(
+        self, file_path: Path, then: Callable[[], None] | None = None
+    ):
+        """
+        Loads a project as an untitled, unchanged document, after the
+        unsaved-changes prompt; job history's Load. Recent files and
+        the last opened project are left alone, and then runs once the
+        copy is loaded.
+        """
+        if self._editor.is_saved:
+            self._load_project_copy(file_path, then)
+            return
+
+        def on_response(response: str):
+            if response == "cancel":
+                return
+            if response == "save":
+                self.on_save_project(None, None)
+                if not self._editor.is_saved:
+                    return
+            self._load_project_copy(file_path, then)
+
+        self.show_unsaved_changes_dialog(on_response)
+
+    def _load_project_copy(
+        self, file_path: Path, then: Callable[[], None] | None
+    ):
+        if not self._editor.file.load_project_from_path(
+            file_path, untitled=True
+        ):
+            return
+        self._win.on_doc_changed(self._editor.doc)
+        if then is not None:
+            then()
+
     def on_open_recent(self, action, param):
         """Action handler for opening a file from the recent menu."""
         uri = param.get_string()

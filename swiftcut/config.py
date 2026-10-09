@@ -130,6 +130,8 @@ BUILTIN_RECIPES_FILE = (
     Path(__file__).parent / "resources" / "recipes" / "defaults.yaml"
 )
 USER_COLOR_PRESETS_DIR = CONFIG_DIR / "color_presets"
+# The last jobs run on each machine (Machine > Job History).
+JOB_HISTORY_DIR = CONFIG_DIR / "job_history"
 
 ADDON_REGISTRY_URL = (
     "https://raw.githubusercontent.com/barebaric/rayforge-registry/"

@@ -246,6 +246,7 @@ class ActionManager:
         self._add_action("save_debug_log", self.win.on_save_debug_log)
         self._add_action("settings", self.win.show_settings)
         self._add_action("machine-settings", self.win.show_machine_settings)
+        self._add_action("job-history", self.win.show_job_history)
 
         # View Actions
         cv = get_context().config.canvas_view
