@@ -160,8 +160,8 @@ async def test_layout(doc_editor, task_mgr, bed, tmp_path, name, monkeypatch):
     await bench.settle(doc_editor, task_mgr)
     print(
         f"\nRESULT {name} fill={FILL} boundary={BOUNDARY} "
-        f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.1f}s "
-        f"warm={warm:.1f}s stall={stall * 1000:.0f}ms "
+        f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.2f}s "
+        f"warm={warm:.2f}s stall={stall * 1000:.0f}ms "
         f"warm_stall={warm_stall * 1000:.0f}ms "
         f"main=read {own['read'] * 1000:.0f}+apply "
         f"{own['apply'] * 1000:.0f}ms moved={moved}/{len(workpieces)} "
@@ -195,7 +195,7 @@ async def test_profile(doc_editor, task_mgr, bed, tmp_path):
     stats.sort_stats("cumulative").print_stats(12)
     print(
         f"\nPROFILE forty-40 fill={FILL} boundary={BOUNDARY} "
-        f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.1f}s "
+        f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.2f}s "
         f"moved={len(deltas)}/{len(workpieces)}\n{out.getvalue()}"
     )
 

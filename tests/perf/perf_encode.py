@@ -21,9 +21,12 @@ to ops generation or to the encoder.
 """
 
 import asyncio
+import cProfile
 import json
+import os
 import statistics
 import time
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -37,6 +40,9 @@ from swiftcut.pipeline.pipeline import Pipeline
 HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "build" / "perf"
 RUNS = 3
+# With $PERF_PROFILE=<prefix>, one extra, untimed encode per asset is
+# profiled to <prefix>.<asset>.encode.prof.
+PROFILE = os.environ.get("PERF_PROFILE")
 
 # The generated assets are laid out far larger than the conftest
 # machine's 200x150 bed, and an off-bed job is a different code path.
@@ -75,8 +81,17 @@ def _load(doc, context, contour_cls, asset):
     return pieces
 
 
+def _load_project(path):
+    """A .ryp benchmark document (tests/perf/make_docs.py), steps and all."""
+    with zipfile.ZipFile(path) as zf:
+        return Doc.from_dict(json.loads(zf.read("project.json")))
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("asset", ["small.svg", "large.dxf", "raster.png"])
+@pytest.mark.parametrize(
+    "asset",
+    ["small.svg", "large.dxf", "raster.png", "forty.ryp", "two_layer.ryp"],
+)
 async def test_measure(
     asset,
     task_mgr,
@@ -93,8 +108,12 @@ async def test_measure(
     machine.set_axis_extents(*BED_MM)
     machine.hydrate()
 
-    doc = Doc()
-    pieces = _load(doc, context_initializer, contour_step_class, asset)
+    if asset.endswith(".ryp"):
+        doc = _load_project(HERE / asset)
+        pieces = len(doc.all_workpieces)
+    else:
+        doc = Doc()
+        pieces = _load(doc, context_initializer, contour_step_class, asset)
     pipeline = Pipeline(
         doc, task_mgr, context_initializer.artifact_store, machine
     )
@@ -110,6 +129,11 @@ async def test_measure(
             with pipeline.artifact_store.checkout_handle(handle) as art:
                 assert art is not None
                 t1 = time.perf_counter()
+                if PROFILE and not enc_ms:
+                    profile = cProfile.Profile()
+                    profile.runcall(build_rd_bytes, art.ops, machine, doc)
+                    profile.dump_stats(f"{PROFILE}.{asset}.encode.prof")
+                    t1 = time.perf_counter()
                 blob = build_rd_bytes(art.ops, machine, doc)
                 t2 = time.perf_counter()
                 blob_len = len(blob)

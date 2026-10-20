@@ -156,6 +156,11 @@ cmd = "pytest -v --ignore=tests/ui_gtk"
 env = { GI_TYPELIB_PATH = "$(pkgconf --variable=typelibdir gobject-introspection-1.0):/usr/lib/x86_64-linux-gnu/girepository-1.0"}
 cmd = "pytest -v -m ui"
 
+[tasks.bench]
+# The performance table of docs/PERF_AUDIT_M1.md; steps can be named,
+# e.g. `pixi run bench cold canvas report`.
+cmd = "python scripts/perf/measure.py"
+
 [tasks.screenshot]
 env = { GI_TYPELIB_PATH = "$(pkgconf --variable=typelibdir gobject-introspection-1.0)"}
 cmd = "scripts/with_gdk.sh scripts/screenshot/cli.py"
