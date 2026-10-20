@@ -6,8 +6,10 @@ raster sweeps across line by line. A cut at zero power draws as the
 travel it is. The head is a dot on the segment it is running.
 
 Finished segments are kept in an image of the canvas, so a frame only
-adds the segments finished since the last one. Moving the view, a
-theme change or scrubbing back starts the image again.
+adds the segments finished since the last one. Copies of that image
+are kept at a few points through the job, so scrubbing back starts
+from the last copy before the new time instead of from the start.
+Moving the view or a theme change starts the image again.
 """
 
 import math
@@ -33,6 +35,10 @@ _LINE = 1.0
 _CUT_LINE = 2.0
 _TRAVEL_DASH = (4.0, 3.0)
 _HEAD_RADIUS = 3.0
+
+# How many copies of the finished image a job keeps, evenly spaced by
+# segment count: scrubbing back redraws at most 1/(this + 1) of the job.
+_CHECKPOINTS = 4
 
 # Drawn in this order, so cuts land on top.
 _KINDS = (TRAVEL, SCAN, CUT)
@@ -112,6 +118,8 @@ class JobPreviewElement(CanvasElement):
         self._finished: cairo.ImageSurface | None = None
         self._finished_key: tuple | None = None
         self._finished_count = 0
+        # Copies of the finished image: (segments finished, image).
+        self._checkpoints: list[tuple[int, cairo.ImageSurface]] = []
 
     def set_model(self, model: JobPreviewModel | None):
         """Show a preview from its start, or none."""
@@ -120,6 +128,7 @@ class JobPreviewElement(CanvasElement):
         self._finished = None
         self._finished_key = None
         self._finished_count = 0
+        self._checkpoints = []
         self.set_visible(model is not None)
 
     def set_time(self, t: float):
@@ -171,23 +180,71 @@ class JobPreviewElement(CanvasElement):
             scale,
             tuple(colors.items()),
         )
-        if (
-            self._finished is None
-            or key != self._finished_key
-            or done < self._finished_count
-        ):
-            self._finished = cairo.ImageSurface(
-                cairo.FORMAT_ARGB32, width * scale, height * scale
-            )
-            self._finished.set_device_scale(scale, scale)
+        if self._finished is None or key != self._finished_key:
+            self._finished = _image(width, height, scale)
             self._finished_key = key
             self._finished_count = 0
-        if done > self._finished_count:
-            draw_segments(
-                cairo.Context(self._finished),
-                view,
-                colors,
-                self.model.segments[self._finished_count : done],
+            self._checkpoints = []
+        else:
+            # From the last copy at or before done, when that is back
+            # in time or further on than the image already is.
+            count, copy = max(
+                (c for c in self._checkpoints if c[0] <= done),
+                key=lambda c: c[0],
+                default=(0, None),
             )
-            self._finished_count = done
+            if done < self._finished_count or count > self._finished_count:
+                self._finished = _image(width, height, scale, copy)
+                self._finished_count = count
+        if done > self._finished_count:
+            self._draw_to(view, colors, done)
         return self._finished
+
+    def _draw_to(
+        self, view: cairo.Matrix, colors: dict[str, tuple], done: int
+    ):
+        """
+        Draws the segments up to done onto the finished image, keeping a
+        copy of it at each checkpoint passed.
+        """
+        assert self._finished is not None and self.model is not None
+        segments = self.model.segments
+        step = max(1, math.ceil(len(segments) / (_CHECKPOINTS + 1)))
+        kept = {count for count, _ in self._checkpoints}
+        ctx = cairo.Context(self._finished)
+        start = self._finished_count
+        while start < done:
+            end = min(done, (start // step + 1) * step)
+            draw_segments(ctx, view, colors, segments[start:end])
+            if end % step == 0 and end not in kept:
+                self._checkpoints.append((end, _copy(self._finished)))
+                kept.add(end)
+            start = end
+        self._finished_count = done
+
+
+def _image(
+    width: int,
+    height: int,
+    scale: int,
+    source: cairo.ImageSurface | None = None,
+) -> cairo.ImageSurface:
+    """A canvas-sized image at the device scale; source's pixels if given."""
+    image = cairo.ImageSurface(
+        cairo.FORMAT_ARGB32, width * scale, height * scale
+    )
+    image.set_device_scale(scale, scale)
+    if source is not None:
+        ctx = cairo.Context(image)
+        ctx.set_operator(cairo.OPERATOR_SOURCE)
+        ctx.set_source_surface(source, 0, 0)
+        ctx.paint()
+    return image
+
+
+def _copy(image: cairo.ImageSurface) -> cairo.ImageSurface:
+    """A copy of a canvas-sized image."""
+    scale = int(image.get_device_scale()[0])
+    return _image(
+        image.get_width() // scale, image.get_height() // scale, scale, image
+    )
