@@ -132,6 +132,9 @@ this pass could verify:
    module for its version string; pass it in instead.
 5. `machine.cmd -> doceditor.editor`: pass the document in.
 
-The import-linter contract committed in C3 records the 55 existing
-chains as ignored, so the count can only go down: any new upward
-import fails the contract.
+The import-linter contract committed in C3 (`.importlinter`) states
+the layers and ignores the 46 direct imports that today's 55 broken
+chains run through (19 `pipeline -> machine`, 8 `doceditor ->
+pipeline`, 7 `core -> machine`, 4 `context -> machine`, and 8 more
+through `context`, `debug`, `doceditor` and `image`). It passes as it
+stands, and a new upward import fails it (checked by adding one).

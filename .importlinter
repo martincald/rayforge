@@ -1,0 +1,67 @@
+# The layering of swiftcut (docs/architecture.md): a package may import
+# the layers below it, never the ones above. Run with `lint-imports`.
+#
+# It does not hold today. ignore_imports lists every direct import that
+# breaks it as of 2026-10-20 (docs/cleanup-inventory.md, "Structure"),
+# so the contract passes and any NEW upward import fails it. The list
+# only shrinks: removing an entry means removing that import.
+
+[importlinter]
+root_package = swiftcut
+include_external_packages = False
+
+[importlinter:contract:layers]
+name = core <- pipeline <- machine <- ui_gtk
+type = layers
+layers =
+    swiftcut.ui_gtk
+    swiftcut.machine
+    swiftcut.pipeline
+    swiftcut.core
+ignore_imports =
+    swiftcut.context -> swiftcut.machine.device.manager
+    swiftcut.context -> swiftcut.machine.models.dialect_manager
+    swiftcut.context -> swiftcut.machine.models.machine
+    swiftcut.context -> swiftcut.machine.models.manager
+    swiftcut.context -> swiftcut.pipeline.artifact.store
+    swiftcut.context -> swiftcut.ui_gtk.shared.theme_service
+    swiftcut.core.bed_bounds -> swiftcut.machine.models.machine
+    swiftcut.core.config -> swiftcut.machine.models.machine
+    swiftcut.core.recipe -> swiftcut.machine.models.machine
+    swiftcut.core.recipe_manager -> swiftcut.machine.models.machine
+    swiftcut.core.step -> swiftcut.machine.models.head
+    swiftcut.core.step -> swiftcut.machine.models.machine
+    swiftcut.core.step -> swiftcut.machine.models.spindle
+    swiftcut.core.step -> swiftcut.pipeline.transformer.registry
+    swiftcut.debug -> swiftcut.ui_gtk.about
+    swiftcut.doceditor.editor -> swiftcut.pipeline.artifact
+    swiftcut.doceditor.editor -> swiftcut.pipeline.artifact.handle
+    swiftcut.doceditor.editor -> swiftcut.pipeline.assembly_warnings
+    swiftcut.doceditor.editor -> swiftcut.pipeline.pipeline
+    swiftcut.doceditor.editor -> swiftcut.pipeline.view
+    swiftcut.doceditor.file_cmd -> swiftcut.machine.driver.ruida.ruida_encoder
+    swiftcut.doceditor.file_cmd -> swiftcut.machine.models.machine
+    swiftcut.doceditor.file_cmd -> swiftcut.pipeline.artifact
+    swiftcut.doceditor.file_cmd -> swiftcut.pipeline.artifact.handle
+    swiftcut.doceditor.group_cmd -> swiftcut.pipeline.pipeline
+    swiftcut.doceditor.layer_cmd -> swiftcut.ui_gtk.canvas2d.surface
+    swiftcut.image.ruida.parser -> swiftcut.machine.driver.ruida.ruida_util
+    swiftcut.pipeline.encoder.context -> swiftcut.machine.models.machine
+    swiftcut.pipeline.encoder.gcode -> swiftcut.machine.models.dialect
+    swiftcut.pipeline.encoder.gcode -> swiftcut.machine.models.machine
+    swiftcut.pipeline.encoder.rust_helpers -> swiftcut.machine.models.dialect
+    swiftcut.pipeline.encoder.rust_helpers -> swiftcut.machine.models.laser
+    swiftcut.pipeline.encoder.rust_helpers -> swiftcut.machine.models.machine
+    swiftcut.pipeline.encoder.rust_helpers -> swiftcut.machine.models.macro
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.driver
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.driver.dummy
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.kinematic_math
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.models.coordspace
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.models.dialect
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.models.machine
+    swiftcut.pipeline.intent_builder -> swiftcut.machine.models.rotary_module
+    swiftcut.pipeline.intent_controller -> swiftcut.machine.models.machine
+    swiftcut.pipeline.job_preview -> swiftcut.machine.models.machine
+    swiftcut.pipeline.pipeline -> swiftcut.machine.kinematic_mapping
+    swiftcut.pipeline.pipeline -> swiftcut.machine.models.machine
+    swiftcut.pipeline.view.view_manager -> swiftcut.machine.models.machine
