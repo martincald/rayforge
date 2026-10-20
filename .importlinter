@@ -1,10 +1,13 @@
 # The layering of swiftcut (docs/architecture.md): a package may import
 # the layers below it, never the ones above. Run with `lint-imports`.
 #
-# It does not hold today. ignore_imports lists every direct import that
-# breaks it as of 2026-10-20 (docs/cleanup-inventory.md, "Structure"),
-# so the contract passes and any NEW upward import fails it. The list
-# only shrinks: removing an entry means removing that import.
+# It does not hold today. ignore_imports lists the direct imports that
+# today's broken chains run through, as of 2026-10-20
+# (docs/cleanup-inventory.md, "Structure"), so the contract passes and
+# any NEW upward import fails it. Some entries are allowed directions
+# in themselves (doceditor -> pipeline) and are listed only because an
+# indirect chain through context or debug passes them: remove an entry
+# by cutting the chain, not by moving a legitimate import.
 
 [importlinter]
 root_package = swiftcut
