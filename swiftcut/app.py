@@ -257,6 +257,12 @@ def main():
 
     defer_startup_imports()
 
+    # GL is GTK's macOS default and measured fastest on an M1; pinned
+    # so a GTK update cannot move the canvas to a slower renderer
+    # (docs/PERF_AUDIT_M1.md). GSK_RENDERER set by the user still wins.
+    if sys.platform == "darwin":
+        os.environ.setdefault("GSK_RENDERER", "opengl")
+
     # We need Adw for the class definition, so this one import is okay here.
     import gi
 
