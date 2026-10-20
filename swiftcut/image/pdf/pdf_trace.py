@@ -5,9 +5,6 @@ from gettext import gettext as _
 from pathlib import Path
 from typing import ClassVar
 
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
-
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
     import pyvips
@@ -53,6 +50,10 @@ class PdfTraceImporter(Importer):
         self._image: pyvips.Image | None = None
 
     def scan(self) -> ImportManifest:
+        # Imported here: pypdf takes about 0.1 s to import.
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+
         try:
             reader = PdfReader(io.BytesIO(self.raw_data))
             if not reader.pages:
@@ -138,6 +139,9 @@ class PdfTraceImporter(Importer):
         )
 
     def parse(self) -> ParsingResult | None:
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+
         try:
             reader = PdfReader(io.BytesIO(self.raw_data))
             media_box = reader.pages[0].mediabox

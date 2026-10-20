@@ -6,14 +6,8 @@ from collections.abc import Iterable
 from dataclasses import replace
 from gettext import gettext as _
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-import ezdxf
-import ezdxf.math
-from ezdxf import bbox
-from ezdxf.addons import text2path
-from ezdxf.lldxf.const import DXFStructureError
-from ezdxf.path import Command
 from raygeo.geo import Geometry
 from raygeo.geo.types import Rect
 
@@ -37,6 +31,13 @@ from ..structures import (
     VectorizationResult,
 )
 from .renderer import DXF_RENDERER
+
+if TYPE_CHECKING:
+    import ezdxf.document
+    import ezdxf.math
+
+# ezdxf is imported where a drawing is read: it takes about 0.2 s,
+# too long to pay before the window is up.
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,9 @@ class DxfImporter(Importer):
         self._geometries_by_layer: dict[str | None, Geometry] = {}
 
     def scan(self) -> ImportManifest:
+        import ezdxf
+        from ezdxf.lldxf.const import DXFStructureError
+
         try:
             data_str = self.raw_data.decode("utf-8", errors="replace")
             normalized_str = data_str.replace("\r\n", "\n")
@@ -291,6 +295,9 @@ class DxfImporter(Importer):
         ]
 
     def parse(self) -> ParsingResult | None:
+        import ezdxf
+        from ezdxf.lldxf.const import DXFStructureError
+
         try:
             data_str = self.raw_data.decode("utf-8", errors="replace")
             normalized_str = data_str.replace("\r\n", "\n")
@@ -377,6 +384,10 @@ class DxfImporter(Importer):
         Sorting is critical for creating continuous paths from scrambled
         modelspace entities.
         """
+        import ezdxf.math
+        import ezdxf.path
+        from ezdxf.addons import text2path
+
         raw_paths_by_layer: defaultdict[str, list] = defaultdict(list)
 
         def process_entity(entity, parent_transform: ezdxf.math.Matrix44):
@@ -495,6 +506,8 @@ class DxfImporter(Importer):
         return ordered
 
     def _consume_native_path(self, geo: Geometry, path):
+        from ezdxf.path import Command
+
         if not path:
             return
 
@@ -540,6 +553,8 @@ class DxfImporter(Importer):
         return units_to_mm.get(insunits, default) or default
 
     def _get_bounds_native(self, doc):
+        from ezdxf import bbox
+
         entity_bbox = bbox.extents(doc.modelspace(), fast=True)
         if not entity_bbox.has_data:
             return None
@@ -547,6 +562,8 @@ class DxfImporter(Importer):
         return (min_p.x, min_p.y, (max_p.x - min_p.x), (max_p.y - min_p.y))
 
     def _get_bounds_mm(self, doc):
+        from ezdxf import bbox
+
         entity_bbox = bbox.extents(doc.modelspace(), fast=True)
         if not entity_bbox.has_data:
             return None

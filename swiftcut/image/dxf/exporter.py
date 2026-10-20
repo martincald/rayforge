@@ -4,7 +4,6 @@ import io
 import math
 from gettext import gettext as _
 
-import ezdxf
 from raygeo.geo import Arc, Bezier, Geometry, Line, Move
 from raygeo.geo.shape.arc import get_arc_angles
 from raygeo.geo.shape.bezier import linearize_bezier_segment
@@ -31,6 +30,9 @@ class GeometryDxfExporter(BaseExporter):
         return self._geometry_to_dxf(self.geometry)
 
     def _geometry_to_dxf(self, geometry: Geometry) -> bytes:
+        # Imported here: ezdxf takes about 0.2 s to import.
+        import ezdxf
+
         doc = ezdxf.new()  # type: ignore[attr-defined]
         doc.header["$INSUNITS"] = 4  # Millimeters
         msp = doc.modelspace()
@@ -134,6 +136,8 @@ class MultiGeometryDxfExporter(BaseExporter):
         non_empty = [g for g in self.geometries if not g.is_empty()]
         if not non_empty:
             raise ValueError("Cannot export: All geometries are empty.")
+
+        import ezdxf
 
         doc = ezdxf.new()  # type: ignore[attr-defined]
         doc.header["$INSUNITS"] = 4  # Millimeters

@@ -3,9 +3,6 @@ import logging
 import warnings
 from typing import TYPE_CHECKING, Optional
 
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
-
 from ..base_renderer import RasterRenderer, RenderSpecification
 
 with warnings.catch_warnings():
@@ -111,6 +108,10 @@ class PdfRenderer(RasterRenderer):
         )
 
     def _get_page_points(self, data: bytes) -> tuple[float, float] | None:
+        # Imported here: pypdf takes about 0.1 s to import.
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+
         try:
             reader = PdfReader(io.BytesIO(data))
             mb = reader.pages[0].mediabox
