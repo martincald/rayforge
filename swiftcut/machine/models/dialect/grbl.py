@@ -1,6 +1,38 @@
 from gettext import gettext as _
+from typing import Any
 
 from .base import GcodeDialect
+
+
+def grbl_common() -> dict[str, Any]:
+    """
+    The fields every Grbl dialect shares: machine control, air, homing,
+    jogging, probing and the job frame. Fresh lists each call, so no
+    two dialects share one.
+    """
+    return {
+        "omit_unchanged_coords": True,
+        "laser_off": "M5",
+        "focus_laser_on": "M3 S{power:.0f}",
+        "tool_change": "T{tool_number}",
+        "set_speed": "",
+        "bezier_cubic": "",  # not supported by Grbl
+        "air_assist_on": "M8",
+        "air_assist_off": "M9",
+        "home_all": "$H",
+        "home_axis": "$H{axis_letter}",
+        "move_to": "$J=G90 G21 F{speed} X{x} Y{y}",
+        "jog": "$J=G91 G21 F{speed}",
+        "clear_alarm": "$X",
+        "set_wcs_offset": "G10 L2 P{p_num} X{x} Y{y} Z{z}",
+        "probe_cycle": "G38.2 {axis_letter}{max_travel} F{feed_rate}",
+        "preamble": ["G21 ;Set units to mm", "G90 ;Absolute positioning"],
+        "postscript": [
+            "M5 ;Ensure laser is off",
+            "G0 X0 Y0 ;Return to origin",
+        ],
+    }
+
 
 GRBL_DIALECT = GcodeDialect(
     uid="grbl",
@@ -10,29 +42,10 @@ GRBL_DIALECT = GcodeDialect(
         "and hobby CNCs"
     ),
     can_g0_with_speed=False,
-    omit_unchanged_coords=True,
     laser_on="M4 S{power:.0f}",
-    laser_off="M5",
-    focus_laser_on="M3 S{power:.0f}",
-    tool_change="T{tool_number}",
-    set_speed="",
     travel_move="G0{x_cmd}{y_cmd}{z_cmd}{extra_cmd}",
     linear_move="G1{x_cmd}{y_cmd}{z_cmd}{extra_cmd}{f_command}",
     arc_cw="G2{x_cmd}{y_cmd}{z_cmd}{extra_cmd} I{i} J{j}{f_command}",
     arc_ccw="G3{x_cmd}{y_cmd}{z_cmd}{extra_cmd} I{i} J{j}{f_command}",
-    bezier_cubic="",  # not supported by Grbl
-    air_assist_on="M8",
-    air_assist_off="M9",
-    home_all="$H",
-    home_axis="$H{axis_letter}",
-    move_to="$J=G90 G21 F{speed} X{x} Y{y}",
-    jog="$J=G91 G21 F{speed}",
-    clear_alarm="$X",
-    set_wcs_offset="G10 L2 P{p_num} X{x} Y{y} Z{z}",
-    probe_cycle="G38.2 {axis_letter}{max_travel} F{feed_rate}",
-    preamble=["G21 ;Set units to mm", "G90 ;Absolute positioning"],
-    postscript=[
-        "M5 ;Ensure laser is off",
-        "G0 X0 Y0 ;Return to origin",
-    ],
+    **grbl_common(),
 )
