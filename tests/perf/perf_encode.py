@@ -133,16 +133,17 @@ async def test_measure(
             t1 = time.perf_counter()
             with pipeline.artifact_store.checkout_handle(handle) as art:
                 assert art is not None
+                ops = art.ops
                 t1 = time.perf_counter()
                 if PROFILE and not enc_ms:
                     profile = cProfile.Profile()
-                    profile.runcall(build_rd_bytes, art.ops, machine, doc)
+                    profile.runcall(build_rd_bytes, ops, machine, doc)
                     profile.dump_stats(f"{PROFILE}.{asset}.encode.prof")
                     t1 = time.perf_counter()
-                blob = build_rd_bytes(art.ops, machine, doc)
+                blob = build_rd_bytes(ops, machine, doc)
                 t2 = time.perf_counter()
                 blob_len = len(blob)
-                op_count = len(art.ops)
+                op_count = len(ops)
             ops_ms.append((t1 - t0) * 1000.0)
             enc_ms.append((t2 - t1) * 1000.0)
     finally:
