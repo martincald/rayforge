@@ -65,6 +65,59 @@ class NormalizationEngine:
     """
 
     @staticmethod
+    def raster_parse_result(
+        width_px: float, height_px: float, px_per_mm: float
+    ) -> ParsingResult:
+        """
+        The ParsingResult of a raster image: one default layer covering
+        the whole image, Y-down, at px_per_mm (vips' xres; the 96 dpi
+        screen default when the file has none).
+        """
+        document_bounds = (0.0, 0.0, width_px, height_px)
+        if px_per_mm > 0:
+            native_unit_to_mm = 1.0 / px_per_mm
+        else:
+            # A standard screen DPI when the metadata is missing.
+            native_unit_to_mm = 25.4 / 96.0
+
+        # World frame is Y-Up, so y-origin is 0.
+        x, _y, w, h = document_bounds
+        world_frame = (
+            x * native_unit_to_mm,
+            0.0,
+            w * native_unit_to_mm,
+            h * native_unit_to_mm,
+        )
+
+        # A temporary result, to calculate the background transform.
+        temp_result = ParsingResult(
+            document_bounds=document_bounds,
+            native_unit_to_mm=native_unit_to_mm,
+            is_y_down=True,
+            layers=[],
+            world_frame_of_reference=world_frame,
+            background_world_transform=None,  # type: ignore
+        )
+        bg_item = NormalizationEngine.calculate_layout_item(
+            document_bounds, temp_result
+        )
+
+        return ParsingResult(
+            document_bounds=document_bounds,
+            native_unit_to_mm=native_unit_to_mm,
+            is_y_down=True,
+            layers=[
+                LayerGeometry(
+                    layer_id="__default__",
+                    name="__default__",
+                    content_bounds=document_bounds,
+                )
+            ],
+            world_frame_of_reference=world_frame,
+            background_world_transform=bg_item.world_matrix,
+        )
+
+    @staticmethod
     def calculate_layout_item(
         bounds: Rect,
         parse_result: ParsingResult,

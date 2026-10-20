@@ -20,7 +20,6 @@ from ..base_importer import (
 from ..engine import NormalizationEngine
 from ..structures import (
     ImportManifest,
-    LayerGeometry,
     ParsingResult,
     VectorizationResult,
 )
@@ -126,51 +125,7 @@ class PngImporter(Importer):
             return None
 
         self._image = image
-
-        # Extract geometric facts
-        width_px = float(image.width)
-        height_px = float(image.height)
-        document_bounds = (0.0, 0.0, width_px, height_px)
-
-        if image.xres > 0:
-            native_unit_to_mm = 1.0 / image.xres
-        else:
-            default_dpi = 96.0
-            native_unit_to_mm = 25.4 / default_dpi
-
-        x, _y, w, h = document_bounds
-        world_frame = (
-            x * native_unit_to_mm,
-            0.0,
-            w * native_unit_to_mm,
-            h * native_unit_to_mm,
-        )
-
-        # Create temporary result to calculate background transform
-        temp_result = ParsingResult(
-            document_bounds=document_bounds,
-            native_unit_to_mm=native_unit_to_mm,
-            is_y_down=True,
-            layers=[],
-            world_frame_of_reference=world_frame,
-            background_world_transform=None,  # type: ignore
-        )
-
-        bg_item = NormalizationEngine.calculate_layout_item(
-            document_bounds, temp_result
-        )
-
-        return ParsingResult(
-            document_bounds=document_bounds,
-            native_unit_to_mm=native_unit_to_mm,
-            is_y_down=True,
-            layers=[
-                LayerGeometry(
-                    layer_id="__default__",
-                    name="__default__",
-                    content_bounds=document_bounds,
-                )
-            ],
-            world_frame_of_reference=world_frame,
-            background_world_transform=bg_item.world_matrix,
+        # VIPS stores resolution as pixels per millimeter in xres.
+        return NormalizationEngine.raster_parse_result(
+            float(image.width), float(image.height), image.xres
         )

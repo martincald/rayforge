@@ -226,3 +226,27 @@ def test_empty_content_fallback(engine):
     item = plan[0]
     # Should match page bounds
     assert item.crop_window == (0, 0, 100, 100)
+
+
+def test_raster_parse_result_at_the_files_resolution():
+    # vips' xres: 10 px/mm, so 300 x 200 px is 30 x 20 mm.
+    result = NormalizationEngine.raster_parse_result(300.0, 200.0, 10.0)
+
+    assert result.document_bounds == (0.0, 0.0, 300.0, 200.0)
+    assert result.native_unit_to_mm == pytest.approx(0.1)
+    assert result.is_y_down
+    assert result.world_frame_of_reference == pytest.approx(
+        (0.0, 0.0, 30.0, 20.0)
+    )
+    (layer,) = result.layers
+    assert layer.layer_id == "__default__"
+    assert layer.content_bounds == (0.0, 0.0, 300.0, 200.0)
+
+
+def test_raster_parse_result_without_a_resolution_is_96_dpi():
+    result = NormalizationEngine.raster_parse_result(96.0, 48.0, 0.0)
+
+    assert result.native_unit_to_mm == pytest.approx(25.4 / 96.0)
+    assert result.world_frame_of_reference == pytest.approx(
+        (0.0, 0.0, 25.4, 12.7)
+    )
