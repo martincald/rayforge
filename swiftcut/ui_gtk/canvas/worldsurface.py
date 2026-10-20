@@ -2,7 +2,8 @@ import logging
 import math
 import time
 
-from gi.repository import Gdk, GLib, Graphene, Gtk
+import cairo
+from gi.repository import Gdk, GLib, Gtk
 from raygeo.geo import Matrix
 
 from ..shared.keyboard import is_primary_modifier
@@ -239,8 +240,7 @@ class WorldSurface(Canvas):
     def set_pan(self, pan_x_mm: float, pan_y_mm: float) -> None:
         """Sets the pan position in mm and updates the axis importer."""
         self._camera.set_pan(pan_x_mm, pan_y_mm)
-        self._rebuild_view_transform()
-        self.queue_draw()
+        self._view_changed()
 
     def set_zoom(self, zoom_level: float) -> None:
         """
@@ -252,8 +252,7 @@ class WorldSurface(Canvas):
         """
         self._update_zoom_bounds()
         self._camera.set_zoom(zoom_level)
-        self._rebuild_view_transform()
-        self.queue_draw()
+        self._view_changed()
 
     def _update_zoom_bounds(self) -> None:
         """
@@ -373,8 +372,7 @@ class WorldSurface(Canvas):
         self._cancel_camera_animation()
         self._camera.set_zoom(zoom)
         self._camera.set_pan(pan_x_mm, pan_y_mm)
-        self._rebuild_view_transform()
-        self.queue_draw()
+        self._view_changed()
         self._log_camera("update")
 
     def _begin_navigation_gesture(self, name: str) -> None:
@@ -473,8 +471,7 @@ class WorldSurface(Canvas):
     def _on_animation_tick(self, widget, frame_clock) -> bool:
         now_ms = frame_clock.get_frame_time() / 1000.0
         still_running = self._camera_animator.advance(now_ms)
-        self._rebuild_view_transform()
-        self.queue_draw()
+        self._view_changed()
         if still_running:
             return GLib.SOURCE_CONTINUE
         self._animation_tick_id = None
@@ -795,23 +792,30 @@ class WorldSurface(Canvas):
         self._rebuild_view_transform()
         self.queue_draw()
 
+    def _view_changed(self) -> None:
+        """
+        Rebuilds the view transform and redraws for it. The redraws the
+        rebuild asks for are for the view too (Canvas.queue_view_draw),
+        so the frame may be composited from view tiles.
+        """
+        self._view_change_depth += 1
+        try:
+            self._rebuild_view_transform()
+        finally:
+            self._view_change_depth -= 1
+        self.queue_view_draw()
+
     def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
         # Update theme colors right before drawing to catch any live changes.
         self._update_theme_colors()
+        super().do_snapshot(snapshot)
 
-        # Create a Cairo context for the snapshot
-        width, height = self.get_width(), self.get_height()
-        ctx = snapshot.append_cairo(Graphene.Rect().init(0, 0, width, height))
-
-        # Draw grid and axes first, in pixel space, before any transformations.
+    def draw_frame(self, ctx: cairo.Context, width: int, height: int):
+        # Grid and axes first, in pixel space, then the elements.
         self._axis_renderer.draw_grid_and_labels(
             ctx, self.view_transform, width, height
         )
-
-        # Now, delegate to the base Canvas's snapshot implementation, which
-        # will correctly apply the view_transform and render all elements
-        # and selection handles.
-        super().do_snapshot(snapshot)
+        self.draw_content(ctx)
 
     def on_key_pressed(
         self,

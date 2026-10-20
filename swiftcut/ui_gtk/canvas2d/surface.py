@@ -3,8 +3,9 @@ import math
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
+import cairo
 from blinker import Signal
-from gi.repository import Gdk, GLib, Graphene, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 from ...context import get_context
 from ...core.bed_bounds import bed_rect
@@ -20,7 +21,7 @@ from ...machine.models.machine import Machine, StartCorner
 from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
 from ...shared.units.formatter import get_preferred_unit_factor
-from ..canvas import Canvas, CanvasElement, WorldSurface
+from ..canvas import CanvasElement, WorldSurface
 from ..shared.keyboard import SNAP_OVERRIDE_MASK, is_primary_modifier
 from . import context_menu
 from .elements.axis_extent_frame import (
@@ -866,12 +867,14 @@ class WorkSurface(WorldSurface):
             m_x, m_y = m_pos[0], m_pos[1]
             self.set_laser_dot_position(m_x, m_y)
 
-    def do_snapshot(self, snapshot: Gtk.Snapshot) -> None:
-        self._update_theme_colors()
+    def view_tiles_allowed(self) -> bool:
+        # The job preview's finished image is the widget's size.
+        return (
+            super().view_tiles_allowed()
+            and not self._job_preview_element.visible
+        )
 
-        width, height = self.get_width(), self.get_height()
-        ctx = snapshot.append_cairo(Graphene.Rect().init(0, 0, width, height))
-
+    def draw_frame(self, ctx: cairo.Context, width: int, height: int):
         # Get offset for axis labels (where 0,0 should appear)
         if self.machine:
             wcs_offset = self._get_active_layer_wcs_offset()
@@ -891,7 +894,8 @@ class WorkSurface(WorldSurface):
             origin_offset_mm=origin_offset_mm,
         )
 
-        Canvas.do_snapshot(self, snapshot)
+        # The elements and overlays, into the same cairo node.
+        self.draw_content(ctx)
 
     def _rebuild_view_transform(self) -> bool:
         """

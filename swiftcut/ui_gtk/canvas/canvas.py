@@ -12,7 +12,7 @@ from typing import (
 import cairo
 import numpy as np
 from blinker import Signal
-from gi.repository import Gdk, Graphene, Gtk
+from gi.repository import Gdk, GLib, Graphene, Gtk
 from raygeo.geo import Matrix
 
 from ...core.bed_bounds import clamp_offset, inside
@@ -42,6 +42,7 @@ from .region import (
     SHEAR_HANDLES,
     ElementRegion,
 )
+from .view_tiles import ViewTiles
 
 if TYPE_CHECKING:
     from raygeo.geo.types import Point, Rect
@@ -70,6 +71,9 @@ class Canvas(Gtk.DrawingArea):
     """
 
     BASE_HANDLE_SIZE = HANDLE_HIT_SIZE
+    # After a frame composited from scaled tiles, the canvas is drawn
+    # sharp again once the view has rested this long (ms).
+    VIEW_SETTLE_MS = 150
     # Rotation snaps with Ctrl to the fine step, with Shift to the coarse.
     SNAP_ANGLE_DEGREES = 5.0
     SHIFT_SNAP_ANGLE_DEGREES = 15.0
@@ -97,6 +101,18 @@ class Canvas(Gtk.DrawingArea):
         self._initial_world_transform: Matrix | None = None
 
         self._setup_interactions()
+
+        # --- View tiles (see view_tiles) ---
+        # Bumped by every queue_draw that is not for a moved view.
+        self._content_version = 0
+        # Above zero while the view transform is being rebuilt: the
+        # redraws asked for meanwhile are for the view, not content.
+        self._view_change_depth = 0
+        # The redraw was asked for by a moved view only.
+        self._view_moved = False
+        self._last_frame_key: tuple | None = None
+        self._view_tiles = ViewTiles()
+        self._view_settle_id: int | None = None
 
         # --- Interaction State ---
         self._hovered_elem: CanvasElement | None = None
@@ -249,12 +265,98 @@ class Canvas(Gtk.DrawingArea):
         self.root.set_size(float(width), float(height))
         self.root.allocate()
 
+    def queue_draw(self):
+        """
+        Redraws the canvas. Anything that changes what is drawn calls
+        this, which is what keeps view tiles from showing stale content.
+        """
+        if self._view_change_depth == 0:
+            self._content_version += 1
+        super().queue_draw()
+
+    def queue_view_draw(self):
+        """
+        Redraws for a moved view only, nothing else changed: the frame
+        may be composited from view tiles.
+        """
+        self._view_moved = True
+        super().queue_draw()
+
+    def view_tiles_allowed(self) -> bool:
+        """
+        Whether the drawing depends on nothing but the view transform
+        and content: not in edit mode, whose tools read the widget's
+        size. Subclasses add their own cases.
+        """
+        return self.edit_context is None
+
     def do_snapshot(self, snapshot):
         """GTK4 snapshot-based drawing handler."""
         width, height = self.get_width(), self.get_height()
-        bounds = Graphene.Rect().init(0, 0, width, height)
-        ctx = snapshot.append_cairo(bounds)
+        scale = self.get_scale_factor()
+        key = None
+        if self.view_tiles_allowed():
+            key = (width, height, scale, self._content_version)
+        if (
+            self._view_moved
+            and key is not None
+            and key == self._last_frame_key
+        ):
+            ratio = self._view_tiles.snapshot(
+                snapshot,
+                key,
+                self.view_transform,
+                (width, height),
+                scale,
+                self._draw_with_view,
+            )
+            if ratio != 1.0:
+                self._schedule_view_settle()
+        else:
+            self._view_tiles.clear()
+            bounds = Graphene.Rect().init(0, 0, width, height)
+            self.draw_frame(snapshot.append_cairo(bounds), width, height)
+        self._view_moved = False
+        self._last_frame_key = key
 
+    def _schedule_view_settle(self):
+        """Draws sharp at rest the view that scaled tiles showed."""
+        if self._view_settle_id is not None:
+            GLib.source_remove(self._view_settle_id)
+        self._view_settle_id = GLib.timeout_add(
+            self.VIEW_SETTLE_MS, self._on_view_settled
+        )
+
+    def _on_view_settled(self) -> bool:
+        self._view_settle_id = None
+        self.queue_draw()
+        return GLib.SOURCE_REMOVE
+
+    def _draw_with_view(
+        self, ctx: cairo.Context, view: Matrix, width: int, height: int
+    ):
+        """Draws the canvas as seen through view, for a view tile."""
+        current, self.view_transform = self.view_transform, view
+        try:
+            self.draw_frame(ctx, width, height)
+        finally:
+            self.view_transform = current
+
+    def draw_frame(self, ctx: cairo.Context, width: int, height: int):
+        """
+        Draws everything the canvas shows into ctx, widget pixels of a
+        width x height surface seen through view_transform. Subclasses
+        that draw underneath (a grid) draw here, into the same context:
+        GTK rasterizes and uploads every cairo node whole on each frame,
+        so one node per widget, not two.
+        """
+        self.draw_content(ctx)
+
+    def draw_content(self, ctx: cairo.Context):
+        """
+        Draws the elements under the view transform, then the overlays
+        in pixel space.
+        """
         # Apply the view transform to render all elements in world space.
         ctx.save()
         cairo_matrix = cairo.Matrix(*self.view_transform.for_cairo())
