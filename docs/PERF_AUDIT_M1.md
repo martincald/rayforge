@@ -240,3 +240,147 @@ Sources: [GTK 4.15/4.16 default renderer](https://www.phoronix.com/news/GTK-4.15
 [NGL renderer and MoltenVK](https://blogs.gnome.org/chergert/2021/02/24/gtk-4-ngl-renderer/),
 [cairo nodes are re-uploaded whole](https://discourse.gnome.org/t/trying-to-make-custom-widget-with-cairo-drawn-content-more-efficient/33787),
 [30 fps display-link pacing on macOS 26](https://github.com/zed-industries/zed/pull/65472).
+
+## P2 - fixes, one commit each
+
+Ranked work from the P0 table, in the order done. Each commit body has
+its own before/after.
+
+| commit | fix | measured |
+| --- | --- | --- |
+| `dd368a100` | AppKit imported by the first haptic tap, not by `ui_gtk.haptics` at import | first-paint UI import 1.696 -> 1.444 s |
+| `8635d448d` | ezdxf and pypdf imported where DXF/PDF files are read | 1.444 -> 1.196 s |
+| `0f46dc8e4` | pyvips, OpenCV, vtracer, PyMuPDF deferred to first use (`shared/util/lazy_import.py`); the libvips SVG probe lazy | 1.196 -> 0.854 s |
+| `9caa48249` | canvas pan/zoom frames composited from GPU tiles (`ui_gtk/canvas/view_tiles.py`); grid and content in one cairo node | pan p95 13.9 -> 5.2 ms, zoom 17.7 -> 4.3 ms, missed vsync 717 -> ~30 of 717 |
+| `b9b8bb21c` | `.rd` swizzle with `bytes.translate` (encoder internal; byte-identical on all five jobs) | `build_rd_bytes` two_layer 1684 -> 1586 ms |
+| `ab3a1a4f6` | job preview keeps copies of its finished image; a scrub starts from the last one | scrub p95 94.8 -> 41.9 ms |
+| `779afde61` | `GSK_RENDERER=opengl` pinned on macOS (P1) | no change: it is the default; this pins it |
+| `ea4675440` | what startup deferred loads on a thread 1 s after the window maps (`swiftcut/warm_up.py`) | first import of large.dxf 0.496 -> 0.268 s (gate run without -> with) |
+
+Also, not perf: `a3f19595f` draws the macOS splash at Retina
+resolution (the owner's report that it looked pixelated).
+
+Tried and dropped, by measurement: rewriting the encoder's scan-line
+loop with hoisted lookups and a batched bounds walk gave 1581 -> 1564
+ms on two_layer (1 %, inside the noise) for a protected-path change,
+so it was reverted; rebuilding the view tiles when a zoom out reveals
+new ones made zoom p95 worse (4.3 -> 29 ms), also reverted before
+commit.
+
+## After - the gate
+
+Measured on the same M1. The canvas, preview, layout, idle, soak and
+bundle rows are the gate run of `pixi run bench` at `779afde61`
+(2026-10-20 15:31-16:08; battery 37 % discharging at the start, on the
+charger at the end); cold start, import and encode are the re-run at
+`ea4675440` (16:08-16:22, battery 63-61 %), which has the warm-up the
+gate run did not.
+
+| metric | baseline | after | change | note |
+| --- | --- | --- | --- | --- |
+| a) cold start to window | 3.83 s | 1.96 s | -49 % |  |
+| a) cold start to splash | 0.49 s | 0.48 s | -2 % |  |
+| b) import small.svg | 0.013 s | 0.013 s | -0 % |  |
+| b) import large.dxf | 0.261 s | 0.268 s | +3 % |  |
+| b) import raster.png:decode | 0.072 s | 0.077 s | +6 % |  |
+| b) import raster.png:trace | 0.588 s | 0.581 s | -1 % |  |
+| b) import forty.ryp | 0.042 s | 0.008 s | -81 % |  |
+| b) import two_layer.ryp | 0.006 s | 0.007 s | +8 % |  |
+| c) ops small.svg (cold) | 211 ms | 242 ms | +14 % | see note 1 |
+| c) Ruida encode small.svg | 1.0 ms | 2.3 ms | +131 % | see note 1 |
+| c) ops large.dxf (cold) | 424 ms | 430 ms | +1 % |  |
+| c) Ruida encode large.dxf | 80.5 ms | 75.4 ms | -6 % |  |
+| c) ops raster.png (cold) | 209 ms | 230 ms | +10 % | see note 1 |
+| c) Ruida encode raster.png | 0.4 ms | 0.5 ms | +28 % | see note 1 |
+| c) ops forty.ryp (cold) | 350 ms | 402 ms | +15 % | see note 1 |
+| c) Ruida encode forty.ryp | 54.4 ms | 49.0 ms | -10 % |  |
+| c) ops two_layer.ryp (cold) | 3425 ms | 3388 ms | -1 % |  |
+| c) Ruida encode two_layer.ryp | 1656.7 ms | 1555.2 ms | -6 % |  |
+| d) large.dxf pan p95 | 13.9 ms | 6.6 ms | -53 % | p50 10.7 -> 3.7; missed vsync 717 -> 43 of 717 |
+| d) large.dxf zoom p95 | 18.1 ms | 6.4 ms | -65 % | p50 15.1 -> 3.5; missed vsync 717 -> 43 of 717 |
+| d) large.dxf pan_zoomed p95 | 17.6 ms | 11.2 ms | -36 % | p50 14.1 -> 3.7; missed vsync 717 -> 51 of 717 |
+| d) forty.ryp+selected pan p95 | 14.6 ms | 10.1 ms | -31 % | p50 11.0 -> 4.0; missed vsync 717 -> 61 of 717 |
+| d) forty.ryp+selected zoom p95 | 18.0 ms | 6.9 ms | -62 % | p50 15.0 -> 3.8; missed vsync 717 -> 52 of 717 |
+| d) forty.ryp+selected pan_zoomed p95 | 16.7 ms | 11.9 ms | -29 % | p50 13.5 -> 4.0; missed vsync 717 -> 61 of 717 |
+| e) auto-layout 40 pieces, cold | 2.21 s | 2.23 s | +1 % | warm 1.57 -> 1.48 s |
+| f) preview ready | 0.39 s | 0.37 s | -6 % |  |
+| f) preview play p95 | 17.3 ms | 14.5 ms | -16 % | p50 15.1 -> 12.4 |
+| f) preview scrub p95 | 94.8 ms | 51.1 ms | -46 % | p50 54.2 -> 28.5 |
+| g) idle connected | 0.49 % | 0.58 % | see note 2 | wakeups 32 -> 32/s, energy 0.4 -> 0.4 |
+| g) idle disconnected | 0.01 % | 0.03 % | see note 2 | wakeups 1 -> 1/s, energy 0.0 -> 0.0 |
+| g) idle hidden | 0.46 % | 0.35 % | see note 2 | wakeups 32 -> 31/s, energy 0.4 -> 0.3 |
+| h) footprint, 10 min idle soak | 333 -> 334 MB | 251 -> 248 MB | -26 % | growth +1.5 -> -3.7 MB |
+| i) .app size | 386 MB | 392 MB | see note 3 | 2466 -> 2760 files |
+| i) .app start to window | 4.02 s | 1.89 s | -53 % |  |
+
+**Note 1 - not regressions, checked back to back.** The ops and
+small-job encode rows read worse than the morning baseline, but the
+morning was a different machine state. Run alternately in the baseline
+worktree and at HEAD, minutes apart: small.svg ops 233 / 234 / 227 ms
+(baseline) against 228 / 226 / 239 ms (HEAD); raster.png 229 / 235 /
+208 against 228 / 212 / 214 ms; small.svg encode 2.56 / 2.38 / 2.00
+and 2.74 / 2.36 / 2.44 ms against 2.78 / 2.25 / 2.21 and 2.47 / 2.30 /
+2.24 ms. The baseline tree is as slow as HEAD when measured now.
+
+**Note 2 - idle, back to back.** Idle CPU on this Air moves with what
+else macOS is doing: the gate's three connected runs were 1.14, 0.58
+and 0.36 %. Run interleaved (baseline, HEAD, baseline, HEAD, one minute
+each): connected 0.95 / 0.58 / 0.54 / 0.36 %, disconnected 0.48 /
+0.035 / 0.019 / 0.037 %, with 31-33 wakeups/s and 0.5-1.7/s in every
+run. No regression. The connected figure is the Ruida status poll (32
+wakeups/s), which also runs with the window minimized (the "hidden"
+row); its cadence is in the protected driver
+(`RuidaDriver.STATUS_POLL_INTERVAL` 0.5 s, `LOOP_TICK_INTERVAL` 0.1 s)
+and was not touched: NEEDS-OWNER.
+
+**Note 3 - bundle.** The gate bundle has 294 more files than the
+baseline one, all `__pycache__/*.pyc` under `builtin_addons`: the gate
+worktree had run the test suite before the build, and the spec copies
+the add-on directories whole. Without the bytecode caches both bundles
+are 2 466 files, 385.8 and 386.1 MB. (The spec also ships the add-ons'
+`tests/` directories; noted for a packaging pass.)
+
+### Targets (P3)
+
+| target | baseline | after | verdict |
+| --- | --- | --- | --- |
+| cold start to window <= 1.5 s | 3.83 s | 1.96 s (bundle 1.89 s) | **not met**: what is left is spread over GTK/libadwaita setup (~0.3 s), the add-ons and their registration hooks (~0.2 s), building the main window (~0.6 s, of which the layer panel's material picker loads the material library, ~0.1 s) and the first frame. No single item left is over 0.2 s; going further means building parts of the window after the first frame. |
+| splash < 300 ms | 0.49 s | 0.48 s | **not met**: the splash is a child Python process that imports PyObjC; its interpreter start is the floor from source. |
+| large.dxf pan/zoom p95 <= 8 ms at 2x | 13.9-18.1 ms | pan 6.6 ms, zoom 6.4 ms; pan at 4x 11.2 ms; 40 selected 6.9-11.9 ms | **met at fit**; **not met** panning zoomed in or with a selection, where frames draw new tiles more often. Medians are 3.7-4.0 ms everywhere. |
+| import large.dxf <= 0.8 s | 0.26 s | 0.27 s | met |
+| encode large.dxf <= 0.8 s | 0.08 s | 0.08 s | met |
+| 40-piece auto-layout <= 2 s, UI responsive | 2.21 s cold, 1.57 s warm, stall 23 ms | 2.23 s cold, 1.48 s warm, stall 29 ms | **not met cold**: the first layout starts the worker pool (about 0.7 s); met warm; the UI stays responsive (longest stall under 30 ms). |
+| idle CPU < 1 % | 0.49 % | 0.36-0.58 % | met |
+| no RSS growth over 10 min | +1.5 MB | -3.7 MB | met; footprint 333 -> 251 MB |
+| energy impact "Low" at idle | 0.4 | 0.3-0.4 | met |
+
+### Gate record
+
+| check | baseline (`d9bbafcd4`) | gate (`779afde61`) |
+| --- | --- | --- |
+| non-UI suite | 6855 passed, 1 failed | 6866 passed, 2 failed |
+| UI suite (one process per file) | 1025 passed, 3 failed | 1033 passed, 3 failed |
+| ruff check swiftcut tests scripts | 34 | 31 |
+| pyright (pyproject include) | 310 errors | 329 at the gate commit; 310 at `797b96382` |
+| `pixi run bench` | - | reproduces the table (also as `pixi run --frozen bench`) |
+
+The failures: `test_bind_failure_on_a_fixed_local_port_is_visible`
+(known, Windows port semantics) at both; the UI suite's three known
+ones (`TestTrackpadContinuousZoom` x2,
+`test_identity_zoom_no_pan_matches_documented_composition`) at both;
+and at the gate `test_simulator_answers_over_loopback`, which binds
+the fixed UDP port 51311 that macOS `syslogd` held during the gate
+(seen in `netstat`); it fails identically at the baseline commit with
+the port taken. No new failure.
+
+**Gate: passed.** No metric regressed against the baseline tree
+measured back to back (notes 1-3), and every test failure is a
+baseline one.
+
+NEEDS-OWNER: a feel test on the M1 (pan, zoom - a zoom shows scaled
+tiles for about 150 ms before they sharpen -, the job preview, Auto
+Layout); a real job to the laser after `b9b8bb21c` (the encoder's
+swizzle; output byte-identical by test, not yet by laser);
+`sudo py-spy record` of a start, `powermetrics` at idle and an
+Instruments Time Profiler run with Xcode, none of which could run in
+this session.
