@@ -13,9 +13,9 @@ from swiftcut.core.color import ColorRGBA
 from swiftcut.image.base_renderer import Renderer, RenderSpecification
 from swiftcut.image.structures import FillRenderData, FillStyle
 from swiftcut.image.svg.svg_fallback import (
-    SVG_LOAD_AVAILABLE,
     cairo_surface_to_vips,
     render_svg_to_cairo,
+    svg_load_available,
 )
 
 with warnings.catch_warnings():
@@ -168,7 +168,7 @@ class SketchRenderer(Renderer):
         svg_bytes = svg_string.encode("utf-8")
 
         try:
-            if SVG_LOAD_AVAILABLE:
+            if svg_load_available():
                 image = pyvips.Image.svgload_buffer(svg_bytes)
             else:
                 surface = render_svg_to_cairo(svg_bytes, width, height)

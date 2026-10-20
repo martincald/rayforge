@@ -6,9 +6,9 @@ from xml.etree import ElementTree as ET
 from ..base_renderer import Renderer, RenderSpecification
 from ..ops_renderer import OPS_RENDERER
 from ..svg.svg_fallback import (
-    SVG_LOAD_AVAILABLE,
     cairo_surface_to_vips,
     render_svg_to_cairo,
+    svg_load_available,
 )
 
 with warnings.catch_warnings():
@@ -104,7 +104,7 @@ class LightBurnRenderer(Renderer):
         root.set("preserveAspectRatio", "xMidYMid meet")
         svg_bytes = ET.tostring(root)
         try:
-            if SVG_LOAD_AVAILABLE:
+            if svg_load_available():
                 return pyvips.Image.svgload_buffer(svg_bytes)
             surface = render_svg_to_cairo(svg_bytes, width, height)
             if surface:

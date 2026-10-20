@@ -10,9 +10,9 @@ from raygeo.svg.color import ColorAttr
 from ...core.vectorization_spec import LayerSource, PassthroughSpec, TraceSpec
 from ..base_renderer import Renderer, RenderSpecification
 from .svg_fallback import (
-    SVG_LOAD_AVAILABLE,
     cairo_surface_to_vips,
     render_svg_to_cairo,
+    svg_load_available,
 )
 from .svgutil import filter_svg_layers
 
@@ -159,7 +159,7 @@ class SvgRenderer(Renderer):
 
             svg_bytes = ET.tostring(root)
 
-            if SVG_LOAD_AVAILABLE:
+            if svg_load_available():
                 image = pyvips.Image.svgload_buffer(svg_bytes)
             else:
                 surface = render_svg_to_cairo(svg_bytes, width, height)

@@ -14,9 +14,9 @@ from raygeo.svg.length import parse_svg_length, svg_length_to_mm
 from raygeo.svg.metadata import extract_svg_metadata
 
 from .svg_fallback import (
-    SVG_LOAD_AVAILABLE,
     cairo_surface_to_vips,
     render_svg_to_cairo,
+    svg_load_available,
 )
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ def _get_margins_from_data(
         # accurate margin calculation.
         root.set("style", "overflow: visible")
 
-        if SVG_LOAD_AVAILABLE:
+        if svg_load_available():
             img = pyvips.Image.svgload_buffer(ET.tostring(root))
         else:
             surface = render_svg_to_cairo(

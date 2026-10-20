@@ -83,7 +83,9 @@ async def test_import_svg_export_gcode(
     - "fallback": Forces the Cairo/Rsvg fallback path
     """
     if use_fallback:
-        monkeypatch.setattr(svg_fallback, "SVG_LOAD_AVAILABLE", False)
+        # svg_fallback's own loader only, as patching its module flag
+        # did: the renderers hold their own reference to the check.
+        monkeypatch.setattr(svg_fallback, "svg_load_available", lambda: False)
 
     dialect_uid = "grbl"
     expected_file = "expected_square_grbl.gcode"

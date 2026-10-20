@@ -251,6 +251,12 @@ def main():
     if not {"-h", "--help", "--version"} & set(sys.argv[1:]):
         splash.spawn(base_dir / "swiftcut_splash.png")
 
+    # Libraries only an image or a PDF needs load when one is handled,
+    # not before the window is up.
+    from swiftcut.shared.util.lazy_import import defer_startup_imports
+
+    defer_startup_imports()
+
     # We need Adw for the class definition, so this one import is okay here.
     import gi
 

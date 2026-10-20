@@ -49,8 +49,21 @@ def _check_svg_load_capability() -> bool:
     return False
 
 
-SVG_LOAD_AVAILABLE = _check_svg_load_capability()
-"""Boolean indicating whether pyvips.Image.svgload_buffer is available."""
+def svg_load_available() -> bool:
+    """
+    Whether pyvips.Image.svgload_buffer is available. Probed on the
+    first call, which is the first SVG render: probing at import loaded
+    libvips before the window was up.
+    """
+    global _SVG_LOAD_AVAILABLE
+    if _SVG_LOAD_AVAILABLE is None:
+        _SVG_LOAD_AVAILABLE = _check_svg_load_capability()
+        if not _SVG_LOAD_AVAILABLE:
+            logger.warning(
+                "pyvips svgload_buffer not available. "
+                "Using Cairo/Rsvg fallback for SVG rendering."
+            )
+    return _SVG_LOAD_AVAILABLE
 
 
 def render_svg_to_cairo(
@@ -162,7 +175,7 @@ def load_svg_with_fallback(
     Returns:
         A pyvips.Image, or None on failure.
     """
-    if SVG_LOAD_AVAILABLE:
+    if svg_load_available():
         try:
             return pyvips.Image.svgload_buffer(svg_data)
         except pyvips.Error as e:
@@ -177,10 +190,3 @@ def load_svg_with_fallback(
         if surface:
             return cairo_surface_to_vips(surface)
         return None
-
-
-if not SVG_LOAD_AVAILABLE:
-    logger.warning(
-        "pyvips svgload_buffer not available. "
-        "Using Cairo/Rsvg fallback for SVG rendering."
-    )
