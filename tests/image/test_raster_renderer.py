@@ -124,3 +124,22 @@ class TestRasterRenderer:
         assert spec.height == 200
         assert spec.data == b"render_data"
         assert spec.crop_rect is None
+
+
+def test_crop_render_spec_keeps_the_callers_mask_choice():
+    """The PDF renderer's crop path: same upscale and crop, no mask."""
+    from swiftcut.image.base_renderer import crop_render_spec
+
+    segment = MagicMock()
+    segment.crop_window_px = (100.0, 50.0, 200.0, 100.0)
+    context = MagicMock()
+    context.data = b"render_data"
+    context.original_data = b"original_data"
+    context.source_pixel_dims = (1000, 800)
+
+    spec = crop_render_spec(segment, (400, 200), context, apply_mask=False)
+
+    assert (spec.width, spec.height) == (2000, 1600)
+    assert spec.crop_rect == (200, 100, 400, 200)
+    assert spec.data == b"original_data"
+    assert spec.apply_mask is False
