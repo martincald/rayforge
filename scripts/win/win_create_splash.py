@@ -16,11 +16,15 @@ The macOS build bundles the same image for swiftcut/splash.py; there
 the pixi environment has no Rsvg typelib and no Segoe UI, so the
 glyph goes through librsvg's own rsvg-convert (as
 scripts/mac/mac_create_icon.sh does) and the wordmark uses the
-system font.
+system font. macOS shows it on a Retina screen from a transparent
+window, so there it is drawn at twice the pixels, saved as 144 dpi to
+keep its size in points, and its corners keep their antialiasing: no
+colour key is involved.
 """
 
 import io
 import subprocess
+import sys
 from pathlib import Path
 
 import cairo
@@ -32,10 +36,13 @@ here = Path(__file__).parent.parent.parent
 source_path = here / "swiftcut/resources/icons/org.ilab.SwiftCut.svg"
 splash_path = here / "swiftcut_splash.png"
 
-WIDTH, HEIGHT = 480, 320
-RADIUS = 20
-GLYPH_SIZE = 150
-GAP = 22
+# Pixels per point: 2 for the macOS Retina splash, 1 for Windows.
+SCALE = 2 if sys.platform == "darwin" else 1
+WIDTH, HEIGHT = 480 * SCALE, 320 * SCALE
+RADIUS = 20 * SCALE
+GLYPH_SIZE = 150 * SCALE
+GAP = 22 * SCALE
+FONT_SIZE = 40 * SCALE
 MAGENTA = (255, 0, 255)
 
 # Brand tokens, from docs/design/swift-cut-tokens.md.
@@ -126,13 +133,15 @@ canvas = Image.fromarray(plate.round().astype("uint8"), "RGB").convert(
 # Compose the mark and the wordmark as one centred row.
 glyph = render_glyph(GLYPH_SIZE)
 try:
-    font = ImageFont.truetype("segoeuisb.ttf", 40)
+    font = ImageFont.truetype("segoeuisb.ttf", FONT_SIZE)
 except OSError:
     try:
-        font = ImageFont.truetype("segoeuib.ttf", 40)
+        font = ImageFont.truetype("segoeuib.ttf", FONT_SIZE)
     except OSError:
         try:
-            font = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", 40)
+            font = ImageFont.truetype(
+                "/System/Library/Fonts/SFNS.ttf", FONT_SIZE
+            )
             font.set_variation_by_name("Semibold")
         except (OSError, ValueError):
             font = ImageFont.load_default()
@@ -152,8 +161,7 @@ draw.text(
     fill=(255, 255, 255, 255),
 )
 
-# Hard-edged rounded-corner mask: supersample the curve for an
-# accurate outline, then threshold so no pixel is partly keyed.
+# Rounded-corner mask: supersample the curve for an accurate outline.
 big = (WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE)
 mask = Image.new("L", big, 0)
 ImageDraw.Draw(mask).rounded_rectangle(
@@ -161,14 +169,18 @@ ImageDraw.Draw(mask).rounded_rectangle(
     radius=RADIUS * SUPERSAMPLE,
     fill=255,
 )
-mask = mask.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS).point(
-    lambda v: 255 if v >= 128 else 0
-)
+mask = mask.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
 
-# Outside the plate: magenta (the colour key) and zero alpha, so the
-# corners fall away whether or not Tk honours the alpha channel.
-out = Image.new("RGBA", (WIDTH, HEIGHT), MAGENTA + (0,))
-out.paste(canvas, (0, 0), mask)
+if SCALE == 1:
+    # Windows: threshold so no pixel is partly keyed, and outside the
+    # plate magenta (the colour key) and zero alpha, so the corners
+    # fall away whether or not Tk honours the alpha channel.
+    mask = mask.point(lambda v: 255 if v >= 128 else 0)
+    out = Image.new("RGBA", (WIDTH, HEIGHT), MAGENTA + (0,))
+    out.paste(canvas, (0, 0), mask)
+else:
+    # macOS: the window is transparent, so the edge keeps its alpha.
+    out = canvas.copy()
 out.putalpha(mask)
-out.save(splash_path, format="PNG")
+out.save(splash_path, format="PNG", dpi=(72 * SCALE, 72 * SCALE))
 print("Splash generation complete.")
