@@ -138,3 +138,44 @@ chains run through (19 `pipeline -> machine`, 8 `doceditor ->
 pipeline`, 7 `core -> machine`, 4 `context -> machine`, and 8 more
 through `context`, `debug`, `doceditor` and `image`). It passes as it
 stands, and a new upward import fails it (checked by adding one).
+
+## C4 - final check (2026-10-20, at `476b28adc`)
+
+| check | Goal 1 gate (`779afde61`) | final |
+| --- | --- | --- |
+| non-UI suite | 6866 passed, 2 failed | 6877 passed, 2 failed, 1 error |
+| UI suite (one process per file) | 1033 passed, 3 failed | 1033 passed, 3 failed |
+| ruff check swiftcut tests scripts | 31 | 31 (baseline 34) |
+| pyright (pyproject include) | 329, then 310 | 309 (baseline 310); no new error in a touched module |
+| lint-imports | - | 1 kept, 0 broken (46 ignored) |
+
+The failures are the gate's: `test_bind_failure_on_a_fixed_local_port_is_visible`
+and `test_simulator_answers_over_loopback` (macOS `syslogd` on its
+fixed UDP port 51311; it passes in the reruns below, once the port is
+free), and the UI suite's three known ones. The error is a teardown
+check, "Task manager still has tasks at end of test", on
+`tests/machine/test_machine_cmd.py::TestBedOverrunWarning::test_warns_when_the_job_runs_past_the_bed`:
+it did not recur in 5 runs of the file or 3 runs of `tests/machine`
+(2496 passed; only the Windows-port test failing), and was not seen at
+baseline or gate. Recorded as an intermittent, not fixed.
+
+`pixi run bench` against the Goal 1 result (canvas: the gate run;
+cold start: the warm-up re-run), at the final tree:
+
+| metric | Goal 1 | final | change |
+| --- | --- | --- | --- |
+| cold start to window | 1.96 s | 1.90 s (median of 6, interleaved A/B with the old 1x splash: 1.97-2.10 s) | -3 % |
+| splash up | 0.48 s | 0.41 s | -15 % |
+| large.dxf pan p95 | 6.6 ms | 5.9 ms | -10 % |
+| large.dxf zoom p95 | 6.4 ms | 4.8 ms | -25 % |
+| large.dxf pan at 4x p95 | 11.2 ms | 9.2 ms | -18 % |
+| 40 selected pan p95 | 10.1 ms | 6.1 ms | -40 % |
+| 40 selected zoom p95 | 6.9 ms | 5.5 ms | -20 % |
+| 40 selected pan at 4x p95 | 11.9 ms | 10.7 ms | -10 % |
+| import, every asset | | within -6 % to +2 % | |
+| ops and encode, every asset | | within -14 % to +4 % | |
+
+Nothing slowed by more than 5 %. (One earlier canvas run had 40
+selected pan at 4x at 13.2 ms, +11 %; the re-run above is 10.7 ms. No
+Goal 2 change runs on that path, and the frame-to-frame spread there
+is the tile draws.)
