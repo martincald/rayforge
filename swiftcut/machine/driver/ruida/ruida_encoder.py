@@ -95,7 +95,7 @@ def commands_to_rd_bytes(commands: list[bytes]) -> bytes:
         The whole command stream swizzled with RD_MAGIC.
     """
     swizzle_lut, _ = build_swizzle_lut(RD_MAGIC)
-    return bytes(swizzle_lut[b] for b in b"".join(commands))
+    return b"".join(commands).translate(swizzle_lut)
 
 
 def build_rd_bytes(ops: Ops, machine: "Machine", doc: "Doc") -> bytes:
