@@ -86,6 +86,7 @@ def drive(widget, step, frames, tail_s=1.0):
     state = {"i": 0, "t0": None, "last": None, "stop": None}
     drive_ms, intervals, tail_ms = [], [], []
     clock = on_main(widget.get_frame_clock)
+    assert clock is not None
 
     def before_paint(_clock):
         now = time.perf_counter()
@@ -124,6 +125,7 @@ def drive(widget, step, frames, tail_s=1.0):
     # The tail's frames only paint if something queues a draw; an
     # idle tail is no frames, which is the right answer.
     time.sleep(tail_s)
+    assert handlers is not None
     on_main(lambda: [clock.disconnect(h) for h in handlers])
     # The first sample spans the setup; the rest are the drive's.
     return {

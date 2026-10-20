@@ -38,6 +38,7 @@ def main():
     if os.environ.get("PERF_WAIT_CONNECTED"):
         deadline = time.monotonic() + 60.0
         machine = get_context().machine
+        assert machine is not None
         while not on_main(machine.is_connected):
             if time.monotonic() > deadline:
                 raise TimeoutError("the machine never connected")

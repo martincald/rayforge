@@ -5,6 +5,7 @@ the finished segments from the start.
 """
 
 from types import SimpleNamespace
+from typing import Any, cast
 
 import cairo
 import numpy as np
@@ -44,11 +45,15 @@ def _model() -> JobPreviewModel:
 def _element() -> JobPreviewElement:
     element = JobPreviewElement()
     element.model = _model()
-    element.canvas = SimpleNamespace(
-        view_transform=VIEW,
-        get_width=lambda: 220,
-        get_height=lambda: 200,
-        get_scale_factor=lambda: 2,
+    # Just what the finished image reads of its canvas.
+    element.canvas = cast(
+        Any,
+        SimpleNamespace(
+            view_transform=VIEW,
+            get_width=lambda: 220,
+            get_height=lambda: 200,
+            get_scale_factor=lambda: 2,
+        ),
     )
     return element
 
@@ -103,7 +108,7 @@ def test_a_jump_forward_past_a_copy_starts_from_it(drawn):
 def test_a_new_view_starts_over_without_copies(drawn):
     element = _element()
     _pixels(element, COUNT)
-    element.canvas.view_transform = Matrix.translation(1, 0) @ VIEW
+    cast(Any, element.canvas).view_transform = Matrix.translation(1, 0) @ VIEW
     drawn.clear()
 
     _pixels(element, 530)

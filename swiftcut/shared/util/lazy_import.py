@@ -33,6 +33,7 @@ class _Deferred(types.ModuleType):
     def __init__(self, spec):
         super().__init__(spec.name)
         self.__spec__ = spec
+        self._deferred_name: str = spec.name
         # Reentrant: the real import may read the module it is importing.
         self._deferred_lock = threading.RLock()
 
@@ -40,7 +41,7 @@ class _Deferred(types.ModuleType):
         # Only reached for attributes the placeholder lacks: once the
         # real module's namespace is copied in, reads go straight to it.
         with self._deferred_lock:
-            name = self.__spec__.name
+            name = self._deferred_name
             if sys.modules.get(name) is self:
                 del sys.modules[name]
                 try:

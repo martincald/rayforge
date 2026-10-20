@@ -78,7 +78,7 @@ def main():
     uiperf.settle(extra_s=1.0)
     result = {
         "scene": SCENE.name,
-        "selected": len(on_main(surface.get_selected_items)),
+        "selected": len(on_main(surface.get_selected_items) or ()),
         "renderer": uiperf.renderer_name(),
         "scale_factor": on_main(surface.get_scale_factor),
         "canvas_px": on_main(
@@ -98,7 +98,7 @@ def main():
     result["pan_zoomed"] = uiperf.drive(surface, pan, FRAMES)
     result["zoom_level_zoomed"] = on_main(lambda: surface.zoom_level)
     result["wall_s"] = time.perf_counter() - started
-    if profile:
+    if profile and PROFILE:
         on_main(profile.disable)
         profile.dump_stats(PROFILE)
     uiperf.write_result(result)

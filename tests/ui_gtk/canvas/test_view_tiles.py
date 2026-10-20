@@ -32,8 +32,10 @@ def _frame(surface) -> np.ndarray:
     snapshot.scale(SCALE, SCALE)
     surface.do_snapshot(snapshot)
     node = snapshot.to_node()
+    display = Gdk.Display.get_default()
+    assert display is not None
     renderer = Gsk.CairoRenderer.new()
-    renderer.realize_for_display(Gdk.Display.get_default())
+    renderer.realize_for_display(display)
     try:
         width, height = WIDGET[0] * SCALE, WIDGET[1] * SCALE
         texture = renderer.render_texture(
@@ -44,7 +46,9 @@ def _frame(surface) -> np.ndarray:
     downloader = Gdk.TextureDownloader.new(texture)
     downloader.set_format(Gdk.MemoryFormat.R8G8B8A8_PREMULTIPLIED)
     data, stride = downloader.download_bytes()
-    rows = np.frombuffer(data.get_data(), np.uint8).reshape(height, stride)
+    pixels = data.get_data()
+    assert pixels is not None
+    rows = np.frombuffer(pixels, np.uint8).reshape(height, stride)
     return rows[:, : width * 4].astype(int)
 
 
