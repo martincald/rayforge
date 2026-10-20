@@ -8,7 +8,7 @@ from blinker import Signal
 from raygeo.geo.types import Rect3D
 from raygeo.ops.axis import Axis
 
-from ...core.matrix import euler_rotation_matrix
+from ...core.matrix import TransformMixin
 
 
 class RotaryMode(Enum):
@@ -21,7 +21,7 @@ class RotaryType(Enum):
     ROLLERS = "rollers"
 
 
-class RotaryModule:
+class RotaryModule(TransformMixin):
     def __init__(self):
         self.uid: str = str(uuid.uuid4())
         self.name: str = _("Rotary Module")
@@ -74,40 +74,6 @@ class RotaryModule:
         self.transform[0, 3] = x
         self.transform[1, 3] = y
         self.transform[2, 3] = z
-        self.changed.send(self)
-
-    def get_rotation(self):
-        t = self.transform
-        sx = float(np.linalg.norm(t[0, :3]))
-        sy = float(np.linalg.norm(t[1, :3]))
-        sz = float(np.linalg.norm(t[2, :3]))
-        rx = np.degrees(np.arctan2(t[2, 1] / sy, t[2, 2] / sz))
-        ry = np.degrees(
-            np.arctan2(-t[2, 0] / sx, np.sqrt(t[2, 1] ** 2 + t[2, 2] ** 2))
-        )
-        rz = np.degrees(np.arctan2(t[1, 0] / sx, t[0, 0] / sx))
-        return rx, ry, rz
-
-    def set_rotation(self, rx: float, ry: float, rz: float):
-        cur = self.get_rotation()
-        if cur[0] == rx and cur[1] == ry and cur[2] == rz:
-            return
-        pos = self.transform[:3, 3].copy()
-        scale = self.get_scale()
-        self.transform[:3, :3] = euler_rotation_matrix(rx, ry, rz) * scale
-        self.transform[:3, 3] = pos
-        self.changed.send(self)
-
-    def get_scale(self) -> float:
-        return float(np.linalg.norm(self.transform[0, :3]))
-
-    def set_scale(self, scale: float):
-        if self.get_scale() == scale:
-            return
-        pos = self.transform[:3, 3].copy()
-        rx, ry, rz = self.get_rotation()
-        self.transform[:3, :3] = euler_rotation_matrix(rx, ry, rz) * scale
-        self.transform[:3, 3] = pos
         self.changed.send(self)
 
     def set_default_diameter(self, diameter: float):
