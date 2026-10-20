@@ -36,6 +36,7 @@ from swiftcut.core.workpiece import WorkPiece
 from swiftcut.image import import_file
 from swiftcut.machine.driver.ruida.ruida_encoder import build_rd_bytes
 from swiftcut.pipeline.pipeline import Pipeline
+from swiftcut.warm_up import warm_up
 
 HERE = Path(__file__).parent
 OUT = HERE.parent.parent / "build" / "perf"
@@ -99,6 +100,10 @@ async def test_measure(
     test_machine_and_config,
     contour_step_class,
 ):
+    # As in the app once its window is up (swiftcut.warm_up), so the
+    # first asset does not pay for loading what the others share.
+    warm_up()
+
     machine, _config = test_machine_and_config
     # Ruida with no dialect is what makes the pipeline's encode node run
     # the driver's encoder rather than the G-code branch

@@ -40,22 +40,25 @@ class _Deferred(types.ModuleType):
     def __getattr__(self, attr):
         # Only reached for attributes the placeholder lacks: once the
         # real module's namespace is copied in, reads go straight to it.
+        return getattr(self._load(), attr)
+
+    def _load(self) -> types.ModuleType:
+        """Imports the real module, once; returns it."""
         with self._deferred_lock:
             name = self._deferred_name
-            if sys.modules.get(name) is self:
-                del sys.modules[name]
-                try:
-                    with warnings.catch_warnings():
-                        # As the modules importing pyvips do around it.
-                        warnings.simplefilter("ignore", DeprecationWarning)
-                        module = importlib.import_module(name)
-                except BaseException:
-                    sys.modules[name] = self
-                    raise
-                self.__dict__.update(module.__dict__)
-            else:
-                module = sys.modules[name]
-        return getattr(module, attr)
+            if sys.modules.get(name) is not self:
+                return sys.modules[name]
+            del sys.modules[name]
+            try:
+                with warnings.catch_warnings():
+                    # As the modules importing pyvips do around it.
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    module = importlib.import_module(name)
+            except BaseException:
+                sys.modules[name] = self
+                raise
+            self.__dict__.update(module.__dict__)
+            return module
 
 
 def defer(name: str) -> None:
@@ -76,6 +79,13 @@ def is_deferred(name: str) -> bool:
     """True while `name` is a placeholder that has not imported yet."""
     module = sys.modules.get(name)
     return isinstance(module, _Deferred) and "__file__" not in vars(module)
+
+
+def load(name: str) -> None:
+    """Imports a deferred module now, if it has not been yet."""
+    module = sys.modules.get(name)
+    if isinstance(module, _Deferred):
+        module._load()
 
 
 def defer_startup_imports() -> None:

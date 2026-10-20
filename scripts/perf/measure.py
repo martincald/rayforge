@@ -305,6 +305,12 @@ else:
         payload = import_file(p, vectorization_spec=SPECS[mode])
         return payload.items if payload else []
 
+# What the app has loaded by the time a user can open a file: the
+# window maps, then swiftcut.warm_up loads what startup deferred (at
+# baseline these loaded with the modules above, before the timer too).
+from swiftcut.warm_up import warm_up
+warm_up()
+
 before = procstat.sample(os.getpid())
 t = time.perf_counter()
 items = load(Path(name))

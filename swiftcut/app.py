@@ -417,6 +417,15 @@ def main():
             """Runs once, when the main window is first mapped on screen."""
             widget.disconnect_by_func(self._on_window_mapped)
             _close_splash()
+            # A second on, once the first frames are out: what startup
+            # deferred loads before the user opens a file.
+            GLib.timeout_add_seconds(1, self._warm_up)
+
+        def _warm_up(self):
+            from swiftcut.warm_up import warm_up_in_background
+
+            warm_up_in_background()
+            return GLib.SOURCE_REMOVE
 
         def _on_window_mapped_guide(self, widget):
             """Opens the first-run guide once the window is up."""
