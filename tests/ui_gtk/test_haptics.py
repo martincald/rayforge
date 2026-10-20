@@ -1,6 +1,8 @@
 """Haptics: silent when unavailable or disabled, one tap per 60 ms,
 never raising. AppKit is faked, so these run on any platform."""
 
+import importlib
+import importlib.util
 import sys
 import types
 from unittest.mock import MagicMock
@@ -121,6 +123,41 @@ def test_a_failing_performer_is_swallowed(appkit):
     h.generic()
 
     assert _performed(performer).call_count == 2
+
+
+def test_appkit_is_imported_by_the_first_tap_not_before(appkit, monkeypatch):
+    imported = []
+    real_import = importlib.import_module
+
+    def import_module(name):
+        imported.append(name)
+        return real_import(name)
+
+    monkeypatch.setattr(importlib, "import_module", import_module)
+    h = Haptics(performer=MagicMock(), clock=Clock())
+
+    assert h.available is True
+    assert imported == []
+    h.alignment()
+    h.generic()
+    assert imported == ["AppKit"]
+
+
+def test_appkit_found_but_failing_to_import_is_unavailable(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: object())
+
+    def import_module(name):
+        raise ImportError(name)
+
+    monkeypatch.setattr(importlib, "import_module", import_module)
+    performer = MagicMock()
+    h = Haptics(performer=performer, clock=Clock())
+
+    h.alignment()
+
+    assert h.available is False
+    assert performer.mock_calls == []
 
 
 def test_off_macos_even_with_appkit_importable(appkit, monkeypatch):
