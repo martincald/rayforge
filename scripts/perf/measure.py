@@ -559,27 +559,35 @@ def _port_free(port):
 
 
 def _top_power(pid, seconds):
-    """Activity Monitor's energy figure (top's POWER) for one pid."""
+    """
+    Activity Monitor's energy figure (top's POWER) for one pid, once a
+    second over `seconds`. top is setuid root, which a sandboxed process
+    may not exec; under sandbox-exec, $PERF_TOP_DIR names a directory a
+    sampler outside the sandbox serves (scripts/perf/top_sampler.sh).
+    """
     if sys.platform != "darwin":
         return None
-    proc = subprocess.run(
-        [
-            "top",
-            "-l",
-            str(int(seconds) + 1),
-            "-s",
-            "1",
-            "-pid",
-            str(pid),
-            "-stats",
-            "pid,cpu,idlew,power",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    argv = [
+        "top",
+        "-l",
+        str(int(seconds) + 1),
+        "-s",
+        "1",
+        "-pid",
+        str(pid),
+        "-stats",
+        "pid,cpu,idlew,power",
+    ]
+    try:
+        out = subprocess.run(
+            argv, capture_output=True, text=True, check=False
+        ).stdout
+    except PermissionError:
+        out = _top_via_sampler(pid, seconds)
+        if out is None:
+            return None
     power = []
-    for line in proc.stdout.splitlines():
+    for line in out.splitlines():
         parts = line.split()
         if len(parts) == 4 and parts[0] == str(pid):
             try:
@@ -588,6 +596,25 @@ def _top_power(pid, seconds):
                 pass
     # The first sample has no interval behind it.
     return power[1:]
+
+
+def _top_via_sampler(pid, seconds):
+    """top's output for pid, from the sampler outside the sandbox."""
+    folder = os.environ.get("PERF_TOP_DIR")
+    if not folder:
+        return None
+    request = Path(folder) / "request"
+    result = Path(folder) / "result"
+    if result.exists():
+        result.unlink()
+    request.write_text(f"{pid} {int(seconds) + 1}", encoding="utf-8")
+    deadline = time.monotonic() + seconds + 30
+    while not result.exists():
+        if time.monotonic() > deadline:
+            return None
+        time.sleep(0.2)
+    # The sampler renames the finished file into place.
+    return result.read_text(encoding="utf-8")
 
 
 class _App:
