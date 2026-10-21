@@ -72,7 +72,7 @@ UI_TEXT_CALLS = {
 # "Rayforge". See the module docstring for why each entry is here.
 ALLOWLIST: set[str] = {
     # The MIT license requires us to keep the attribution to Rayforge.
-    "Based on Rayforge by Samuel Abels, used under the MIT License.",
+    "Based on Rayforge, created by Samuel Abels, used under the MIT License.",
 }
 
 

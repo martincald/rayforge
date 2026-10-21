@@ -15,8 +15,9 @@ from gi.repository import Adw, Gtk
 from swiftcut import const
 from swiftcut.ui_gtk.about import AboutDialog
 
+AUTHOR_LINE = "SwiftCut by Martín Calderón"
 ATTRIBUTION = (
-    "Based on Rayforge by Samuel Abels, used under the MIT License."
+    "Based on Rayforge, created by Samuel Abels, used under the MIT License."
 )
 
 
@@ -54,6 +55,17 @@ def test_about_dialog_shows_the_rayforge_attribution_as_plain_text():
     dialog = AboutDialog()
     try:
         assert ATTRIBUTION in _label_texts(dialog)
+    finally:
+        dialog.destroy()
+
+
+@pytest.mark.ui
+def test_about_dialog_credits_the_author_then_rayforge():
+    dialog = AboutDialog()
+    try:
+        texts = _label_texts(dialog)
+        assert texts.index(AUTHOR_LINE) < texts.index(ATTRIBUTION)
+        assert texts.index(ATTRIBUTION) < texts.index("© 2025 Samuel Abels")
     finally:
         dialog.destroy()
 

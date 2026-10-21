@@ -257,18 +257,26 @@ class AboutDialog(PatchedDialogWindow):
         title.set_margin_top(SPACE_CONTROL)
         hero_box.append(title)
 
-        copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
-        hero_box.append(copyright_label)
+        author_label = Gtk.Label(
+            label=_("{app_name} by {author}").format(
+                app_name=const.APP_NAME, author="Martín Calderón"
+            )
+        )
+        hero_box.append(author_label)
 
         attribution_label = Gtk.Label(
             label=_(
-                "Based on Rayforge by Samuel Abels, used under the MIT "
-                "License."
+                "Based on Rayforge, created by Samuel Abels, used under "
+                "the MIT License."
             )
         )
         attribution_label.set_wrap(True)
         attribution_label.set_justify(Gtk.Justification.CENTER)
         hero_box.append(attribution_label)
+
+        # Rayforge's copyright notice, which the MIT license keeps.
+        copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
+        hero_box.append(copyright_label)
 
         prefgroup = Adw.PreferencesGroup()
         content_box.append(prefgroup)
