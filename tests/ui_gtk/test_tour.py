@@ -23,6 +23,7 @@ from gi.repository import Adw, Gdk, GLib, Graphene, Gtk  # noqa: E402
 
 from swiftcut.context import get_context  # noqa: E402
 from swiftcut.core.config import TOUR_COMPLETED, TOUR_SEEN  # noqa: E402
+from swiftcut.core.layer import Layer  # noqa: E402
 from swiftcut.core.workpiece import WorkPiece  # noqa: E402
 from swiftcut.machine.transport.transport import (  # noqa: E402
     TransportStatus,
@@ -357,8 +358,8 @@ def test_the_hole_follows_a_card_rebuilt_under_it(main_window):
     first = targets.find(win, "layers.active-card")
     assert runner.mask.hole == target_hole(first, win.tour_overlay)
 
-    # Any change to the document's structure rebuilds every card.
-    win.doc_editor.doc.active_layer.add_child(WorkPiece(name="square"))
+    # A change to the layers rebuilds every card.
+    win.doc_editor.doc.add_layer(Layer("Second"))
     _pump(0.3)
 
     card = targets.find(win, "layers.active-card")
