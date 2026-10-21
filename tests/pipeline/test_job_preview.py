@@ -151,6 +151,7 @@ class TestSegments:
 
         assert model.segments == []
         assert model.total_time == 0.0
+        assert model.start_time == 0.0
         assert model.point_at(1.0) is None
         assert model.path_at(0.0) == []
 
@@ -174,6 +175,12 @@ class TestTimes:
         times = [t for s in model.segments for t in (s.t0, s.t1)]
         assert times == sorted(times)
         assert model.total_time == ops.estimate_time(*_params())
+
+    def test_it_starts_where_it_first_draws(self):
+        """The first move, from the origin, draws nothing."""
+        model = JobPreviewModel.from_ops(_mixed_ops(), MACHINE)
+
+        assert model.start_time == model.segments[0].t1 > 0.0
 
     def test_a_dwell_is_a_wait_between_segments(self):
         model = JobPreviewModel.from_ops(_mixed_ops(), MACHINE)
@@ -254,6 +261,101 @@ class TestScrubbing:
     def test_scrubbing_back_unfinishes_segments(self, model):
         assert model.index_at(model.total_time) == 3
         assert model.index_at(model.segments[1].t1 / 2) == 1
+
+
+def _long_ops(moves: int) -> Ops:
+    """Every kind of move, over and over, the power changing."""
+    ops = Ops()
+    ops.job_start()
+    for n in range(moves):
+        x, y = float(n % 100), float(n // 100)
+        if n % 50 == 0:
+            ops.set_power(0.7 if n % 100 == 0 else 0.0)
+            ops.move_to(x, y)
+        elif n % 7 == 0:
+            ops.arc_to(x, y, 0.5, 0.5, n % 2 == 0)
+        elif n % 11 == 0:
+            ops.scan_to(x, y, 0.0, bytes([0, 128, 255]))
+        elif n % 13 == 0:
+            ops.bezier_to((x, y + 1.0, 0.0), (x + 1.0, y, 0.0), (x, y, 0.0))
+        else:
+            ops.line_to(x, y)
+        if n % 97 == 0:
+            ops.dwell(10)
+    ops.job_end()
+    return ops
+
+
+class TestBuildingLazily:
+    """from_ops_lazily: from_ops' preview, built as far as it is asked."""
+
+    @pytest.mark.parametrize("scaled", [False, True])
+    def test_it_answers_as_from_ops_at_any_time_in_any_order(self, scaled):
+        ops = _long_ops(5000)
+        estimate = ops.estimate_time(*_params()) * 2 if scaled else None
+        full = JobPreviewModel.from_ops(ops, MACHINE, estimate)
+
+        lazy = JobPreviewModel.from_ops_lazily(ops, MACHINE, estimate)
+
+        assert lazy.total_time == full.total_time
+        assert lazy.count == len(full.segments)
+        assert lazy.start_time == full.start_time
+        for fraction in (0.4, 0.05, 0.9, 0.0, 0.5, 1.0, 1.2, -0.1):
+            t = fraction * full.total_time
+            assert lazy.index_at(t) == full.index_at(t)
+            assert lazy.path_at(t) == full.path_at(t)
+            assert lazy.point_at(t) == full.point_at(t)
+
+    @pytest.mark.parametrize("index", [0, 5, 2000])
+    def test_on_a_segment_end_it_answers_as_from_ops(self, index):
+        ops = _long_ops(5000)
+        full = JobPreviewModel.from_ops(ops, MACHINE)
+        t = full.segments[index].t1
+
+        lazy = JobPreviewModel.from_ops_lazily(ops, MACHINE)
+
+        assert lazy.index_at(t) == full.index_at(t)
+        assert lazy.path_at(t) == full.path_at(t)
+
+    def test_it_builds_no_further_than_it_is_asked(self):
+        lazy = JobPreviewModel.from_ops_lazily(_long_ops(5000), MACHINE)
+
+        index = lazy.index_at(lazy.total_time / 3)
+
+        # Up to the segment running then, and not one more.
+        assert 0 < index < lazy.count
+        assert len(lazy.segments) == index + 1
+
+    def test_built_in_slices_it_is_from_ops(self):
+        ops = _long_ops(5000)
+        lazy = JobPreviewModel.from_ops_lazily(ops, MACHINE)
+        lazy.index_at(lazy.total_time / 3)
+
+        slices = 1
+        while lazy.build(0.0005):
+            slices += 1
+
+        assert slices > 1
+        assert lazy.segments == JobPreviewModel.from_ops(ops, MACHINE).segments
+        assert len(lazy.segments) == lazy.count
+        assert lazy.build(1.0) is False
+
+    def test_it_keeps_its_own_copy_of_the_ops(self):
+        ops = _long_ops(500)
+        full = JobPreviewModel.from_ops(ops, MACHINE)
+        lazy = JobPreviewModel.from_ops_lazily(ops, MACHINE)
+
+        ops.clear()
+        lazy.index_at(full.total_time)
+
+        assert lazy.segments == full.segments
+
+    def test_no_moves(self):
+        model = JobPreviewModel.from_ops_lazily(Ops(), MACHINE)
+
+        assert (model.count, model.total_time, model.start_time) == (0, 0, 0)
+        assert model.point_at(1.0) is None
+        assert model.build(1.0) is False
 
 
 # --- The real job --------------------------------------------------------

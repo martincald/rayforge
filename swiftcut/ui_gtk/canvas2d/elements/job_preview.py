@@ -209,7 +209,8 @@ class JobPreviewElement(CanvasElement):
         """
         assert self._finished is not None and self.model is not None
         segments = self.model.segments
-        step = max(1, math.ceil(len(segments) / (_CHECKPOINTS + 1)))
+        # Spaced over the whole job, built or not.
+        step = max(1, math.ceil(self.model.count / (_CHECKPOINTS + 1)))
         kept = {count for count, _ in self._checkpoints}
         ctx = cairo.Context(self._finished)
         start = self._finished_count

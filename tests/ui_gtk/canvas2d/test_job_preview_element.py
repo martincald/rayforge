@@ -243,6 +243,37 @@ class TestDrawing:
         assert _alpha(surface, 30, 20) > 0
         assert _alpha(surface, 75, 20) == 0
 
+    def test_a_model_built_as_it_is_drawn_draws_the_same(self, themed):
+        """from_ops_lazily's model draws, at any time, what from_ops' does."""
+        ops = Ops()
+        ops.set_power(1.0)
+        ops.move_to(5.0, 5.0)
+        for n in range(40):
+            ops.line_to(5.0 + 2.0 * n, 95.0 if n % 2 else 5.0)
+        built = JobPreviewModel.from_ops(ops, MACHINE)
+        elements = []
+        for model in (built, JobPreviewModel.from_ops_lazily(ops, MACHINE)):
+            element = JobPreviewElement()
+            element.canvas = _canvas()
+            element.set_model(model)
+            elements.append(element)
+
+        for fraction in (0.3, 0.6, 0.1, 1.0, 0.5):
+            drawn = []
+            for element in elements:
+                element.set_time(fraction * built.total_time)
+                ctx, surface = _context()
+                element.draw_overlay(ctx)
+                surface.flush()
+                drawn.append(
+                    (
+                        bytes(surface.get_data()),
+                        element._finished_count,
+                        [count for count, _ in element._checkpoints],
+                    )
+                )
+            assert drawn[0] == drawn[1]
+
     def test_cleared_it_hides_and_draws_nothing(self, element):
         element.set_time(element.model.total_time)
         element.set_model(None)

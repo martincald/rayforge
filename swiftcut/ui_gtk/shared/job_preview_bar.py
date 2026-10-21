@@ -40,6 +40,8 @@ class JobPreviewBar(Gtk.Box):
 
         self.total = 0.0
         self.time = 0.0
+        # Where playback starts: load's start, and Play from the end.
+        self.start = 0.0
         self.playing = False
         self.speed = SPEEDS[0]
         # Set while the scrub bar is moved to follow the time.
@@ -103,14 +105,18 @@ class JobPreviewBar(Gtk.Box):
     def active(self) -> bool:
         return self.toggle.get_active()
 
-    def load(self, total: float):
-        """A preview total seconds long is ready: play it from 0."""
+    def load(self, total: float, start: float = 0.0):
+        """
+        A preview total seconds long is ready: play it from start, the
+        first moment it draws anything.
+        """
         self.total = max(total, 0.0)
+        self.start = min(max(start, 0.0), self.total)
         self._following = True
         self.scale.set_range(0.0, max(self.total, 0.1))
         self._following = False
         self.controls.set_visible(True)
-        self.set_time(0.0)
+        self.set_time(self.start)
         self.set_playing(True)
 
     def reset(self):
@@ -160,12 +166,13 @@ class JobPreviewBar(Gtk.Box):
             self.controls.set_visible(False)
             self.total = 0.0
             self.time = 0.0
+            self.start = 0.0
         self.preview_toggled.send(self, active=toggle.get_active())
 
     def _on_play_clicked(self, button):
         if not self.playing and self.time >= self.total:
             # Played to the end: Play starts it over.
-            self.set_time(0.0)
+            self.set_time(self.start)
         self.set_playing(not self.playing)
 
     def _on_scale_changed(self, scale):

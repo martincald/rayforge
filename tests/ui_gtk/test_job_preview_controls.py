@@ -1,13 +1,14 @@
 """The job preview's controls, and how the window drives the preview.
 
 A Preview toggle beside the time estimate; once the job is ready,
-play/pause, a scrub bar, elapsed / total and x1/x4/x16. Playback runs
-on the canvas' frame clock and pauses at the end. The preview ends,
-and the bar resets, when it is toggled off, when a newer job is
-generated, when the document or the machine changes and when a job
-starts.
+play/pause, a scrub bar, elapsed / total and x1/x4/x16. Playback
+starts where the job first draws, runs on the canvas' frame clock and
+pauses at the end. The preview ends, and the bar resets, when it is
+toggled off, when a newer job is generated, when the document or the
+machine changes and when a job starts.
 """
 
+import gc
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from swiftcut.core.workpiece import WorkPiece
 from swiftcut.image import SVG_RENDERER
 from swiftcut.machine.models.machine import Machine
 from swiftcut.pipeline.artifact import JobArtifact
+from swiftcut.pipeline.job_preview import JobPreviewModel
 from swiftcut.ui_gtk.canvas2d.elements.job_preview import theme_colors
 from swiftcut.ui_gtk.shared.job_preview_bar import JobPreviewBar
 from swiftcut.ui_gtk.shared.time_estimate_overlay import (
@@ -201,9 +203,26 @@ class TestTheBar:
 
         assert (bar.time, bar.playing) == (0.0, True)
 
+    def test_loading_plays_from_where_the_job_first_draws(self, bar):
+        recorder = _Recorder(bar)
+
+        bar.load(90.0, 12.0)
+
+        assert (bar.time, bar.playing) == (12.0, True)
+        assert recorder.times == [12.0]
+        assert bar.label.get_text() == "00:12 / 01:30"
+
+    def test_play_at_the_end_starts_over_where_the_job_first_draws(self, bar):
+        bar.load(10.0, 4.0)
+        bar.advance(20.0)
+
+        bar.play_button.emit("clicked")
+
+        assert (bar.time, bar.playing) == (4.0, True)
+
     def test_reset_turns_it_all_off(self, bar):
         bar.toggle.set_active(True)
-        bar.load(90.0)
+        bar.load(90.0, 12.0)
         bar.set_time(30.0)
         recorder = _Recorder(bar)
 
@@ -211,7 +230,12 @@ class TestTheBar:
 
         assert bar.active is False
         assert bar.controls.get_visible() is False
-        assert (bar.time, bar.total, bar.playing) == (0.0, 0.0, False)
+        assert (bar.time, bar.start, bar.total, bar.playing) == (
+            0.0,
+            0.0,
+            0.0,
+            False,
+        )
         assert recorder.toggled == [False]
         assert recorder.playing == [False]
 
@@ -256,14 +280,45 @@ def _job_ops() -> Ops:
     return ops
 
 
-def _serve_job(win, monkeypatch):
+# ilab-614's speeds (swiftcut/resources/profiles/ilab-614.yaml), in
+# mm/min: its travel is 50 mm/s.
+ILAB_614_TRAVEL = 3000
+ILAB_614_CUT = 18000
+ILAB_614_ACCELERATION = 1000
+
+
+def _far_job() -> Ops:
+    """Two cuts, the first point 638 mm from the ops' origin."""
+    ops = Ops()
+    ops.set_power(0.5)
+    ops.move_to(233.4, 593.4)
+    ops.line_to(263.4, 593.4)
+    ops.line_to(263.4, 623.4)
+    return ops
+
+
+def _big_job(moves: int = 180_000) -> Ops:
+    """Rows of short cuts, as many moves as tests/perf/two_layer.ryp."""
+    ops = Ops()
+    ops.set_power(0.5)
+    for n in range(moves):
+        x, y = (n % 1000) * 0.1, (n // 1000) * 0.1
+        if n % 1000 == 0:
+            ops.move_to(x, y)
+        else:
+            ops.line_to(x, y)
+    return ops
+
+
+def _serve_job(win, monkeypatch, ops: Ops | None = None):
     """
     The window's pipeline hands out a job artifact from its store, the
-    way generate_job_artifact does once the job is current. Returns
-    the handle, and the when_done callbacks it was asked with.
+    way generate_job_artifact does once the job is current: ops, or
+    the two-cut job. Returns the handle, and the when_done callbacks
+    it was asked with.
     """
     pipeline = win.doc_editor.pipeline
-    ops = _job_ops()
+    ops = _job_ops() if ops is None else ops
     artifact = JobArtifact(
         ops=ops,
         distance=ops.distance(),
@@ -355,6 +410,9 @@ class TestTheWindow:
         win = previewing.win
         bar = _bar(win)
         bar.speed_buttons[4].set_active(True)
+        # Playback starts where the job first draws.
+        start = _shown(win).start_time
+        assert bar.time == start
 
         assert win._job_preview_tick_id is not None
         win._on_job_preview_tick(
@@ -365,8 +423,85 @@ class TestTheWindow:
         )
 
         # Half a second of frames, played at x4.
-        assert bar.time == pytest.approx(2.0)
-        assert win.surface._job_preview_element.time == pytest.approx(2.0)
+        assert bar.time == pytest.approx(start + 2.0)
+        assert win.surface._job_preview_element.time == pytest.approx(
+            start + 2.0
+        )
+
+    def test_playback_draws_within_100_ms_of_preview(self, win, monkeypatch):
+        """
+        The time index runs the job's first move from the ops' origin,
+        and the preview draws that move as nothing: 12.8 s at
+        ilab-614's travel speed for this job. Playback starts after it,
+        so 100 ms of it already draws the first cut.
+        """
+        machine = win.doc_editor.pipeline.machine
+        machine.set_max_travel_speed(ILAB_614_TRAVEL)
+        machine.set_max_cut_speed(ILAB_614_CUT)
+        machine.set_acceleration(ILAB_614_ACCELERATION)
+        _serve_job(win, monkeypatch, _far_job())
+        win._time_estimate_overlay.set_estimated_time(12.0)
+
+        _bar(win).toggle.set_active(True)
+        # 100 ms of frames, played at x1.
+        win._on_job_preview_tick(
+            win.surface, SimpleNamespace(get_frame_time=lambda: 1_000_000)
+        )
+        win._on_job_preview_tick(
+            win.surface, SimpleNamespace(get_frame_time=lambda: 1_100_000)
+        )
+
+        model = _shown(win)
+        played = _bar(win).time
+        assert model.index_at(played) >= 1
+        assert len(model.path_at(played)) > 1
+
+    def test_a_big_job_plays_at_once_and_builds_in_slices(
+        self, win, monkeypatch
+    ):
+        """
+        Playback starts within 100 ms; the segments are built a slice
+        at a time, none holding the main thread for a frame, and once
+        all are built they are the ones from_ops builds at once.
+
+        The garbage collector is off meanwhile: any allocation may set
+        it off, and this many new objects set off a few full
+        collections, tens of ms each, the same a build at once runs.
+        """
+        ops = _big_job()
+        handle, _asked = _serve_job(win, monkeypatch, ops)
+        win._time_estimate_overlay.set_estimated_time(12.0)
+        slices = []
+        build = JobPreviewModel.build
+
+        def timed_build(model, seconds):
+            began = time.perf_counter()
+            more = build(model, seconds)
+            slices.append(time.perf_counter() - began)
+            return more
+
+        monkeypatch.setattr(JobPreviewModel, "build", timed_build)
+        bar = _bar(win)
+
+        gc.disable()
+        try:
+            began = time.perf_counter()
+            bar.toggle.set_active(True)
+            shown = time.perf_counter() - began
+
+            model = _shown(win)
+            assert model is not None and bar.playing
+            assert shown < 0.1
+            assert len(model.segments) < model.count
+            assert _pump_until(lambda: len(model.segments) == model.count)
+        finally:
+            gc.enable()
+        assert len(slices) > 1
+        assert max(slices) < 0.016
+        # The preview built from its own copy: these ops are unchanged.
+        machine = win.doc_editor.pipeline.machine
+        at_once = JobPreviewModel.from_ops(ops, machine, handle.time_estimate)
+        assert model.segments == at_once.segments
 
     def test_playback_stops_ticking_at_the_end(self, previewing):
         win = previewing.win
@@ -545,7 +680,7 @@ class TestTheWindow:
         """It runs inside the pipeline's signal: it must not raise."""
         _serve_job(win, monkeypatch)
         monkeypatch.setattr(
-            "swiftcut.ui_gtk.mainwindow.JobPreviewModel.from_ops",
+            "swiftcut.ui_gtk.mainwindow.JobPreviewModel.from_ops_lazily",
             lambda *args: (_ for _ in ()).throw(ValueError("broken")),
         )
         win._time_estimate_overlay.set_estimated_time(12.0)

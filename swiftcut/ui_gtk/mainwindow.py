@@ -97,6 +97,10 @@ logger = logging.getLogger(__name__)
 # sp: libadwaita scales sp by dpi/96, which is 0.75 on macOS.
 _NARROW_WIDTH = 1100
 
+# Seconds a slice of the job preview's build may hold the main thread:
+# a third of a frame at 60 Hz.
+_JOB_PREVIEW_SLICE = 0.005
+
 
 css = stylesheet("""
 /* A transparent column; each card in it is its own .sc-overlay. Its
@@ -2637,9 +2641,13 @@ class MainWindow(Adw.ApplicationWindow):
         try:
             with pipeline.artifact_store.checkout_handle(handle) as artifact:
                 assert isinstance(artifact, JobArtifact)
-                model = JobPreviewModel.from_ops(
+                model = JobPreviewModel.from_ops_lazily(
                     artifact.ops, pipeline.machine, artifact.time_estimate
                 )
+            # All of a big job's segments at once would hold the main
+            # thread for a third of a second: a slice now, the rest in
+            # idle time, and whatever playback reaches first on demand.
+            building = model.build(_JOB_PREVIEW_SLICE)
         except Exception:
             # This runs inside the pipeline's job_generation_finished:
             # a raise here would skip the listeners after it, a waiting
@@ -2649,7 +2657,22 @@ class MainWindow(Adw.ApplicationWindow):
             return
         self._job_preview_handle = handle
         self.surface.set_job_preview(model)
-        self._time_estimate_overlay.preview_bar.load(model.total_time)
+        self._time_estimate_overlay.preview_bar.load(
+            model.total_time, model.start_time
+        )
+        if building:
+            GLib.idle_add(self._on_job_preview_build, request, model)
+
+    def _on_job_preview_build(
+        self, request: int, model: JobPreviewModel
+    ) -> bool:
+        """One slice of a shown preview's build, in idle time."""
+        if request != self._job_preview_request:
+            # The preview was left, or asked for again, since.
+            return GLib.SOURCE_REMOVE
+        if model.build(_JOB_PREVIEW_SLICE):
+            return GLib.SOURCE_CONTINUE
+        return GLib.SOURCE_REMOVE
 
     def _on_job_preview_time_changed(self, sender, *, time: float):
         self.surface.set_job_preview_time(time)
