@@ -366,6 +366,42 @@ class TestWorkPiece:
         assert new_wp.tabs[1].width == 3.0
         assert new_wp.tabs[1].pos == 0.25
 
+    def test_source_layer_and_color_round_trip(self, workpiece_instance):
+        wp = workpiece_instance
+        wp.source_layer = "Layer_2"
+        wp.source_color = "#ff0000"
+
+        new_wp = WorkPiece.from_dict(wp.to_dict())
+
+        assert new_wp.source_layer == "Layer_2"
+        assert new_wp.source_color == "#ff0000"
+        assert "source_layer" not in new_wp.extra
+        assert wp.duplicate().source_color == "#ff0000"
+
+    def test_no_source_layer_or_color_writes_no_keys(self, workpiece_instance):
+        data = workpiece_instance.to_dict()
+
+        assert "source_layer" not in data
+        assert "source_color" not in data
+
+    def test_split_pieces_keep_source_layer_and_color(
+        self, workpiece_instance
+    ):
+        wp = workpiece_instance
+        wp.source_layer = "Cut"
+        wp.source_color = "#0000ff"
+        fragments = [
+            _make_loop([(0, 0), (0.2, 0), (0.2, 0.2), (0, 0.2)]),
+            _make_loop([(0.5, 0.5), (0.9, 0.5), (0.9, 0.9), (0.5, 0.9)]),
+        ]
+
+        pieces = wp.apply_split(fragments)
+
+        assert len(pieces) == 2
+        assert {p.source_layer for p in pieces} == {"Cut"}
+        assert {p.source_color for p in pieces} == {"#0000ff"}
+        assert wp.in_world().source_layer == "Cut"
+
     def test_setters_and_signals(self, workpiece_instance):
         wp = workpiece_instance
         updated_events, transform_events = [], []

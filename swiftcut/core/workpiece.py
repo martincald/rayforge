@@ -103,6 +103,11 @@ class WorkPiece(DocItem):
 
         self.source_asset_uid: str | None = None
 
+        # The source layer and color ("#rrggbb") of the file content
+        # this workpiece was imported from, if known (Select Similar).
+        self.source_layer: str | None = None
+        self.source_color: str | None = None
+
         self._tabs: list[Tab] = []
         self._tabs_enabled: bool = True
 
@@ -570,6 +575,8 @@ class WorkPiece(DocItem):
             self._geometry_provider_params
         )
         world_wp.source_asset_uid = self.source_asset_uid
+        world_wp.source_layer = self.source_layer
+        world_wp.source_color = self.source_color
         world_wp._resolved_text_cache = dict(self._resolved_text_cache)
 
         # Ensure any edited boundaries are carried over.
@@ -886,6 +893,10 @@ class WorkPiece(DocItem):
             "geometry_provider_params": self._geometry_provider_params,
             "source_asset_uid": self.source_asset_uid,
         }
+        if self.source_layer is not None:
+            state["source_layer"] = self.source_layer
+        if self.source_color is not None:
+            state["source_color"] = self.source_color
         if self._resolved_text_cache:
             cache = {
                 str(k): v
@@ -929,6 +940,8 @@ class WorkPiece(DocItem):
             "geometry_provider_uid",
             "geometry_provider_params",
             "source_asset_uid",
+            "source_layer",
+            "source_color",
             "resolved_text_cache",
             "data",
             "original_data",
@@ -974,6 +987,8 @@ class WorkPiece(DocItem):
             "geometry_provider_params", {}
         ) or data.get("sketch_params", {})
         wp.source_asset_uid = data.get("source_asset_uid")
+        wp.source_layer = data.get("source_layer")
+        wp.source_color = data.get("source_color")
         raw_cache = data.get("resolved_text_cache")
         if raw_cache:
             wp._resolved_text_cache = {int(k): v for k, v in raw_cache.items()}
@@ -1466,6 +1481,8 @@ class WorkPiece(DocItem):
 
             new_wp = WorkPiece(self.name, new_segment)
             new_wp.tabs_enabled = self.tabs_enabled
+            new_wp.source_layer = self.source_layer
+            new_wp.source_color = self.source_color
 
             # 5. Set the edited_boundaries override. This gives the workpiece
             # its final, correct, Y-Up geometry directly.
