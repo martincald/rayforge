@@ -257,13 +257,18 @@ class AboutDialog(PatchedDialogWindow):
         title.set_margin_top(SPACE_CONTROL)
         hero_box.append(title)
 
+        author = "Martín Calderón"
         author_label = Gtk.Label(
             label=_("{app_name} by {author}").format(
-                app_name=const.APP_NAME, author="Martín Calderón"
+                app_name=const.APP_NAME, author=author
             )
         )
         hero_box.append(author_label)
 
+        copyright_label = Gtk.Label(label=f"© 2026 {author}")
+        hero_box.append(copyright_label)
+
+        # Rayforge's credit, a caption below SwiftCut's own.
         attribution_label = Gtk.Label(
             label=_(
                 "Based on Rayforge, created by Samuel Abels, used under "
@@ -272,11 +277,14 @@ class AboutDialog(PatchedDialogWindow):
         )
         attribution_label.set_wrap(True)
         attribution_label.set_justify(Gtk.Justification.CENTER)
+        attribution_label.set_margin_top(SPACE_CONTROL)
+        attribution_label.add_css_class("sc-caption")
         hero_box.append(attribution_label)
 
         # Rayforge's copyright notice, which the MIT license keeps.
-        copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
-        hero_box.append(copyright_label)
+        rayforge_copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
+        rayforge_copyright_label.add_css_class("sc-caption")
+        hero_box.append(rayforge_copyright_label)
 
         prefgroup = Adw.PreferencesGroup()
         content_box.append(prefgroup)
@@ -294,9 +302,7 @@ class AboutDialog(PatchedDialogWindow):
 
         prefgroup.add(version_row)
 
-        dev_row = Adw.ActionRow(
-            title=_("Lead Developer"), subtitle="Samuel Abels"
-        )
+        dev_row = Adw.ActionRow(title=_("Lead Developer"), subtitle=author)
         prefgroup.add(dev_row)
 
         license_row = Adw.ActionRow(title=_("License"), subtitle="MIT X11")

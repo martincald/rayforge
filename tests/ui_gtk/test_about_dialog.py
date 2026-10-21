@@ -15,10 +15,13 @@ from gi.repository import Adw, Gtk
 from swiftcut import const
 from swiftcut.ui_gtk.about import AboutDialog
 
-AUTHOR_LINE = "SwiftCut by Martín Calderón"
+AUTHOR = "Martín Calderón"
+AUTHOR_LINE = f"SwiftCut by {AUTHOR}"
+COPYRIGHT = f"© 2026 {AUTHOR}"
 ATTRIBUTION = (
     "Based on Rayforge, created by Samuel Abels, used under the MIT License."
 )
+RAYFORGE_COPYRIGHT = "© 2025 Samuel Abels"
 
 
 def _iter_widgets(widget):
@@ -45,7 +48,7 @@ def test_about_dialog_shows_swiftcut_and_keeps_mit_attribution():
 
         texts = _label_texts(dialog)
         assert any(const.APP_NAME in text for text in texts)
-        assert "© 2025 Samuel Abels" in texts
+        assert RAYFORGE_COPYRIGHT in texts
     finally:
         dialog.destroy()
 
@@ -64,8 +67,41 @@ def test_about_dialog_credits_the_author_then_rayforge():
     dialog = AboutDialog()
     try:
         texts = _label_texts(dialog)
-        assert texts.index(AUTHOR_LINE) < texts.index(ATTRIBUTION)
-        assert texts.index(ATTRIBUTION) < texts.index("© 2025 Samuel Abels")
+        order = [AUTHOR_LINE, COPYRIGHT, ATTRIBUTION, RAYFORGE_COPYRIGHT]
+        assert [texts.index(text) for text in order] == sorted(
+            texts.index(text) for text in order
+        )
+    finally:
+        dialog.destroy()
+
+
+@pytest.mark.ui
+def test_about_dialog_credits_rayforge_in_a_caption():
+    """Rayforge's credit is smaller than SwiftCut's own."""
+    dialog = AboutDialog()
+    try:
+        labels = {
+            w.get_label(): w
+            for w in _iter_widgets(dialog)
+            if isinstance(w, Gtk.Label)
+        }
+        for text in (ATTRIBUTION, RAYFORGE_COPYRIGHT):
+            assert labels[text].has_css_class("sc-caption")
+        for text in (AUTHOR_LINE, COPYRIGHT):
+            assert not labels[text].has_css_class("sc-caption")
+    finally:
+        dialog.destroy()
+
+
+@pytest.mark.ui
+def test_about_dialog_names_the_author_as_lead_developer():
+    dialog = AboutDialog()
+    try:
+        rows = [
+            w for w in _iter_widgets(dialog) if isinstance(w, Adw.ActionRow)
+        ]
+        dev_row = next(r for r in rows if r.get_title() == "Lead Developer")
+        assert dev_row.get_subtitle() == AUTHOR
     finally:
         dialog.destroy()
 
