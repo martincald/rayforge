@@ -1,4 +1,6 @@
 import logging
+import math
+import weakref
 from typing import TYPE_CHECKING, cast
 
 from ....core.group import Group
@@ -6,6 +8,7 @@ from ....core.item import DocItem
 from ....core.stock import StockItem
 from ....core.workpiece import WorkPiece
 from ...canvas.element import CanvasElement
+from ...canvas.hittest import STROKE_HIT_DISTANCE
 from .group import GroupElement
 from .step import StepElement
 from .stock import StockElement
@@ -37,6 +40,10 @@ class LayerElement(CanvasElement):
             **kwargs,
         )
         self.data: Layer = layer
+        # Children's hit reach boxes (see _reach_box).
+        self._reach_boxes: weakref.WeakKeyDictionary = (
+            weakref.WeakKeyDictionary()
+        )
         self.data.updated.connect(self.sync_with_model)
         self.data.descendant_added.connect(self.sync_with_model)
         self.data.descendant_removed.connect(self.sync_with_model)
@@ -95,6 +102,65 @@ class LayerElement(CanvasElement):
         if not self.visible:
             return None
         return super().get_elem_hit(world_x, world_y, selectable, strokes_only)
+
+    def _get_child_hit(
+        self,
+        world_x: float,
+        world_y: float,
+        selectable: bool,
+        strokes_only: bool,
+    ) -> CanvasElement | None:
+        """
+        Tests only the children whose reach holds the point: their box
+        and their own children's, grown by the stroke hit distance. A
+        pointer motion over hundreds of pieces then runs the stroke,
+        inside and pixel tests of a few, not of every one.
+        """
+        reach = math.inf
+        if self.canvas:
+            scale = min(self.canvas.view_transform.get_abs_scale())
+            if scale > 0:
+                reach = (STROKE_HIT_DISTANCE + 1.0) / scale
+        for child in reversed(self.children):
+            x0, y0, x1, y1 = self._reach_box(child)
+            if (
+                x0 - reach <= world_x <= x1 + reach
+                and y0 - reach <= world_y <= y1 + reach
+            ):
+                hit = child.get_elem_hit(
+                    world_x, world_y, selectable, strokes_only
+                )
+                if hit:
+                    return hit
+        return None
+
+    def _reach_box(self, child: CanvasElement):
+        """
+        The world box of a child and its children, cached until the
+        child's world transform (a new matrix whenever it changes), its
+        size or its number of children changes.
+        """
+        key = (child.get_world_transform(), child.width, child.height)
+        count = len(child.children)
+        cached = self._reach_boxes.get(child)
+        if (
+            cached
+            and cached[0][0] is key[0]
+            and cached[0][1:] == key[1:]
+            and cached[1] == count
+        ):
+            return cached[2]
+        boxes = [child.get_world_bounding_box()] + [
+            c.get_world_bounding_box() for c in child.children
+        ]
+        box = (
+            min(x for x, _y, _w, _h in boxes),
+            min(y for _x, y, _w, _h in boxes),
+            max(x + w for x, _y, w, _h in boxes),
+            max(y + h for _x, y, _w, h in boxes),
+        )
+        self._reach_boxes[child] = (key, count, box)
+        return box
 
     def _drop_from_selection(self):
         """Removes this layer's elements from the canvas selection."""

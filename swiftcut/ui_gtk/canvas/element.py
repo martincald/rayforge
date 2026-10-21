@@ -1030,14 +1030,10 @@ class CanvasElement:
             The `CanvasElement` that was hit, or `None`.
         """
         # 1. Check children first (top-most are last in list, so drawn on top).
-        for child in reversed(self.children):
-            # Pass the original world coordinates down recursively.
-            hit = child.get_elem_hit(
-                world_x, world_y, selectable, strokes_only
-            )
-            if hit:
-                # A child was hit, so it's on top of us. Return it immediately.
-                return hit
+        hit = self._get_child_hit(world_x, world_y, selectable, strokes_only)
+        if hit:
+            # A child was hit, so it's on top of us. Return it immediately.
+            return hit
 
         # 2. If no children were hit, check this element itself.
         if selectable and not self.selectable:
@@ -1079,6 +1075,22 @@ class CanvasElement:
 
         # 5. If all checks pass, we have a hit on this element.
         return self
+
+    def _get_child_hit(
+        self,
+        world_x: float,
+        world_y: float,
+        selectable: bool,
+        strokes_only: bool,
+    ) -> CanvasElement | None:
+        """The top-most child (or descendant) hit, as get_elem_hit."""
+        for child in reversed(self.children):
+            hit = child.get_elem_hit(
+                world_x, world_y, selectable, strokes_only
+            )
+            if hit:
+                return hit
+        return None
 
     def is_near_stroke(self, world_x: float, world_y: float) -> bool:
         """
