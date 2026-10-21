@@ -629,13 +629,21 @@ class FileCmd:
             else "0 items"
         )
         logger.debug(f"Item_info: {item_info} position_mm: {position_mm}")
-        # 1. Position the new items. This is now safe as it runs on the main
-        #    thread, so any notifications it sends are valid.
         self._position_newly_imported_items(payload.items, position_mm)
+        self._commit_import(payload, filename, vectorization_spec, split_paths)
 
-        # 2. Add the positioned items to the document model. This is also
-        #    safe now as all subsequent signal handling will be on the
-        #    main thread.
+    def _commit_import(
+        self,
+        payload: ImportPayload,
+        filename: Path,
+        vectorization_spec: VectorizationSpec | None = None,
+        split_paths: bool = False,
+    ):
+        """
+        Adds positioned imported items to the document, with the default
+        steps of the layers they went to, and announces them. Main thread
+        only: everything it changes is heard by the UI.
+        """
         dest_layers, content = self._commit_items_to_document(
             payload.items,
             payload.source,
@@ -645,7 +653,6 @@ class FileCmd:
             split_paths,
         )
 
-        # 3. Add default steps to the destination layers.
         if dest_layers:
             self._editor.step.add_default_steps_for_layers(dest_layers)
 
@@ -718,38 +725,29 @@ class FileCmd:
                     ctx.set_message(_("Import failed."))
                     return
 
-                # 3. Schedule finalization on main thread and wait for it to
-                #    signal completion back to this (background) thread.
-                #    Content larger than the bed first asks the oversize
-                #    policy, which calls back with its answer later; the
-                #    future then holds whether the items were added.
+                # 3. Content larger than the bed asks the oversize policy,
+                #    on the main thread, which calls back with its answer
+                #    later; the future holds whether to go on.
+                payload = import_result.payload
                 loop = asyncio.get_running_loop()
                 main_thread_done = loop.create_future()
 
                 def finalizer_and_callback(accepted: bool | None = None):
                     """
-                    Wraps finalizer to signal future on completion/error.
-                    The oversize policy calls it again with its answer.
+                    Asks the policy if needed and passes its answer to
+                    the future. The oversize policy calls it again with
+                    its answer.
                     """
                     if main_thread_done.done():
                         return  # Task replaced while the policy asked.
                     try:
-                        assert import_result.payload, "Missing import payload"
                         if accepted is None and self.oversize_policy:
-                            sizes = self._oversize(import_result.payload.items)
+                            sizes = self._oversize(payload.items)
                             if sizes:
                                 self.oversize_policy(
                                     fn, *sizes, finalizer_and_callback
                                 )
                                 return
-                        if accepted is not False:
-                            self._finalize_import_on_main_thread(
-                                import_result.payload,
-                                fn,
-                                pos_mm,
-                                vec_spec,
-                                split_paths,
-                            )
                         if not main_thread_done.done():
                             loop.call_soon_threadsafe(
                                 main_thread_done.set_result,
@@ -773,6 +771,16 @@ class FileCmd:
                     ctx.set_message(_("Import cancelled."))
                     return
 
+                # 4. Scale to fit and the search for a free spot (outlines
+                #    of the whole document) here, off the main thread; the
+                #    items are not in the document yet. Then they go in,
+                #    on the main thread, announced once (Doc.batch).
+                await asyncio.to_thread(
+                    self._position_newly_imported_items, payload.items, pos_mm
+                )
+                await self._task_manager.run_on_main_thread(
+                    self._commit_import, payload, fn, vec_spec, split_paths
+                )
                 ctx.set_message(_("Import complete!"))
             except Exception as e:
                 # This will catch failures from the importer or the finalizer.
@@ -1020,7 +1028,9 @@ class FileCmd:
             f"fits={placement.fits}"
         )
         if not placement.fits:
-            self._editor.notification_requested.send(
+            # This runs in the import's worker thread.
+            self._task_manager.schedule_on_main_thread(
+                self._editor.notification_requested.send,
                 self,
                 message=_(
                     "No free space on the bed: the import overlaps "

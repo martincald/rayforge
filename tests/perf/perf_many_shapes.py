@@ -12,6 +12,8 @@ pieces loaded. One RESULT line per test, JSON after the word:
   idle), the longest the main loop was blocked (a 5 ms GLib timeout
   probe; the gaps between its ticks), and how many times the
   document's bubbled signals and the handlers that follow them ran;
+- test_import_beside: the same, imported a second time, beside the
+  first (the free-spot search keeps clear of 300 pieces);
 - test_frames: the main thread's cost of a canvas frame, offscreen:
   WorkSurface.do_snapshot into a Gtk.Snapshot of the window's canvas
   size at scale 2, the render node, and the CPU raster the GL renderer
@@ -348,6 +350,13 @@ def _result(name, data):
 
 def test_import(win, ui_task_mgr):
     _result("import", _import(win, ui_task_mgr, PassthroughSpec()))
+
+
+def test_import_beside(win, ui_task_mgr):
+    """The same import again, beside the first: the free-spot search
+    now has every piece on the bed to keep clear of."""
+    _import(win, ui_task_mgr, PassthroughSpec())
+    _result("import_beside", _import(win, ui_task_mgr, PassthroughSpec()))
 
 
 def _load(win, task_mgr):
