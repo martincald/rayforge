@@ -384,3 +384,133 @@ swizzle; output byte-identical by test, not yet by laser);
 `sudo py-spy record` of a start, `powermetrics` at idle and an
 Instruments Time Profiler run with Xcode, none of which could run in
 this session.
+
+## Many shapes (2026-10-21)
+
+The owner's report: importing, moving and working with hundreds of
+pieces (DXFs with many holes, imported as individual shapes) is
+extremely laggy, and an import freezes the whole window.
+
+**Benchmark.** `tests/perf/many_shapes.dxf` (`make_assets.py`): 60
+plates, each an outline, three round holes and a slot, 300 closed
+paths. `tests/perf/perf_many_shapes.py` builds the main window without
+showing it, imports the file as individual shapes with the import
+dialog's spec (PassthroughSpec) and measures: import and settle time,
+the longest main-loop stall (a 5 ms GLib timeout probe), how many
+times the doc signals and their handlers ran, the CPU cost of a frame
+(snapshot, render node, and the cairo raster the GL renderer does,
+at scale 2, the 1285 x 406 canvas of P0) for a pan, a pan with all
+selected and a drag of one piece, and the fine hit tests per pointer
+motion. `pixi run bench shapes` (`scripts/perf/ui_shapes.py`) measures
+the same in the real app on the frame clock, with idle CPU; it needs
+the machine to itself with the display awake (a covered or sleeping
+window gets no frame ticks: a trial run stalled twice for 15 min).
+Smaller scenes (60, 100 pieces) are the same generator with a smaller
+grid.
+
+### What the brief's evidence showed, and what was measured
+
+- *Placement per piece* (brief item 1): not at this commit. An
+  individual-shape import places the file once, unsplit, then splits
+  it: 19 ms into an empty bed, 133 ms beside 300 pieces.
+- **The freeze was the fan-out of one signal per piece**, which grew
+  as N^3 before the first fix: the Layers tab rebuilt every layer
+  column on every piece added, and the columns it replaced stayed
+  connected (GTK 4 never calls `do_destroy`), so piece k rebuilt the
+  rows k times; 46 050 row rebuilds for 300 pieces.
+- Every task progress step ran `MainWindow._update_actions_and_ui`
+  (4 777 times per import), which walked all 300 selected pieces'
+  geometry, and every geometry access wrote two DEBUG log lines: 2.7
+  million lines, 271 MB of session log per import, 80 of 96 s of a
+  profiled import.
+- Each piece's `descendant_added` also reached the canvas layer, the
+  start-corner overlay, `update_from_doc`, the intent rebuild debounce
+  and the asset browser.
+
+### Baseline (`7769b32fa` + harness `b740c177a`), headless
+
+| scene | import -> signal | settled | longest stall | row rebuilds | action refreshes | intent rebuilds |
+| --- | --- | --- | --- | --- | --- | --- |
+| 60 pieces | 6.43 s | 6.93 s | 6.0 s | 2 010 | 978 | 9 |
+| 100 pieces | 33.8 s | 35.3 s | 33.4 s | 5 350 | 1 616 | 55 |
+| 300 pieces | 1 325 s | 1 331 s | **1 325 s (22 min)** | 46 050 | 4 789 | 255 |
+
+| 300 pieces | p50 | p95 | note |
+| --- | --- | --- | --- |
+| pan frame | 0.28 ms | 4.96 ms | view tiles (P2) |
+| pan, all selected | 0.10 ms | 5.72 ms | |
+| drag of one piece | 7.75 ms | 8.61 ms | every frame repaints all 300 |
+| on_motion | 0.91 ms | 0.99 ms | 294 fine tests per motion (max 300) |
+
+### Fixes, one commit each
+
+| commit | fix | measured (headless, before -> after) |
+| --- | --- | --- |
+| `e543bb3b7` | Layers tab rebuilds columns only when the layers change; replaced columns disconnect | 60 pieces: stall 6 005 -> 621 ms, row rebuilds 2 010 -> 60 |
+| `540ebe8cf` | task progress refreshes the window once per idle; no DEBUG lines in `WorkPiece.boundaries`; laser dot redraws only on a change | action refreshes 4 777 -> ~540 (300), 983 -> 99 (60) |
+| `86b11be35` | `Doc.batch()`: every history execute, transaction, undo and redo announces added/removed/moved once, with all `origins` | 300: stall 1 325 s -> 0.20-0.29 s, settled 2.2 s; each doc signal, start corner, rows, intent rebuild: once |
+| `abfa71add` | scale to fit and the free-spot search run in the import's worker | stall beside 300 pieces 523/549 -> 390/375 ms; into an empty bed unchanged |
+| `9f2a0968b` | a layer hit-tests only children whose reach box holds the point | fine tests per motion 294 -> 0.11 (max 3); on_motion p50 0.91 -> 0.44 ms |
+
+Not done, by measurement:
+
+- **B2/B3, start-corner and snap bboxes cached**: after `Doc.batch`
+  the start-corner handler runs once per import, 2 ms; a cache would
+  save nothing measurable.
+- **A1, outline cache**: the outline pass now runs in the import's
+  worker (133 ms beside 300 pieces), off the main thread; a cache
+  would only shorten the worker's time.
+- **A2, STRtree**: the placement engine already indexes obstacle boxes
+  (numpy, `Placement.grown_boxes`); shapely is not in the env.
+- **C1, viewport culling**: measured need, not done. Pan p95 at 300
+  pieces is 8.7-12.6 ms on both trees (the slow frames draw new view
+  tiles, and each tile draw renders all 300 pieces). Culling per tile
+  must include each piece's ops composite (`_composited_bbox_mm`:
+  travel moves and overscan reach past the piece's box), or visible
+  ops would be clipped at tile edges. NEEDS-OWNER: next pass.
+- **C2, scene cache for drags**: drag p95 8.6 ms at 300 pieces is
+  over the 8 ms target (each drag frame repaints every piece's cached
+  image: 300 paints, ~5.5 ms). Not attempted in this pass:
+  NEEDS-OWNER decision (design: during a move, the still pieces as
+  view tiles, the moving ones and the overlays in a cairo node on top).
+
+### After (`3f506b77d`), headless, same machine
+
+| scene | import -> signal | settled | longest stall | stalls > 100 ms | doc signals, rows, intent rebuilds |
+| --- | --- | --- | --- | --- | --- |
+| 60 pieces | 6.43 -> 0.47 s | 6.93 -> 0.79 s | 6.0 s -> **40 ms** | 3 -> 0 | 1 each |
+| 100 pieces | 33.8 -> 0.44 s | 35.3 -> 0.90 s | 33.4 s -> **63 ms** | 6 -> 0 | 1 each |
+| 300 pieces | 1 325 -> 0.59 s | 1 331 -> 2.23 s | 1 325 s -> **188 ms** | 6 -> 3 | 1 each |
+| 300 beside 300 | - | 3.50 s | 374 ms | 5 | 1 each (2 adds: the second import) |
+
+Frames at 300 pieces, run alternately with the baseline tree, three
+rounds each (p50 / p95):
+
+| gesture | baseline | after |
+| --- | --- | --- |
+| pan | 0.37-0.51 / 8.7-12.2 ms | 0.44-0.92 / 8.8-12.6 ms |
+| pan, all selected | 0.08 / 3.5-4.4 ms | 0.09 / 3.5-4.5 ms |
+| drag one piece | 6.2-7.1 / 7.5-8.5 ms | 6.2-7.0 / 6.7-8.3 ms |
+| on_motion | 0.91 / 0.99 ms, 294 fine tests | 0.47 / 1.16 ms, 0.11 fine tests (max 3) |
+
+No frame regressed (the ranges overlap; frames were not this pass's
+target beyond hit testing). Targets: 300-piece import under 3 s with
+the UI responsive, **met** (settled 2.2 s, longest stall 188 ms);
+fine tests per motion <= 10, **met** (max 3); pan and drag p95 <= 8 ms
+at 300 pieces, **not met** (C1, C2 above). The remaining stalls
+(150-370 ms) are the insertion itself: 300 WorkPieceElements and the
+pipeline's per-piece results arriving (`_reattach`,
+`on_workpiece_artifact_ready`).
+
+### Gate record (branch `perf/many-shapes`)
+
+| check | result |
+| --- | --- |
+| non-UI suite | 5610 passed, 2 failed: `test_bind_failure_on_a_fixed_local_port_is_visible` (known) and this pass's own new laser-dot test, fixed in `c492236c5` |
+| UI suite, one process per file | 914 passed, 4 failed: the 3 known (`TestTrackpadContinuousZoom` x2, `test_identity_zoom_no_pan_matches_documented_composition`) and `test_the_hole_follows_a_card_rebuilt_under_it`, which rebuilt the cards by adding a piece; changed to a layer add in `3f506b77d`, file re-run: 21 passed |
+| ruff check swiftcut tests scripts | 31 at the base, 31 on the branch |
+| protected paths | none touched (`git diff --name-only` checked) |
+
+NEEDS-OWNER: `pixi run bench shapes` in the real app (frame clock,
+GPU, idle CPU) on an idle machine with the display awake; a feel test
+of importing the owner's own many-hole DXF; the C1/C2 decision.
