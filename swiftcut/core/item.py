@@ -584,7 +584,9 @@ class DocItem(ABC):
         child.parent = self
         self._connect_child_signals(child)
         self._recalculate_natural_size()
-        self.descendant_added.send(self, origin=child, parent_of_origin=self)
+        self._send_bubbled(
+            self.descendant_added, origin=child, parent_of_origin=self
+        )
         return child
 
     def remove_child(self, child: DocItem):
@@ -593,7 +595,9 @@ class DocItem(ABC):
 
         self.children.remove(child)
         child.parent = None
-        self.descendant_removed.send(self, origin=child, parent_of_origin=self)
+        self._send_bubbled(
+            self.descendant_removed, origin=child, parent_of_origin=self
+        )
         self._disconnect_child_signals(child)
         self._recalculate_natural_size()
 
@@ -685,8 +689,8 @@ class DocItem(ABC):
         # 3. Process removals and notify.
         for child in old_set - new_set:
             child.parent = None
-            self.descendant_removed.send(
-                self, origin=child, parent_of_origin=self
+            self._send_bubbled(
+                self.descendant_removed, origin=child, parent_of_origin=self
             )
             self._disconnect_child_signals(child)
 
@@ -696,8 +700,8 @@ class DocItem(ABC):
                 child.parent.remove_child(child)
             child.parent = self
             self._connect_child_signals(child)
-            self.descendant_added.send(
-                self, origin=child, parent_of_origin=self
+            self._send_bubbled(
+                self.descendant_added, origin=child, parent_of_origin=self
             )
 
         self._recalculate_natural_size()
@@ -781,6 +785,17 @@ class DocItem(ABC):
                 return found
         return None
 
+    def _send_bubbled(self, signal: Signal, **kwargs):
+        """
+        Sends one of the bubbled descendant_* signals, through the
+        document, which holds it while it batches changes (Doc.batch).
+        """
+        doc = self.doc
+        if doc is None:
+            signal.send(self, **kwargs)
+        else:
+            doc.send_bubbled(self, signal, kwargs)
+
     def _connect_child_signals(self, child: DocItem):
         child.updated.connect(self._on_child_updated)
         child.transform_changed.connect(self._on_child_transform_changed)
@@ -809,23 +824,20 @@ class DocItem(ABC):
     def _on_child_transform_changed(
         self, sender: DocItem, *, old_matrix: Matrix | None = None
     ):
-        self.descendant_transform_changed.send(
-            self, origin=sender, parent_of_origin=self, old_matrix=old_matrix
+        self._send_bubbled(
+            self.descendant_transform_changed,
+            origin=sender,
+            parent_of_origin=self,
+            old_matrix=old_matrix,
         )
 
-    def _on_descendant_added(
-        self, sender: DocItem, *, origin: DocItem, parent_of_origin: DocItem
-    ):
-        self.descendant_added.send(
-            self, origin=origin, parent_of_origin=parent_of_origin
-        )
+    # The bubbling of a batch's signals carries its `origins` along.
 
-    def _on_descendant_removed(
-        self, sender: DocItem, *, origin: DocItem, parent_of_origin: DocItem
-    ):
-        self.descendant_removed.send(
-            self, origin=origin, parent_of_origin=parent_of_origin
-        )
+    def _on_descendant_added(self, sender: DocItem, **kwargs):
+        self._send_bubbled(self.descendant_added, **kwargs)
+
+    def _on_descendant_removed(self, sender: DocItem, **kwargs):
+        self._send_bubbled(self.descendant_removed, **kwargs)
 
     def _on_descendant_updated(
         self, sender: DocItem, *, origin: DocItem, parent_of_origin: DocItem
@@ -834,20 +846,8 @@ class DocItem(ABC):
             self, origin=origin, parent_of_origin=parent_of_origin
         )
 
-    def _on_descendant_transform_changed(
-        self,
-        sender: DocItem,
-        *,
-        origin: DocItem,
-        parent_of_origin: DocItem,
-        old_matrix: Matrix | None = None,
-    ):
-        self.descendant_transform_changed.send(
-            self,
-            origin=origin,
-            parent_of_origin=parent_of_origin,
-            old_matrix=old_matrix,
-        )
+    def _on_descendant_transform_changed(self, sender: DocItem, **kwargs):
+        self._send_bubbled(self.descendant_transform_changed, **kwargs)
 
     @property
     def matrix(self) -> Matrix:

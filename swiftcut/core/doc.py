@@ -1,5 +1,6 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from gettext import gettext as _
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +37,13 @@ class Doc(DocItem):
 
     def __init__(self):
         super().__init__()
+        # Changes made in a batch (see batch) queue their bubbled
+        # signals here, one entry per signal: (sender, latest kwargs,
+        # every origin in order).
+        self._batch_depth = 0
+        self._batched: dict[Signal, tuple[DocItem, dict, list]] = {}
         self.history_manager = HistoryManager()
+        self.history_manager.batch = self.batch
         self.active_layer_changed = Signal()
         self.job_assembly_invalidated = Signal()
 
@@ -284,6 +291,42 @@ class Doc(DocItem):
     def doc(self) -> "Doc":
         """The root Doc object is itself."""
         return self
+
+    @contextmanager
+    def batch(self) -> Iterator[None]:
+        """
+        Changes made inside are announced once each, when the outermost
+        batch ends: every item's descendant_added, descendant_removed
+        and descendant_transform_changed fire (and bubble) once, with
+        the latest origin and an `origins` tuple of all of them. An
+        import of 300 pieces is one descendant_added, not 300, each of
+        which redrew, re-laid out and re-measured the whole document.
+        The history runs every command in one (HistoryManager.batch).
+        """
+        self._batch_depth += 1
+        try:
+            yield
+        finally:
+            self._batch_depth -= 1
+            if not self._batch_depth:
+                batched, self._batched = self._batched, {}
+                for signal, (sender, kwargs, origins) in batched.items():
+                    signal.send(sender, **kwargs, origins=tuple(origins))
+
+    def send_bubbled(self, sender: DocItem, signal: Signal, kwargs: dict):
+        """
+        Sends one of sender's bubbled signals, or queues it while a
+        batch is open.
+        """
+        if not self._batch_depth:
+            signal.send(sender, **kwargs)
+            return
+        entry = self._batched.get(signal)
+        if entry is None:
+            entry = self._batched[signal] = (sender, {}, [])
+        origins = kwargs.pop("origins", None) or (kwargs.get("origin"),)
+        entry[1].update(kwargs)
+        entry[2].extend(origins)
 
     @property
     def layers(self) -> list[Layer]:

@@ -147,15 +147,21 @@ class ViewManager:
                 self._on_doc_item_removed
             )
 
-    def _on_doc_item_removed(self, sender, *, origin, parent_of_origin):
-        """Handle removal of workpieces and steps from the document."""
+    def _on_doc_item_removed(
+        self, sender, *, origin, parent_of_origin, origins=None, **kwargs
+    ):
+        """
+        Handle removal of workpieces and steps from the document; a
+        batch of removals (Doc.batch) names them all in origins.
+        """
         from ...core.step import Step
         from ...core.workpiece import WorkPiece
 
-        if isinstance(origin, WorkPiece):
-            self._cleanup_views_for_workpiece(origin.uid)
-        elif isinstance(origin, Step):
-            self._cleanup_views_for_step(origin.uid)
+        for item in origins or (origin,):
+            if isinstance(item, WorkPiece):
+                self._cleanup_views_for_workpiece(item.uid)
+            elif isinstance(item, Step):
+                self._cleanup_views_for_step(item.uid)
 
     def _cleanup_views_for_workpiece(self, workpiece_uid: str):
         """Remove all view entries for a workpiece."""

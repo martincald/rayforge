@@ -111,6 +111,7 @@ class LayerElement(CanvasElement):
         sender,
         origin: DocItem | None = None,
         parent_of_origin: DocItem | None = None,
+        **kwargs,
     ):
         """
         Reconciles all child elements with the state of the Layer model.

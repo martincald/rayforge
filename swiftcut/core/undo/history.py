@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 
 from blinker import Signal
 
@@ -62,12 +62,17 @@ class HistoryManager:
         # in the undo stack represent the checkpointed state.
         self._checkpoint: Command | None = None
 
+        #: What a command's changes run in, so that what follows them
+        #: hears of them once, after (the document's Doc.batch).
+        self.batch: Callable[[], AbstractContextManager] = nullcontext
+
     def execute(self, command: Command):
         """
         Executes a command and adds it to the history, possibly coalescing
         it with the previous command.
         """
-        command.execute()
+        with self.batch():
+            command.execute()
         self.add(command)
 
     def add(self, command: Command):
@@ -130,7 +135,8 @@ class HistoryManager:
         """
         self.begin_transaction(name)
         try:
-            yield _TransactionContextProxy(self)
+            with self.batch():
+                yield _TransactionContextProxy(self)
             self.end_transaction()
         except Exception:
             # An exception occurred. Undo any commands that were executed.
@@ -217,7 +223,8 @@ class HistoryManager:
         if not self.can_undo():
             return
         command = self.undo_stack.pop()
-        command.undo()
+        with self.batch():
+            command.undo()
         self.redo_stack.append(command)
         self.changed.send(self, command=command)
 
@@ -226,7 +233,8 @@ class HistoryManager:
         if not self.can_redo():
             return
         command = self.redo_stack.pop()
-        command.execute()
+        with self.batch():
+            command.execute()
         self.undo_stack.append(command)
         self.changed.send(self, command=command)
 
