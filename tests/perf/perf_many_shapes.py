@@ -7,11 +7,11 @@ closed paths, by default) as individual shapes, then measures with the
 pieces loaded. One RESULT line per test, JSON after the word:
 
 - test_import, with the import dialog's default spec, PassthroughSpec
-  (each piece goes into the document's layer on its own): wall time to the items_imported signal and to settled
-  (no task, the editor idle), the longest the main loop was blocked
-  (a 5 ms GLib timeout probe; the gaps between its ticks), and how
-  many times the document's bubbled signals and the handlers the
-  brief names ran during it;
+  (each piece goes into the document's layer on its own): wall time
+  to the items_imported signal and to settled (no task, the editor
+  idle), the longest the main loop was blocked (a 5 ms GLib timeout
+  probe; the gaps between its ticks), and how many times the
+  document's bubbled signals and the handlers that follow them ran;
 - test_frames: the main thread's cost of a canvas frame, offscreen:
   WorkSurface.do_snapshot into a Gtk.Snapshot of the window's canvas
   size at scale 2, the render node, and the CPU raster the GL renderer
@@ -25,8 +25,10 @@ Not named test_*.py: it must not join the default suite. Run::
 
     python -m pytest tests/perf/perf_many_shapes.py -q -s
     PERF_SHAPES=/path/to/other.dxf python -m pytest ...
+    PERF_PROFILE=/tmp/import.prof python -m pytest ... -k import
 """
 
+import cProfile
 import itertools
 import json
 import math
@@ -64,6 +66,8 @@ FINE_TESTS = (
     (WorkPieceElement, "encloses_point"),
     (CanvasElement, "is_pixel_opaque"),
 )
+#: With a path, the import of test_import is profiled into it.
+PROFILE = os.environ.get("PERF_PROFILE")
 SETTLE_TIMEOUT_S = float(os.environ.get("PERF_SETTLE_TIMEOUT_S", "3600"))
 #: Handlers counted during an import, patched on their classes before
 #: the window connects them.
@@ -151,6 +155,9 @@ def _import(win, task_mgr, spec):
         stamps["pieces"] = len(kwargs.get("items") or ())
 
     editor.file.items_imported.connect(on_imported, weak=False)
+    profile = cProfile.Profile() if PROFILE and spec else None
+    if profile:
+        profile.enable()
     probe_id = GLib.timeout_add(5, probe)
     start = time.perf_counter()
     ticks.append(start)
@@ -173,6 +180,9 @@ def _import(win, task_mgr, spec):
         assert time.monotonic() < deadline, "the import did not settle"
         time.sleep(0.002)
     GLib.source_remove(probe_id)
+    if profile:
+        profile.disable()
+        profile.dump_stats(PROFILE)
     gaps = [(b - a) * 1000 for a, b in itertools.pairwise(ticks)]
     return {
         "scene": SHAPES.name,
