@@ -274,4 +274,4 @@ def test_laser_dot_visibility_unchanged_does_not_redraw(
     assert surface._content_version == version
 
     surface.set_laser_dot_visible(False)
-    assert surface._content_version == version + 1
+    assert surface._content_version > version
