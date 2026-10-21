@@ -460,6 +460,7 @@ class LayerColumn(Gtk.Box):
             self._on_layer_structure_changed
         )
         self.doc.active_layer_changed.disconnect(self._on_active_layer_changed)
+        self.workflow_row.do_destroy()
 
     def _on_layer_updated(self, sender, **kwargs):
         self._update_ui()

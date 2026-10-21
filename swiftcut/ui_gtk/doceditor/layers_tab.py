@@ -105,7 +105,11 @@ class LayersTab(Gtk.Box):
         self._disconnect_signals()
 
     def _on_structure_changed(self, sender, **kwargs):
-        self._rebuild()
+        """
+        A column follows its own layer's content, so only a change in
+        the layers themselves rebuilds the columns.
+        """
+        self._on_doc_updated(sender)
 
     def _on_doc_updated(self, sender, **kwargs):
         current = [col.layer for col in self._columns]
@@ -115,6 +119,9 @@ class LayersTab(Gtk.Box):
     def _rebuild(self):
         for col in self._columns:
             self.columns_box.remove(col)
+            # GTK 4 never calls do_destroy, and a column left connected
+            # to its layer stays alive and keeps rebuilding its rows.
+            col.do_destroy()
         self._columns.clear()
 
         can_delete = len(list(self.doc.layers)) > 1
