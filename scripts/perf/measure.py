@@ -530,6 +530,67 @@ def renderers(scratch):
     return out
 
 
+SHAPES_SCENES = ("many_shapes.dxf", "large.dxf")
+SHAPES_GESTURES = ("pan", "pan_selected", "zoom", "drag")
+
+
+def shapes(scratch):
+    """
+    Individual-shape import of SHAPES_SCENES and the canvas with those
+    pieces loaded (scripts/perf/ui_shapes): import and settle time,
+    the longest main-thread stall during the import, pan/zoom/drag
+    frames, on_motion cost and fine hit tests, idle CPU.
+    """
+    out = {}
+    for scene in SHAPES_SCENES:
+        runs = [
+            _run_uiscript(
+                scratch,
+                "ui_shapes.py",
+                {
+                    "PERF_SCENE": str(PERF_DIR / scene),
+                    "PERF_FRAMES": str(FRAMES),
+                },
+            )
+            for _ in range(RUNS)
+        ]
+        stalls = [ms for r in runs for ms in r["import"]["interval_ms"]]
+        first = runs[0]
+        out[scene] = {
+            "pieces": first["import"]["pieces"],
+            "renderer": first["renderer"],
+            "scale_factor": first["scale_factor"],
+            "imported_s": _median([r["import"]["imported_s"] for r in runs]),
+            "settled_s": _median([r["import"]["settled_s"] for r in runs]),
+            "stall_ms": _median(
+                [r["import"]["longest_stall_ms"] for r in runs]
+            ),
+            "import_interval_p95_ms": _pct(stalls, 0.95),
+            **{g: _frames(runs, g) for g in SHAPES_GESTURES},
+            "hit": {
+                k: _median([r["hit"][k] for r in runs])
+                for k in (
+                    "motion_ms_p50",
+                    "motion_ms_p95",
+                    "fine_tests_mean",
+                    "fine_tests_max",
+                )
+            },
+            "idle_cpu_pct": _median([r["idle"]["cpu_pct"] for r in runs]),
+            "runs": [
+                {
+                    "imported_s": r["import"]["imported_s"],
+                    "settled_s": r["import"]["settled_s"],
+                    "stall_ms": r["import"]["longest_stall_ms"],
+                    "hit": r["hit"],
+                    "idle": r["idle"],
+                }
+                for r in runs
+            ],
+        }
+    return out
+
+
 def preview(scratch):
     """Job preview of two_layer.ryp at x16 (scripts/perf/ui_preview)."""
     runs = [
@@ -1014,6 +1075,31 @@ def report(_scratch, results=None):
                 f"p95 {_f(v[k]['p95_ms'], '{:.1f}')} ms",
                 f"{v[k]['missed']} missed of {v[k]['frames']}",
             )
+    for scene, v in entries("shapes"):
+        name = f"{scene} ({v['pieces']} pieces)"
+        row(
+            f"j) import {name}",
+            f"{_f(v['imported_s'])} s",
+            f"settled {_f(v['settled_s'])} s, longest stall "
+            f"{_f(v['stall_ms'], '{:.0f}')} ms",
+        )
+        for g in SHAPES_GESTURES:
+            row(
+                f"j) {scene} {g}",
+                f"p50 {_f(v[g]['p50_ms'], '{:.1f}')} / "
+                f"p95 {_f(v[g]['p95_ms'], '{:.1f}')} ms",
+                f"{v['renderer']} x{v['scale_factor']}, "
+                f"{v[g]['missed']} missed of {v[g]['frames']}",
+            )
+        hit = v["hit"]
+        row(
+            f"j) {scene} hit test per motion",
+            f"p50 {_f(hit['motion_ms_p50'])} / "
+            f"p95 {_f(hit['motion_ms_p95'])} ms",
+            f"fine tests mean {_f(hit['fine_tests_mean'], '{:.0f}')}, "
+            f"max {_f(hit['fine_tests_max'], '{:.0f}')}",
+        )
+        row(f"j) {scene} idle", f"{_f(v['idle_cpu_pct'])} % CPU")
     for name, v in entries("idle"):
         if "error" in v:
             continue
@@ -1056,6 +1142,7 @@ STEPS = {
     "encode": encode,
     "layout": layout,
     "canvas": canvas,
+    "shapes": shapes,
     "preview": preview,
     "idle": idle,
     "soak": soak,

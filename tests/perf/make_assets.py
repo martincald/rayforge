@@ -26,6 +26,8 @@ HERE = Path(__file__).parent
 SMALL_SVG_SEGMENTS = 200
 LARGE_DXF_SEGMENTS = 20000
 RASTER_SIZE = (3000, 2000)
+# Plates (columns, rows) in many_shapes.dxf, five closed paths each.
+MANY_SHAPES_GRID = (10, 6)
 
 
 def _star_points(cx, cy, r_outer, r_inner, points):
@@ -95,6 +97,55 @@ def write_large_dxf(path):
     return polys * per_poly
 
 
+def write_many_shapes_dxf(path):
+    """
+    ~300 closed paths, what a nesting user imports as individual
+    shapes: a grid of plates, each an outline with three round holes
+    and a slot, all closed.
+    """
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = 4  # mm; see write_large_dxf
+    msp = doc.modelspace()
+    doc.layers.add("CUT", color=7)
+    attribs = {"layer": "CUT"}
+
+    cols, rows = MANY_SHAPES_GRID
+    w, h, c = 40.0, 30.0, 4.0  # plate size and corner chamfer
+    paths = 0
+    for n in range(cols * rows):
+        x0 = 10.0 + 50.0 * (n % cols)
+        y0 = 10.0 + 40.0 * (n // cols)
+        msp.add_lwpolyline(
+            [
+                (x0 + c, y0),
+                (x0 + w - c, y0),
+                (x0 + w, y0 + c),
+                (x0 + w, y0 + h - c),
+                (x0 + w - c, y0 + h),
+                (x0 + c, y0 + h),
+                (x0, y0 + h - c),
+                (x0, y0 + c),
+            ],
+            close=True,
+            dxfattribs=attribs,
+        )
+        for hx, r in ((8.0, 2.5), (20.0, 3.5), (32.0, 2.5)):
+            msp.add_circle((x0 + hx, y0 + 8.0), r, dxfattribs=attribs)
+        msp.add_lwpolyline(
+            [
+                (x0 + 10.0, y0 + 18.0),
+                (x0 + 30.0, y0 + 18.0),
+                (x0 + 30.0, y0 + 23.0),
+                (x0 + 10.0, y0 + 23.0),
+            ],
+            close=True,
+            dxfattribs=attribs,
+        )
+        paths += 5
+    doc.saveas(path)
+    return paths
+
+
 def write_raster_png(path):
     """A 3000x2000 greyscale-ish pattern with real high-frequency detail.
 
@@ -126,6 +177,8 @@ def main():
     print(f"small.svg   {n} segments")
     n = write_large_dxf(HERE / "large.dxf")
     print(f"large.dxf   {n} segments")
+    n = write_many_shapes_dxf(HERE / "many_shapes.dxf")
+    print(f"many_shapes.dxf  {n} closed paths")
     n = write_raster_png(HERE / "raster.png")
     print(f"raster.png  {RASTER_SIZE[0]}x{RASTER_SIZE[1]} ({n} px)")
 
