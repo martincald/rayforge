@@ -318,6 +318,9 @@ class WorkSurface(WorldSurface):
         return False
 
     def set_laser_dot_visible(self, visible: bool = True) -> None:
+        # Called on every task update: a redraw only for a change.
+        if self._laser_dot.visible == visible:
+            return
         self._laser_dot.set_visible(visible)
         self.queue_draw()
 

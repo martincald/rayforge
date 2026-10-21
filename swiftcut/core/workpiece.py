@@ -352,12 +352,10 @@ class WorkPiece(DocItem):
           sizing, positioning, and rotation are handled by applying the
           `WorkPiece.matrix` to this normalized shape.
         """
-        logger.debug("boundaries called")
         if self._edited_boundaries is not None:
             return self._edited_boundaries
 
         if self._boundaries_cache is not None:
-            logger.debug("Cache hit: boundaries present")
             return self._boundaries_cache
         logger.debug("Cache miss: boundaries not present")
 

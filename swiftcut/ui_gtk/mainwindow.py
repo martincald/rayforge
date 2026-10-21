@@ -646,6 +646,8 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Set up config signals.
         config.changed.connect(self.on_config_changed)
+        self._latest_tasks: list = []
+        self._tasks_update_pending = False
         task_mgr.tasks_updated.connect(self.on_running_tasks_changed)
         self.needs_homing = (
             config.machine.home_on_start if config.machine else False
@@ -1624,8 +1626,21 @@ class MainWindow(Adw.ApplicationWindow):
         get_context().theme.bind(self)
 
     def on_running_tasks_changed(self, sender, tasks, progress):
+        """
+        Task progress arrives on every step of every task, thousands of
+        times while an import of many shapes settles: the actions and
+        the status line follow the latest of it once per idle.
+        """
+        self._latest_tasks = tasks
+        if not self._tasks_update_pending:
+            self._tasks_update_pending = True
+            GLib.idle_add(self._on_tasks_changed_idle)
+
+    def _on_tasks_changed_idle(self):
+        self._tasks_update_pending = False
         self._update_actions_and_ui()
-        self._update_status_message(tasks)
+        self._update_status_message(self._latest_tasks)
+        return GLib.SOURCE_REMOVE
 
     def _update_status_message(self, tasks):
         if not tasks:

@@ -253,3 +253,25 @@ class TestLaserDotWithWCSOffset:
 
         assert abs(center_x - 60.0) < 1e-5
         assert abs(center_y - 40.0) < 1e-5
+
+
+def test_laser_dot_visibility_unchanged_does_not_redraw(
+    ui_context_initializer,
+):
+    """
+    MainWindow sets the dot's visibility on every task update; only a
+    change redraws the canvas (a redraw drops the view tiles).
+    """
+    machine = Machine(ui_context_initializer)
+    machine.set_axis_extents(WIDTH, HEIGHT)
+    mock_editor = MagicMock()
+    mock_editor.doc.active_layer.rotary_enabled = False
+    surface = WorkSurface(mock_editor, MagicMock(), machine)
+    surface.set_laser_dot_visible(True)
+    version = surface._content_version
+
+    surface.set_laser_dot_visible(True)
+    assert surface._content_version == version
+
+    surface.set_laser_dot_visible(False)
+    assert surface._content_version == version + 1
