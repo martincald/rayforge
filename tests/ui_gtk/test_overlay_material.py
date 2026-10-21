@@ -32,6 +32,7 @@ FLOATING_MODULES = (
     "ui_gtk/shared/job_preview_bar.py",
     "ui_gtk/canvas2d/drag_drop_cmd.py",
     "ui_gtk/getting_started.py",
+    "ui_gtk/tour/overlay.py",
     "shared/gcodeedit/viewer.py",
 )
 

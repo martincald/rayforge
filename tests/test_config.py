@@ -180,6 +180,55 @@ def test_getting_started_is_unseen_until_closed_and_survives_the_file(
     assert ConfigManager(path, Machines()).config.getting_started_seen
 
 
+def test_a_tour_is_recorded_as_it_ends_and_survives_the_file(tmp_path):
+    from blinker import Signal
+
+    from swiftcut.core.config import (
+        TOUR_COMPLETED,
+        TOUR_SEEN,
+        ConfigManager,
+    )
+
+    class Machines:
+        machine_removed = Signal()
+
+        @staticmethod
+        def get_machine_by_id(machine_id):
+            return None
+
+    path = tmp_path / "config.yaml"
+    # A config file from before the tours has no key: none has ended.
+    path.write_text("theme: system\n")
+    manager = ConfigManager(path, Machines())
+    assert Config().tours == {}
+    assert manager.config.tours == {}
+
+    manager.config.mark_tour("first-cut", TOUR_SEEN)
+    manager.config.mark_tour("layers", TOUR_COMPLETED)
+
+    assert "first-cut: seen" in path.read_text()
+    assert ConfigManager(path, Machines()).config.tours == {
+        "first-cut": TOUR_SEEN,
+        "layers": TOUR_COMPLETED,
+    }
+
+    # Skipping a completed tour on a later run leaves it completed.
+    manager.config.mark_tour("layers", TOUR_SEEN)
+    assert ConfigManager(path, Machines()).config.tours["layers"] == (
+        TOUR_COMPLETED
+    )
+
+
+def test_a_malformed_tours_entry_reads_as_no_tour_ended():
+    blank = Config.from_dict({"tours": ["first-cut"]}, lambda _id: None)
+    assert blank.tours == {}
+    restored = Config.from_dict(
+        {"tours": {"first-cut": "completed", "layers": "half"}},
+        lambda _id: None,
+    )
+    assert restored.tours == {"first-cut": "completed"}
+
+
 def test_snapping_is_on_by_default_and_survives_the_config_file():
     assert Config().canvas_view.snapping_enabled is True
     blank = Config.from_dict({}, lambda _id: None)

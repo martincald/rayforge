@@ -89,6 +89,9 @@ from .shared.time_estimate_overlay import TimeEstimateOverlay
 from .shared.visibility_overlay import VisibilityOverlay
 from .theme import install as install_theme
 from .toolbar import MainToolbar
+from .tour.content import FIRST_CUT, TOURS
+from .tour.dialog import ToursWindow
+from .tour.runner import TourRunner
 
 logger = logging.getLogger(__name__)
 
@@ -205,9 +208,15 @@ class MainWindow(Adw.ApplicationWindow):
         # Track active toasts so they can be cleared programmatically
         self._active_toasts: list[Adw.Toast] = []
 
-        # The main content box is now the child of the ToastOverlay
+        # The main content box sits in the tour's overlay, inside the
+        # ToastOverlay: a guided tour dims the whole box but its
+        # target, and toasts stay above the dim.
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.toast_overlay.set_child(vbox)
+        self.tour_overlay = Gtk.Overlay()
+        self.tour_overlay.set_child(vbox)
+        self.toast_overlay.set_child(self.tour_overlay)
+        # The guided tour playing over the window, if one is.
+        self.tour: TourRunner | None = None
 
         # Create the central document editor. This now owns the Doc and
         # Pipeline.
@@ -2564,9 +2573,39 @@ class MainWindow(Adw.ApplicationWindow):
         guide.present()
 
     def maybe_show_getting_started(self, scripted: bool):
-        """Opens the first-run guide if it has never been closed."""
+        """
+        Opens the first-run guide if it has never been closed. Closing
+        it plays 'Your first cut', unless that tour has ended before.
+        """
         if should_show_getting_started(get_context().config, scripted):
             self.show_getting_started(None, None)
+            self._getting_started.connect(
+                "close-request", self._on_first_guide_closed
+            )
+
+    def _on_first_guide_closed(self, guide) -> bool:
+        # After the guide is gone, not while it is still closing.
+        GLib.idle_add(self._play_first_tour)
+        return False
+
+    def _play_first_tour(self) -> bool:
+        if (
+            self.get_mapped()
+            and self.tour is None
+            and FIRST_CUT.id not in get_context().config.tours
+        ):
+            TourRunner(self, FIRST_CUT).start()
+        return GLib.SOURCE_REMOVE
+
+    def show_tours(self, action, param):
+        """Opens Help > Tours, the list of guided tours."""
+        ToursWindow(self, transient_for=self).present()
+
+    def start_tour(self, action, param):
+        """Plays the guided tour whose id param holds."""
+        tour = TOURS.get(param.get_string())
+        if tour is not None:
+            TourRunner(self, tour).start()
 
     def on_save_debug_log(self, action, param):
         DebugLogDialog(

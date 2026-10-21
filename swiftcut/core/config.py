@@ -12,6 +12,11 @@ from ..shared.units.definitions import get_unit
 
 logger = logging.getLogger(__name__)
 
+# How far a guided tour got: skipped (or left with Esc) part way, or
+# followed to its last step.
+TOUR_SEEN = "seen"
+TOUR_COMPLETED = "completed"
+
 
 class OpsColorMode(Enum):
     """Enum for ops color source options."""
@@ -84,6 +89,9 @@ class Config:
         # file from before the guide has no key, so it shows once there
         # too.
         self.getting_started_seen: bool = False
+        # Each guided tour that has ended, by tour id: TOUR_SEEN or
+        # TOUR_COMPLETED. A tour with no entry has never ended.
+        self.tours: dict[str, str] = {}
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
         # Default DPI for unitless SVG imports
         self.import_dpi: float = 96.0
@@ -195,6 +203,18 @@ class Config:
         self.getting_started_seen = seen
         self.changed.send(self)
 
+    def mark_tour(self, tour_id: str, state: str):
+        """
+        Records how a guided tour ended, TOUR_SEEN or TOUR_COMPLETED.
+
+        A tour once completed stays completed: skipping it on a later
+        run does not take that back.
+        """
+        if self.tours.get(tour_id) in (state, TOUR_COMPLETED):
+            return
+        self.tours = {**self.tours, tour_id: state}
+        self.changed.send(self)
+
     def set_ops_color_mode(self, mode: OpsColorMode):
         """Sets the ops color mode."""
         if self.ops_color_mode == mode:
@@ -236,6 +256,7 @@ class Config:
             "auto_pipeline": self.auto_pipeline,
             "crawford_mode": self.crawford_mode,
             "getting_started_seen": self.getting_started_seen,
+            "tours": dict(self.tours),
             "ops_color_mode": self.ops_color_mode.value,
             "import_dpi": self.import_dpi,
             "cache_budget_bytes": self.cache_budget_bytes,
@@ -304,6 +325,13 @@ class Config:
         config.auto_pipeline = data.get("auto_pipeline", True)
         config.crawford_mode = data.get("crawford_mode", False)
         config.getting_started_seen = data.get("getting_started_seen", False)
+        tours = data.get("tours")
+        if isinstance(tours, dict):
+            config.tours = {
+                str(tour_id): state
+                for tour_id, state in tours.items()
+                if state in (TOUR_SEEN, TOUR_COMPLETED)
+            }
 
         ops_color_mode_str = data.get(
             "ops_color_mode", OpsColorMode.LASER.value
