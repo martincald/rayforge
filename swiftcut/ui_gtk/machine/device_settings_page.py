@@ -2,16 +2,18 @@ import logging
 import sys
 from datetime import datetime
 from gettext import gettext as _
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from blinker import Signal
 from gi.repository import Adw, GLib, Gtk
 
 from ...context import get_context
 from ...logging_setup import get_current_log_file
+from ...machine.axis_limits import read_axis_limits, refusal
 from ...machine.driver.ruida.ruida_driver import RuidaDriver
 from ...machine.driver.ruida.ruida_usb_transport import list_usb_devices
 from ...machine.transport.transport import TransportStatus
+from ...shared.tasker import task_mgr
 from ..icons import get_icon
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -28,6 +30,9 @@ DIAGNOSTICS_REFRESH_INTERVAL_SECONDS = 2
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from ...machine.cmd import MachineCmd
+
 
 class DeviceSettingsPage(TrackedPreferencesPage):
     """
@@ -37,7 +42,9 @@ class DeviceSettingsPage(TrackedPreferencesPage):
     key = "device"
     path_prefix = "/machine-settings/"
 
-    def __init__(self, machine, **kwargs):
+    def __init__(
+        self, machine, machine_cmd: "MachineCmd | None" = None, **kwargs
+    ):
         super().__init__(
             title=_("Device"),
             icon_name="hardware-symbolic",
@@ -45,6 +52,9 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         )
         logger.debug("__init__")
         self.machine = machine
+        # Only asked whether a Start is preparing a job, so an axis
+        # limits read is refused before the driver knows of the job.
+        self._machine_cmd = machine_cmd
 
         self.show_toast = Signal()
 
@@ -143,6 +153,28 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         )
         self.diag_port_warning_row.add_suffix(reset_ports_button)
 
+        # Axis limits (Ruida only): what the controller reports for
+        # each axis, beside the profile's extent, read on a click.
+        self.diag_axis_limits_row = Adw.ActionRow(
+            title=_("Axis Limits"),
+            subtitle=_("The controller's range, home offset and position"),
+        )
+        self.read_axis_limits_button = Gtk.Button(label=_("Read axis limits"))
+        self.read_axis_limits_button.add_css_class("flat")
+        self.read_axis_limits_button.set_valign(Gtk.Align.CENTER)
+        self.read_axis_limits_button.connect(
+            "clicked", self._on_read_axis_limits_clicked
+        )
+        self.diag_axis_limits_row.add_suffix(self.read_axis_limits_button)
+        # Per axis: its row and the warning shown on a mismatch.
+        self._axis_limit_rows: dict[str, tuple[Adw.ActionRow, Gtk.Widget]] = {}
+        for axis, title in (("X", _("X Axis")), ("Y", _("Y Axis"))):
+            row = Adw.ActionRow(title=title, visible=False)
+            warning = get_icon("warning-symbolic")
+            warning.set_visible(False)
+            row.add_prefix(warning)
+            self._axis_limit_rows[axis] = (row, warning)
+
         # Kept as its own list (rather than folded into the udp/usb
         # split below) because it is the exact set an earlier package
         # already wrote tests against, asserting it is shown as a
@@ -182,6 +214,9 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         for row in all_rows:
             self.diag_group.add(row)
         self.diag_group.add(self.diag_port_warning_row)
+        self.diag_group.add(self.diag_axis_limits_row)
+        for row, _warning in self._axis_limit_rows.values():
+            self.diag_group.add(row)
         self.diag_group.add(self.diag_log_row)
         self.add(self.diag_group)
         self._diagnostics_timeout_id = GLib.timeout_add_seconds(
@@ -366,6 +401,12 @@ class DeviceSettingsPage(TrackedPreferencesPage):
             )
             self.diag_port_warning_row.set_subtitle(details)
 
+        is_ruida = self.machine.driver_name == "RuidaDriver"
+        self.diag_axis_limits_row.set_visible(is_ruida)
+        if not is_ruida:
+            for row, _warning in self._axis_limit_rows.values():
+                row.set_visible(False)
+
         log_file = get_current_log_file()
         self.diag_log_row.set_subtitle(str(log_file) if log_file else _("N/A"))
 
@@ -383,6 +424,47 @@ class DeviceSettingsPage(TrackedPreferencesPage):
         self.machine.set_driver_args(new_args)
         self._update_ui_state()
         self.show_toast.send(self, message=_("Ports reset to defaults."))
+
+    def _on_read_axis_limits_clicked(self, _button):
+        """
+        Reads the controller's axis limits, unless a job or motion owns
+        the wire; the refusal is shown and nothing is sent.
+        """
+        job_running = bool(
+            self._machine_cmd and self._machine_cmd.is_job_running
+        )
+        reason = refusal(self.machine.driver, job_running)
+        if reason is not None:
+            self.diag_axis_limits_row.set_subtitle(reason)
+            return
+        self.read_axis_limits_button.set_sensitive(False)
+        self.diag_axis_limits_row.set_subtitle(_("Reading..."))
+        machine = self.machine
+        task_mgr.add_coroutine(
+            lambda ctx: read_axis_limits(machine, job_running),
+            key="read-axis-limits",
+            when_done=self._on_axis_limits_read,
+        )
+
+    def _on_axis_limits_read(self, task):
+        self.read_axis_limits_button.set_sensitive(True)
+        try:
+            limits = task.result()
+        except Exception as e:  # noqa: BLE001 - shown; the task logged it
+            self.diag_axis_limits_row.set_subtitle(
+                _("Read failed: {error}").format(error=e)
+            )
+            return
+        self.diag_axis_limits_row.set_subtitle(
+            _("Read at {time}").format(
+                time=datetime.now().astimezone().strftime("%H:%M:%S")
+            )
+        )
+        for limit in limits:
+            row, warning = self._axis_limit_rows[limit.axis]
+            row.set_subtitle(limit.describe())
+            warning.set_visible(limit.mismatch)
+            row.set_visible(True)
 
     def _refresh_usb_devices(self):
         """Enumerates the FTDI devices the profile's USB backend sees."""

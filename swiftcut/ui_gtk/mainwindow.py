@@ -1230,6 +1230,7 @@ class MainWindow(Adw.ApplicationWindow):
             machine=config.machine,
             transient_for=self,
             initial_page="maintenance",
+            machine_cmd=self.machine_cmd,
         )
         dialog.present()
 
@@ -1876,6 +1877,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog = MachineSettingsDialog(
             machine=config.machine,
             transient_for=self,
+            machine_cmd=self.machine_cmd,
         )
         dialog.present()
 
@@ -2646,6 +2648,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog = MachineSettingsDialog(
             machine=config.machine,
             transient_for=self,
+            machine_cmd=self.machine_cmd,
         )
         dialog.present()
 

@@ -1,4 +1,5 @@
 from gettext import gettext as _
+from typing import TYPE_CHECKING
 
 from gi.repository import Adw, Gtk
 
@@ -14,6 +15,9 @@ from .head_preferences_page import HeadPreferencesPage
 from .maintenance_page import MaintenancePage
 from .nogo_zones_page import NogoZonesPage
 
+if TYPE_CHECKING:
+    from ...machine.cmd import MachineCmd
+
 
 class MachineSettingsDialog(PatchedDialogWindow):
     def __init__(
@@ -22,6 +26,7 @@ class MachineSettingsDialog(PatchedDialogWindow):
         machine: Machine,
         transient_for=None,
         initial_page: str | None = None,
+        machine_cmd: "MachineCmd | None" = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -82,7 +87,9 @@ class MachineSettingsDialog(PatchedDialogWindow):
         self.content_stack.add_titled(advanced_page, "advanced", _("Advanced"))
 
         # --- Page 6: Device ---
-        device_page = DeviceSettingsPage(machine=self.machine)
+        device_page = DeviceSettingsPage(
+            machine=self.machine, machine_cmd=machine_cmd
+        )
         device_page.show_toast.connect(self._on_show_toast)
         self.content_stack.add_titled(device_page, "device", _("Device"))
 

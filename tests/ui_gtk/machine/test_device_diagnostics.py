@@ -5,10 +5,18 @@ port bind state, ENQ/ACK timestamps, log file) and the Windows
 Firewall note shown while the connection is in the ERROR state.
 """
 
+import time
+from types import SimpleNamespace
+
 import pytest
 import yaml
+from gi.repository import GLib
 
-from swiftcut.machine.driver.ruida.ruida_driver import RuidaDiagnostics
+from swiftcut.machine.axis_limits import AxisLimits
+from swiftcut.machine.driver.ruida.ruida_driver import (
+    RuidaDiagnostics,
+    RuidaDriver,
+)
 from swiftcut.machine.models.controller import MachineController
 from swiftcut.machine.models.machine import Machine
 from swiftcut.machine.transport import TransportStatus
@@ -451,3 +459,123 @@ def test_ruida_port_warning_hidden_for_usb_connection(
     page._update_ui_state()
 
     assert not page.diag_port_warning_row.get_visible()
+
+
+class _ConnectedRuidaDriver(RuidaDriver):
+    """A Ruida driver that is connected and idle, with no transport."""
+
+    def __init__(self, context, machine):
+        super().__init__(context, machine)
+        self._client = object()
+        self._is_connected = True
+
+    def get_diagnostics(self):
+        return _usb_diagnostics()
+
+
+def _axis_limits_page(ui_context_initializer, monkeypatch, machine_cmd=None):
+    """The Device page on a connected Ruida machine, with the axis
+    limits read replaced by one that records its calls and returns
+    a 1300 mm X range against the 900 mm profile."""
+    from swiftcut.ui_gtk.machine.device_settings_page import (
+        DeviceSettingsPage,
+    )
+
+    machine = Machine(ui_context_initializer)
+    machine.driver_name = "RuidaDriver"
+    machine.driver_args = {"connection": "usb"}
+    ui_context_initializer.machine_mgr.add_machine(machine)
+    driver = _ConnectedRuidaDriver(ui_context_initializer, machine)
+    monkeypatch.setattr(type(machine), "driver", property(lambda self: driver))
+    calls = []
+
+    async def fake_read(machine, job_running=False):
+        calls.append((machine, job_running))
+        return [
+            AxisLimits("X", 1_300_000, 0, 412_500, 900.0),
+            AxisLimits("Y", 900_000, 0, None, 900.0),
+        ]
+
+    monkeypatch.setattr(dsp_module, "read_axis_limits", fake_read)
+    page = DeviceSettingsPage(machine=machine, machine_cmd=machine_cmd)
+    return page, machine, calls
+
+
+def _pump_until(condition, timeout=5.0):
+    """Runs the GTK main context until condition() or the timeout."""
+    deadline = time.monotonic() + timeout
+    context = GLib.MainContext.default()
+    while not condition() and time.monotonic() < deadline:
+        context.iteration(False)
+        time.sleep(0.01)
+    return condition()
+
+
+@pytest.mark.ui
+def test_axis_limits_show_three_values_per_axis_after_a_read(
+    ui_context_initializer, monkeypatch
+):
+    page, machine, calls = _axis_limits_page(
+        ui_context_initializer, monkeypatch
+    )
+    x_row, x_warning = page._axis_limit_rows["X"]
+    y_row, y_warning = page._axis_limit_rows["Y"]
+    assert page.diag_axis_limits_row.get_visible()
+    assert not x_row.get_visible() and not y_row.get_visible()
+
+    page.read_axis_limits_button.emit("clicked")
+
+    assert _pump_until(lambda: x_row.get_visible())
+    assert calls == [(machine, False)]
+    assert page.read_axis_limits_button.get_sensitive()
+    assert page.diag_axis_limits_row.get_subtitle().startswith("Read at ")
+    assert x_row.get_subtitle() == (
+        "Controller: range 1300.0 mm, home offset 0.0 mm, "
+        "position 412.5 mm\n"
+        "Profile: 900.0 mm\n"
+        "Profile X 900.0 mm, controller 1300.0 mm: set X Extent "
+        "(Hardware page) to 1300.0 mm"
+    )
+    assert x_warning.get_visible()
+    assert y_row.get_visible()
+    assert y_row.get_subtitle() == (
+        "Controller: range 900.0 mm, home offset 0.0 mm, "
+        "position no reply\n"
+        "Profile: 900.0 mm"
+    )
+    assert not y_warning.get_visible()
+
+
+@pytest.mark.ui
+def test_axis_limits_are_not_read_while_a_start_prepares_a_job(
+    ui_context_initializer, monkeypatch
+):
+    page, _machine, calls = _axis_limits_page(
+        ui_context_initializer,
+        monkeypatch,
+        machine_cmd=SimpleNamespace(is_job_running=True),
+    )
+
+    page.read_axis_limits_button.emit("clicked")
+
+    assert calls == []
+    assert page.diag_axis_limits_row.get_subtitle() == (
+        "Not read: a job is running. Wait for it to finish."
+    )
+    for row, _warning in page._axis_limit_rows.values():
+        assert not row.get_visible()
+
+
+@pytest.mark.ui
+def test_axis_limits_hidden_for_a_non_ruida_driver(
+    ui_context_initializer, monkeypatch
+):
+    page, machine = _page(
+        ui_context_initializer, monkeypatch, _FakeGenericDriver()
+    )
+    machine.driver_name = "GRBLDriver"
+    page._update_ui_state()
+
+    assert not page.diag_axis_limits_row.get_visible()
+    for row, _warning in page._axis_limit_rows.values():
+        assert not row.get_visible()
