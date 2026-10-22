@@ -23,6 +23,7 @@ from ..base_importer import (
     ImporterFeature,
 )
 from ..engine import NormalizationEngine
+from ..import_tree import ImportTree
 from ..structures import (
     ImportManifest,
     LayerGeometry,
@@ -30,6 +31,7 @@ from ..structures import (
     ParsingResult,
     VectorizationResult,
 )
+from .dxf_tree import build_dxf_tree
 from .renderer import DXF_RENDERER
 
 if TYPE_CHECKING:
@@ -116,6 +118,15 @@ class DxfImporter(Importer):
             warnings=self._warnings,
             errors=self._errors,
         )
+
+    def build_tree(self, ppi: float = 96.0) -> ImportTree | None:
+        import ezdxf
+
+        doc = self._dxf_doc
+        if doc is None:
+            data_str = self.raw_data.decode("utf-8", errors="replace")
+            doc = ezdxf.read(io.StringIO(data_str.replace("\r\n", "\n")))
+        return build_dxf_tree(self, doc)
 
     def create_source_asset(self, parse_result: ParsingResult) -> SourceAsset:
         _, _, w, h = parse_result.document_bounds
@@ -391,9 +402,10 @@ class DxfImporter(Importer):
         raw_paths_by_layer: defaultdict[str, list] = defaultdict(list)
 
         def process_entity(entity, parent_transform: ezdxf.math.Matrix44):
-            # Transform Composition
+            # Transform Composition: ezdxf matrices take row vectors,
+            # so the insert's own matrix comes first, its parent's after.
             if hasattr(entity, "matrix44"):
-                transform = parent_transform @ entity.matrix44()
+                transform = entity.matrix44() @ parent_transform
             else:
                 transform = parent_transform
 

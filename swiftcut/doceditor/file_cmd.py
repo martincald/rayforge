@@ -53,8 +53,16 @@ from ..machine.driver.ruida.ruida_encoder import export_rd
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..shared.placement import find_position
+from .import_materializer import (
+    ImportGrouping,
+    ImportOptions,
+    PreparedImport,
+    import_spec,
+    materialize,
+    options_for,
+    prepare_import,
+)
 from .layout.outline import OUTLINE_TOLERANCE_MM, item_world_polygons
-from .split_cmd import PathSplitStrategy
 
 if TYPE_CHECKING:
     from ..core.asset import IAsset
@@ -471,38 +479,6 @@ class FileCmd:
         self._place_at_nearest_free_spot(content_to_transform, position_mm)
 
     @staticmethod
-    def _split_into_paths(
-        pairs: list[tuple[DocItem, DocItem]], source: SourceAsset | None
-    ) -> list[tuple[DocItem, DocItem]]:
-        """
-        Replaces each imported workpiece of several paths, top level or
-        in a layer, with one workpiece per path (see PathSplitStrategy),
-        every path kept, each going where the workpiece was going. The
-        items are not in the document yet, so no undo is needed.
-        """
-        strategy = PathSplitStrategy()
-
-        def paths_of(wp: WorkPiece) -> list[DocItem]:
-            fragments = strategy.calculate_fragments(wp)
-            pieces = wp.apply_split(fragments, source=source, drop_dust=False)
-            return list(pieces) if len(pieces) > 1 else [wp]
-
-        result: list[tuple[DocItem, DocItem]] = []
-        for owner, item in pairs:
-            if isinstance(item, Layer):
-                for child in item.get_content_items():
-                    if isinstance(child, WorkPiece):
-                        index = item.children.index(child)
-                        item.remove_child(child)
-                        item.add_children(paths_of(child), index=index)
-                result.append((owner, item))
-            elif isinstance(item, WorkPiece):
-                result.extend((owner, piece) for piece in paths_of(item))
-            else:
-                result.append((owner, item))
-        return result
-
-    @staticmethod
     def _unwrap_item(item: DocItem) -> list[DocItem]:
         """Extract content items from a Layer, or return the item itself."""
         if isinstance(item, Layer):
@@ -558,11 +534,14 @@ class FileCmd:
         assets: list["IAsset"] | None = None,
         vectorization_spec: VectorizationSpec | None = None,
         split_paths: bool = False,
+        prepared: PreparedImport | None = None,
     ) -> tuple[list[Layer], list[DocItem]]:
         """
         Adds the imported items and their source to the document model using
-        the history manager. With split_paths, each workpiece goes in as
-        one workpiece per path, where the workpiece would have gone.
+        the history manager. Each workpiece goes in cut as prepared's
+        grouping says (see import_materializer), where it would have
+        gone; without prepared, as one workpiece per path with
+        split_paths, else whole.
 
         Returns the list of destination layers that received items, and
         the content added (out of any layer wrapper).
@@ -581,8 +560,10 @@ class FileCmd:
             mode = vectorization_spec.layer_import_mode
 
         pairs = self._resolve_destinations(items, mode)
-        if split_paths:
-            pairs = self._split_into_paths(pairs, source)
+        if prepared is None:
+            options = options_for(None, split_paths)
+            prepared = PreparedImport(options, options.grouping)
+        pairs = materialize(pairs, source, prepared, self._editor.doc)
         content = self._get_positionable_content(
             [item for _owner, item in pairs]
         )
@@ -638,11 +619,14 @@ class FileCmd:
         filename: Path,
         vectorization_spec: VectorizationSpec | None = None,
         split_paths: bool = False,
+        prepared: PreparedImport | None = None,
     ):
         """
         Adds positioned imported items to the document, with the default
         steps of the layers they went to, and announces them. Main thread
-        only: everything it changes is heard by the UI.
+        only: everything it changes is heard by the UI. prepared is the
+        import's worker phase (see import_materializer.prepare_import);
+        without it, split_paths says single shape or individual shapes.
         """
         dest_layers, content = self._commit_items_to_document(
             payload.items,
@@ -651,12 +635,16 @@ class FileCmd:
             payload.assets,
             vectorization_spec,
             split_paths,
+            prepared,
         )
 
         if dest_layers:
             self._editor.step.add_default_steps_for_layers(dest_layers)
 
-        self.items_imported.send(self, items=content, individual=split_paths)
+        individual = split_paths
+        if prepared is not None:
+            individual = prepared.grouping is not ImportGrouping.SINGLE
+        self.items_imported.send(self, items=content, individual=individual)
 
     def load_file_from_path(
         self,
@@ -665,6 +653,7 @@ class FileCmd:
         vectorization_spec: VectorizationSpec | None,
         position_mm: Point | None = None,
         split_paths: bool = False,
+        options: ImportOptions | None = None,
     ):
         """
         Public, synchronous method to launch a file import in the background.
@@ -680,12 +669,21 @@ class FileCmd:
                         If None, items are centered on the workspace.
             split_paths: Import each path as a workpiece of its own
                 (individual shapes), placed and put on layers as the
-                single shape would be.
+                single shape would be. Used without options only.
+            options: How the content becomes workpieces ("Import as",
+                see import_materializer). Without them, a single shape
+                (individual shapes with split_paths) and no placed
+                images, as before there were options.
         """
         logger.debug(
             f"Loading file: {filename} "
             f"vectorization_spec: {vectorization_spec} "
             f"position_mm: {position_mm}"
+        )
+        options = options_for(options, split_paths)
+        importer_cls = self.get_importer_info(filename, mime_type)[0]
+        vectorization_spec = import_spec(
+            vectorization_spec, options, importer_cls
         )
 
         # This wrapper adapts our clean async method to the TaskManager,
@@ -725,7 +723,19 @@ class FileCmd:
                     ctx.set_message(_("Import failed."))
                     return
 
-                # 3. Content larger than the bed asks the oversize policy,
+                # 3. The worker phase of "Import as": the file's tree,
+                #    each workpiece's pieces, its placed images (added
+                #    to the payload, to be placed with the rest).
+                prepared = await asyncio.to_thread(
+                    prepare_import,
+                    import_result,
+                    importer_cls,
+                    fn,
+                    vec_spec,
+                    options,
+                )
+
+                # 4. Content larger than the bed asks the oversize policy,
                 #    on the main thread, which calls back with its answer
                 #    later; the future holds whether to go on.
                 payload = import_result.payload
@@ -771,7 +781,7 @@ class FileCmd:
                     ctx.set_message(_("Import cancelled."))
                     return
 
-                # 4. Scale to fit and the search for a free spot (outlines
+                # 5. Scale to fit and the search for a free spot (outlines
                 #    of the whole document) here, off the main thread; the
                 #    items are not in the document yet. Then they go in,
                 #    on the main thread, announced once (Doc.batch).
@@ -779,7 +789,12 @@ class FileCmd:
                     self._position_newly_imported_items, payload.items, pos_mm
                 )
                 await self._task_manager.run_on_main_thread(
-                    self._commit_import, payload, fn, vec_spec, split_paths
+                    self._commit_import,
+                    payload,
+                    fn,
+                    vec_spec,
+                    split_paths,
+                    prepared,
                 )
                 ctx.set_message(_("Import complete!"))
             except Exception as e:

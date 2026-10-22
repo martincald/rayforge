@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from typing import ClassVar
 
 from ...core.source_asset import SourceAsset
@@ -13,6 +14,7 @@ from ..base_importer import (
     Importer,
     ImporterFeature,
 )
+from ..import_tree import ImportTree
 from ..structures import (
     ImportManifest,
     ImportResult,
@@ -20,7 +22,9 @@ from ..structures import (
     VectorizationResult,
 )
 from .svg_trace import SvgTraceImporter
+from .svg_tree import build_svg_tree
 from .svg_vector import SvgVectorImporter
+from .svgutil import PPI
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,9 @@ class SvgImporter(Importer):
         ImporterFeature.LAYER_SELECTION,
         ImporterFeature.COLOR_LAYERS,
     }
+
+    def build_tree(self, ppi: float = PPI) -> ImportTree | None:
+        return build_svg_tree(self.raw_data, self.source_file, ppi)
 
     def scan(self) -> ImportManifest:
         # Use Vector importer for scanning as it's lightweight/standard
@@ -87,15 +94,15 @@ class SvgImporter(Importer):
                     )
                     # Create a new spec object that matches the UI's default.
                     # This ensures the "merge" strategy is used in the engine
-                    # unless the caller explicitly chose another mode.
+                    # unless the caller explicitly chose another mode. The
+                    # rest of the spec (ppi, ...) is kept.
                     layer_import_mode = spec_to_use.layer_import_mode
                     if layer_import_mode == LayerImportMode.MAP_TO_EXISTING:
                         layer_import_mode = LayerImportMode.FLATTEN
-                    spec_to_use = PassthroughSpec(
+                    spec_to_use = replace(
+                        spec_to_use,
                         active_layer_ids=all_layer_ids,
                         layer_import_mode=layer_import_mode,
-                        layer_source=spec_to_use.layer_source,
-                        color_attr=spec_to_use.color_attr,
                     )
 
             logger.debug("SvgImporter: Delegating to SvgVectorImporter.")

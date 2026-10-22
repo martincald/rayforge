@@ -14,7 +14,7 @@ from .svg_fallback import (
     render_svg_to_cairo,
     svg_load_available,
 )
-from .svgutil import filter_svg_layers
+from .svgutil import filter_svg_layers, remove_images
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
@@ -46,6 +46,12 @@ class SvgRenderer(Renderer):
 
         # A segment is required for any special SVG handling.
         if segment:
+            # Placed images imported as workpieces of their own are
+            # left out of the vector render.
+            spec = segment.vectorization_spec
+            if isinstance(spec, PassthroughSpec) and spec.images_apart:
+                kwargs["images_apart"] = True
+
             # Handle layer visibility. Color-layer segments use a color key
             # (e.g. "#ff0000") as their layer id, which does not correspond
             # to any top-level group, so the render is filtered by color
@@ -121,7 +127,8 @@ class SvgRenderer(Renderer):
         Expects data to be pre-trimmed for content.
         Can optionally filter by layer IDs if 'visible_layer_ids' is passed.
         Can optionally override the viewBox if 'viewbox' is passed
-        (x, y, w, h).
+        (x, y, w, h). Leaves out <image> elements if 'images_apart' is
+        passed.
         """
         if not data:
             return None
@@ -142,6 +149,8 @@ class SvgRenderer(Renderer):
         try:
             # Modify SVG dimensions for the loader to render at target size
             root = ET.fromstring(render_data)
+            if kwargs.get("images_apart"):
+                remove_images(root)
             root.set("width", f"{width}px")
             root.set("height", f"{height}px")
             root.set("preserveAspectRatio", "none")

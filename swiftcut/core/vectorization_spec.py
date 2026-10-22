@@ -89,6 +89,9 @@ class PassthroughSpec(VectorizationSpec):
     layer_source: LayerSource = LayerSource.SVG_LAYERS
     color_attr: ColorAttr = ColorAttr.ANY
     trim_padding: float = 0.01
+    # The file's placed images come in as workpieces of their own, so
+    # its vector pieces render without them.
+    images_apart: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -98,6 +101,7 @@ class PassthroughSpec(VectorizationSpec):
             "layer_source": self.layer_source.value,
             "color_attr": self.color_attr.value,
             "trim_padding": self.trim_padding,
+            "images_apart": self.images_apart,
             "ppi": self.ppi,
         }
 
@@ -124,6 +128,7 @@ class PassthroughSpec(VectorizationSpec):
             layer_source=layer_source,
             color_attr=color_attr_from_value(data.get("color_attr")),
             trim_padding=data.get("trim_padding", 0.01),
+            images_apart=data.get("images_apart", False),
             ppi=data.get("ppi", 96.0),
         )
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generator: Adobe Illustrator 28.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 432 288">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: red;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: #231f20;
+      }
+
+      .cls-3 {
+        clip-path: url(#clippath);
+      }
+    </style>
+    <clipPath id="clippath">
+      <rect x="234" y="108" width="36" height="36"/>
+    </clipPath>
+  </defs>
+  <g id="Cut">
+    <rect class="cls-1" x="36" y="36" width="360" height="216"/>
+  </g>
+  <g id="Engrave">
+    <g id="Logo">
+      <circle class="cls-2" cx="90" cy="90" r="18"/>
+      <polygon class="cls-2" points="72 144 108 144 90 117"/>
+      <rect class="cls-2" x="126" y="72" width="36" height="36"/>
+    </g>
+    <g id="Text" data-name="Text">
+      <path d="M72,180h9v27h18v9h-27Z"/>
+      <path d="M108,180h36v36h-36Z M117,189v18h18v-18Z"/>
+    </g>
+    <g class="cls-3">
+      <image width="40" height="20" transform="translate(216 108) scale(1.8)" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAUCAAAAADaLSBnAAAAPElEQVR42mNgYOMVllJQ1zWxcnT3C41OysgvrWnq7J82Z/GqDdv3Hjl18fq9J68//vjPMKpwVOGoQpBCAGTrjRgQp1AbAAAAAElFTkSuQmCC"/>
+    </g>
+  </g>
+</svg>

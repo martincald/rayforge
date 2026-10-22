@@ -121,6 +121,8 @@ class SvgVectorImporter(SvgImporterBase):
         assert self.trimmed_data is not None
 
         svg_str = self.trimmed_data.decode("utf-8")
+        # Only the file's layers (svgutil.layer_groups) are layers;
+        # raygeo takes any top-level group with an id for one.
         all_layer_ids = [layer.layer_id for layer in parse_result.layers]
 
         target_layer_ids = (
@@ -142,7 +144,11 @@ class SvgVectorImporter(SvgImporterBase):
             # Extract per-layer geometries via raygeo (already in user space).
             layers_raw = svg_string_to_geometry_by_layer(svg_str, 1.0, 1.0)
             for layer_id, geo in layers_raw:
-                if layer_id in target_layer_ids and not geo.is_empty():
+                if (
+                    layer_id in target_layer_ids
+                    and layer_id in all_layer_ids
+                    and not geo.is_empty()
+                ):
                     geometries_by_layer[layer_id] = geo
 
         # If no layers found, fall back to the whole SVG.
@@ -165,7 +171,10 @@ class SvgVectorImporter(SvgImporterBase):
         )
 
     def _layer_geometries_by_svg(self, svg_str: str) -> list[LayerGeometry]:
-        """Builds LayerGeometry entries from top-level SVG layer groups."""
+        """
+        Builds LayerGeometry entries from the SVG's layers: raygeo's
+        per-group geometry for the groups the layer manifest names.
+        """
         layers_raw = svg_string_to_geometry_by_layer(svg_str, 1.0, 1.0)
         assert self.trimmed_data is not None
         layer_manifest = extract_layer_manifest(self.trimmed_data)
@@ -175,8 +184,8 @@ class SvgVectorImporter(SvgImporterBase):
 
         layer_geometries: list[LayerGeometry] = []
         for layer_id, geo in layers_raw:
-            if not geo.is_empty():
-                layer_name = layer_names_by_id.get(layer_id, layer_id)
+            if layer_id in layer_names_by_id and not geo.is_empty():
+                layer_name = layer_names_by_id[layer_id]
                 layer_geometries.append(
                     self._layer_geometry(layer_id, layer_name, geo)
                 )

@@ -48,6 +48,25 @@ SHAPE_TAGS = {
     "image",
 }
 
+# Top-level elements that draw nothing themselves: beside layer groups
+# they do not make a file layerless.
+NON_DRAWING_TAGS = {
+    "defs",
+    "style",
+    "metadata",
+    "title",
+    "desc",
+    "clipPath",
+    "mask",
+    "symbol",
+    "linearGradient",
+    "radialGradient",
+    "pattern",
+    "marker",
+    "filter",
+    "script",
+}
+
 
 # Register namespaces to prevent ElementTree from mangling them (ns0:tags)
 try:
@@ -261,6 +280,11 @@ def get_natural_size(
 
     try:
         meta = extract_svg_metadata(data.decode("utf-8"))
+        if meta.width is None and meta.height is None and meta.viewbox:
+            # No width and height (Illustrator's responsive export): a
+            # viewBox unit is a pixel at ppi.
+            _x, _y, vb_w, vb_h = meta.viewbox
+            return vb_w * 25.4 / ppi, vb_h * 25.4 / ppi
         if meta.width is None or meta.height is None:
             return None
 
@@ -334,6 +358,42 @@ def extract_color_manifest(
     return layers
 
 
+def layer_groups(root: ET.Element) -> list[tuple[ET.Element, str, str]]:
+    """
+    The layers of a parsed SVG: its top-level groups with an id, in
+    file order, each as (group, id, name), when every top-level
+    element that draws is such a group. A shape, image, text, <use>
+    or group without an id beside them (Illustrator puts a one-layer
+    file's content straight under the root) makes the file layerless:
+    its id'd groups are groups then. A layer's name is the Inkscape
+    label, else Illustrator's data-name, else the id.
+    """
+    layers = []
+    for child in root:
+        tag = _get_local_tag_name(child)
+        layer_id = child.get("id")
+        if tag == "g" and layer_id:
+            name = (
+                child.get(f"{{{INKSCAPE_NS}}}label")
+                or child.get("data-name")
+                or layer_id
+            )
+            layers.append((child, layer_id, name))
+        elif _draws(child, tag):
+            return []
+    return layers
+
+
+def _draws(element: ET.Element, tag: str) -> bool:
+    """
+    Whether a top-level element can draw: an SVG element that is not a
+    definition, style or description (another namespace's elements,
+    like Inkscape's namedview, draw nothing).
+    """
+    namespace = element.tag[1:].split("}", 1)[0] if "}" in element.tag else ""
+    return namespace in ("", SVG_NS) and tag not in NON_DRAWING_TAGS
+
+
 def extract_layer_manifest(data: bytes) -> list[dict[str, Any]]:
     """
     Parses the SVG to find top-level groups with IDs, treating them as layers.
@@ -346,35 +406,37 @@ def extract_layer_manifest(data: bytes) -> list[dict[str, Any]]:
     logger.debug("--- Starting SVG Layer Extraction ---")
     try:
         root = ET.fromstring(data)
-        for child in root:
-            tag = _get_local_tag_name(child)
-            layer_id = child.get("id")
+        for child, layer_id, label in layer_groups(root):
+            # Count visual elements recursively to detect empty layers
+            feature_count = 0
+            for elem in child.iter():
+                if _get_local_tag_name(elem) in SHAPE_TAGS:
+                    feature_count += 1
 
-            if tag == "g" and layer_id:
-                label = child.get(f"{{{INKSCAPE_NS}}}label") or layer_id
-
-                # Count visual elements recursively to detect empty layers
-                feature_count = 0
-                for elem in child.iter():
-                    if _get_local_tag_name(elem) in SHAPE_TAGS:
-                        feature_count += 1
-
-                layers.append(
-                    {
-                        "id": layer_id,
-                        "name": label,
-                        "count": feature_count,
-                    }
-                )
-                logger.debug(
-                    f"Found layer: ID='{layer_id}', "
-                    f"Name='{label}', Count={feature_count}"
-                )
+            layers.append(
+                {
+                    "id": layer_id,
+                    "name": label,
+                    "count": feature_count,
+                }
+            )
+            logger.debug(
+                f"Found layer: ID='{layer_id}', "
+                f"Name='{label}', Count={feature_count}"
+            )
     except ET.ParseError as e:
         logger.error(f"Failed to parse SVG for layer extraction: {e}")
         return []
 
     return layers
+
+
+def remove_images(root: ET.Element) -> None:
+    """Removes every <image> element from a parsed SVG."""
+    for parent in list(root.iter()):
+        for child in list(parent):
+            if _get_local_tag_name(child) == "image":
+                parent.remove(child)
 
 
 def filter_svg_layers(data: bytes, visible_layer_ids: list[str]) -> bytes:

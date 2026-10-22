@@ -377,6 +377,9 @@ class SvgImporterBase(Importer):
         ppi = self._get_ppi()
         w_px = meta.width_px(ppi)
         h_px = meta.height_px(ppi)
+        if meta.width is None and meta.height is None and meta.viewbox:
+            # No width and height: the viewBox, a unit a pixel.
+            w_px, h_px = meta.viewbox[2], meta.viewbox[3]
         if w_px is None or h_px is None:
             return None
         if w_px <= 1e-9 or h_px <= 1e-9:

@@ -174,3 +174,61 @@ class TestSvgRenderer:
         assert has_color(red, (0, 255, 0)) == 0
         assert has_color(green, (0, 255, 0)) > 0
         assert has_color(green, (255, 0, 0)) == 0
+
+
+PNG_DOT = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgAB"
+    "SK+kcQAAAABJRU5ErkJggg=="
+)
+
+
+class TestImagesApart:
+    """
+    A spec with images_apart (its placed images imported as workpieces
+    of their own) renders its vector pieces without them.
+    """
+
+    SVG = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+        'height="100mm" viewBox="0 0 100 100"><g id="L">'
+        '<rect x="0" y="0" width="100" height="100" fill="none" '
+        'stroke="#000" stroke-width="1"/>'
+        '<image x="20" y="20" width="60" height="60" '
+        f'href="data:image/png;base64,{PNG_DOT}"/></g></svg>'
+    ).encode()
+
+    def test_the_spec_asks_for_it(self, svg_renderer, mock_render_context):
+        segment = MagicMock()
+        segment.layer_id = "L"
+        segment.crop_window_px = (0.0, 0.0, 100.0, 100.0)
+        segment.vectorization_spec = PassthroughSpec(images_apart=True)
+
+        spec = svg_renderer.compute_render_spec(
+            segment, (100, 100), mock_render_context
+        )
+
+        assert spec.kwargs == {
+            "images_apart": True,
+            "visible_layer_ids": ["L"],
+            "viewbox": (0.0, 0.0, 100.0, 100.0),
+        }
+
+    def test_the_render_leaves_images_out(self, svg_renderer):
+        def ink(**kwargs):
+            image = svg_renderer.render_base_image(
+                self.SVG,
+                100,
+                100,
+                visible_layer_ids=["L"],
+                viewbox=(0, 0, 100, 100),
+                **kwargs,
+            )
+            return int((image.numpy()[..., -1] > 0).sum())
+
+        assert ink(images_apart=True) < ink() - 3000
+
+    def test_it_is_saved_with_the_spec(self):
+        spec = PassthroughSpec(images_apart=True)
+
+        assert PassthroughSpec.from_dict(spec.to_dict()).images_apart
+        assert not PassthroughSpec.from_dict({}).images_apart

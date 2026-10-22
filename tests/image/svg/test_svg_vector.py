@@ -360,3 +360,41 @@ def test_any_mode_uses_stroke_color_by_default():
     assert payload is not None
     by_name = {item.name: item for item in payload.items}
     assert set(by_name) == {"Color #0000ff", "Color #00ff00"}
+
+
+# Illustrator's responsive export: a viewBox, no width or height.
+SVG_VIEWBOX_ONLY = b"""<svg id="Layer_1" data-name="Layer 1"
+     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+    <rect x="10" y="10" width="144" height="72" fill="none" stroke="red"/>
+</svg>
+"""
+
+
+@pytest.mark.parametrize("ppi", [72, 96])
+def test_a_viewbox_only_svg_is_sized_at_the_specs_ppi(ppi):
+    """
+    Without width and height a viewBox unit is a pixel at the spec's
+    ppi: the 144 x 72 rect is 2 x 1 inches at 72 ppi, 1.5 x 0.75 at
+    96 (no trim padding). The facade keeps the ppi when it fills in
+    the layers.
+    """
+    importer = SvgImporter(SVG_VIEWBOX_ONLY, Path("responsive.svg"))
+
+    result = importer.get_doc_items(PassthroughSpec(ppi=ppi, trim_padding=0.0))
+
+    assert result is not None and result.errors == []
+    (wp,) = result.payload.items
+    inches = 144 / ppi, 72 / ppi
+    assert wp.size == pytest.approx((inches[0] * 25.4, inches[1] * 25.4))
+    assert importer.scan().is_unitless
+
+
+def test_the_facade_keeps_the_rest_of_the_spec():
+    importer = SvgImporter(SVG_GROUPS, Path("groups.svg"))
+    spec = PassthroughSpec(ppi=72, trim_padding=0.0, images_apart=True)
+
+    result = importer.get_doc_items(spec)
+
+    used = result.payload.items[0].source_segment.vectorization_spec
+    assert used.active_layer_ids == ["g1", "g2"]
+    assert (used.ppi, used.trim_padding, used.images_apart) == (72, 0, True)

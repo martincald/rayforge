@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from ..core.source_asset import SourceAsset
     from ..core.vectorization_spec import VectorizationSpec
+    from .import_tree import ImportTree
     from .structures import (
         ImportManifest,
         ImportPayload,
@@ -289,6 +290,15 @@ class Importer(ABC):
         It should assume valid input from earlier phases.
         """
         raise NotImplementedError
+
+    def build_tree(self, ppi: float = 96.0) -> ImportTree | None:
+        """
+        The file's structure (layers, groups, paths, placed images) as
+        an ImportTree, in the native coordinates the importer's
+        geometry is in; None for a format that has none. ppi sizes a
+        file without physical units.
+        """
+        return None
 
     def _stamp_importer_identity(self, source_asset: SourceAsset) -> None:
         source_asset.metadata["_importer_class"] = type(self).__name__

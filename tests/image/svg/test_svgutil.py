@@ -5,6 +5,7 @@ import pytest
 # Assuming the file structure allows this import
 from swiftcut.image.svg.svgutil import (
     MM_PER_PX,
+    extract_layer_manifest,
     get_natural_size,
     trim_svg,
 )
@@ -153,3 +154,45 @@ class TestTrimSvg:
         """Test that an empty SVG is returned unchanged."""
         trimmed_data = trim_svg(empty_svg_data)
         assert trimmed_data == empty_svg_data
+
+
+class TestLayers:
+    """
+    An SVG has layers only when every top-level element that draws is
+    a group with an id.
+    """
+
+    HEAD = (
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        'xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/'
+        'sodipodi-0.dtd" viewBox="0 0 100 100">'
+    )
+
+    def _ids(self, body: str) -> list[str]:
+        data = (self.HEAD + body + "</svg>").encode()
+        return [layer["id"] for layer in extract_layer_manifest(data)]
+
+    def test_definitions_and_metadata_beside_layers_keep_them(self):
+        body = (
+            "<sodipodi:namedview/><defs><style>.a{fill:red}</style></defs>"
+            "<metadata/><title>t</title><clipPath id='c'/>"
+            "<g id='A'><rect width='1' height='1'/></g><g id='B'/>"
+        )
+
+        assert self._ids(body) == ["A", "B"]
+
+    @pytest.mark.parametrize(
+        "beside",
+        [
+            "<rect width='1' height='1'/>",
+            "<g><rect width='1' height='1'/></g>",
+            "<image width='1' height='1'/>",
+            "<use href='#A'/>",
+            "<text>x</text>",
+        ],
+    )
+    def test_anything_drawn_beside_the_groups_leaves_no_layers(self, beside):
+        """Illustrator's one-layer export: content under the root."""
+        body = f"<g id='Logo'><circle r='1'/></g>{beside}"
+
+        assert self._ids(body) == []
