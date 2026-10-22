@@ -30,6 +30,7 @@ from ..core.bed_bounds import bed_rect, fits, items_outside
 from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.source_asset import SourceAsset
+from ..core.step_registry import step_registry
 from ..core.undo import ListItemCommand
 from ..core.vectorization_spec import (
     LayerImportMode,
@@ -47,8 +48,10 @@ from ..image import (
 )
 from ..image.base_exporter import Exporter
 from ..image.dxf.exporter import GeometryDxfExporter
+from ..image.import_tree import ImportTree
 from ..image.structures import ImportPayload, ImportResult, ParsingResult
 from ..image.svg.exporter import GeometrySvgExporter
+from ..image.svg.importer import SvgImporter
 from ..machine.driver.ruida.ruida_encoder import export_rd
 from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
@@ -57,10 +60,13 @@ from .import_materializer import (
     ImportGrouping,
     ImportOptions,
     PreparedImport,
+    effective_grouping,
     import_spec,
+    looks_traced,
     materialize,
     options_for,
     prepare_import,
+    skipped_image_warnings,
 )
 from .layout.outline import OUTLINE_TOLERANCE_MM, item_world_polygons
 
@@ -121,7 +127,10 @@ class PreviewResult:
     """
     Result of a preview generation operation.
     Contains the rendered image bytes, the document items to display, and the
-    parsing context needed for correct rendering.
+    parsing context needed for correct rendering. A direct vector preview
+    of a file with structure also holds its ImportTree, the grouping
+    "By source layers and groups" gets for it, whether it looks like
+    traced artwork, and the tree's warnings (what will not be imported).
     """
 
     image_bytes: bytes
@@ -130,6 +139,9 @@ class PreviewResult:
     aspect_ratio: float = 1.0
     warnings: list[str] = field(default_factory=list)
     content_bounds: Rect | None = None
+    tree: ImportTree | None = None
+    by_source_grouping: ImportGrouping | None = None
+    traced_artwork: bool = False
 
 
 class ImportAction(Enum):
@@ -302,13 +314,48 @@ class FileCmd:
                     "but attempting to generate a preview."
                 )
 
-            return self._generate_rich_preview_result(
+            result = self._generate_rich_preview_result(
                 import_result, file_bytes, spec, preview_size_px
             )
+            if result is not None and isinstance(spec, PassthroughSpec):
+                self._add_structure(result, importer, importer_cls, spec)
+            return result
 
         except Exception:
             logger.exception("Failed to generate import preview")
             return None
+
+    @staticmethod
+    def _add_structure(
+        result: PreviewResult,
+        importer: Importer,
+        importer_cls: type[Importer],
+        spec: PassthroughSpec,
+    ) -> None:
+        """
+        Adds the file's structure to a preview: its tree, built by the
+        importer that made the preview, and what follows from it, with
+        a warning for each placed image of an SVG that will be skipped
+        (its images are kept in every mode). A tree that cannot be
+        built leaves the preview as it is.
+        """
+        try:
+            tree = importer.build_tree(spec.ppi)
+        except Exception:
+            logger.exception("Failed to read the structure of the import")
+            return
+        if tree is None:
+            return
+        if result.parse_result is not None:
+            tree.unit_to_mm = result.parse_result.native_unit_to_mm
+        result.tree = tree
+        result.by_source_grouping = effective_grouping(
+            tree, ImportGrouping.BY_SOURCE
+        )
+        result.traced_artwork = looks_traced(importer_cls, tree)
+        result.warnings.extend(tree.warnings)
+        if issubclass(importer_cls, SvgImporter):
+            result.warnings.extend(skipped_image_warnings(tree))
 
     def _generate_rich_preview_result(
         self,
@@ -578,6 +625,8 @@ class FileCmd:
                         redo_command="add_child",
                     )
                 )
+            if prepared.interior_layer is not None:
+                self._add_engrave_step(prepared.interior_layer)
 
         dest_layers = []
         seen = set()
@@ -589,6 +638,22 @@ class FileCmd:
                 dest_layers.append(_item)
                 seen.add(_item.uid)
         return dest_layers, content
+
+    def _add_engrave_step(self, layer: Layer) -> None:
+        """
+        Gives an import's interior layer an Engrave step, set by the
+        best recipe for the document's stock and the active machine (the
+        step's own defaults when none matches). In the import's
+        transaction, so the layer color the recipe sets is undone with
+        the import.
+        """
+        engrave_cls = step_registry.get("EngraveStep")
+        workflow = layer.workflow
+        if engrave_cls is None or workflow is None:
+            return
+        step = engrave_cls.create(self._editor.context)
+        self._editor.step.apply_best_recipe_to_step(step, layer)
+        workflow.add_step(step)
 
     def _finalize_import_on_main_thread(
         self,

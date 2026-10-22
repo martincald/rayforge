@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -6,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import ezdxf
 import numpy as np
 import pytest
+import pyvips
 from raygeo.geo import Matrix
 from raygeo.ops.state import CoolantMode
 
@@ -29,6 +31,7 @@ from swiftcut.doceditor.file_cmd import (
     PreviewResult,
     _unsupported_coolant_labels,
 )
+from swiftcut.doceditor.import_materializer import ImportGrouping
 from swiftcut.doceditor.layout.outline import item_world_polygons
 from swiftcut.image import (
     ImporterFeature,
@@ -672,6 +675,89 @@ class TestGeneratePreviewImpl:
             )
             # Should still call the generator, which can handle empty items
             mock_gen.assert_called_once()
+
+
+IMPORT_FIXTURES = TESTS_DIR / "fixtures" / "import"
+
+
+class TestPreviewStructure:
+    """A direct vector preview reads the file's structure too."""
+
+    def _preview(self, file_cmd, path, spec=None):
+        return file_cmd._generate_preview_impl(
+            path.read_bytes(), path.name, "", spec or PassthroughSpec(), 256
+        )
+
+    @pytest.mark.parametrize(
+        "name, by_source, traced",
+        [
+            ("illustrator_two_layers.svg", "BY_SOURCE", False),
+            ("illustrator_traced.dxf", "PIECES", True),
+            ("cad_plate.dxf", "PIECES", False),
+        ],
+    )
+    def test_the_grouping_by_source_gets_and_the_traced_look(
+        self, file_cmd, name, by_source, traced
+    ):
+        result = self._preview(file_cmd, IMPORT_FIXTURES / name)
+
+        assert result is not None
+        assert result.tree is not None
+        assert result.by_source_grouping is ImportGrouping[by_source]
+        assert result.traced_artwork is traced
+        assert result.warnings == []
+
+    def test_what_the_file_has_that_is_not_imported(self, file_cmd, tmp_path):
+        path = tmp_path / "text.svg"
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+            'height="50mm" viewBox="0 0 100 50"><rect x="10" y="10" '
+            'width="20" height="20" fill="none" stroke="#000"/>'
+            '<text x="40" y="20">Hello &amp; bye</text></svg>'
+        )
+
+        result = self._preview(file_cmd, path)
+
+        assert result is not None
+        assert result.warnings == [
+            (
+                'Text "Hello & bye" is not outlined and was not imported. '
+                "In Illustrator: Type > Create Outlines."
+            )
+        ]
+
+    def test_a_placed_image_that_will_be_skipped(self, file_cmd, tmp_path):
+        png = (pyvips.Image.black(4, 2) + 128).cast("uchar").pngsave_buffer()
+        path = tmp_path / "photo.svg"
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+            'height="100mm" viewBox="0 0 100 100"><rect x="0" y="0" '
+            'width="100" height="100" fill="none" stroke="#000"/>'
+            '<image id="Photo" x="20" y="30" width="60" height="30" '
+            'transform="rotate(30 50 45)" href="data:image/png;base64,'
+            f'{base64.b64encode(png).decode()}"/></svg>'
+        )
+
+        result = self._preview(file_cmd, path)
+
+        assert result is not None
+        assert result.warnings == [
+            'Image "Photo" is rotated, skewed or flipped and was not imported.'
+        ]
+
+    def test_none_when_tracing_or_without_structure(self, file_cmd):
+        traced = self._preview(
+            file_cmd,
+            IMPORT_FIXTURES / "illustrator_two_layers.svg",
+            TraceSpec(),
+        )
+        plate = self._preview(file_cmd, SWITCH_PLATE)
+
+        for result in (traced, plate):
+            assert result is not None
+            assert result.tree is None
+            assert result.by_source_grouping is None
+            assert result.traced_artwork is False
 
 
 class TestLoadFileAsync:

@@ -13,6 +13,10 @@ from gi.repository import Adw, Gio, Gtk
 from raygeo.geo import Matrix
 
 from swiftcut.core.vectorization_spec import PassthroughSpec
+from swiftcut.doceditor.import_materializer import (
+    ImportGrouping,
+    ImportOptions,
+)
 from swiftcut.ui_gtk.canvas2d.drag_drop_cmd import DragDropCmd
 from swiftcut.ui_gtk.doceditor import import_handler
 
@@ -222,15 +226,19 @@ def _dialog_response_handler(start):
     return dialog_cls.return_value.response.connect.call_args.args[0]
 
 
+PIECES = ImportOptions(grouping=ImportGrouping.PIECES)
+
+
 @pytest.mark.parametrize(
-    "kwargs, split_paths",
+    "kwargs, split_paths, options",
     [
-        ({}, False),
-        ({"split_paths": False}, False),
-        ({"split_paths": True}, True),
+        ({}, False, None),
+        ({"split_paths": False}, False, None),
+        ({"split_paths": True}, True, None),
+        ({"split_paths": False, "options": PIECES}, False, PIECES),
     ],
 )
-def test_the_import_as_choice_reaches_the_import(kwargs, split_paths):
+def test_the_import_as_choice_reaches_the_import(kwargs, split_paths, options):
     editor = MagicMock()
     editor.file.get_importer_info.return_value = (None, set())
     spec = PassthroughSpec()
@@ -243,7 +251,12 @@ def test_the_import_as_choice_reaches_the_import(kwargs, split_paths):
     handler(None, response_id="import", spec=spec, **kwargs)
 
     editor.file.load_file_from_path.assert_called_once_with(
-        ARC_DXF, "image/vnd.dxf", spec, None, split_paths=split_paths
+        ARC_DXF,
+        "image/vnd.dxf",
+        spec,
+        None,
+        split_paths=split_paths,
+        options=options,
     )
 
 
@@ -257,7 +270,13 @@ def test_a_reimport_takes_the_import_as_choice_without_using_it():
         lambda: import_handler.start_reimport(MagicMock(), editor, source)
     )
 
-    handler(None, response_id="import", spec=spec, split_paths=False)
+    handler(
+        None,
+        response_id="import",
+        spec=spec,
+        split_paths=False,
+        options=ImportOptions(keep_images=False),
+    )
 
     editor.file.reimport_from_source_asset.assert_called_once_with(
         source, spec, None, None

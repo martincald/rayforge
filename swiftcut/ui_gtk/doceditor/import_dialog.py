@@ -21,9 +21,11 @@ from ...core.vectorization_spec import (
 )
 from ...core.workpiece import WorkPiece
 from ...doceditor.file_cmd import PreviewResult
-from ...image.base_importer import ImporterFeature
+from ...doceditor.import_materializer import ImportGrouping, ImportOptions
+from ...image.base_importer import Importer, ImporterFeature
 from ...image.geo_renderer import geometry_to_cairo
 from ...image.structures import ImportManifest
+from ...image.svg.importer import SvgImporter
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.pref_rows.base import SpinRow
@@ -69,6 +71,11 @@ class ImportDialog(PatchedDialogWindow):
         self._in_update = False  # Prevent signal recursion
         self._layer_widgets: dict[Gtk.Switch, str] = {}
         self._layers_expander: Adw.ExpanderRow | None = None
+        # What the layer rows held before By source took them over.
+        self._saved_layer_rows: tuple[int, int] | None = None
+        # What By source is for the file, once a preview has read it.
+        self._by_source_grouping: ImportGrouping | None = None
+        self._traced_dismissed = False
 
         self._layer_import_model = Gtk.StringList.new(
             [
@@ -132,6 +139,24 @@ class ImportDialog(PatchedDialogWindow):
         )
         self.warning_banner.set_revealed(False)
         main_box.append(self.warning_banner)
+
+        # Banner for what the file has that will not be imported
+        # (e.g. text not outlined)
+        self.import_warning_banner = Adw.Banner(title="", use_markup=False)
+        self.import_warning_banner.set_revealed(False)
+        main_box.append(self.import_warning_banner)
+
+        # Banner for a DXF that looks like traced artwork
+        self.traced_banner = Adw.Banner(
+            title=_(
+                "This looks like traced artwork. Exporting SVG from "
+                "Illustrator keeps images as images and engraves better."
+            ),
+            button_label=_("Dismiss"),
+        )
+        self.traced_banner.connect("button-clicked", self._on_traced_dismissed)
+        self.traced_banner.set_revealed(False)
+        main_box.append(self.traced_banner)
 
         content_box = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL, vexpand=True, hexpand=True
@@ -207,18 +232,68 @@ class ImportDialog(PatchedDialogWindow):
         self._mode_visible = can_trace and can_vector
         mode_group.set_visible(self._mode_visible)
 
-        # Import as one shape, or one shape per path: direct vector
-        # imports only, Single every time.
+        # How the content becomes workpieces: direct vector imports
+        # only. A file with structure (layers, groups) offers four
+        # groupings, By source every time; any other file Single shape
+        # or Individual shapes, Single every time.
+        importer_cls = editor.file.get_importer_info(file_path, mime_type)[0]
+        structured = (
+            importer_cls is not None
+            and importer_cls.build_tree is not Importer.build_tree
+        )
+        if structured:
+            self._groupings = [
+                ImportGrouping.BY_SOURCE,
+                ImportGrouping.PIECES,
+                ImportGrouping.INDIVIDUAL,
+                ImportGrouping.SINGLE,
+            ]
+        else:
+            self._groupings = [
+                ImportGrouping.SINGLE,
+                ImportGrouping.INDIVIDUAL,
+            ]
+        labels = {
+            ImportGrouping.BY_SOURCE: _("By source layers and groups"),
+            ImportGrouping.PIECES: _("Pieces"),
+            ImportGrouping.INDIVIDUAL: _("Individual shapes"),
+            ImportGrouping.SINGLE: _("Single shape"),
+        }
         self.import_as_group = Adw.PreferencesGroup()
         preferences_page.add(self.import_as_group)
         self.import_as_row = Adw.ComboRow(
             title=_("Import as"),
-            model=Gtk.StringList.new(
-                [_("Single shape"), _("Individual shapes")]
-            ),
+            model=Gtk.StringList.new([labels[g] for g in self._groupings]),
             selected=0,
         )
+        self.import_as_row.connect(
+            "notify::selected", self._on_import_as_changed
+        )
         self.import_as_group.add(self.import_as_row)
+
+        self.interior_row = Adw.SwitchRow(
+            title=_("Put interior details on their own layer (engrave)"),
+            active=False,
+            visible=structured,
+        )
+        self.import_as_group.add(self.interior_row)
+        self.keep_images_row = Adw.SwitchRow(
+            title=_("Keep images as rasters"),
+            active=True,
+            visible=structured
+            and importer_cls is not None
+            and issubclass(importer_cls, SvgImporter),
+        )
+        self.import_as_group.add(self.keep_images_row)
+        self.layer_per_source_row = Adw.SwitchRow(
+            title=_("Create a SwiftCut layer per source layer"),
+            active=True,
+            visible=structured,
+        )
+        self.layer_per_source_row.connect(
+            "notify::active", self._on_layer_per_source_toggled
+        )
+        self.import_as_group.add(self.layer_per_source_row)
 
         # Layers Group (Dynamic)
         self.layers_group = Adw.PreferencesGroup(title=_("Layers"))
@@ -320,8 +395,103 @@ class ImportDialog(PatchedDialogWindow):
         self.import_as_group.set_visible(
             is_direct_import and self.source_asset is None
         )
+        self._update_import_as_rows()
+        self._sync_layer_rows()
         self.warning_banner.set_revealed(False)
         self._schedule_preview_update()
+
+    def _chosen_grouping(self) -> ImportGrouping:
+        return self._groupings[self.import_as_row.get_selected()]
+
+    def _grouping(self) -> ImportGrouping:
+        """
+        The grouping the import gets: the chosen one, except that By
+        source of a file without layers or groups is Pieces.
+        """
+        grouping = self._chosen_grouping()
+        if grouping is ImportGrouping.BY_SOURCE and (
+            self._by_source_grouping is ImportGrouping.PIECES
+        ):
+            return ImportGrouping.PIECES
+        return grouping
+
+    def _is_by_source(self) -> bool:
+        return (
+            self.import_as_group.get_visible()
+            and self._grouping() is ImportGrouping.BY_SOURCE
+        )
+
+    def _on_import_as_changed(self, row, *args):
+        self._update_import_as_rows()
+        self._sync_layer_rows()
+        self._schedule_preview_update()
+
+    def _on_layer_per_source_toggled(self, switch, *args):
+        self._sync_layer_rows()
+        self._schedule_preview_update()
+
+    def _update_import_as_rows(self):
+        """
+        Makes the options of "Import as" sensitive where they apply,
+        and says when By source falls back to Pieces for the file.
+        """
+        grouping = self._grouping()
+        self.interior_row.set_sensitive(
+            grouping in (ImportGrouping.PIECES, ImportGrouping.BY_SOURCE)
+        )
+        self.layer_per_source_row.set_sensitive(
+            grouping is ImportGrouping.BY_SOURCE
+        )
+        falls_back = grouping is not self._chosen_grouping()
+        self.import_as_row.set_subtitle(
+            _("No layers or groups in this file; grouping by pieces")
+            if falls_back
+            else ""
+        )
+
+    def _sync_layer_rows(self) -> bool:
+        """
+        By source reads the file's own layers, each onto a layer of its
+        own or all onto the current one: the layer rows show that, and
+        are locked. Leaving By source (or By source becoming Pieces)
+        gives them back what they held. Returns whether they changed.
+        """
+        rows = (
+            self.layer_source_row.get_selected(),
+            self.layer_import_mode_row.get_selected(),
+        )
+        by_source = self._is_by_source()
+        if by_source and self._saved_layer_rows is None:
+            self._saved_layer_rows = (
+                self.layer_source_row.get_selected(),
+                self.layer_import_mode_row.get_selected(),
+            )
+        elif not by_source and self._saved_layer_rows is not None:
+            source, mode = self._saved_layer_rows
+            self._saved_layer_rows = None
+            self._set_layer_rows(source, mode)
+        if by_source:
+            per_layer = self.layer_per_source_row.get_active()
+            self._set_layer_rows(0, 1 if per_layer else 2)
+        self.layer_source_row.set_sensitive(not by_source)
+        self.layer_import_mode_row.set_sensitive(not by_source)
+        return rows != (
+            self.layer_source_row.get_selected(),
+            self.layer_import_mode_row.get_selected(),
+        )
+
+    def _set_layer_rows(self, source: int, mode: int):
+        """Selects a layer source and a layer import mode."""
+        in_update, self._in_update = self._in_update, True
+        try:
+            self.layer_source_row.set_selected(source)
+            self.layer_import_mode_row.set_selected(mode)
+        finally:
+            self._in_update = in_update
+
+    def _on_traced_dismissed(self, banner):
+        self._traced_dismissed = True
+        banner.set_revealed(False)
 
     def _on_switch_to_trace_clicked(self, banner):
         self.use_vectors_switch.set_active(False)
@@ -660,6 +830,22 @@ class ImportDialog(PatchedDialogWindow):
             is_direct_vector and failed_generation and can_trace
         )
 
+        warnings = result.warnings if result else []
+        self.import_warning_banner.set_title("\n".join(warnings))
+        self.import_warning_banner.set_revealed(bool(warnings))
+        self.traced_banner.set_revealed(
+            result is not None
+            and result.traced_artwork
+            and not self._traced_dismissed
+        )
+        if result is not None and result.by_source_grouping is not None:
+            self._by_source_grouping = result.by_source_grouping
+        self._update_import_as_rows()
+        # By source found to be Pieces gives the layer rows back: the
+        # preview follows them.
+        if self._sync_layer_rows():
+            self._schedule_preview_update()
+
     def _draw_checkerboard_background(
         self, ctx: cairo.Context, width: int, height: int
     ):
@@ -827,17 +1013,31 @@ class ImportDialog(PatchedDialogWindow):
         except (ValueError, IndexError):
             return None
 
+    def _get_import_options(self) -> ImportOptions:
+        """
+        The "Import as" choices; without them (tracing, re-import), a
+        single shape and no placed images, as before there were any.
+        """
+        if not self.import_as_group.get_visible():
+            return ImportOptions(keep_images=False)
+        return ImportOptions(
+            grouping=self._grouping(),
+            interior_on_own_layer=self.interior_row.get_active(),
+            keep_images=self.keep_images_row.get_visible()
+            and self.keep_images_row.get_active(),
+            layer_per_source_layer=self.layer_per_source_row.get_active(),
+        )
+
     def _on_import_clicked(self, button):
         final_spec = self._get_current_spec()
-        split_paths = (
-            self.import_as_group.get_visible()
-            and self.import_as_row.get_selected() == 1
-        )
-        logger.debug(f"_on_import_clicked: {final_spec} {split_paths=}")
+        options = self._get_import_options()
+        split_paths = options.grouping is ImportGrouping.INDIVIDUAL
+        logger.debug(f"_on_import_clicked: {final_spec} {options}")
         self.response.send(
             self,
             response_id="import",
             spec=final_spec,
             split_paths=split_paths,
+            options=options,
         )
         self.close()

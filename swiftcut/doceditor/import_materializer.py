@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import math
+import statistics
 import warnings
 from collections import defaultdict
 from collections.abc import Sequence
@@ -48,6 +49,7 @@ from ..core.vectorization_spec import (
     VectorizationSpec,
 )
 from ..core.workpiece import WorkPiece
+from ..image.dxf.importer import DxfImporter
 from ..image.engine import NormalizationEngine
 from ..image.grouper import group_pieces
 from ..image.import_tree import (
@@ -71,6 +73,11 @@ logger = logging.getLogger(__name__)
 
 # First points this close (mm) are the same point.
 _POINT_TOLERANCE_MM = 1e-3
+
+# A DXF of more closed paths than this, half of them smaller than
+# _TRACED_MEDIAN_AREA_MM2, looks like artwork traced into dots.
+_TRACED_MIN_PATHS = 100
+_TRACED_MEDIAN_AREA_MM2 = 4.0
 
 
 class ImportGrouping(Enum):
@@ -119,7 +126,8 @@ class PreparedImport:
     """
     What the worker phase hands the commit: the options, the grouping
     in effect, the file's tree (if one was built), each workpiece's
-    planned pieces by uid, and the name of the interior layer.
+    planned pieces by uid, and the name of the interior layer; then
+    what the commit made of it: the interior layer, if it has pieces.
     """
 
     options: ImportOptions
@@ -127,6 +135,7 @@ class PreparedImport:
     tree: ImportTree | None = None
     plans: dict[str, list[PlannedPiece]] = field(default_factory=dict)
     interior_layer_name: str = ""
+    interior_layer: Layer | None = None
 
 
 def options_for(
@@ -198,6 +207,28 @@ def effective_grouping(
     ):
         return ImportGrouping.PIECES
     return grouping
+
+
+def looks_traced(
+    importer_cls: type[Importer] | None, tree: ImportTree | None
+) -> bool:
+    """
+    Whether a file looks like artwork traced into a DXF: more than
+    _TRACED_MIN_PATHS closed paths, the median of them smaller than
+    _TRACED_MEDIAN_AREA_MM2. Only a DXF is asked.
+    """
+    if (
+        tree is None
+        or importer_cls is None
+        or not issubclass(importer_cls, DxfImporter)
+    ):
+        return False
+    closed = [path for path in tree.root.paths() if path.closed]
+    if len(closed) <= _TRACED_MIN_PATHS:
+        return False
+    mm2 = tree.unit_to_mm**2
+    median = statistics.median(abs(p.geometry.area()) * mm2 for p in closed)
+    return median < _TRACED_MEDIAN_AREA_MM2
 
 
 def _has_groups(node: GroupNode) -> bool:
@@ -496,6 +527,30 @@ def _add_images(
             payload.items.append(wp)
 
 
+def image_is_placeable(image: ImageNode) -> bool:
+    """
+    Whether a placed image can be imported as a workpiece: neither
+    turned, skewed nor flipped.
+    """
+    (a, c, _e), (b, d, _f), _row = image.world_transform.to_list()
+    return abs(b) <= 1e-9 and abs(c) <= 1e-9 and a > 0 and d > 0
+
+
+def skipped_image_warnings(tree: ImportTree) -> list[str]:
+    """The warnings of the tree's placed images that are skipped."""
+    return [
+        _skipped_image_warning(image)
+        for image in tree.root.images()
+        if not image_is_placeable(image)
+    ]
+
+
+def _skipped_image_warning(image: ImageNode) -> str:
+    return _(
+        'Image "{name}" is rotated, skewed or flipped and was not imported.'
+    ).format(name=image.name)
+
+
 def _image_workpiece(
     image: ImageNode,
     parse_result: ParsingResult,
@@ -508,15 +563,10 @@ def _image_workpiece(
     file shows it. An image turned or flipped is skipped, with a
     warning.
     """
-    (a, c, e), (b, d, f), _row = image.world_transform.to_list()
-    if abs(b) > 1e-9 or abs(c) > 1e-9 or a <= 0 or d <= 0:
-        import_result.warnings.append(
-            _(
-                'Image "{name}" is rotated, skewed or flipped and was not '
-                "imported."
-            ).format(name=image.name)
-        )
+    if not image_is_placeable(image):
+        import_result.warnings.append(_skipped_image_warning(image))
         return None
+    (a, _c, e), (_b, d, f), _row = image.world_transform.to_list()
     pixels = pyvips.Image.new_from_buffer(image.data, "")
     x, y, w, h = image.placement
     drawn = (a * x + e, d * y + f, a * w, d * h)
@@ -629,6 +679,7 @@ def materialize(
         else:
             result.append((owner, item))
     if interior_layer.get_content_items():
+        prepared.interior_layer = interior_layer
         result.append((doc, interior_layer))
     return result
 

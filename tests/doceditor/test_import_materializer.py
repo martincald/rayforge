@@ -12,11 +12,18 @@ import numpy as np
 import pytest
 import pyvips
 
+from swiftcut.core.recipe import Recipe
+from swiftcut.core.recipe_manager import RecipeManager
+from swiftcut.core.stock import StockItem
+from swiftcut.core.stock_asset import StockAsset
 from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
 from swiftcut.doceditor.import_materializer import (
     ImportGrouping,
     ImportOptions,
     effective_grouping,
+    image_is_placeable,
+    looks_traced,
+    skipped_image_warnings,
 )
 from swiftcut.image.dxf.importer import DxfImporter
 from swiftcut.image.svg.importer import SvgImporter
@@ -199,6 +206,37 @@ class TestBySource:
             assert all(
                 c.is_closed() for c in wp.boundaries.split_into_contours()
             )
+
+
+@pytest.mark.asyncio
+async def test_groups_outside_layers_land_on_the_current_layer(
+    doc_editor, task_mgr, bed, tmp_path
+):
+    """
+    A file without layers but with a group keeps BY_SOURCE: the group
+    is one piece, the loose rect another, both on the current layer.
+    """
+    path = tmp_path / "unlayered.svg"
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+        'height="100mm" viewBox="0 0 100 100"><g>'
+        '<rect x="10" y="10" width="20" height="20" fill="none" '
+        'stroke="#000"/><rect x="40" y="10" width="10" height="10" '
+        'fill="none" stroke="#000"/></g><rect x="60" y="60" '
+        'width="30" height="30" fill="none" stroke="#f00"/></svg>'
+    )
+    tree = SvgImporter(path.read_bytes(), path).build_tree()
+    layers = list(doc_editor.doc.layers)
+
+    added = await _import(doc_editor, task_mgr, path, options=BY_SOURCE)
+
+    assert tree.layers() == []
+    assert effective_grouping(tree, ImportGrouping.BY_SOURCE) is (
+        ImportGrouping.BY_SOURCE
+    )
+    assert doc_editor.doc.layers == layers
+    assert sorted(_contours(wp) for wp in added) == [1, 2]
+    assert all(wp.layer is doc_editor.doc.active_layer for wp in added)
 
 
 def test_layers_or_groups_keep_by_source():
@@ -438,6 +476,45 @@ async def test_a_kept_image_is_not_also_in_the_vector_render(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "transform, kept",
+    [
+        ("translate(5 5)", True),
+        ("rotate(30 50 45)", False),
+        ("scale(-1 1) translate(-100 0)", False),
+    ],
+)
+async def test_a_turned_or_flipped_image_is_skipped(
+    doc_editor, task_mgr, bed, tmp_path, transform, kept
+):
+    grey = (pyvips.Image.black(40, 20) + 128).cast("uchar")
+    png = base64.b64encode(grey.pngsave_buffer()).decode()
+    path = tmp_path / "photo.svg"
+    path.write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" '
+        'height="100mm" viewBox="0 0 100 100"><g id="L">'
+        '<rect x="0" y="0" width="100" height="100" fill="none" '
+        'stroke="#000"/><image id="Photo" x="20" y="30" width="60" '
+        f'height="30" transform="{transform}" '
+        f'href="data:image/png;base64,{png}"/></g></svg>'
+    )
+    tree = SvgImporter(path.read_bytes(), path).build_tree()
+
+    added = await _import(doc_editor, task_mgr, path, options=BY_SOURCE)
+
+    (image,) = tree.root.images()
+    assert image_is_placeable(image) is kept
+    assert skipped_image_warnings(tree) == (
+        []
+        if kept
+        else [
+            'Image "Photo" is rotated, skewed or flipped and was not imported.'
+        ]
+    )
+    assert len(added) == (2 if kept else 1)
+
+
+@pytest.mark.asyncio
 async def test_by_source_keeps_the_ppi_of_a_unitless_file(
     doc_editor, task_mgr, bed, tmp_path
 ):
@@ -514,3 +591,133 @@ class TestShapesBesideNamedGroups:
         frame = max(added, key=lambda wp: wp.size[0])
         assert frame.source_color == "#ff0000"
         assert {wp.source_layer for wp in added} == {None}
+
+
+class TestTracedArtwork:
+    def test_a_traced_dxf_looks_traced_a_cad_drawing_not(self):
+        """
+        illustrator_traced.dxf: 121 closed paths, median 2.25 mm2;
+        cad_plate.dxf: 9; the Illustrator SVG: 6.
+        """
+        traced = DxfImporter(TRACED.read_bytes(), TRACED).build_tree()
+        plates = DxfImporter(PLATES.read_bytes(), PLATES).build_tree()
+        svg = SvgImporter(ILLUSTRATOR.read_bytes(), ILLUSTRATOR).build_tree()
+
+        assert looks_traced(DxfImporter, traced)
+        assert not looks_traced(DxfImporter, plates)
+        assert not looks_traced(SvgImporter, svg)
+
+    def test_only_a_dxf_is_asked(self):
+        traced = DxfImporter(TRACED.read_bytes(), TRACED).build_tree()
+
+        assert not looks_traced(SvgImporter, traced)
+        assert not looks_traced(DxfImporter, None)
+
+    def test_large_shapes_are_not_traced_artwork(self):
+        """The same 121 paths, each 10 times larger: median 225 mm2."""
+        traced = DxfImporter(TRACED.read_bytes(), TRACED).build_tree()
+        traced.unit_to_mm = 10.0
+
+        assert not looks_traced(DxfImporter, traced)
+
+
+@pytest.fixture
+def recipe_mgr(doc_editor, tmp_path, monkeypatch):
+    """A RecipeManager on a private directory, used by the context."""
+    mgr = RecipeManager(tmp_path / "recipes")
+    monkeypatch.setattr(doc_editor.context, "_recipe_mgr", mgr)
+    return mgr
+
+
+def _stock(doc, material_uid, thickness):
+    """Puts a stock of a material and thickness in the document."""
+    asset = StockAsset()
+    asset.material_uid = material_uid
+    asset.thickness = thickness
+    doc.add_asset(asset)
+    doc.add_child(StockItem(stock_asset_uid=asset.uid))
+
+
+INTERIOR = ImportOptions(
+    grouping=ImportGrouping.PIECES, interior_on_own_layer=True
+)
+
+
+class TestInteriorLayer:
+    @pytest.mark.asyncio
+    async def test_engraves_by_the_recipe_for_the_machine_and_material(
+        self, doc_editor, task_mgr, bed, recipe_mgr
+    ):
+        """
+        The interior layer gets one Engrave step, set by the recipe
+        made for the active machine, the stock's material and Engrave;
+        the color the recipe gives the layer is part of the import's
+        one undo step.
+        """
+        _stock(doc_editor.doc, "mdf", 3.0)
+        recipe = Recipe(
+            name="MDF engrave",
+            color="#3366ff",
+            target_step_types=["EngraveStep"],
+            target_machine_id=bed.id,
+            material_uid="mdf",
+            settings={"power": 0.25, "cut_speed": 18000},
+        )
+        recipe_mgr.add_recipe(recipe)
+        history = doc_editor.history_manager
+        entries = len(history.undo_stack)
+
+        await _import(doc_editor, task_mgr, TRACED, options=INTERIOR)
+
+        engrave = doc_editor.doc.layers[-1]
+        assert engrave.name == "illustrator_traced engrave"
+        (step,) = engrave.workflow.steps
+        assert type(step).__name__ == "EngraveStep"
+        assert step.applied_recipe_uid == recipe.uid
+        assert (step.power, step.cut_speed) == (0.25, 18000)
+        assert engrave.color == "#3366ff"
+        assert len(history.undo_stack) == entries + 1
+
+        history.undo()
+
+        assert engrave not in doc_editor.doc.layers
+
+    @pytest.mark.asyncio
+    async def test_engraves_by_the_step_defaults_without_a_recipe(
+        self, doc_editor, task_mgr, bed, recipe_mgr, engrave_step_class
+    ):
+        """
+        No recipe matches (the one here is for another material): the
+        Engrave step keeps its own defaults.
+        """
+        _stock(doc_editor.doc, "mdf", 3.0)
+        recipe_mgr.add_recipe(
+            Recipe(
+                name="Acrylic engrave",
+                target_step_types=["EngraveStep"],
+                material_uid="acrylic",
+                settings={"power": 0.25, "cut_speed": 18000},
+            )
+        )
+        defaults = engrave_step_class.create(doc_editor.context)
+
+        await _import(doc_editor, task_mgr, TRACED, options=INTERIOR)
+
+        (step,) = doc_editor.doc.layers[-1].workflow.steps
+        assert type(step) is engrave_step_class
+        assert step.applied_recipe_uid is None
+        assert (step.power, step.cut_speed) == (
+            defaults.power,
+            defaults.cut_speed,
+        )
+
+    @pytest.mark.asyncio
+    async def test_only_an_import_with_interior_pieces_makes_it(
+        self, doc_editor, task_mgr, bed
+    ):
+        """cad_plate.dxf's holes are boundary (cut), not interior."""
+        layers = list(doc_editor.doc.layers)
+
+        await _import(doc_editor, task_mgr, PLATES, options=INTERIOR)
+
+        assert doc_editor.doc.layers == layers

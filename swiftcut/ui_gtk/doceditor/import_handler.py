@@ -12,6 +12,7 @@ from ...core.layer import Layer
 from ...core.source_asset import SourceAsset
 from ...core.vectorization_spec import TraceSpec, VectorizationSpec
 from ...doceditor.file_cmd import ImportAction
+from ...doceditor.import_materializer import ImportOptions
 from ...image.registry import importer_registry
 from . import file_dialogs
 from .import_dialog import ImportDialog
@@ -49,6 +50,7 @@ def _start_interactive_import(
         response_id: str,
         spec: VectorizationSpec,
         split_paths: bool = False,
+        options: ImportOptions | None = None,
     ):
         _on_import_dialog_response(
             sender,
@@ -60,6 +62,7 @@ def _start_interactive_import(
             mime_type,
             position_mm,
             split_paths,
+            options,
         )
 
     # Use weak=False to prevent the handler from being garbage collected.
@@ -77,6 +80,7 @@ def _on_import_dialog_response(
     mime_type: str,
     position_mm: tuple[float, float] | None = None,
     split_paths: bool = False,
+    options: ImportOptions | None = None,
 ):
     """Callback for when the interactive import dialog is closed."""
     logger.info(f"Received response '{response_id}' from ImportDialog.")
@@ -85,7 +89,12 @@ def _on_import_dialog_response(
             f"Executing final import for {file_path} with spec: {spec}"
         )
         editor.file.load_file_from_path(
-            file_path, mime_type, spec, position_mm, split_paths=split_paths
+            file_path,
+            mime_type,
+            spec,
+            position_mm,
+            split_paths=split_paths,
+            options=options,
         )
         win.item_revealer.set_reveal_child(False)
 
