@@ -1,5 +1,6 @@
-"""The first-run guide: three cards (connect, open or draw, Go Scale
-then Start), shown once on the first launch and again only from Help.
+"""The first-run guide: four cards (connect, open or draw, Go Scale
+then Start, export from Illustrator), shown once on the first launch
+and again only from Help.
 
 App.do_activate opens it through MainWindow.maybe_show_getting_started
 as the window maps; swiftcut.app is never imported in tests (it has
@@ -202,7 +203,7 @@ def _descendants(widget):
 
 
 @pytest.mark.ui
-def test_the_three_cards_say_what_to_do(guide):
+def test_the_four_cards_say_what_to_do(guide):
     cards = [w for w in _descendants(guide) if w.has_css_class("card")]
     titles = [
         label.get_label()
@@ -215,7 +216,9 @@ def test_the_three_cards_say_what_to_do(guide):
         "1. Connect by USB",
         "2. Open or draw something",
         "3. Press Go Scale, then Start",
+        "Export from Illustrator",
     ]
+    assert len(cards) == 4
     assert guide.connection_status in _descendants(cards[0])
     assert guide.open_button in _descendants(cards[1])
     texts = [
@@ -223,6 +226,24 @@ def test_the_three_cards_say_what_to_do(guide):
         if isinstance(w, Gtk.Label)
     ]
     assert any("Object > New Sketch" in text for text in texts)
+
+
+@pytest.mark.ui
+def test_the_illustrator_card_lists_the_export_steps(guide):
+    card = [w for w in _descendants(guide) if w.has_css_class("card")][3]
+    texts = [
+        w.get_label() for w in _descendants(card) if isinstance(w, Gtk.Label)
+    ]
+
+    points = texts[1].splitlines()
+    assert len(points) == 4
+    assert all(point.startswith("\u2022 ") for point in points)
+    assert "File > Export > Export As > SVG" in points[0]
+    assert "72 DPI" in points[0]
+    assert "Type > Create Outlines" in points[1]
+    assert "placed PNG on its own layer or group" in points[2]
+    assert "images stay images" in points[3]
+    assert "groups become pieces" in points[3]
 
 
 @pytest.mark.ui

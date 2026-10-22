@@ -26,8 +26,8 @@ def should_show_getting_started(config: Config, scripted: bool) -> bool:
 class GettingStartedWindow(PatchedDialogWindow):
     """
     The first-run guide: connect the laser, open or draw something,
-    then Go Scale and Start. Closing it, however it is closed, marks
-    it seen.
+    then Go Scale and Start, and how to export from Illustrator.
+    Closing it, however it is closed, marks it seen.
     """
 
     def __init__(self, **kwargs):
@@ -80,6 +80,26 @@ class GettingStartedWindow(PatchedDialogWindow):
                     "Go Scale traces the outline of your design with the "
                     "laser off, so you can check where it will cut. Then "
                     "press Start to run the job."
+                ),
+            )
+        )
+        content.append(
+            self._card(
+                _("Export from Illustrator"),
+                "\n".join(
+                    "• " + point
+                    for point in (
+                        _(
+                            "Use File > Export > Export As > SVG, and "
+                            "import it at 72 DPI."
+                        ),
+                        _("Outline text first (Type > Create Outlines)."),
+                        _("Keep each placed PNG on its own layer or group."),
+                        _(
+                            "Why: images stay images, and groups become "
+                            "pieces you can move and put on a layer."
+                        ),
+                    )
                 ),
             )
         )
