@@ -95,20 +95,28 @@ class MachineCmd:
         Travel moves count, and on a controller that overscans natively
         the raster run-up is added back: it never appears in the op
         stream, but the head still travels it.
-        """
-        min_x, min_y, max_x, max_y = ops.rect(True)
-        driver = machine.driver
-        if driver is None or not driver.native_overscan:
-            return min_x, min_y, max_x, max_y
 
+        Travel counts by where each move goes, not by
+        ops.rect(include_travel=True): on ops assembled from parts, as
+        a pipeline job is, that also counts a travel from (0, 0) to the
+        first move, which the head never makes. It starts on the cut
+        geometry's minimum, which ops.rect() already holds.
+        """
+        min_x, min_y, max_x, max_y = ops.rect()
+        driver = machine.driver
+        overscan = driver is not None and driver.native_overscan
         acceleration = float(machine.acceleration or 0)
         pad = 0.0
         rate = 0.0
         for i in range(ops.len()):
             command = ops.command_type(i)
-            if command == CommandType.SET_FEED_RATE:
+            if command == CommandType.MOVE_TO:
+                x, y = ops.endpoint(i)[:2]
+                min_x, max_x = min(min_x, x), max(max_x, x)
+                min_y, max_y = min(min_y, y), max(max_y, y)
+            elif overscan and command == CommandType.SET_FEED_RATE:
                 rate = float(ops.rate(i) or 0.0)
-            elif command == CommandType.SCAN_LINE:
+            elif overscan and command == CommandType.SCAN_LINE:
                 pad = max(pad, acceleration_run_up_mm(rate, acceleration))
         return min_x - pad, min_y, max_x + pad, max_y
 
@@ -116,29 +124,36 @@ class MachineCmd:
         """
         Toast, without blocking, when the job cannot fit from here.
 
-        The job is anchored where the head is now, so a rectangle that
-        fits the bed on its own can still run off the far edge.
+        The job is anchored where the driver's start-corner move puts
+        the head, with its cut geometry's minimum (job-local 0, 0) on
+        that point, so a rectangle that fits the bed on its own can
+        still run off either edge. An unknown head position is taken
+        as the bed origin, which leaves only the job's size to check.
         """
         bed_w, bed_h = machine.axis_extents
         if bed_w <= 0 or bed_h <= 0:
             return
         try:
             min_x, min_y, max_x, max_y = self._job_motion_extent(ops, machine)
+            origin_x, origin_y = ops.rect()[:2]
         except Exception:
             logger.debug("Could not measure job extent", exc_info=True)
             return
 
-        pos = machine.device_state.machine_pos
-        start_x = float(pos[0] or 0.0)
-        start_y = float(pos[1] or 0.0)
-        width = max_x - min_x
-        height = max_y - min_y
-        if start_x + width <= bed_w and start_y + height <= bed_h:
+        anchor_x, anchor_y = self._job_anchor(ops, machine) or (0.0, 0.0)
+        if (
+            anchor_x + min_x - origin_x >= 0
+            and anchor_y + min_y - origin_y >= 0
+            and anchor_x + max_x - origin_x <= bed_w
+            and anchor_y + max_y - origin_y <= bed_h
+        ):
             return
 
+        width = max_x - min_x
+        height = max_y - min_y
         logger.warning(
-            f"Job extent {width:.1f} x {height:.1f} mm from "
-            f"({start_x:.1f}, {start_y:.1f}) leaves the "
+            f"Job extent {width:.1f} x {height:.1f} mm from the anchor "
+            f"({anchor_x:.1f}, {anchor_y:.1f}) leaves the "
             f"{bed_w:.0f} x {bed_h:.0f} mm bed"
         )
         self._editor.notification_requested.send(
@@ -377,6 +392,10 @@ class MachineCmd:
         fails, so this means "ended", not "cut".
         """
         if anchor is not None:
+            logger.info(
+                f"Last job's start recorded: ({anchor[0]:.2f}, "
+                f"{anchor[1]:.2f}) mm"
+            )
             self._scheduler(machine.set_last_job_start, anchor)
 
     async def _premove_to_start(
@@ -423,8 +442,10 @@ class MachineCmd:
         # while the job was still being prepared must not move the head.
         if not self._premove_cancelled and not arrived():
             logger.info(
-                f"Moving to the last job's start: ({target[0]:.2f}, "
-                f"{target[1]:.2f}) mm"
+                f"Last job's start ({start_at[0]:.2f}, {start_at[1]:.2f}) "
+                f"mm: jogging the head to ({target[0]:.2f}, "
+                f"{target[1]:.2f}) mm first, so the start-corner move "
+                f"lands it there"
             )
             await machine.jog(
                 {Axis.X: target[0] - x, Axis.Y: target[1] - y}, speed
@@ -441,9 +462,10 @@ class MachineCmd:
             return False
         if not arrived():
             self._refuse_start(
-                f"the head did not reach the last job's start position "
-                f"({target[0]:.2f}, {target[1]:.2f}) mm; it is at "
-                f"{machine.device_state.machine_pos}",
+                f"the head did not reach the last job's start "
+                f"({start_at[0]:.2f}, {start_at[1]:.2f}) mm: it was "
+                f"jogged to ({target[0]:.2f}, {target[1]:.2f}) mm and is "
+                f"at {machine.device_state.machine_pos}",
                 _(
                     "Job not sent: the head did not reach the last "
                     "job's start position."
