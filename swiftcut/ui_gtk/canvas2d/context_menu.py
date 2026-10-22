@@ -138,6 +138,34 @@ def build_move_to_layer_menu(doc: Doc) -> Gio.Menu:
     return menu
 
 
+def _create_select_section() -> Gio.Menu:
+    """
+    The commands picking shapes by the selection (Select Inside) or by
+    the right-clicked shape (Select Similar, Select All on This Layer).
+    """
+    section = Gio.Menu.new()
+    section.append_item(
+        Gio.MenuItem.new(_("Select Inside"), "win.select-inside")
+    )
+    similar = Gio.Menu.new()
+    similar.append_item(
+        Gio.MenuItem.new(_("By Color"), "win.select-similar-color")
+    )
+    similar.append_item(
+        Gio.MenuItem.new(_("By Source Layer"), "win.select-similar-layer")
+    )
+    similar.append_item(
+        Gio.MenuItem.new(_("By Size"), "win.select-similar-size")
+    )
+    section.append_submenu(_("Select Similar"), similar)
+    section.append_item(
+        Gio.MenuItem.new(
+            _("Select All on This Layer"), "win.select-all-on-layer"
+        )
+    )
+    return section
+
+
 def _create_item_context_menu() -> Gio.Menu:
     """Builds the standard context menu for DocItems."""
     menu = Gio.Menu.new()
@@ -190,7 +218,8 @@ def show_item_context_menu(
     Emits the context_menu_requested signal and invokes registered extension
     handlers to allow addons to add custom menu items. The item parameter is
     passed to handlers so they can determine if the menu should be extended.
-    A first_section is shown above the standard items.
+    A first_section is shown above the standard items, and the Select
+    section below them.
     """
     menu = Gio.Menu.new()
     _populate_standard_items(menu)
@@ -198,6 +227,7 @@ def show_item_context_menu(
     menu.insert_submenu(
         2, _("Move to Layer"), build_move_to_layer_menu(surface.doc)
     )
+    menu.append_section(None, _create_select_section())
     if first_section is not None:
         menu.prepend_section(None, first_section)
 

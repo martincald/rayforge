@@ -10,6 +10,7 @@ from ..core.item import DocItem
 from ..core.layer import Layer
 from ..core.stock import StockItem
 from ..core.workpiece import WorkPiece
+from ..doceditor import selection_rules
 from ..doceditor.array import ArrayMode
 from ..doceditor.layout.registry import layout_registry
 from .action_registry import MenuPlacement, ToolbarPlacement, action_registry
@@ -375,6 +376,33 @@ class ActionManager:
             GLib.VariantType.new("s"),
         )
 
+        # Selection Actions (the canvas menu's Select section)
+        self._add_action("select-inside", self.on_select_inside)
+        self._add_action(
+            "select-similar-color",
+            lambda a, p: self._select_by_context_item(
+                selection_rules.select_similar_color
+            ),
+        )
+        self._add_action(
+            "select-similar-layer",
+            lambda a, p: self._select_by_context_item(
+                selection_rules.select_similar_source_layer
+            ),
+        )
+        self._add_action(
+            "select-similar-size",
+            lambda a, p: self._select_by_context_item(
+                selection_rules.select_similar_size
+            ),
+        )
+        self._add_action(
+            "select-all-on-layer",
+            lambda a, p: self._select_by_context_item(
+                selection_rules.select_all_on_layer
+            ),
+        )
+
         # Grouping Actions
         self._add_action("group", self.on_group_action)
         self._add_action("ungroup", self.on_ungroup_action)
@@ -499,6 +527,7 @@ class ActionManager:
         can_remove_single_tab = context and context.get("type") == "tab"
         self.actions["tab-add"].set_enabled(bool(can_add_single_tab))
         self.actions["tab-remove"].set_enabled(bool(can_remove_single_tab))
+        self._update_select_action_states()
 
         selected_wps = self.win.surface.get_selected_workpieces()
         if selected_wps:
@@ -635,6 +664,53 @@ class ActionManager:
         state = show_tabs_action.get_state()
         if not (state and state.get_boolean()):
             show_tabs_action.set_state(GLib.Variant.new_boolean(True))
+
+    def _update_select_action_states(self):
+        """
+        Select Inside takes a selected closed shape; Select Similar and
+        Select All on This Layer a right-clicked shape, and by color or
+        source layer one that has it.
+        """
+        selected = self.win.surface.get_selected_top_level_items()
+        self.actions["select-inside"].set_enabled(
+            any(selection_rules.has_closed_contour(i) for i in selected)
+        )
+        item = self._context_item()
+        self.actions["select-similar-color"].set_enabled(
+            item is not None and selection_rules.source_color(item) is not None
+        )
+        self.actions["select-similar-layer"].set_enabled(
+            item is not None
+            and selection_rules.source_layer_key(item) is not None
+        )
+        self.actions["select-similar-size"].set_enabled(item is not None)
+        self.actions["select-all-on-layer"].set_enabled(item is not None)
+
+    def _context_item(self) -> DocItem | None:
+        """The item a right-click on the canvas was on, on a shown layer."""
+        context = self.win.surface.right_click_context
+        item = context.get("item") if context else None
+        layer = item.get_ancestor_by_type(Layer) if item else None
+        return item if layer is not None and layer.visible else None
+
+    def on_select_inside(self, action, param):
+        """Selects the shapes inside the selected closed shapes instead."""
+        surface = self.win.surface
+        surface.select_items(
+            selection_rules.select_inside(
+                surface.get_selected_top_level_items(),
+                selection_rules.candidates(self.editor.doc),
+            )
+        )
+
+    def _select_by_context_item(self, rule: Callable):
+        """Selects what the rule picks for the right-clicked item."""
+        item = self._context_item()
+        if item is None:
+            return
+        self.win.surface.select_items(
+            rule(item, selection_rules.candidates(self.editor.doc))
+        )
 
     def on_tab_add(self, action, param):
         """Handler for adding a single tab via context menu."""

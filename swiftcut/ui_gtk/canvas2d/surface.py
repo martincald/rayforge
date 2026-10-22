@@ -421,12 +421,16 @@ class WorkSurface(WorldSurface):
                     "type": "geometry",
                     "workpiece": wp_view.data,
                     "location": location,
+                    "item": hit_elem.data,
                 }
             else:
-                self.right_click_context = {"type": "item"}
+                self.right_click_context = {
+                    "type": "item",
+                    "item": hit_elem.data,
+                }
         # Case 3: Clicked on another selectable item (e.g., a Group)
         elif hit_elem.selectable:
-            self.right_click_context = {"type": "item"}
+            self.right_click_context = {"type": "item", "item": hit_elem.data}
 
         # Notify listeners to update action states *before* showing the menu
         self.context_changed.send(self)

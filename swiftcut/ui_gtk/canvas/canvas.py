@@ -16,6 +16,7 @@ from gi.repository import Gdk, GLib, Graphene, Gtk
 from raygeo.geo import Matrix
 
 from ...core.bed_bounds import clamp_offset, inside
+from ...doceditor.selection_rules import point_in_polygon
 from ..layout import HANDLE_HIT_SIZE, ROTATION_ARC_RADIUS
 from ..shared.keyboard import (
     SNAP_OVERRIDE_MASK,
@@ -50,6 +51,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 DRAG_THRESHOLD = 5.0
+#: A lasso takes a pointer position this many pixels from its last one.
+LASSO_STEP_PX = 2.0
 
 
 class SelectionMode(Enum):
@@ -127,6 +130,8 @@ class Canvas(Gtk.DrawingArea):
         self._framing_selection: bool = False
         self._selection_frame_rect: Rect | None = None
         self._selection_before_framing: set[CanvasElement] = set()
+        # The lasso's points in pixels while Alt frames freehand.
+        self._lasso_points: list[Point] | None = None
         self._group_hovered: bool = False
         self._last_mouse_x: float = 0.0
         self._last_mouse_y: float = 0.0
@@ -403,15 +408,17 @@ class Canvas(Gtk.DrawingArea):
         if self._framing_selection and self._selection_frame_rect:
             ctx.save()
             x, y, w, h = self._selection_frame_rect
-            # A semi-transparent blue fill
-            ctx.set_source_rgba(0.2, 0.5, 0.8, 0.3)
             ctx.rectangle(x, y, w, h)
-            ctx.fill_preserve()
-            # A solid blue, dashed border
-            ctx.set_source_rgb(0.2, 0.5, 0.8)
-            ctx.set_line_width(1)
-            ctx.set_dash((4, 4))
-            ctx.stroke()
+            self._paint_selection_frame(ctx)
+            ctx.restore()
+
+        if self._framing_selection and self._lasso_points:
+            ctx.save()
+            ctx.move_to(*self._lasso_points[0])
+            for point in self._lasso_points[1:]:
+                ctx.line_to(*point)
+            ctx.close_path()
+            self._paint_selection_frame(ctx)
             ctx.restore()
 
         if self._rotating and self._rotation_readout:
@@ -432,6 +439,17 @@ class Canvas(Gtk.DrawingArea):
                 ctx,
                 [(to_screen(a), to_screen(b)) for a, b in self._snap_guides],
             )
+
+    def _paint_selection_frame(self, ctx: cairo.Context):
+        """Fills and strokes the current path as a framing selection."""
+        # A semi-transparent blue fill
+        ctx.set_source_rgba(0.2, 0.5, 0.8, 0.3)
+        ctx.fill_preserve()
+        # A solid blue, dashed border
+        ctx.set_source_rgb(0.2, 0.5, 0.8)
+        ctx.set_line_width(1)
+        ctx.set_dash((4, 4))
+        ctx.stroke()
 
     def _render_selection_overlay(
         self, ctx: cairo.Context, elem: CanvasElement
@@ -638,9 +656,11 @@ class Canvas(Gtk.DrawingArea):
         logger.debug(f"Canvas.on_button_press fired for {type(self).__name__}")
         self.grab_focus()
         self._was_dragging = False
+        alt_pressed = False
         event = gesture.get_current_event()
         if event:
             mods = event.get_modifier_state()
+            alt_pressed = bool(mods & Gdk.ModifierType.ALT_MASK)
             self._shift_pressed = bool(mods & Gdk.ModifierType.SHIFT_MASK)
             self._ctrl_pressed = bool(mods & Gdk.ModifierType.CONTROL_MASK)
             self._snap_override = bool(mods & SNAP_OVERRIDE_MASK)
@@ -670,6 +690,7 @@ class Canvas(Gtk.DrawingArea):
         self._active_region = self._hovered_region
         hit = self._hovered_elem
         self._framing_selection = False
+        self._lasso_points = None
         selection_changed = False
 
         # Step 1: Always identify the transient target for a drag operation.
@@ -679,6 +700,9 @@ class Canvas(Gtk.DrawingArea):
         if self._active_region in [ElementRegion.NONE, ElementRegion.BODY]:
             if hit is None:  # Clicked on background: start framing.
                 self._framing_selection = True
+                # Alt (Option on macOS) frames with a freehand lasso.
+                if alt_pressed:
+                    self._lasso_points = [(x, y)]
                 if self._shift_pressed:
                     self._selection_before_framing = set(
                         self.get_selected_elements()
@@ -857,6 +881,21 @@ class Canvas(Gtk.DrawingArea):
         self._update_framing_selection()  # Update selection live
         self.queue_draw()
 
+    def _extend_lasso(self, offset_x: float, offset_y: float):
+        """
+        Adds the pointer to the lasso during a drag, once it is
+        LASSO_STEP_PX from the lasso's last point.
+        """
+        ok, start_x, start_y = self._drag_gesture.get_start_point()
+        if not ok or self._lasso_points is None:
+            return
+        x, y = start_x + offset_x, start_y + offset_y
+        last_x, last_y = self._lasso_points[-1]
+        if math.hypot(x - last_x, y - last_y) < LASSO_STEP_PX:
+            return
+        self._lasso_points.append((x, y))
+        self.queue_draw()
+
     def _calculate_snap_offset(
         self, target_pos: float, size: float, grid_size: float
     ) -> float:
@@ -922,7 +961,10 @@ class Canvas(Gtk.DrawingArea):
             return  # Stop further processing
 
         if self._framing_selection:
-            self._update_framing_selection_from_drag(offset_x, offset_y)
+            if self._lasso_points is not None:
+                self._extend_lasso(offset_x, offset_y)
+            else:
+                self._update_framing_selection_from_drag(offset_x, offset_y)
             return
 
         is_transforming = (
@@ -1470,6 +1512,7 @@ class Canvas(Gtk.DrawingArea):
             return
 
         if self._framing_selection:
+            self._apply_lasso_selection()
             self._selection_frame_rect = None
             self._selection_before_framing.clear()
             self._finalize_selection_state()
@@ -1540,6 +1583,7 @@ class Canvas(Gtk.DrawingArea):
 
         if self._framing_selection:
             self._framing_selection = False
+            self._apply_lasso_selection()
             self._selection_frame_rect = None
             self._selection_before_framing.clear()
             # A framing operation (even a zero-pixel one) should finalize
@@ -1709,6 +1753,27 @@ class Canvas(Gtk.DrawingArea):
 
         if selection_changed:
             self._finalize_selection_state()
+
+    def _apply_lasso_selection(self):
+        """
+        Ends a lasso: selects the elements whose box center lies inside
+        it, keeping those selected before it with Shift. The selection
+        changes once, at the release, not on every pointer motion.
+        """
+        points = self._lasso_points
+        self._lasso_points = None
+        if points is None or len(points) < 3:
+            return
+        lasso = [self._get_world_coords(x, y) for x, y in points]
+        for elem in self.root.get_all_children_recursive():
+            if elem.selectable:
+                x, y, w, h = elem.get_world_bounding_box()
+                newly_selected = (
+                    elem in self._selection_before_framing
+                ) or point_in_polygon((x + w / 2, y + h / 2), lasso)
+                if elem.selected != newly_selected:
+                    elem.selected = newly_selected
+        self.queue_draw()
 
     def on_key_pressed(
         self, controller, keyval: int, keycode: int, state: Gdk.ModifierType

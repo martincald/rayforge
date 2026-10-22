@@ -8,6 +8,7 @@ selection there, in one undo step.
 import os
 import sys
 import time
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,8 +28,11 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib
 from raygeo.geo import Geometry
 
+from swiftcut.core.group import Group
 from swiftcut.core.layer import Layer
+from swiftcut.core.vectorization_spec import TraceSpec
 from swiftcut.core.workpiece import WorkPiece
+from swiftcut.image.png.importer import PngImporter
 from swiftcut.ui_gtk.canvas2d import context_menu
 from swiftcut.ui_gtk.mainwindow import MainWindow
 
@@ -94,6 +98,41 @@ def _shape(win, layer_name, pos=(50, 50)) -> WorkPiece:
     wp = WorkPiece(name="square")
     wp._edited_boundaries = geo
     wp.set_size(20, 20)
+    wp.pos = pos
+    _layer(win, layer_name).add_child(wp)
+    _iterate()
+    return wp
+
+
+def _group(win, layer_name, items) -> Group:
+    """Groups the items of the named layer, as the Group command
+    does."""
+    layer = _layer(win, layer_name)
+    result = Group.create_from_items(items, layer)
+    layer.remove_children(items)
+    layer.add_child(result.new_group)
+    result.new_group.add_children(items)
+    for item in items:
+        item.matrix = result.child_matrices[item.uid]
+    _iterate()
+    return result.new_group
+
+
+def _image(win, layer_name, pos=(120, 50)) -> WorkPiece:
+    """A traced PNG on the named layer."""
+    path = (
+        Path(__file__).parent.parent
+        / "image"
+        / "png"
+        / "8-bit-with-1-bit-color.png"
+    )
+    payload = (
+        PngImporter(path.read_bytes(), path)
+        .get_doc_items(vectorization_spec=TraceSpec())
+        .payload
+    )
+    win.doc_editor.doc.add_asset(payload.source)
+    wp = payload.items[0]
     wp.pos = pos
     _layer(win, layer_name).add_child(wp)
     _iterate()
@@ -229,6 +268,31 @@ class TestTheCanvasMenu:
         history.undo()
         assert on_a.layer is _layer(win, "A")
         assert on_c.layer is _layer(win, "C")
+
+    def test_a_mixed_selection_moves_and_undoes_at_once(self, win):
+        shape = _shape(win, "A", (20, 20))
+        group = _group(
+            win, "A", [_shape(win, "A", (20, 60)), _shape(win, "A", (40, 60))]
+        )
+        image = _image(win, "C")
+        assert image.source.original_data.startswith(b"\x89PNG")
+        win.surface.select_items([shape, group, image])
+        _iterate()
+        assert set(win.surface.get_selected_items()) == {shape, group, image}
+        history = win.doc_editor.history_manager
+        before = len(history.undo_stack)
+
+        _choose(win, _submenu(_canvas_menu(win, shape), "Move to Layer"), "B")
+
+        assert shape.layer is _layer(win, "B")
+        assert group.layer is _layer(win, "B")
+        assert image.layer is _layer(win, "B")
+        assert len(history.undo_stack) == before + 1
+
+        history.undo()
+        assert shape.layer is _layer(win, "A")
+        assert group.layer is _layer(win, "A")
+        assert image.layer is _layer(win, "C")
 
     def test_its_own_layer_changes_nothing(self, win):
         wp = _shape(win, "A")
