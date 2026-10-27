@@ -232,6 +232,26 @@ def test_dragging_a_member_onto_a_layer_card_moves_it_alone(tab, monkeypatch):
     assert artwork.parent is layers[1]
 
 
+@pytest.mark.parametrize("propagate", [True, False])
+def test_a_layer_card_drop_takes_the_group_unless_editing_inside_it(
+    tab, propagate
+):
+    tab, editor = tab
+    layers = list(editor.doc.layers)
+    outline, artwork = _pieces(editor, 0, 1)
+    group = editor.group.group_items([outline, artwork])
+    # The window clears it while the canvas edits inside a group.
+    tab.propagate_moves = propagate
+
+    tab._on_column_move_to_layer(
+        _column_of(tab, layers[1]), items=[artwork], target_layer=layers[2]
+    )
+
+    assert artwork.parent is layers[2]
+    assert outline.parent is (layers[2] if propagate else layers[0])
+    assert editor.doc.item_groups.parent_of(artwork.uid) is group
+
+
 def test_rename_from_the_menu_is_undoable(tab):
     tab, editor = tab
     group = editor.group.group_items(_pieces(editor, 0, 1), name="Old")

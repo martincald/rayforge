@@ -1526,15 +1526,15 @@ class MainWindow(Adw.ApplicationWindow):
             selected_items.remove(active_item)
             selected_items.insert(0, active_item)
 
-        # Inside a group, a typed value moves the selected items alone.
-        self.item_props_widget.set_items(
-            selected_items, propagate=self.surface.editing_group is None
-        )
+        # Inside a group, a typed value or a drop on a layer card moves
+        # the selected items alone.
+        propagate = self.surface.editing_group is None
+        self.item_props_widget.set_items(selected_items, propagate=propagate)
         self.item_revealer.set_reveal_child(bool(selected_items))
         self.bottom_panel.update_position_menu_sensitivity()
         self._update_actions_and_ui()
         selected_uids = {item.uid for item in selected_items}
-        self.bottom_panel.update_layer_selection(selected_uids)
+        self.bottom_panel.update_layer_selection(selected_uids, propagate)
 
     def on_config_changed(self, sender, **kwargs):
         config = get_context().config

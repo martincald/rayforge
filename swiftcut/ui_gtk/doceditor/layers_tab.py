@@ -26,6 +26,9 @@ class LayersTab(Gtk.Box):
         self._layer_drop_index = -1
         self._pan_offset_x = 0.0
         self._selected_items: list = []
+        # Whether a move takes the rest of the items' groups along; the
+        # window clears it while the canvas edits inside a group.
+        self.propagate_moves = True
 
         self.edit_item_requested = Signal()
         self.select_items_requested = Signal()
@@ -177,9 +180,14 @@ class LayersTab(Gtk.Box):
         selected_uids = {i.uid for i in self._selected_items}
         # A member dragged off the Groups card moves alone, though a
         # click on it selected its whole group.
-        if moved_uids & selected_uids and not self.groups_column.dragging:
+        dragging_member = self.groups_column.dragging
+        if moved_uids & selected_uids and not dragging_member:
             items = list(self._selected_items)
-        self.editor.layer.move_items_to_layer(items, target_layer)
+        self.editor.layer.move_items_to_layer(
+            items,
+            target_layer,
+            propagate=self.propagate_moves and not dragging_member,
+        )
 
     def update_row_selection(self, selected_uids: set):
         all_items = self.get_ordered_items()

@@ -328,7 +328,10 @@ class BottomPanel(Gtk.Box):
     def _on_layers_tab_select_items(self, sender, **kwargs):
         self.select_items_requested.send(sender, **kwargs)
 
-    def update_layer_selection(self, selected_uids: set):
+    def update_layer_selection(
+        self, selected_uids: set, propagate: bool = True
+    ):
+        self.layers_tab.propagate_moves = propagate
         self.layers_tab.update_row_selection(selected_uids)
 
     def _on_active_layer_changed(self, sender):
