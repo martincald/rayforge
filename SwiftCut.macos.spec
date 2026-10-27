@@ -120,6 +120,7 @@ app = BUNDLE(
         'CFBundleName': 'SwiftCut',
         'CFBundleDisplayName': 'SwiftCut',
         'NSHighResolutionCapable': True,
+        'NSHumanReadableCopyright': '© 2026 Martín Calderón',
         # Asked the first time the app reaches the cutter over UDP;
         # without it macOS 15+ silently blocks local-network traffic.
         'NSLocalNetworkUsageDescription': (

@@ -75,7 +75,8 @@ class Step:
     says the user did what it asks; with no done, any of its triggers
     moves it on. unavailable says why the target cannot be pointed at
     when it is missing, hidden or off. connection_status shows the
-    laser's live connection state in the bubble.
+    laser's live connection state in the bubble. note is a small
+    caption under the text.
     """
 
     heading: str
@@ -85,6 +86,7 @@ class Step:
     done: Callable[..., bool] | None = None
     unavailable: str = ""
     connection_status: bool = False
+    note: str = ""
 
     def __post_init__(self):
         if self.target is not None and self.target not in targets.TARGETS:
@@ -209,7 +211,11 @@ class TourRunner:
         if step.target is not None:
             targets.prepare(self.win, step.target)
         self.bubble.show_step(
-            step.heading, step.body, index + 1, len(self.tour.steps)
+            step.heading,
+            step.body,
+            index + 1,
+            len(self.tour.steps),
+            note=step.note,
         )
         self.bubble.connection_status.set_visible(step.connection_status)
         self.bubble.connection_status.set_machine(

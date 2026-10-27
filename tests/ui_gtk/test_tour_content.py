@@ -19,6 +19,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, GLib, Graphene, Gtk  # noqa: E402
 
+from swiftcut import const  # noqa: E402
 from swiftcut.context import get_context  # noqa: E402
 from swiftcut.core.config import TOUR_COMPLETED, TOUR_SEEN  # noqa: E402
 from swiftcut.core.group import Group  # noqa: E402
@@ -165,6 +166,8 @@ def _walk(runner: TourRunner) -> dict[str, bool]:
             assert step.target is None or bubble.reason.get_visible()
         else:
             assert not bubble.reason.get_visible(), step.heading
+        assert bubble.note.get_visible() == bool(step.note), step.heading
+        assert bubble.note.get_label() == step.note, step.heading
         holes[step.target] = runner.mask.hole is not None
     return holes
 
@@ -328,6 +331,20 @@ def test_every_step_says_it_in_one_or_two_sentences():
         for step in tour.steps:
             assert step.heading and step.body.endswith("."), step.body
             assert step.body.count(". ") + 1 <= 2, step.body
+
+
+def test_only_the_last_step_of_your_first_cut_has_a_note():
+    notes = {
+        (tour.id, step.heading): step.note
+        for tour in TOURS.values()
+        for step in tour.steps
+        if step.note
+    }
+
+    assert notes == {
+        (FIRST_CUT.id, "Start"): "SwiftCut, made by " + const.AUTHOR
+    }
+    assert FIRST_CUT.steps[-1].heading == "Start"
 
 
 # --- Steps that move on -------------------------------------------------
@@ -525,6 +542,18 @@ def test_help_lists_the_tours_and_start_plays_one(main_window):
     assert _windows(ToursWindow) == []
     assert win.tour is not None and win.tour.tour is LAYERS
     assert win.tour.bubble.get_visible()
+
+
+@pytest.mark.ui
+def test_the_tours_window_credits_the_author(main_window):
+    window = ToursWindow(main_window)
+    try:
+        assert window.credit.get_label() == (
+            "SwiftCut, made by Martín Calderón"
+        )
+        assert window.credit.has_css_class("sc-caption")
+    finally:
+        window.destroy()
 
 
 @pytest.mark.ui

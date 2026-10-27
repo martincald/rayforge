@@ -282,7 +282,7 @@ jobs:
           DMG_NAME="swiftcut-${VERSION}-macos-universal.dmg"
           tries=0
           max_tries=10
-          until hdiutil create -volname "SwiftCut" \
+          until hdiutil create -volname "SwiftCut by Martín Calderón" \
             -srcfolder "build-universal/dmg" -ov -format ULMO "$DMG_NAME"
           do
             tries=$((tries + 1))

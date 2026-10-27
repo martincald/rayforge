@@ -43,6 +43,10 @@ RADIUS = 20 * SCALE
 GLYPH_SIZE = 150 * SCALE
 GAP = 22 * SCALE
 FONT_SIZE = 40 * SCALE
+CREDIT = "by Martín Calderón"
+CREDIT_SIZE = 15 * SCALE
+CREDIT_GAP = 8 * SCALE
+CREDIT_COLOR = (0xE3, 0xEE, 0xFF)
 MAGENTA = (255, 0, 255)
 
 # Brand tokens, from docs/design/swift-cut-tokens.md.
@@ -132,33 +136,56 @@ canvas = Image.fromarray(plate.round().astype("uint8"), "RGB").convert(
 
 # Compose the mark and the wordmark as one centred row.
 glyph = render_glyph(GLYPH_SIZE)
-try:
-    font = ImageFont.truetype("segoeuisb.ttf", FONT_SIZE)
-except OSError:
-    try:
-        font = ImageFont.truetype("segoeuib.ttf", FONT_SIZE)
-    except OSError:
+
+
+def load_font(size, windows_names, mac_weight):
+    """The system UI font: Segoe UI on Windows, SF on macOS."""
+    for name in windows_names:
         try:
-            font = ImageFont.truetype(
-                "/System/Library/Fonts/SFNS.ttf", FONT_SIZE
-            )
-            font.set_variation_by_name("Semibold")
-        except (OSError, ValueError):
-            font = ImageFont.load_default()
+            return ImageFont.truetype(name, size)
+        except OSError:
+            pass
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/SFNS.ttf", size)
+        font.set_variation_by_name(mac_weight)
+        return font
+    except (OSError, ValueError):
+        return ImageFont.load_default()
+
+
+font = load_font(FONT_SIZE, ("segoeuisb.ttf", "segoeuib.ttf"), "Semibold")
+credit_font = load_font(CREDIT_SIZE, ("segoeui.ttf",), "Regular")
 
 draw = ImageDraw.Draw(canvas)
 text = "SwiftCut"
 box = draw.textbbox((0, 0), text, font=font)
 text_w, text_h = box[2] - box[0], box[3] - box[1]
+credit_box = draw.textbbox((0, 0), CREDIT, font=credit_font)
+credit_w = credit_box[2] - credit_box[0]
+credit_h = credit_box[3] - credit_box[1]
 
-row_w = GLYPH_SIZE + GAP + text_w
+# The credit hangs under the wordmark, both centred in one column.
+column_w = max(text_w, credit_w)
+column_h = text_h + CREDIT_GAP + credit_h
+row_w = GLYPH_SIZE + GAP + column_w
 left = (WIDTH - row_w) // 2
+column_left = left + GLYPH_SIZE + GAP
+column_top = (HEIGHT - column_h) // 2
 canvas.alpha_composite(glyph, (left, (HEIGHT - GLYPH_SIZE) // 2))
 draw.text(
-    (left + GLYPH_SIZE + GAP - box[0], (HEIGHT - text_h) // 2 - box[1]),
+    (column_left + (column_w - text_w) // 2 - box[0], column_top - box[1]),
     text,
     font=font,
     fill=(255, 255, 255, 255),
+)
+draw.text(
+    (
+        column_left + (column_w - credit_w) // 2 - credit_box[0],
+        column_top + text_h + CREDIT_GAP - credit_box[1],
+    ),
+    CREDIT,
+    font=credit_font,
+    fill=CREDIT_COLOR + (255,),
 )
 
 # Rounded-corner mask: supersample the curve for an accurate outline.

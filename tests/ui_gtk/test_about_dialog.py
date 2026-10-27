@@ -16,7 +16,7 @@ from swiftcut import const
 from swiftcut.ui_gtk.about import AboutDialog
 
 AUTHOR = "Martín Calderón"
-AUTHOR_LINE = f"SwiftCut by {AUTHOR}"
+AUTHOR_LINE = f"SwiftCut, made by {AUTHOR}"
 COPYRIGHT = f"© 2026 {AUTHOR}"
 ATTRIBUTION = (
     "Based on Rayforge, created by Samuel Abels, used under the MIT License."

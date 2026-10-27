@@ -8,6 +8,7 @@ with nothing to cut, never holds a tour up.
 
 from gettext import gettext as _
 
+from ... import const
 from ...core.layer import Layer
 from ...core.step import Step as WorkflowStep
 from ...core.workpiece import WorkPiece
@@ -133,6 +134,9 @@ FIRST_CUT = Tour(
             target="jog.start",
             advance_on=("start",),
             unavailable=_CONNECT_FIRST,
+            note=_("{app_name}, made by {author}").format(
+                app_name=const.APP_NAME, author=const.AUTHOR
+            ),
         ),
     ),
 )

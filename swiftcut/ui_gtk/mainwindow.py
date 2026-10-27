@@ -267,6 +267,11 @@ class MainWindow(Adw.ApplicationWindow):
         window_title = Adw.WindowTitle(
             title=self.get_title() or "", subtitle=__version__ or ""
         )
+        window_title.set_tooltip_text(
+            _("{app_name}, made by {author}. Press F1 for About.").format(
+                app_name=const.APP_NAME, author=const.AUTHOR
+            )
+        )
         self.header_bar.set_title_widget(window_title)
 
         # Create a vertical paned for main content and bottom control panel

@@ -35,12 +35,14 @@ echo "${APP_VERSION}" > swiftcut/version.txt
 
 
 # ----------------------------------------------------
-# STEP 1: Generate .ico file and splash image from SVG
+# STEP 1: Generate .ico file, splash image and version resource
 # ----------------------------------------------------
 echo "Creating application icon..."
 python3 scripts/win/win_create_icon.py
 echo "Creating splash image..."
 python3 scripts/win/win_create_splash.py
+echo "Creating version resource..."
+python3 scripts/win/win_version_info.py "${CLEAN_VERSION}" swiftcut_version_info.txt
 
 # ----------------------------------------------------
 # STEP 2: Configure GTK Theme for the bundle
@@ -79,6 +81,7 @@ pyinstaller --noconfirm --onedir --windowed \
   --log-level INFO \
   --name "SwiftCut" \
   --icon="swiftcut.ico" \
+  --version-file "swiftcut_version_info.txt" \
   --add-data "swiftcut/version.txt;swiftcut" \
   --add-data "swiftcut/resources;swiftcut/resources" \
   --add-data "swiftcut/locale;swiftcut/locale" \

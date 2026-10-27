@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from gi.repository import Adw, GLib, Gtk
 
+from ... import const
 from ...context import get_context
 from ...core.config import TOUR_COMPLETED, TOUR_SEEN
 from ..layout import SPACE_GROUP, SPACE_PAGE
@@ -49,9 +50,21 @@ class ToursWindow(PatchedDialogWindow):
             self.start_buttons[tour.id] = start
             self.list.append(row)
 
+        self.credit = Gtk.Label(
+            label=_("{app_name}, made by {author}").format(
+                app_name=const.APP_NAME, author=const.AUTHOR
+            )
+        )
+        self.credit.add_css_class("sc-caption")
+        self.credit.set_margin_bottom(SPACE_PAGE)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content.append(self.list)
+        content.append(self.credit)
+
         toolbar_view = Adw.ToolbarView()
         toolbar_view.add_top_bar(Adw.HeaderBar())
-        toolbar_view.set_content(self.list)
+        toolbar_view.set_content(content)
         self.set_content(toolbar_view)
 
     def _on_start_clicked(self, button, tour_id: str):

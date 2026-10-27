@@ -792,6 +792,33 @@ def test_a_control_that_is_off_gets_a_bubble_in_the_middle(main_window):
     assert _pick(win, go_scale) is runner.shield
 
 
+@pytest.mark.ui
+def test_a_steps_note_is_a_caption_that_shows_for_that_step_only(main_window):
+    tour = Tour(
+        id="noted",
+        title="Noted",
+        steps=(
+            Step("One", "No note here."),
+            Step("Two", "A note under this.", note="Made by someone."),
+            Step("Three", "No note again."),
+        ),
+    )
+    runner = _start(main_window, tour)
+    note = runner.bubble.note
+    assert note.has_css_class("sc-caption")
+    assert not note.get_visible()
+
+    runner.next()
+    _pump(0.2)
+    assert note.get_visible() and note.get_label() == "Made by someone."
+    body, caption = runner.bubble.body, note
+    assert body.get_next_sibling() is caption
+
+    runner.next()
+    _pump(0.2)
+    assert not note.get_visible()
+
+
 # --- Next, Back, Skip, Esc --------------------------------------------
 
 

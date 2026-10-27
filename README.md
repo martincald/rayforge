@@ -108,4 +108,8 @@ testing, and contribution guidelines, please see the
 
 ## License
 
+Copyright (c) 2026 Martín Calderón (SwiftCut modifications)
+
+Copyright (c) 2025 Samuel Abels (Rayforge)
+
 This project is licensed under the **MIT License**. See the `LICENSE` file for details.

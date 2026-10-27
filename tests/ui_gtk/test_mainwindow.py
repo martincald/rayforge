@@ -1062,6 +1062,20 @@ def test_help_menu_has_no_donate_entry(app_and_window):
     assert win.lookup_action("donate") is None
 
 
+@pytest.mark.ui
+def test_window_title_tooltip_credits_the_author_and_names_about(
+    app_and_window,
+):
+    _app, win = app_and_window
+
+    title = win.header_bar.get_title_widget()
+
+    assert isinstance(title, Adw.WindowTitle)
+    assert title.get_tooltip_text() == (
+        "SwiftCut, made by Martín Calderón. Press F1 for About."
+    )
+
+
 # The machine switcher. Both bundled profiles are put on the inert
 # NoDeviceDriver, so a switch runs end to end with no hardware.
 

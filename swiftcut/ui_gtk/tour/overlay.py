@@ -223,6 +223,11 @@ class TourBubble(Gtk.Popover):
         )
         self.heading.add_css_class("sc-title")
         self.body = Gtk.Label(xalign=0, wrap=True, max_width_chars=_TEXT_WIDTH)
+        # A small caption under the text, for the steps that have one.
+        self.note = Gtk.Label(
+            xalign=0, wrap=True, max_width_chars=_TEXT_WIDTH, visible=False
+        )
+        self.note.add_css_class("sc-caption")
         # Why the step's control is not there to point at.
         self.reason = Gtk.Label(
             xalign=0, wrap=True, max_width_chars=_TEXT_WIDTH, visible=False
@@ -259,6 +264,7 @@ class TourBubble(Gtk.Popover):
         for widget in (
             self.heading,
             self.body,
+            self.note,
             self.connection_status,
             self.reason,
             buttons,
@@ -266,10 +272,14 @@ class TourBubble(Gtk.Popover):
             content.append(widget)
         self.set_child(content)
 
-    def show_step(self, heading: str, body: str, number: int, count: int):
+    def show_step(
+        self, heading: str, body: str, number: int, count: int, note: str = ""
+    ):
         """Show step number of count; the last one ends with Done."""
         self.heading.set_label(heading)
         self.body.set_label(body)
+        self.note.set_label(note)
+        self.note.set_visible(bool(note))
         self.counter.set_label(
             _("{number} of {count}").format(number=number, count=count)
         )

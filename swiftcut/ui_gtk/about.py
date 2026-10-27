@@ -257,9 +257,9 @@ class AboutDialog(PatchedDialogWindow):
         title.set_margin_top(SPACE_CONTROL)
         hero_box.append(title)
 
-        author = "Martín Calderón"
+        author = const.AUTHOR
         author_label = Gtk.Label(
-            label=_("{app_name} by {author}").format(
+            label=_("{app_name}, made by {author}").format(
                 app_name=const.APP_NAME, author=author
             )
         )

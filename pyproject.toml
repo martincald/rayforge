@@ -2,6 +2,7 @@
 name = "swiftcut"
 dynamic = ["version", "dependencies"]
 authors = [
+  { name="Martín Calderón" },
   { name="Samuel Abels", email="knipknap@gmail.com" },
 ]
 description = "A desktop application for laser cutting and engraving"

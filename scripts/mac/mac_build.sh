@@ -737,7 +737,7 @@ if (( DO_DMG == 1 )); then
     mkdir -p "$DMG_STAGING"
     ditto "dist/SwiftCut.app" "$DMG_STAGING/SwiftCut.app"
     ln -s /Applications "$DMG_STAGING/Applications"
-    hdiutil create -volname "SwiftCut" -srcfolder "$DMG_STAGING" \
+    hdiutil create -volname "SwiftCut by Martín Calderón" -srcfolder "$DMG_STAGING" \
         -ov -format UDZO "$DMG_PATH"
     rm -rf "$DMG_STAGING"
 fi
