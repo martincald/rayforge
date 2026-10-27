@@ -40,6 +40,7 @@ from raygeo.geo import Geometry
 from raygeo.geo.types import Rect
 
 from ..core.item import DocItem
+from ..core.item_group import ItemGroup
 from ..core.layer import Layer
 from ..core.vectorization_spec import (
     LayerImportMode,
@@ -127,7 +128,9 @@ class PreparedImport:
     What the worker phase hands the commit: the options, the grouping
     in effect, the file's tree (if one was built), each workpiece's
     planned pieces by uid, and the name of the interior layer; then
-    what the commit made of it: the interior layer, if it has pieces.
+    what the commit made of it: the interior layer, if it has pieces,
+    and a group of each piece's outline and interior, for a piece that
+    has both.
     """
 
     options: ImportOptions
@@ -136,6 +139,7 @@ class PreparedImport:
     plans: dict[str, list[PlannedPiece]] = field(default_factory=dict)
     interior_layer_name: str = ""
     interior_layer: Layer | None = None
+    groups: list[ItemGroup] = field(default_factory=list)
 
 
 def options_for(
@@ -643,7 +647,8 @@ def materialize(
     """
     The (owner, item) pairs of an import, its workpieces cut as the
     grouping says, each piece going where its workpiece was going;
-    interior pieces on a layer of their own when the options say so.
+    interior pieces on a layer of their own when the options say so,
+    each grouped with its outline (prepared.groups).
     The items are not in the document yet, so no undo is needed.
     """
     grouping = prepared.grouping
@@ -661,8 +666,9 @@ def materialize(
         plan = prepared.plans.get(wp.uid)
         if not plan:
             return [wp]
-        kept, inner = _cut(wp, plan, source)
+        kept, inner, groups = _cut(wp, plan, source)
         interior_layer.add_children(inner)
+        prepared.groups.extend(groups)
         return list(kept)
 
     result: list[tuple[DocItem, DocItem]] = []
@@ -686,10 +692,12 @@ def materialize(
 
 def _cut(
     wp: WorkPiece, plan: list[PlannedPiece], source: SourceAsset | None
-) -> tuple[list[WorkPiece], list[WorkPiece]]:
+) -> tuple[list[WorkPiece], list[WorkPiece], list[ItemGroup]]:
     """
     The workpiece cut into its planned pieces: (boundary pieces,
-    interior pieces), each with its source layer and color.
+    interior pieces, groups), each piece with its source layer and
+    color; a group, named after its outline, of each planned piece's
+    boundary and interior when it has both.
     """
     roles = []
     fragments = []
@@ -709,11 +717,19 @@ def _cut(
     )
     kept: list[WorkPiece] = []
     inner_pieces: list[WorkPiece] = []
+    # Each planned piece's workpieces: boundary, then interior.
+    sides: defaultdict[int, list[WorkPiece]] = defaultdict(list)
     for (piece, inner), new in zip(roles, made[:1] if lone else made):
         new.source_layer = piece.source_layer
         new.source_color = piece.interior_color if inner else piece.color
         (inner_pieces if inner else kept).append(new)
-    return kept, inner_pieces
+        sides[id(piece)].append(new)
+    groups = [
+        ItemGroup([both[0].uid, both[1].uid], both[0].name)
+        for both in sides.values()
+        if len(both) == 2
+    ]
+    return kept, inner_pieces, groups
 
 
 def split_into_paths(

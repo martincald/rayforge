@@ -28,6 +28,7 @@ from raygeo.ops.state import CoolantMode
 from ..context import get_context
 from ..core.bed_bounds import bed_rect, fits, items_outside
 from ..core.item import DocItem
+from ..core.item_group import AddItemGroupCommand
 from ..core.layer import Layer
 from ..core.source_asset import SourceAsset
 from ..core.step_registry import step_registry
@@ -588,7 +589,8 @@ class FileCmd:
         the history manager. Each workpiece goes in cut as prepared's
         grouping says (see import_materializer), where it would have
         gone; without prepared, as one workpiece per path with
-        split_paths, else whole.
+        split_paths, else whole. prepared's groups (a piece's outline
+        and interior) go in with them, in the same undo step.
 
         Returns the list of destination layers that received items, and
         the content added (out of any layer wrapper).
@@ -624,6 +626,10 @@ class FileCmd:
                         undo_command="remove_child",
                         redo_command="add_child",
                     )
+                )
+            for group in prepared.groups:
+                t.execute(
+                    AddItemGroupCommand(self._editor.doc.item_groups, group)
                 )
             if prepared.interior_layer is not None:
                 self._add_engrave_step(prepared.interior_layer)
