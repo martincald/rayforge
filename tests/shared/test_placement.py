@@ -1,7 +1,10 @@
 import math
 import pickle
+import time
+import tracemalloc
 
 import numpy as np
+import pytest
 from raygeo.geo.shape.polygon import (
     do_polygons_intersect,
     get_circle_polygon,
@@ -310,3 +313,217 @@ def test_past_the_cap_the_nearest_position_known_free_is_taken():
     placed = place(L_PIECE, obstacles, max_tests=0)
 
     assert distance_to_centre(placed) > 150
+
+
+def edges(polygon):
+    """A polygon's sides as (start, end) edges."""
+    return list(zip(polygon, polygon[1:] + polygon[:1]))
+
+
+def bed_sides():
+    return edges([(0, 0), (1400, 0), (1400, 900), (0, 900)])
+
+
+def test_shared_length_counts_flush_overlaps_longer_than_the_tolerance():
+    piece = edges(square(0, 0, 10))
+    # Along the right side for 6 mm, 0.005 mm off.
+    beside = [((10.005, 4), (10.005, 30))]
+    # Along the top side, but 0.02 mm off.
+    above = [((0, 10.02), (10, 10.02))]
+    # Along the bottom side for 0.005 mm only.
+    corner = [((9.995, 0), (20, 0))]
+
+    assert engine.shared_length(piece, beside, 0.01) == 6.0
+    assert engine.shared_length(piece, above, 0.01) == 0.0
+    assert engine.shared_length(piece, corner, 0.01) == 0.0
+    assert engine.shared_length(piece, beside + above, 0.03) == 16.0
+
+
+def flush_place(polygon, obstacles, others, target):
+    """Place a one-outline piece flush along others, at clearance 0."""
+    flush = engine.Flush(edges(polygon), others, 0.01)
+    result = find_position(
+        [polygon], obstacles, BED, target, clearance=0.0, flush=flush
+    )
+    assert result.fits
+    placed = moved(polygon, result)
+    for obstacle in obstacles:
+        assert not do_polygons_intersect(placed, obstacle)
+    return placed
+
+
+def test_a_snap_lays_the_piece_exactly_along_a_nearby_obstacle_edge():
+    # The free target leaves the piece 0.5 mm right of the obstacle.
+    obstacle = square(0, 100, 10)
+    piece = square(0, 0, 10)
+    target = (15.5, 105.0)
+
+    alone = flush_place(piece, [obstacle], [], target)
+    placed = flush_place(piece, [obstacle], edges(obstacle), target)
+
+    assert np.min(alone, axis=0)[0] == 10.5
+    assert abs(np.min(placed, axis=0)[0] - 10) <= 1e-9
+    assert np.allclose(np.min(placed, axis=0)[1], 100)
+
+
+def test_a_snap_lays_the_piece_exactly_along_the_bed_edge():
+    piece = square(0, 0, 10)
+
+    placed = flush_place(piece, [], bed_sides(), (5.5, 450.0))
+
+    assert abs(np.min(placed, axis=0)[0]) <= 1e-9
+    assert np.allclose(np.min(placed, axis=0)[1], 445)
+
+
+def test_a_snap_that_would_overlap_is_rejected():
+    # Flush with the big obstacle's side, the piece would overlap the
+    # small one, which reaches 0.2 mm up into its bottom left corner;
+    # it lies along the small one's side instead.
+    big = square(0, 100, 10)
+    small = [(10.1, 95), (10.4, 95), (10.4, 100.2), (10.1, 100.2)]
+    piece = square(0, 0, 10)
+    others = edges(big) + edges(small)
+
+    placed = flush_place(piece, [big, small], others, (15.5, 105.0))
+
+    assert abs(np.min(placed, axis=0)[0] - 10.4) <= 1e-9
+
+
+def slivers():
+    """
+    Slivers left of a 10 mm square centred on (15.5, 100), 0.01 mm
+    wide and apart, longer the farther away: a snap onto any but the
+    nearest overlaps those nearer, and the longest snaps go first.
+    """
+    return [
+        [(x, 100 - h), (x + 0.01, 100 - h), (x + 0.01, 100 + h), (x, 100 + h)]
+        for k in range(100)
+        for x, h in [(10.48 - 0.02 * k, 0.5 + 0.04 * k)]
+    ]
+
+
+def test_snap_tests_stop_at_the_cap(monkeypatch):
+    # Every line kept, there are 200 snaps, all but one blocked.
+    monkeypatch.setattr(engine, "_SNAP_LINES", 1000)
+    obstacles = slivers()
+    piece = square(0, 0, 10)
+    others = [e for sliver in obstacles for e in edges(sliver)]
+    flush = engine.Flush(edges(piece), others, 0.01)
+    target = (15.5, 100.0)
+    calls = count_exact_tests(monkeypatch)
+    find_position([piece], obstacles, BED, target, clearance=0.0)
+    search_tests = len(calls)
+
+    result = find_position(
+        [piece], obstacles, BED, target, clearance=0.0, flush=flush
+    )
+
+    assert len(calls) - 2 * search_tests == engine._SNAP_TESTS
+    assert result == (10.5, 95.0, True)
+
+
+def test_the_nearest_lines_make_the_snaps():
+    obstacles = slivers()
+    piece = square(0, 0, 10)
+    others = [e for sliver in obstacles for e in edges(sliver)]
+    flush = engine.Flush(edges(piece), others, 0.01)
+
+    result = find_position(
+        [piece], obstacles, BED, (15.5, 100.0), clearance=0.0, flush=flush
+    )
+
+    # Flush with the nearest sliver, the only free snap.
+    assert result.dx == pytest.approx(10.49, abs=1e-9)
+
+
+def ngon(x, y, radius, sides):
+    return [
+        (x + radius * math.cos(a), y + radius * math.sin(a))
+        for a in np.arange(sides) * 2 * math.pi / sides
+    ]
+
+
+def long_comb(count, size, length):
+    """
+    A comb from the origin: `count` teeth `size` wide and apart and
+    `length` long on a spine `size` thick. No edge is shorter than
+    size.
+    """
+    right, top = (2 * count - 1) * size, size + length
+    points = [(0, 0), (right, 0)]
+    for k in reversed(range(count)):
+        left = 2 * k * size
+        points += [(left + size, top), (left, top)]
+        if k:
+            points += [(left, size), (left - size, size)]
+    return points
+
+
+def flush_phase(monkeypatch, piece, obstacles, bed, target):
+    """
+    find_position at clearance 0 with every side flush within 0.01 mm;
+    its result, seconds, and the flush phase's peak memory in bytes.
+    """
+    peaks = []
+    snap = engine._snap
+
+    def traced(*args):
+        tracemalloc.start()
+        try:
+            return snap(*args)
+        finally:
+            peaks.append(tracemalloc.get_traced_memory()[1])
+            tracemalloc.stop()
+
+    monkeypatch.setattr(engine, "_snap", traced)
+    others = [e for obstacle in obstacles for e in edges(obstacle)]
+    flush = engine.Flush(edges(piece), others, 0.01)
+    start = time.perf_counter()
+    result = find_position(
+        [piece], obstacles, bed, target, clearance=0.0, flush=flush
+    )
+    seconds = time.perf_counter() - start
+    assert result.fits
+    (peak,) = peaks
+    return result, seconds, peak
+
+
+@pytest.mark.parametrize("sides", [1440, 2000])
+def test_a_flattened_curve_lays_flush_quickly_in_little_memory(
+    monkeypatch, sides
+):
+    # Curves flattened into thousands of edges, each parallel within
+    # the tolerance to tens of its neighbours'. Uncapped, 1440 sides
+    # took 163 MB and 2000 sides 6.7 GB and 89 s.
+    piece = ngon(100, 100, 50, sides)
+    obstacles = [
+        ngon(200 + dx, 200 + dy, 50, sides)
+        for dx, dy in ((0, 0), (100, 0), (0, 100), (100, 100))
+    ]
+
+    _result, seconds, peak = flush_phase(
+        monkeypatch, piece, obstacles, (0, 0, 400, 400), (250.0, 250.0)
+    )
+
+    assert seconds < 0.5
+    assert peak < 50 * 2**20
+
+
+def test_many_long_edges_lay_flush_quickly_in_little_memory(monkeypatch):
+    # Two combs of 80 teeth, no edge under 6 mm, one turned half way
+    # with its teeth down in the other's gaps, 0.5 mm short of touching
+    # it: hundreds of exactly parallel edges, tens of them within a
+    # grid step of each. Uncapped, this took 163 MB.
+    piece = long_comb(80, 6.0, 400.0)
+    right, top = 2 * 80 * 6.0, 2 * 6.0 + 400.0 + 0.5
+    obstacle = [(right - x, top - y) for x, y in piece]
+
+    result, seconds, peak = flush_phase(
+        monkeypatch, piece, [obstacle], BED, tuple(centre_of(piece))
+    )
+
+    assert seconds < 0.5
+    assert peak < 50 * 2**20
+    # Up into contact.
+    assert (result.dx, result.dy) == pytest.approx((0.0, 0.5), abs=1e-9)
+    assert not do_polygons_intersect(moved(piece, result), obstacle)

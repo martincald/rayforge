@@ -55,9 +55,10 @@ E3_GAP = {("forty-40", "stock")}
 
 @pytest.fixture
 def bed(test_machine_and_config):
-    """The ilab-614 bed: 1400 x 900 mm."""
-    machine, _config = test_machine_and_config
+    """The ilab-614 bed: 1400 x 900 mm; Auto Layout keeps 1 mm."""
+    machine, config = test_machine_and_config
     machine.set_axis_extents(1400, 900)
+    config.set_layout_gap_mm(1.0)
     return machine
 
 
@@ -218,7 +219,11 @@ async def test_no_stock_and_no_machine_bed_gives_a_notice(
     workpiece.set_size(20, 10)
     doc_editor.doc.add_workpiece(workpiece)
     before = workpiece.matrix.copy()
-    monkeypatch.setattr(nest, "get_context", lambda: Mock(machine=None))
+    monkeypatch.setattr(
+        nest,
+        "get_context",
+        lambda: Mock(machine=None, config=Mock(layout_gap_mm=1.0)),
+    )
     notices = _notices(doc_editor)
 
     doc_editor.layout.layout_pixel_perfect([workpiece])

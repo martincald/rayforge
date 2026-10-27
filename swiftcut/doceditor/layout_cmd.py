@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from gettext import gettext as _
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from raygeo.geo import Matrix
 
@@ -24,6 +24,7 @@ from .layout import (
 )
 
 if TYPE_CHECKING:
+    from ..core.step import Step
     from ..shared.tasker.manager import TaskManager
     from ..shared.tasker.task import Task
     from .editor import DocEditor
@@ -315,7 +316,9 @@ class LayoutCmd:
         changes nothing), and applied on the main thread as one undo
         step, unless the document changed meanwhile. With nothing
         selected it lays out the active layer's items, and with
-        propagate their groups, members on other layers too.
+        propagate their groups, members on other layers too. At gap 0,
+        where a Merge Lines on their layers is off, a notice offers to
+        turn it on.
         """
         items_to_layout = self.get_items_to_layout(selected_items)
 
@@ -357,9 +360,37 @@ class LayoutCmd:
             strategy.error_reported.connect(on_error_reported)
             deltas = strategy.deltas(task.result())
             self._apply_deltas(deltas, _("Auto Layout"), strategy.followers)
+            if strategy.merge_lines_off:
+                self._offer_merge_lines(strategy.merge_lines_off)
 
         self._task_manager.run_process(
             arrange, *args, key=AUTO_LAYOUT_KEY, when_done=when_done
+        )
+
+    def _offer_merge_lines(self, off: list[tuple[Step, dict[str, Any]]]):
+        """
+        A notice that shared edges are cut twice, whose Enable turns
+        every one of these Merge Lines settings on, in one undo step.
+        """
+
+        def enable():
+            name = _("Enable Merge Lines")
+            with self._editor.history_manager.transaction(name):
+                for step, settings in off:
+                    changed = step.per_step_transformer_changed.send
+                    self._editor.step.set_step_param(
+                        target_dict=settings,
+                        key="enabled",
+                        new_value=True,
+                        name=name,
+                        on_change_callback=changed,
+                    )
+
+        self._editor.notification_requested.send(
+            self,
+            message=_("Merge Lines is off, so shared edges are cut twice."),
+            action_label=_("Enable"),
+            action_callback=enable,
         )
 
     def get_items_to_layout(

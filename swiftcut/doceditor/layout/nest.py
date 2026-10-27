@@ -1,7 +1,8 @@
 """
 Auto Layout on true outlines: the items gather in a tight pile centred
-on the stock or the bed, 1 mm clear of each other and of every other
-workpiece.
+on the stock or the bed, the Auto Layout gap (Preferences) clear of
+each other and of every other workpiece. At gap 0 they touch, with
+straight edges laid flush so a shared edge is cut once.
 """
 
 from __future__ import annotations
@@ -9,23 +10,33 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from gettext import gettext as _
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from raygeo.geo import Matrix
 
 from ...context import get_context
 from ...core.bed_bounds import bed_rect
 from ...core.item import DocItem
+from ...core.layer import Layer
 from ...core.workpiece import WorkPiece
 from ...shared.placement import Piece, arrange
 from ...shared.tasker.context import ExecutionContext
 from .base import LayoutStrategy
-from .outline import OUTLINE_TOLERANCE_MM, item_world_polygons
+from .outline import (
+    OUTLINE_TOLERANCE_MM,
+    item_world_polygons,
+    item_world_polygons_and_edges,
+)
 
 if TYPE_CHECKING:
     from ...core.doc import Doc
+    from ...core.step import Step
 
 logger = logging.getLogger(__name__)
+
+# The name of the Merge Lines settings among a step's per-step
+# transformer settings: the transformer that cuts shared edges once.
+_MERGE_LINES = "MergeLinesTransformer"
 
 
 class NestLayoutStrategy(LayoutStrategy):
@@ -34,11 +45,24 @@ class NestLayoutStrategy(LayoutStrategy):
     the visible stock's bounding box on the bed, else the bed), largest
     first, each where and by the quarter turn that grows the pile's box
     least (see shared.placement.arrange); mirroring is kept. Their
-    outlines keep 1 mm from each other and from every other workpiece
-    in the document, and their frames stay inside the boundary. Items
-    that fit nowhere stay where they are, with a notice. An item and
-    its followers are laid out as one piece, framed by their combined
-    box.
+    outlines keep the Auto Layout gap from each other and from every
+    other workpiece in the document, and their frames stay inside the
+    boundary. Items that fit nowhere stay where they are, with a
+    notice. An item and its followers are laid out as one piece,
+    framed by their combined box.
+
+    At gap 0 the outlines may touch, and straight edges are laid flush
+    within the Merge Lines tolerance of the items' and followers'
+    layers' steps (see _merge_lines), so Merge Lines cuts a shared
+    edge once; merge_lines_off lists the (step, settings) of each
+    Merge Lines that is off. Curves are polygonized as at any gap:
+    raygeo's polygons at OUTLINE_TOLERANCE_MM lie within about
+    0.001 mm of arcs and Beziers, so touching curves overlap far less
+    than the Merge Lines tolerance (see test_layout_outline), though a
+    small arc scaled very unevenly can lie up to about 0.02 mm off.
+    With no Merge Lines on those layers nothing is laid flush, and the
+    outlines keep twice OUTLINE_TOLERANCE_MM, so true curves touch at
+    most.
 
     The document is read when the strategy is built, which must be on
     the main thread; arrange_args hands that to arrange, which may run
@@ -52,6 +76,21 @@ class NestLayoutStrategy(LayoutStrategy):
         assert doc is not None, "Auto Layout needs items in a document."
         order = {item: n for n, item in enumerate(doc.get_descendants())}
         self.items.sort(key=lambda item: order[item])
+
+        gap = get_context().config.layout_gap_mm
+        # Both outlines may lie up to the tolerance inside the curves.
+        self._clearance = gap + 2 * OUTLINE_TOLERANCE_MM
+        self._flush_tolerance: float | None = None
+        self.merge_lines_off: list[tuple[Step, dict[str, Any]]] = []
+        if gap <= 0:
+            members = [
+                member
+                for item in self.items
+                for member in (item, *self.followers.get(item, ()))
+            ]
+            self._flush_tolerance, self.merge_lines_off = _merge_lines(members)
+        if self._flush_tolerance is not None:
+            self._clearance = 0.0
 
         stocks = [s for s in doc.stock_items if s.visible]
         stock_box = self._get_item_world_bbox(stocks[0]) if stocks else None
@@ -78,17 +117,17 @@ class NestLayoutStrategy(LayoutStrategy):
         moving: set[DocItem] = set()
         for n, item in enumerate(self.items):
             unit = (item, *self.followers.get(item, ()))
-            outlines = [
-                polygon
-                for member in unit
-                for polygon in item_world_polygons(member)
-            ]
+            outlines, edges = [], []
+            for member in unit:
+                polygons, straight = self._outlines(member)
+                outlines.extend(polygons)
+                edges.extend(straight)
             box = self._unit_bbox(item)
             if not outlines or not box:
                 continue
             x0, y0, x1, y1 = box
             frame = (x0, y0, x1 - x0, y1 - y0)
-            self._pieces.append(Piece(n, outlines, frame))
+            self._pieces.append(Piece(n, outlines, frame, tuple(edges)))
             self._parents[item] = (
                 item.parent.get_world_transform()
                 if item.parent
@@ -97,15 +136,25 @@ class NestLayoutStrategy(LayoutStrategy):
             for member in unit:
                 moving.add(member)
                 moving.update(member.get_descendants(of_type=WorkPiece))
-        self._obstacles = [
-            polygon
-            for workpiece in doc.all_workpieces
-            if workpiece not in moving
-            for polygon in item_world_polygons(workpiece)
-        ]
+        self._obstacles: list = []
+        self._obstacle_edges: list = []
+        for workpiece in doc.all_workpieces:
+            if workpiece not in moving:
+                polygons, edges = self._outlines(workpiece)
+                self._obstacles.extend(polygons)
+                self._obstacle_edges.extend(edges)
         # What the layout is worked out on (see changed).
         self.doc = doc
         self._read = self._positions()
+
+    def _outlines(self, item: DocItem) -> tuple:
+        """
+        The item's outer outlines, and when edges are laid flush their
+        straight edges (none otherwise).
+        """
+        if self._flush_tolerance is None:
+            return item_world_polygons(item), ()
+        return item_world_polygons_and_edges(item)
 
     def changed(self) -> bool:
         """
@@ -142,21 +191,24 @@ class NestLayoutStrategy(LayoutStrategy):
     def arrange_args(self) -> tuple | None:
         """
         What shared.placement.arrange takes after its progress context
-        (plain data, so a worker process can run it); None when there
-        is neither a stock nor a machine bed.
+        (plain data, so a worker process can run it), with the
+        obstacles' edges and the flush tolerance when edges are laid
+        flush; None when there is neither a stock nor a machine bed.
         """
         if self._boundary is None:
             logger.warning("Auto Layout: no stock and no machine bed.")
             return None
         bx, by, bw, bh = self._boundary
-        return (
+        args = (
             self._pieces,
             self._obstacles,
             self._boundary,
             (bx + bw / 2, by + bh / 2),
-            # Both outlines may lie up to the tolerance inside the curves.
-            1.0 + 2 * OUTLINE_TOLERANCE_MM,
+            self._clearance,
         )
+        if self._flush_tolerance is None:
+            return args
+        return (*args, self._obstacle_edges, self._flush_tolerance)
 
     def deltas(
         self, placements: dict[int, tuple[float, float, float, bool]]
@@ -198,3 +250,27 @@ class NestLayoutStrategy(LayoutStrategy):
                 ).format(item_names=item_names),
             )
         return deltas
+
+
+def _merge_lines(
+    items: Sequence[DocItem],
+) -> tuple[float | None, list[tuple[Step, dict[str, Any]]]]:
+    """
+    The tolerance Merge Lines merges shared edges within, over the
+    Merge Lines settings of every step on the items' layers: the least
+    "tolerance" of those that are on, or if none is, of those that are
+    off (what Enable would merge at); None where there are none. One
+    without a "tolerance" gives none, but counts as on or off. And the
+    (step, settings) of each that is off.
+    """
+    layers = dict.fromkeys(item.get_ancestor_by_type(Layer) for item in items)
+    on, off = [], []
+    for layer in layers:
+        workflow = layer.workflow if isinstance(layer, Layer) else None
+        for step in workflow.steps if workflow else ():
+            for settings in step.per_step_transformers_dicts:
+                if settings.get("name") == _MERGE_LINES:
+                    enabled = settings.get("enabled", True)
+                    (on if enabled else off).append((step, settings))
+    tolerances = [s["tolerance"] for _step, s in on or off if "tolerance" in s]
+    return (min(tolerances) if tolerances else None), off

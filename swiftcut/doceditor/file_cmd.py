@@ -1061,8 +1061,9 @@ class FileCmd:
         """
         Moves items, as one rigid piece, so their frame sits at the spot
         nearest to position_mm (the bed centre if None) where their
-        outlines keep 1 mm from every workpiece in the document and the
-        frame stays inside the bed. Without such a spot they go to the
+        outlines keep the import gap (Preferences, 1 mm by default) from
+        every workpiece in the document and the frame stays inside the
+        bed. Without such a spot they go to the
         position, overlapping, and a notice says so.
 
         The caller is responsible for calling _scale_to_fit_if_oversized()
@@ -1102,7 +1103,7 @@ class FileCmd:
             (bx + left, by + bottom, bw - left - right, bh - bottom - top),
             (tx + (left - right) / 2, ty + (bottom - top) / 2),
             # Both outlines may lie up to the tolerance inside the curves.
-            clearance=1.0 + 2 * OUTLINE_TOLERANCE_MM,
+            clearance=config.import_gap_mm + 2 * OUTLINE_TOLERANCE_MM,
         )
 
         translation_matrix = Matrix.translation(placement.dx, placement.dy)

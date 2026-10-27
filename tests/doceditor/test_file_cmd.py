@@ -934,8 +934,8 @@ def _frame_centre(workpieces):
 class TestImportPlacement:
     """
     An import goes to the free spot nearest to its target (the bed
-    centre, or the drop point) as one piece, 1 mm clear of every
-    workpiece already in the document.
+    centre, or the drop point) as one piece, the gap at import (1 mm
+    by default) clear of every workpiece already in the document.
     """
 
     @pytest.fixture
@@ -972,6 +972,22 @@ class TestImportPlacement:
         (lower,) = item_world_polygons(second)
         gap = min(y for _x, y in upper) - max(y for _x, y in lower)
         assert 1.0 <= gap < 1.2
+
+    @pytest.mark.asyncio
+    async def test_the_gap_kept_is_the_gap_at_import_setting(
+        self, doc_editor, task_mgr, bed, test_machine_and_config, tmp_path
+    ):
+        _machine, config = test_machine_and_config
+        config.set_import_gap_mm(5.0)
+        path = _svg_mm(tmp_path / "part.svg", 100, 60)
+
+        (first,) = await self._import(doc_editor, task_mgr, path)
+        (second,) = await self._import(doc_editor, task_mgr, path)
+
+        (upper,) = item_world_polygons(first)
+        (lower,) = item_world_polygons(second)
+        gap = min(y for _x, y in upper) - max(y for _x, y in lower)
+        assert 5.0 <= gap < 5.2
 
     @pytest.mark.asyncio
     async def test_full_bed_overlaps_at_the_centre_with_a_notice(

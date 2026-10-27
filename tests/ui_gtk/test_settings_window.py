@@ -1,7 +1,7 @@
 # flake8: noqa: E402
 """The app Settings window has no Licenses page; every built-in page
 opens by its id, and addon pages still add and remove behind the
-built-in ones."""
+built-in ones. The General page's Layout rows set the gaps."""
 
 import gi
 import pytest
@@ -109,3 +109,22 @@ def test_addon_page_adds_and_removes_after_builtin_pages(
     finally:
         settings_page_registry.unregister_all_from_addon(_TEST_ADDON)
         _close(win)
+
+
+@pytest.mark.ui
+def test_general_page_sets_the_layout_and_import_gaps(ui_context_initializer):
+    from swiftcut.context import get_context
+    from swiftcut.ui_gtk.settings.general_preferences_page import (
+        GeneralPreferencesPage,
+    )
+
+    config = get_context().config
+    page = GeneralPreferencesPage()
+    assert page.layout_gap_row.get_value_in_base_units() == 0
+    assert page.import_gap_row.get_value_in_base_units() == 1
+
+    page.layout_gap_row.get_spin_button().set_value(2.5)
+    # Past the 20 mm the rows go to.
+    page.import_gap_row.get_spin_button().set_value(30)
+
+    assert (config.layout_gap_mm, config.import_gap_mm) == (2.5, 20.0)

@@ -14,6 +14,10 @@ counts as filled, so a piece never goes inside another piece's
 outline; one without area, such as a line, is not seen. Outlines are
 taken as exact: the tolerance they were polygonized with is the
 caller's to allow for.
+
+Given straight edges (see Flush), a last phase moves the piece so its
+straight edges lie exactly along nearby straight edges of others,
+where touching outlines can then share one cut.
 """
 
 import math
@@ -37,6 +41,8 @@ Rect = tuple[float, float, float, float]
 #: Costs of a position, given the arrays of its x and y (see
 #: find_position).
 Cost = Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, ...]]
+#: A straight edge as its start and end points.
+Edge = tuple[Point, Point]
 
 #: The grid step is a quarter of the piece's smaller side, but no
 #: less than this, in mm.
@@ -60,6 +66,24 @@ _DIRECTIONS = [(math.cos(a), math.sin(a)) for a in np.arange(8) * math.pi / 4]
 _SAMPLES = 8
 # Float slack in mm, so a piece scaled to the bed's size still fits.
 _EPSILON_MM = 1e-6
+# At most this many snap moves (see find_position) get an exact test
+# per call. They are tried best first and most are free: the 40-piece
+# benchmark at gap 0 needs at most 4, where a hundred slivers each
+# blocking the next (test_placement) would take 203 with every line
+# kept.
+_SNAP_TESTS = 64
+# Flush edges are paired (see _Pairs) only among the _FLUSH_EDGES
+# longest of the piece and of the others near it, and only the
+# _FLUSH_PAIRS nearest pairs are kept: a flattened curve has thousands
+# of edges, each nearly parallel to tens of others, and uncapped a
+# 2000-gon among four others takes 6.7 GB and 89 s (test_placement).
+_FLUSH_EDGES = 256
+_FLUSH_PAIRS = 2048
+# Snap moves are made from the _SNAP_LINES nearest lines to lie flush
+# along, a farther line being more often blocked by what lies nearer:
+# at most 137 moves with their corners, each measured on the pairs
+# above, so a call's arrays stay within some 300,000 cells.
+_SNAP_LINES = 16
 
 
 class Placement(NamedTuple):
@@ -70,6 +94,17 @@ class Placement(NamedTuple):
     fits: bool
 
 
+class Flush(NamedTuple):
+    """Straight edges for the piece to lie flush along (see find_position)."""
+
+    #: The piece's straight edges, where its outlines are.
+    piece: Sequence[Edge]
+    #: The straight edges it may lie flush along.
+    others: Sequence[Edge]
+    #: Edges this close are flush, in mm.
+    tolerance: float
+
+
 def find_position(
     piece: Sequence[Polygon],
     obstacles: Sequence[Polygon],
@@ -78,6 +113,7 @@ def find_position(
     clearance: float = 1.0,
     max_tests: int = MAX_TESTS,
     cost: Cost | None = None,
+    flush: Flush | None = None,
 ) -> Placement:
     """
     Where to move a piece so it sits closest to the target without
@@ -101,6 +137,25 @@ def find_position(
     while that lowers the cost or, at the same cost, brings it nearer
     the target.
 
+    With flush edges, a last phase lays the piece's straight edges
+    along others. Each pair of a piece edge and another edge that are
+    parallel within the tolerance over the piece edge's length, whose
+    projections overlap by more than it, and whose offset (from the
+    piece edge's middle to the other's line) is at most the grid step
+    gives a move along the other's normal that puts the piece edge on
+    its line; each two such moves with normals not parallel give the
+    move that does both, into a corner. Only the nearest lines make
+    moves, and moves past a grid step on either axis are dropped, so
+    the phase stays small however many edges there are (see
+    _FLUSH_EDGES and _SNAP_LINES). They are tried in order of the costs,
+    then of how long the piece's edges lie flush along others (see
+    shared_length), longest first, then of nearness to the target;
+    the first where the piece is free and inside the bed wins if it
+    comes before the position itself (at most _SNAP_TESTS are
+    tested). A move into contact takes the piece into the pile, so it
+    does not raise a pile's cost, and a position already flush within
+    the tolerance moves only where that does better.
+
     Args:
         piece: Outer outlines of the piece, moved as one.
         obstacles: Outer outlines already on the bed.
@@ -114,6 +169,8 @@ def find_position(
             (x, y), for arrays x and y that broadcast together,
             compared in order; None tries the positions nearest the
             target first.
+        flush: The piece's straight edges, the edges it may lie flush
+            along and how close is flush; None skips the last phase.
 
     Returns:
         The move (dx, dy) and fits=True. If no position is free (or
@@ -173,24 +230,197 @@ def find_position(
         return Placement(float(goal[0] - cx), float(goal[1] - cy), False)
 
     x, y = xs[col], ys[row]
+    bounds = (lo_x, lo_y, hi_x, hi_y)
     if cost is None:
         x, y = search.slide((x, y), goal)
         x, y = search.slide((x, y), (goal[0], y))
         x, y = search.slide((x, y), (x, goal[1]))
-        return Placement(float(x - cx), float(y - cy), True)
+    else:
 
-    def key(x: float, y: float) -> tuple[float, ...]:
-        """The position's costs, then its squared distance to target."""
-        return (*map(float, cost(x, y)), (x - tx) ** 2 + (y - ty) ** 2)
+        def key(x: float, y: float) -> tuple[float, ...]:
+            """The position's costs, then its squared distance to target."""
+            return (*map(float, cost(x, y)), (x - tx) ** 2 + (y - ty) ** 2)
 
-    for along in range(3):
-        # Along the line to the goal, then along x, then along y.
-        end = (goal, (goal[0], y), (x, goal[1]))[along]
-        moved = search.slide((x, y), end)
-        if key(*moved) <= key(x, y):
-            x, y = moved
-    x, y = search.refine((x, y), key, step, (lo_x, lo_y, hi_x, hi_y))
+        for along in range(3):
+            # Along the line to the goal, then along x, then along y.
+            end = (goal, (goal[0], y), (x, goal[1]))[along]
+            moved = search.slide((x, y), end)
+            if key(*moved) <= key(x, y):
+                x, y = moved
+        x, y = search.refine((x, y), key, step, bounds)
+    if flush is not None:
+
+        def keys(x: np.ndarray, y: np.ndarray, shared: np.ndarray) -> tuple:
+            """
+            The keys of positions whose straight edges lie flush along
+            `shared` mm: their costs, the shared length, longest
+            first, then their squared distance to the target.
+            """
+            costs = () if cost is None else cost(x, y)
+            return (*costs, -shared, (x - tx) ** 2 + (y - ty) ** 2)
+
+        x, y = _snap(search, (x, y), flush, keys, step, bounds)
     return Placement(float(x - cx), float(y - cy), True)
+
+
+def shared_length(
+    piece: Sequence[Edge], others: Sequence[Edge], tolerance: float
+) -> float:
+    """
+    How long the piece's straight edges lie flush along the others:
+    the sum, over every pair of a piece edge whose end points both lie
+    within the tolerance of another edge's line and that other edge,
+    of their overlap along it, where that is longer than the
+    tolerance.
+    """
+    edges = _edges(piece)
+    near = _near(edges, _edges(others), tolerance)
+    pairs = _Pairs(edges, near, tolerance, 0.0)
+    return float(pairs.shared(np.zeros((1, 2)))[0])
+
+
+def _snap(
+    search: "_Search",
+    start: Point,
+    flush: Flush,
+    keys: Callable[..., tuple],
+    step: float,
+    bounds: tuple[float, float, float, float],
+) -> Point:
+    """
+    The last phase of find_position: the best free snap move from a
+    free start, within bounds (x0, y0, x1, y1) and _EPSILON_MM, if it
+    comes before the start by keys(x, y, shared length); else the
+    start.
+    """
+    x, y = start
+    piece = _edges(flush.piece) + (x - search.centre[0], y - search.centre[1])
+    tolerance = flush.tolerance
+    # Every move stays within a step on each axis, so these are all
+    # the edges the moved piece's edges can lie flush along.
+    near = _near(piece, _edges(flush.others), step + tolerance)
+    pairs = _Pairs(piece, near, tolerance, math.hypot(step, step))
+    offset = (pairs.sa + pairs.sb) / 2
+    pick = (
+        (np.abs(pairs.sb - pairs.sa) <= tolerance)
+        & (pairs.overlap(np.zeros((1, 2)))[0] > tolerance)
+        & (np.abs(offset) <= step)
+    )
+    if not pick.any():
+        return start
+    normal, offset = pairs.normal[pick], offset[pick]
+    # One move per line, the first pair's; the pairs are nearest
+    # first, and so are the lines kept.
+    _, first = np.unique(
+        np.round(np.column_stack((normal, offset)), 9),
+        axis=0,
+        return_index=True,
+    )
+    first = np.sort(first)[:_SNAP_LINES]
+    normal, offset = normal[first], offset[first]
+    a, b = np.triu_indices(len(normal), 1)
+    (ax, ay), (bx, by) = normal[a].T, normal[b].T
+    det = ax * by - ay * bx
+    with np.errstate(divide="ignore", invalid="ignore"):
+        # The move m with m . normal = -offset for both lines.
+        corners = np.column_stack(
+            (
+                (offset[b] * ay - offset[a] * by) / det,
+                (offset[a] * bx - offset[b] * ax) / det,
+            )
+        )
+    moves = np.concatenate(
+        (np.zeros((1, 2)), -offset[:, None] * normal, corners)
+    )
+    moves = moves[np.all(np.abs(moves) <= step, axis=1)]
+    xs, ys = x + moves[:, 0], y + moves[:, 1]
+    shared = pairs.shared(moves)
+    key = [np.broadcast_to(k, xs.shape) for k in keys(xs, ys, shared)]
+    x0, y0, x1, y1 = bounds
+    inside = (
+        (xs >= x0 - _EPSILON_MM)
+        & (xs <= x1 + _EPSILON_MM)
+        & (ys >= y0 - _EPSILON_MM)
+        & (ys <= y1 + _EPSILON_MM)
+    )
+    tests = 0
+    # The start is the first move; a move tied with it comes after.
+    for k in np.lexsort(key[::-1]):
+        if k == 0 or tests == _SNAP_TESTS:
+            break
+        if inside[k]:
+            tests += 1
+            if search.is_free(xs[k], ys[k]):
+                return xs[k], ys[k]
+    return start
+
+
+class _Pairs:
+    """
+    The pairs of a piece edge and another edge that can lie flush once
+    the piece moves at most `reach` mm: parallel within twice the
+    tolerance over the piece edge's length, its ends within reach of
+    the tolerance off the other's line, and overlapping along it by
+    more than the tolerance less reach. They are measured from the
+    other edge's start along it and along its normal, nearest first
+    (by the piece edge's middle), and only the _FLUSH_PAIRS nearest
+    pairs of the _FLUSH_EDGES longest edges each side are kept.
+    """
+
+    def __init__(
+        self,
+        piece: np.ndarray,
+        others: np.ndarray,
+        tolerance: float,
+        reach: float,
+    ):
+        piece = _longest(piece, _FLUSH_EDGES)
+        others = _longest(others, _FLUSH_EDGES)
+        start, end = others[:, 0], others[:, 1]
+        length = np.hypot(*(end - start).T)
+        along = (end - start) / length[:, None]
+        normal = np.column_stack((-along[:, 1], along[:, 0]))
+        a = ((piece[:, None, 0] - start) * normal).sum(-1)
+        b = ((piece[:, None, 1] - start) * normal).sum(-1)
+        ta = ((piece[:, None, 0] - start) * along).sum(-1)
+        tb = ((piece[:, None, 1] - start) * along).sum(-1)
+        overlap = np.minimum(np.maximum(ta, tb), length) - np.maximum(
+            np.minimum(ta, tb), 0
+        )
+        i, j = np.nonzero(
+            (np.abs(b - a) <= 2 * tolerance)
+            & (np.abs(a) <= reach + tolerance)
+            & (np.abs(b) <= reach + tolerance)
+            & (overlap > tolerance - reach)
+        )
+        nearest = np.argsort(np.abs(a + b)[i, j], kind="stable")
+        i, j = i[nearest[:_FLUSH_PAIRS]], j[nearest[:_FLUSH_PAIRS]]
+        #: Where the piece edges' ends lie off the other edges' lines.
+        self.sa, self.sb = a[i, j], b[i, j]
+        #: Where they lie along the other edges.
+        self.ta, self.tb = ta[i, j], tb[i, j]
+        self.length = length[j]
+        self.along, self.normal = along[j], normal[j]
+        self.tolerance = tolerance
+
+    def overlap(self, moves: np.ndarray) -> np.ndarray:
+        """Each pair's overlap along the other edge, for each move."""
+        t = moves @ self.along.T
+        ta, tb = self.ta + t, self.tb + t
+        return np.minimum(np.maximum(ta, tb), self.length) - np.maximum(
+            np.minimum(ta, tb), 0
+        )
+
+    def shared(self, moves: np.ndarray) -> np.ndarray:
+        """The piece's shared length (see shared_length) per move."""
+        s = moves @ self.normal.T
+        overlap = self.overlap(moves)
+        flush = (
+            (np.abs(self.sa + s) <= self.tolerance)
+            & (np.abs(self.sb + s) <= self.tolerance)
+            & (overlap > self.tolerance)
+        )
+        return np.where(flush, overlap, 0.0).sum(axis=1)
 
 
 class _Search:
@@ -335,6 +565,31 @@ class _Search:
             else:
                 step /= 2
         return x, y
+
+
+def _edges(edges: Sequence[Edge]) -> np.ndarray:
+    """Edges as an (n, 2, 2) array of their start and end points."""
+    return np.asarray(edges, dtype=float).reshape(-1, 2, 2)
+
+
+def _longest(edges: np.ndarray, count: int) -> np.ndarray:
+    """The count longest edges, or all if there are no more."""
+    if len(edges) <= count:
+        return edges
+    length = np.hypot(*(edges[:, 1] - edges[:, 0]).T)
+    return edges[np.argsort(-length, kind="stable")[:count]]
+
+
+def _near(piece: np.ndarray, others: np.ndarray, reach: float) -> np.ndarray:
+    """The others whose boxes come within reach of the piece edges' box."""
+    if not len(piece):
+        return others[:0]
+    lo = piece.min(axis=(0, 1)) - reach
+    hi = piece.max(axis=(0, 1)) + reach
+    return others[
+        np.all(others.max(axis=1) >= lo, axis=1)
+        & np.all(others.min(axis=1) <= hi, axis=1)
+    ]
 
 
 def _points(polygon: Polygon) -> list[Point]:

@@ -1,3 +1,5 @@
+import itertools
+import math
 import pickle
 
 import numpy as np
@@ -5,7 +7,7 @@ import pytest
 from raygeo.geo import Matrix
 from raygeo.geo.shape.polygon import do_polygons_intersect, get_circle_polygon
 
-from swiftcut.shared.placement import Piece, arrange, layout
+from swiftcut.shared.placement import Piece, arrange, engine, layout
 
 # (x, y, width, height) in world mm, and its centre.
 BOUNDARY = (0.0, 0.0, 400.0, 300.0)
@@ -314,3 +316,130 @@ def test_input_and_result_are_picklable_and_repeatable():
 
     assert pickle.loads(pickle.dumps(result)) == result
     assert result == arrange(Proxy(), *args)
+
+
+#: How close edges are flush: Merge Lines' default tolerance.
+FLUSH_MM = 0.01
+
+
+def sides(outline):
+    """An outline's sides as (start, end) edges."""
+    return list(zip(outline, outline[1:] + outline[:1]))
+
+
+def with_sides(piece):
+    """The piece with its outlines' sides as straight edges."""
+    return piece._replace(edges=[e for o in piece.outlines for e in sides(o)])
+
+
+def laid_out(pieces, result):
+    """Each piece's one outline where the result puts it, by id."""
+    return {p.id: placed(p, result[p.id])[0][0] for p in pieces}
+
+
+def flush_arrange(pieces, obstacles=()):
+    """
+    arrange at clearance 0 with the pieces' and obstacles' sides flush
+    within FLUSH_MM.
+    """
+    edges = [e for obstacle in obstacles for e in sides(obstacle)]
+    return arrange(
+        Proxy(), pieces, obstacles, BOUNDARY, CENTRE, 0.0, edges, FLUSH_MM
+    )
+
+
+def assert_no_overlap(outlines):
+    for a, b in itertools.combinations(outlines, 2):
+        assert not do_polygons_intersect(a, b)
+
+
+def test_four_equal_squares_end_one_block():
+    pieces = [with_sides(rect_piece(n, 0, 0, 30, 30)) for n in range(4)]
+
+    outlines = laid_out(pieces, flush_arrange(pieces))
+
+    points = np.concatenate(list(outlines.values()))
+    (x0, y0), (x1, y1) = points.min(axis=0), points.max(axis=0)
+    assert abs(x1 - x0 - 60) <= 1e-9 and abs(y1 - y0 - 60) <= 1e-9
+    assert_no_overlap(outlines.values())
+
+
+def test_unequal_rectangles_end_with_their_shared_edge_collinear():
+    pieces = [
+        with_sides(rect_piece("big", 0, 0, 30, 30)),
+        with_sides(rect_piece("small", 0, 0, 17, 23)),
+    ]
+
+    def offset(outlines):
+        # The small one lies left of the big one.
+        big, small = np.asarray(outlines["big"]), outlines["small"]
+        return big[:, 0].min() - np.asarray(small)[:, 0].max()
+
+    # Without flush edges, the slide stops short of contact.
+    loose = laid_out(pieces, arrange(Proxy(), pieces, [], BOUNDARY, CENTRE, 0))
+    assert offset(loose) > 1e-6
+
+    outlines = laid_out(pieces, flush_arrange(pieces))
+
+    assert abs(offset(outlines)) <= 1e-9
+    assert_no_overlap(outlines.values())
+    shared = engine.shared_length(
+        sides(outlines["small"]), sides(outlines["big"]), FLUSH_MM
+    )
+    assert shared > 0
+
+
+def test_a_circle_among_squares_keeps_to_its_chords():
+    # Polygonized so its chords lie at most half the flush tolerance
+    # inside the true circle.
+    radius, chord = 25, FLUSH_MM / 2
+    count = math.ceil(math.pi / math.acos(1 - chord / radius))
+    outline = get_circle_polygon((0, 0), radius, count)
+    circle = Piece("circle", [outline], (-25, -25, 50, 50))
+    squares = [with_sides(rect_piece(n, 0, 0, 40, 40)) for n in range(3)]
+    pieces = [*squares, circle]
+
+    def true_gaps(result):
+        # From the true circle and from each square to each square.
+        _outlines, corners = placed(circle, result["circle"])
+        centre = frame_centre(corners)
+        outlines = laid_out(pieces, result)
+        squares_out = [outlines[s.id] for s in squares]
+        assert_no_overlap(outlines.values())
+        to_circle = [reach(centre, s) - radius for s in squares_out]
+        pairs = itertools.combinations(squares_out, 2)
+        between = [gap(a, b) for a, b in pairs]
+        return to_circle, between
+
+    to_circle, between = true_gaps(flush_arrange(pieces))
+    # The true circle overlaps a square by its chords' deviation at
+    # most.
+    assert min(to_circle) >= -chord - 1e-9
+    assert min(between) >= 0
+
+    to_circle, between = true_gaps(
+        arrange(Proxy(), pieces, [], BOUNDARY, CENTRE, 2 + 2 * chord)
+    )
+    assert min(to_circle) >= 2 and min(between) >= 2
+
+
+def reach(point, outline):
+    """The distance from a point to an outline."""
+    start = np.asarray(outline, dtype=float)
+    edge = np.roll(start, -1, axis=0) - start
+    t = ((point - start) * edge).sum(-1) / (edge * edge).sum(-1)
+    nearest = start + np.clip(t, 0, 1)[:, None] * edge
+    return np.sqrt(((point - nearest) ** 2).sum(-1)).min()
+
+
+def test_without_a_flush_tolerance_edges_change_nothing():
+    obstacles = [get_circle_polygon(CENTRE, 40, 64), rect(80, 60, 50, 50)]
+    pieces = [circle_piece(r, r) for r in (30, 20, 10)]
+    pieces += [rect_piece("rect", 0, 0, 30, 20), l_piece("L", 0, 0)]
+    edged = [with_sides(piece) for piece in pieces]
+    edges = sides(obstacles[1])
+    args = (edged, obstacles, BOUNDARY, CENTRE, 1.0, edges, None)
+
+    before = arrange(Proxy(), pieces, obstacles, BOUNDARY, CENTRE, 1.0)
+
+    assert arrange(Proxy(), *pickle.loads(pickle.dumps(args))) == before

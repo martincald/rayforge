@@ -1,7 +1,9 @@
 """
 Layout: several pieces placed one after another into a tight pile,
 each where the box around the pile grows least, turned by the quarter
-turn that grows it least.
+turn that grows it least. With a flush tolerance, straight edges are
+laid along each other where that costs the pile nothing, so touching
+pieces can share a cut.
 
 Pure numpy and raygeo on plain data, like the engine it calls, so it
 can run in a worker process.
@@ -13,7 +15,15 @@ from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
-from .engine import Point, Polygon, Rect, find_position
+from .engine import (
+    Edge,
+    Flush,
+    Point,
+    Polygon,
+    Rect,
+    find_position,
+    shared_length,
+)
 
 if TYPE_CHECKING:
     from ..tasker.progress import ProgressContext
@@ -49,6 +59,9 @@ class Piece(NamedTuple):
     outlines: Sequence[Polygon]
     #: The (x, y, width, height) box that must stay inside the boundary.
     frame: Rect
+    #: Straight edges of the outlines, which may lie flush along others
+    #: (see arrange).
+    edges: Sequence[Edge] = ()
 
 
 def arrange(
@@ -58,6 +71,8 @@ def arrange(
     boundary: Rect,
     target: Point,
     clearance: float = 1.0,
+    obstacle_edges: Sequence[Edge] = (),
+    flush_tolerance: float | None = None,
 ) -> dict[Hashable, tuple[float, float, float, bool]]:
     """
     Places the pieces one after another, largest outline area first
@@ -76,6 +91,12 @@ def arrange(
     up is known from the start, and finding another starts the layout
     over (at most once per piece).
 
+    With a flush tolerance, each piece's edges may lie flush along the
+    obstacles' edges, the edges of the pieces placed before it or
+    staying, and the boundary's sides (see engine.find_position), and
+    a turn whose edges lie flush along more of them wins over one
+    that costs the pile the same.
+
     Args:
         proxy: Takes one progress step per piece (going back when the
             layout starts over), and is asked before each piece
@@ -86,6 +107,9 @@ def arrange(
         target: Where the pile is centred: the first frame's centre
             goes as close to it as it fits, and it breaks ties.
         clearance: Minimum gap between outlines, in mm.
+        obstacle_edges: Straight edges of the obstacles.
+        flush_tolerance: Edges this close are flush, in mm; None lays
+            no edges flush.
 
     Returns:
         For each piece id, (angle, dx, dy, fits): turn the piece by
@@ -103,23 +127,47 @@ def arrange(
         fixed = list(obstacles)
         for piece in stay:
             fixed.extend(piece.outlines)
+        flush = None
+        if flush_tolerance is not None:
+            others = [obstacle_edges, _sides(boundary)]
+            others.extend(piece.edges for piece in stay)
+            flush = Flush((), _stack(others), flush_tolerance)
         pile: Box | None = None
         for piece in by_size:
             if piece.id in placed:
                 continue
             if proxy.is_cancelled():
                 return {}
-            best = _best_turn(piece, fixed, boundary, target, clearance, pile)
+            best = _best_turn(
+                piece, fixed, boundary, target, clearance, pile, flush
+            )
             if best is None:
                 stay.append(piece)
                 break
-            angle, dx, dy, outlines, box = best
+            angle, dx, dy, outlines, box, edges = best
             placed[piece.id] = (angle, dx, dy, True)
             fixed.extend((p + (dx, dy)).tolist() for p in outlines)
+            if flush is not None:
+                others = _stack([flush.others, edges + (dx, dy)])
+                flush = flush._replace(others=others)
             pile = box if pile is None else _union(pile, box)
             proxy.set_progress(len(placed))
         else:
             return placed
+
+
+def _sides(boundary: Rect) -> np.ndarray:
+    """The boundary's four sides, as edges."""
+    x, y, w, h = boundary
+    corners = np.array(((x, y), (x + w, y), (x + w, y + h), (x, y + h)))
+    return np.stack((corners, np.roll(corners, -1, axis=0)), axis=1)
+
+
+def _stack(edges: Sequence[Sequence[Edge]]) -> np.ndarray:
+    """Lists of edges as one (n, 2, 2) array."""
+    return np.concatenate(
+        [np.asarray(e, dtype=float).reshape(-1, 2, 2) for e in edges]
+    )
 
 
 def _too_large(frame: Rect, boundary: Rect) -> bool:
@@ -135,30 +183,45 @@ def _best_turn(
     target: Point,
     clearance: float,
     pile: Box | None,
-) -> tuple[float, float, float, list[np.ndarray], Box] | None:
+    flush: Flush | None,
+) -> tuple[float, float, float, list[np.ndarray], Box, np.ndarray] | None:
     """
     The turn of the piece that does best: by the pile's costs with its
-    frame added (see _pile_costs; none for the first piece), then by
-    its frame centre's distance to the target, ties going to the
-    smaller turn. As (angle, dx, dy, turned outlines, frame box); None
+    frame added (see _pile_costs; none for the first piece), with
+    flush edges then by how long its edges lie flush along the others
+    (see engine.shared_length), longest first, then by its frame
+    centre's distance to the target, ties going to the smaller turn.
+    As (angle, dx, dy, turned outlines, frame box, turned edges); None
     if no turn fits.
     """
     best = None
-    for angle, outlines, frame in _turns(piece):
+    for angle, outlines, frame, edges in _turns(piece):
+        turn_flush = None if flush is None else flush._replace(piece=edges)
         dx, dy, fits = _place(
-            outlines, frame, obstacles, boundary, target, clearance, pile
+            outlines,
+            frame,
+            obstacles,
+            boundary,
+            target,
+            clearance,
+            pile,
+            turn_flush,
         )
         if not fits:
             continue
         x, y, w, h = frame
         box = (x + dx, y + dy, x + w + dx, y + h + dy)
         costs = () if pile is None else _pile_costs(pile, *box)
+        shared = ()
+        if flush is not None:
+            moved = edges + (dx, dy)
+            shared = (-shared_length(moved, flush.others, flush.tolerance),)
         distance = math.hypot(
             x + w / 2 + dx - target[0], y + h / 2 + dy - target[1]
         )
-        score = (*map(float, costs), distance)
+        score = (*map(float, costs), *shared, distance)
         if best is None or _before(score, best[0]):
-            best = (score, angle, dx, dy, outlines, box)
+            best = (score, angle, dx, dy, outlines, box, edges)
     return None if best is None else best[1:]
 
 
@@ -170,10 +233,12 @@ def _before(a: tuple[float, ...], b: tuple[float, ...]) -> bool:
     return False
 
 
-def _turns(piece: Piece) -> Iterator[tuple[float, list[np.ndarray], Rect]]:
+def _turns(
+    piece: Piece,
+) -> Iterator[tuple[float, list[np.ndarray], Rect, np.ndarray]]:
     """
     The piece's distinct turns about its frame's centre: the angle,
-    the turned outlines and the turned frame.
+    the turned outlines, the turned frame and the turned edges.
     """
     x, y, w, h = piece.frame
     centre = np.array((x + w / 2, y + h / 2))
@@ -194,7 +259,8 @@ def _turns(piece: Piece) -> Iterator[tuple[float, list[np.ndarray], Rect]]:
         if any(_same_shape(shape, seen) for seen in shapes):
             continue
         shapes.append(shape)
-        yield angle, outlines, (low[0], low[1], size[0], size[1])
+        edges = (_stack([piece.edges]) - centre) @ turn.T + centre
+        yield angle, outlines, (low[0], low[1], size[0], size[1]), edges
 
 
 def _same_shape(
@@ -255,12 +321,13 @@ def _place(
     target: Point,
     clearance: float,
     pile: Box | None,
+    flush: Flush | None,
 ) -> tuple[float, float, bool]:
     """
     find_position for a piece whose frame, not its outlines, is
     centred on the target and kept inside the boundary; with a pile,
     placed where the pile's costs with the frame added are lowest
-    (see _pile_costs).
+    (see _pile_costs); with flush edges, laid along them.
     """
     points = np.concatenate(outlines)
     (x0, y0), (x1, y1) = points.min(axis=0), points.max(axis=0)
@@ -286,6 +353,7 @@ def _place(
         (tx + (left - right) / 2, ty + (bottom - top) / 2),
         clearance,
         cost=None if pile is None else cost,
+        flush=flush,
     )
 
 

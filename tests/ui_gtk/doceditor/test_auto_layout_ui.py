@@ -82,8 +82,12 @@ def _build(win, folder, pieces):
 
 @pytest.fixture
 def app_and_window(ui_context_initializer, request):
-    """The main window on the 1400 x 900 mm ilab-614 bed."""
+    """
+    The main window on the 1400 x 900 mm ilab-614 bed, Auto Layout
+    keeping 1 mm between pieces.
+    """
     get_context().config.machine.set_axis_extents(1400, 900)
+    get_context().config.set_layout_gap_mm(1.0)
 
     class TestApp(Adw.Application):
         def do_activate(self):

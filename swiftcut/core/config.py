@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 # followed to its last step.
 TOUR_SEEN = "seen"
 TOUR_COMPLETED = "completed"
+# The largest gap between pieces (Auto Layout, import) a setting takes,
+# in mm.
+MAX_GAP_MM = 20.0
 
 
 class OpsColorMode(Enum):
@@ -95,6 +98,11 @@ class Config:
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
         # Default DPI for unitless SVG imports
         self.import_dpi: float = 96.0
+        # The gap Auto Layout keeps between pieces, in mm; 0 packs them
+        # flush, so shared edges are cut once.
+        self.layout_gap_mm: float = 0.0
+        # The gap kept around an imported piece, in mm.
+        self.import_gap_mm: float = 1.0
         # Cache budget for the raygeo pipeline (default 2 GiB)
         self.cache_budget_bytes: int = 2 * 1024 * 1024 * 1024
         # Language preference: None = system default, or a code like "de"
@@ -173,6 +181,22 @@ class Config:
         if self.import_dpi == dpi:
             return
         self.import_dpi = dpi
+        self.changed.send(self)
+
+    def set_layout_gap_mm(self, gap: float):
+        """Sets the Auto Layout gap, limited to [0, MAX_GAP_MM]."""
+        gap = min(max(gap, 0.0), MAX_GAP_MM)
+        if self.layout_gap_mm == gap:
+            return
+        self.layout_gap_mm = gap
+        self.changed.send(self)
+
+    def set_import_gap_mm(self, gap: float):
+        """Sets the gap kept at import, limited to [0, MAX_GAP_MM]."""
+        gap = min(max(gap, 0.0), MAX_GAP_MM)
+        if self.import_gap_mm == gap:
+            return
+        self.import_gap_mm = gap
         self.changed.send(self)
 
     def set_cache_budget_bytes(self, budget: int):
@@ -259,6 +283,8 @@ class Config:
             "tours": dict(self.tours),
             "ops_color_mode": self.ops_color_mode.value,
             "import_dpi": self.import_dpi,
+            "layout_gap_mm": self.layout_gap_mm,
+            "import_gap_mm": self.import_gap_mm,
             "cache_budget_bytes": self.cache_budget_bytes,
             "language": self.language,
         }
@@ -343,6 +369,8 @@ class Config:
 
         # Load import DPI
         config.import_dpi = data.get("import_dpi", 96.0)
+        config.layout_gap_mm = data.get("layout_gap_mm", 0.0)
+        config.import_gap_mm = data.get("import_gap_mm", 1.0)
 
         # Load cache budget
         config.cache_budget_bytes = data.get(

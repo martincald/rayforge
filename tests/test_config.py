@@ -259,3 +259,23 @@ def test_the_view_state_has_no_3d_toggles():
         lambda _id: None,
     )
     assert old.canvas_view.show_grid is False
+
+
+def test_layout_and_import_gaps_default_clamp_and_survive_the_file():
+    assert (Config().layout_gap_mm, Config().import_gap_mm) == (0.0, 1.0)
+    blank = Config.from_dict({}, lambda _id: None)
+    assert (blank.layout_gap_mm, blank.import_gap_mm) == (0.0, 1.0)
+
+    config = Config()
+    sent = []
+    config.changed.connect(lambda sender: sent.append(sender), weak=False)
+    config.set_layout_gap_mm(2.5)
+    config.set_layout_gap_mm(2.5)
+    config.set_import_gap_mm(0.0)
+    assert len(sent) == 2
+    restored = Config.from_dict(config.to_dict(), lambda _id: None)
+    assert (restored.layout_gap_mm, restored.import_gap_mm) == (2.5, 0.0)
+
+    config.set_layout_gap_mm(-1.0)
+    config.set_import_gap_mm(25.0)
+    assert (config.layout_gap_mm, config.import_gap_mm) == (0.0, 20.0)

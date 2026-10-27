@@ -7,13 +7,14 @@ from gi.repository import Adw, GLib, Gtk
 
 from ... import const
 from ...context import get_context
-from ...core.config import OpsColorMode, StartupBehavior
+from ...core.config import MAX_GAP_MM, OpsColorMode, StartupBehavior
 from ...shared.units.definitions import (
     get_base_unit_for_quantity,
     get_units_for_quantity,
 )
 from ...shared.util.localized import SUPPORTED_LANGUAGES
 from ...ui_gtk.doceditor import file_dialogs
+from ..shared.pref_rows import LengthSpinRow
 from ..shared.pref_rows.base import SpinRow
 from ..shared.preferences_page import TrackedPreferencesPage
 
@@ -324,6 +325,33 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         )
         self._update_startup_project_visibility()
 
+        layout_group = Adw.PreferencesGroup()
+        layout_group.set_title(_("Layout"))
+        self.add(layout_group)
+
+        self.layout_gap_row = LengthSpinRow(
+            _("Gap between pieces"),
+            _(
+                "Auto Layout; 0 packs pieces flush so shared edges are cut "
+                "once"
+            ),
+            lower=0.0,
+            upper=MAX_GAP_MM,
+            value_in_base=config.layout_gap_mm,
+        )
+        self.layout_gap_row.value_changed.connect(self.on_layout_gap_changed)
+        layout_group.add(self.layout_gap_row)
+
+        self.import_gap_row = LengthSpinRow(
+            _("Gap at import"),
+            _("Space kept around an imported piece"),
+            lower=0.0,
+            upper=MAX_GAP_MM,
+            value_in_base=config.import_gap_mm,
+        )
+        self.import_gap_row.value_changed.connect(self.on_import_gap_changed)
+        layout_group.add(self.import_gap_row)
+
     def _update_startup_project_visibility(self, *args):
         """Show/hide the project path row based on startup behavior."""
         selected_index = self.startup_behavior_row.get_selected()
@@ -470,3 +498,11 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         """Called when the user adjusts the cache budget."""
         mb = int(row.get_value())
         get_context().config.set_cache_budget_bytes(mb * 1024 * 1024)
+
+    def on_layout_gap_changed(self, row):
+        """Called when the user adjusts the Auto Layout gap."""
+        get_context().config.set_layout_gap_mm(row.get_value_in_base_units())
+
+    def on_import_gap_changed(self, row):
+        """Called when the user adjusts the gap kept at import."""
+        get_context().config.set_import_gap_mm(row.get_value_in_base_units())

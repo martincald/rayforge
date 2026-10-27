@@ -40,6 +40,9 @@ whole bed::
 With PERF_LAYOUT_FILL=black the pieces are drawn filled instead of as
 outlines: the same outlines, but a layout that works on rendered
 pixels then sees solid shapes, not rings.
+
+PERF_LAYOUT_GAP sets the Auto Layout gap in mm (1 if unset, the gap
+the clash counts measure against); PERF_LAYOUT_GAP=0 packs flush.
 """
 
 import asyncio
@@ -62,13 +65,15 @@ from tests.doceditor import layout_bench as bench
 
 BOUNDARY = os.environ.get("PERF_LAYOUT_BOUNDARY", "stock")
 FILL = os.environ.get("PERF_LAYOUT_FILL", "none")
+GAP_MM = float(os.environ.get("PERF_LAYOUT_GAP", "1"))
 TIMEOUT_S = 1200.0
 
 
 @pytest.fixture
 def bed(test_machine_and_config):
-    machine, _config = test_machine_and_config
+    machine, config = test_machine_and_config
     machine.set_axis_extents(1400, 900)
+    config.set_layout_gap_mm(GAP_MM)
     return machine
 
 
@@ -159,7 +164,7 @@ async def test_layout(doc_editor, task_mgr, bed, tmp_path, name, monkeypatch):
     warm, warm_stall = await _run(doc_editor, workpieces)
     await bench.settle(doc_editor, task_mgr)
     print(
-        f"\nRESULT {name} fill={FILL} boundary={BOUNDARY} "
+        f"\nRESULT {name} fill={FILL} boundary={BOUNDARY} gap={GAP_MM:g} "
         f"{boundary[2]:g}x{boundary[3]:g} time={seconds:.2f}s "
         f"warm={warm:.2f}s stall={stall * 1000:.0f}ms "
         f"warm_stall={warm_stall * 1000:.0f}ms "
