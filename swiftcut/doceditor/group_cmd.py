@@ -9,6 +9,12 @@ from raygeo.geo import Matrix
 
 from ..core.group import Group, GroupingResult
 from ..core.item import DocItem
+from ..core.item_group import (
+    AddItemGroupCommand,
+    ItemGroup,
+    RemoveItemGroupCommand,
+    UpdateItemGroupCommand,
+)
 from ..core.layer import Layer
 from ..core.undo.command import Command
 from ..core.workpiece import WorkPiece
@@ -233,14 +239,69 @@ class GroupCmd:
         self._task_manager = task_manager
 
     def group_items(
+        self, items: list[DocItem], name: str | None = None
+    ) -> ItemGroup | None:
+        """
+        Groups the items as they are, each on its own layer, in one
+        undoable step (see item_group): an item already in a group
+        brings its outermost group along, as a member. None, with no
+        history entry, unless that makes two members or more.
+        """
+        groups = self._editor.doc.item_groups
+        units = groups.units(items)
+        if len(units) < 2:
+            return None
+        if name is None:
+            name = _("Group {number}").format(number=len(groups) + 1)
+        group = ItemGroup([unit.uid for unit in units], name=name)
+        with self._editor.history_manager.transaction(_("Group")) as t:
+            t.execute(AddItemGroupCommand(groups, group))
+        return group
+
+    def ungroup_groups(self, to_ungroup: list[ItemGroup]) -> list[DocItem]:
+        """
+        Dissolves the groups one level in one undoable step: the members
+        of a group inside another take its place there. Returns the
+        items the groups held.
+        """
+        if not to_ungroup:
+            return []
+        groups = self._editor.doc.item_groups
+        freed = [item for g in to_ungroup for item in groups.items_of(g)]
+        with self._editor.history_manager.transaction(_("Ungroup")) as t:
+            for group in to_ungroup:
+                parent = groups.parent_of(group.uid)
+                # Removed first, so an undo puts the parent's members
+                # back before the group claims its own again.
+                t.execute(RemoveItemGroupCommand(groups, group))
+                if parent is None:
+                    continue
+                uids = list(parent.member_uids)
+                at = uids.index(group.uid)
+                uids[at : at + 1] = group.member_uids
+                t.execute(
+                    UpdateItemGroupCommand(groups, parent, member_uids=uids)
+                )
+        return freed
+
+    def rename_group(self, group: ItemGroup, name: str) -> None:
+        """Renames a group in one undoable step."""
+        if not name or name == group.name:
+            return
+        groups = self._editor.doc.item_groups
+        with self._editor.history_manager.transaction(_("Rename Group")) as t:
+            t.execute(UpdateItemGroupCommand(groups, group, new_name=name))
+
+    def combine_items(
         self,
         layer: Layer,
         items_to_group: list[DocItem],
         on_done: Callable[[Group], None] | None = None,
     ):
         """
-        Creates and executes an undoable command to group items. This operation
-        runs as a background task; on_done then receives the new group.
+        Combines items of one layer into a Group container there (see
+        core.group), in one undoable command. This operation runs as a
+        background task; on_done then receives the new container.
         """
         if not items_to_group:
             return
@@ -292,15 +353,28 @@ class GroupCmd:
 
     def ungroup_items(self, items: list[DocItem]) -> list[DocItem]:
         """
-        Ungroups the items in one undoable step: each Group is dissolved
-        one level, its children going back to its parent (the inverse of
-        Group), and each WorkPiece of several paths is split into one
-        piece per path (see PathSplitStrategy). Nothing else is touched.
+        Ungroups the items in one undoable step. When some of them are in
+        a group (see item_group), only those outermost groups are
+        dissolved one level (see ungroup_groups): nothing is split and no
+        Group container is touched. Otherwise each Group container is
+        dissolved one level, its children going back to its parent (the
+        inverse of Combine), and each WorkPiece of several paths is split
+        into one piece per path (see PathSplitStrategy). Nothing else is
+        touched.
 
         Returns:
-            The freed children and the new pieces. Empty, with no history
-            entry, when there is nothing to ungroup.
+            The freed items, children and new pieces. Empty, with no
+            history entry, when there is nothing to ungroup.
         """
+        item_groups = self._editor.doc.item_groups
+        tops = [
+            unit
+            for unit in item_groups.units(items)
+            if isinstance(unit, ItemGroup)
+        ]
+        if tops:
+            return self.ungroup_groups(tops)
+
         groups = [i for i in items if isinstance(i, Group) and i.parent]
         workpieces = [i for i in items if isinstance(i, WorkPiece)]
         children = [child for group in groups for child in group.children]

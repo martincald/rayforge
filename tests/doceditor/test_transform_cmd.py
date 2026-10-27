@@ -3,6 +3,7 @@ import math
 from unittest.mock import MagicMock, patch
 
 import pytest
+from raygeo.geo import Matrix
 
 from swiftcut.core.bed_bounds import inside
 from swiftcut.core.layer import Layer
@@ -996,3 +997,176 @@ async def test_a_nudge_stops_on_the_active_bed_after_a_switch(
     # the rebuild, not only for the tasks already running.
     assert await asyncio.to_thread(doc_editor.wait_until_settled_sync, 10)
     await asyncio.to_thread(task_mgr.wait_until_settled, 10000)
+
+
+# ── groups across layers ──────────────────────────────────────────
+
+
+@pytest.fixture
+def no_bed():
+    """No machine: positions are world ones and nothing is clamped."""
+    with patch("swiftcut.doceditor.transform_cmd.get_context") as m:
+        m.return_value.machine = None
+        yield
+
+
+def _across_layers(doc_editor, hide_b=False):
+    """A on the active layer and B on another (hidden with hide_b),
+    in one group."""
+    other = Layer(name="Other")
+    doc_editor.doc.add_child(other)
+    a = _piece(doc_editor, "A", (20, 10), (40, 30))
+    b = WorkPiece(name="B")
+    b.set_size(10, 30)
+    b.pos = (80, 20)
+    other.add_child(b)
+    if hide_b:
+        other.set_visible(False)
+    assert doc_editor.group.group_items([a, b]) is not None
+    return a, b
+
+
+def _centre(item):
+    return item.get_world_transform().transform_point((0.5, 0.5))
+
+
+def _one_undo_step_restores(doc_editor, items, before, steps):
+    history = doc_editor.history_manager
+    assert len(history.undo_stack) == steps + 1
+    history.undo()
+    for item, matrix in zip(items, before, strict=True):
+        assert item.matrix.is_close(matrix)
+
+
+def test_a_nudge_moves_the_whole_group(doc_editor, no_bed):
+    a, b = _across_layers(doc_editor)
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    TransformCmd(doc_editor).nudge_items([a], 5.0, -3.0)
+
+    assert a.pos == pytest.approx((45.0, 27.0))
+    assert b.pos == pytest.approx((85.0, 17.0))
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+def test_a_nudge_without_propagate_moves_the_item_alone(doc_editor, no_bed):
+    a, b = _across_layers(doc_editor)
+    before = b.matrix.copy()
+
+    TransformCmd(doc_editor).nudge_items([a], 5.0, -3.0, propagate=False)
+
+    assert a.pos == pytest.approx((45.0, 27.0))
+    assert b.matrix == before
+
+
+def test_a_group_nudge_stops_on_the_bed_edge_of_any_member(
+    doc_editor, bed_200x100
+):
+    a, b = _across_layers(doc_editor)
+
+    TransformCmd(doc_editor).nudge_items([a], 150.0, 0.0)
+
+    # B, on the right, reaches the edge first: 110 mm, not 150.
+    assert b.pos[0] + b.size[0] == pytest.approx(200.0)
+    assert a.pos == pytest.approx((150.0, 30.0))
+
+
+def test_a_typed_position_moves_the_group_by_the_items_delta(
+    doc_editor, no_bed
+):
+    a, b = _across_layers(doc_editor)
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    TransformCmd(doc_editor).set_position([a], 10.0, 50.0)
+
+    assert a.pos == pytest.approx((10.0, 50.0))
+    assert b.pos == pytest.approx((50.0, 40.0))
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+@pytest.mark.parametrize("method", ["set_angle", "set_angle_group"])
+def test_a_turn_turns_the_group_about_its_centre(doc_editor, no_bed, method):
+    a, b = _across_layers(doc_editor)
+    centre = TransformCmd.group_center_world([a, b])
+    turn = Matrix.rotation(90.0, center=centre)
+    expected_a = turn.transform_point(_centre(a))
+    expected_b = turn.transform_point(_centre(b))
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    getattr(TransformCmd(doc_editor), method)([a], 90.0)
+
+    assert a.angle == pytest.approx(90.0)
+    assert b.angle == pytest.approx(90.0)
+    assert _centre(a) == pytest.approx(expected_a)
+    assert _centre(b) == pytest.approx(expected_b)
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+def test_a_group_resize_scales_about_the_group_centre(doc_editor, no_bed):
+    a, b = _across_layers(doc_editor)
+    centre = TransformCmd.group_center_world([a, b])
+    width, height = TransformCmd.get_size_group([a, b])
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    TransformCmd(doc_editor).set_size_group([a], 2 * width, 2 * height)
+
+    assert TransformCmd.get_size_group([a, b]) == pytest.approx(
+        (2 * width, 2 * height)
+    )
+    assert TransformCmd.group_center_world([a, b]) == pytest.approx(centre)
+    assert b.size == pytest.approx((20.0, 60.0))
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+def test_an_items_resize_scales_its_group_about_the_group_centre(
+    doc_editor, no_bed
+):
+    a, b = _across_layers(doc_editor)
+    centre = TransformCmd.group_center_world([a, b])
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    TransformCmd(doc_editor).set_size([a], 40.0, 20.0)
+
+    assert a.size == pytest.approx((40.0, 20.0))
+    assert b.size == pytest.approx((20.0, 60.0))
+    assert TransformCmd.group_center_world([a, b]) == pytest.approx(centre)
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+def test_a_canvas_change_carries_a_hidden_member_along(doc_editor, no_bed):
+    a, b = _across_layers(doc_editor, hide_b=True)
+    move = Matrix.translation(7.0, 4.0) @ Matrix.rotation(
+        30.0, center=(10.0, 20.0)
+    )
+    old = a.matrix.copy()
+    world_b = b.get_world_transform()
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    # The canvas has no element for B: only A's change comes in.
+    TransformCmd(doc_editor).create_transform_transaction(
+        [(a, old, move @ old)]
+    )
+
+    assert a.matrix.is_close(move @ old)
+    assert b.get_world_transform().is_close(move @ world_b)
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+def test_a_canvas_change_without_propagate_leaves_the_group(
+    doc_editor, no_bed
+):
+    a, b = _across_layers(doc_editor, hide_b=True)
+    old = a.matrix.copy()
+    before = b.matrix.copy()
+
+    TransformCmd(doc_editor).create_transform_transaction(
+        [(a, old, Matrix.translation(7.0, 4.0) @ old)], propagate=False
+    )
+
+    assert b.matrix == before

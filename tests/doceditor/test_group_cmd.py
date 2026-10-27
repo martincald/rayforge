@@ -58,7 +58,7 @@ async def test_group_and_ungroup_preserves_transform(doc_editor: DocEditor):
     # Explicitly type hint the list to satisfy type checkers (List[Sub] is not
     # a subtype of List[Base]).
     items_to_group: list[DocItem] = [wp1, wp2]
-    doc_editor.group.group_items(layer, items_to_group)
+    doc_editor.group.combine_items(layer, items_to_group)
     await doc_editor.wait_until_settled(timeout=2)
 
     # Assert that grouping worked as expected
@@ -204,7 +204,7 @@ async def test_group_then_ungroup_round_trip(doc_editor: DocEditor):
     entries = len(history.undo_stack)
     done: list[Group] = []
 
-    doc_editor.group.group_items(layer, [a, b], on_done=done.append)
+    doc_editor.group.combine_items(layer, [a, b], on_done=done.append)
     await doc_editor.wait_until_settled(timeout=2)
 
     (group,) = done
@@ -235,7 +235,7 @@ async def test_ungroup_of_a_group_and_a_shape_is_one_undo_step(
     a = _square_workpiece(layer, 0, 0)
     b = _square_workpiece(layer, 20, 0)
     done: list[Group] = []
-    doc_editor.group.group_items(layer, [a, b], on_done=done.append)
+    doc_editor.group.combine_items(layer, [a, b], on_done=done.append)
     await doc_editor.wait_until_settled(timeout=2)
     (group,) = done
     shape = _multi_path_workpiece(

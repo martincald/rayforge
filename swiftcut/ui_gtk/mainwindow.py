@@ -16,6 +16,7 @@ from ..context import get_context
 from ..core.asset_registry import asset_type_registry
 from ..core.group import Group
 from ..core.item import DocItem
+from ..core.item_group import ItemGroup
 from ..core.registration import call_registration_hooks
 from ..core.undo import Command, HistoryManager
 from ..core.workpiece import WorkPiece
@@ -1825,17 +1826,28 @@ class MainWindow(Adw.ApplicationWindow):
         am.get_action("clear").set_enabled(doc.has_workpiece())
 
         # Update sensitivity for Grouping actions: Group takes two or
-        # more items sharing one parent; Ungroup a Group, or a shape of
-        # several paths (counted, not joined at their ends: this runs on
-        # every change, and joining thousands of lines takes long).
+        # more units (an item, or the outermost group it is in); Combine
+        # two or more items sharing one parent, none in a group; Ungroup
+        # a group, else a Group container or a shape of several paths
+        # (counted, not joined at their ends: this runs on every change,
+        # and joining thousands of lines takes long).
         selected_items = self.surface.get_selected_items()
-        can_group = (
+        item_groups = doc.item_groups
+        units = item_groups.units(selected_items)
+        am.get_action("group").set_enabled(len(units) >= 2)
+
+        can_combine = (
             len(selected_items) >= 2
             and len({item.parent for item in selected_items}) == 1
+            and not any(
+                item_groups.parent_of(item.uid) for item in selected_items
+            )
         )
-        am.get_action("group").set_enabled(can_group)
+        am.get_action("combine").set_enabled(can_combine)
 
         can_ungroup = any(
+            isinstance(unit, ItemGroup) for unit in units
+        ) or any(
             isinstance(item, Group)
             or (
                 isinstance(item, WorkPiece)

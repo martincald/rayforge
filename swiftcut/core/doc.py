@@ -15,6 +15,7 @@ from ..core.undo import HistoryManager
 from .asset import IAsset, UnknownAsset
 from .color import COLOR_PALETTE
 from .item import DocItem
+from .item_group import ItemGroups
 from .layer import Layer
 from .source_asset import SourceAsset
 from .workpiece import WorkPiece
@@ -46,6 +47,8 @@ class Doc(DocItem):
         self.history_manager.batch = self.batch
         self.active_layer_changed = Signal()
         self.job_assembly_invalidated = Signal()
+        # Groups of items across layers (see item_group).
+        self.item_groups = ItemGroups(self)
 
         # Asset Management
         self.assets: dict[str, IAsset] = {}
@@ -158,6 +161,7 @@ class Doc(DocItem):
         doc.set_children(children)
         doc._active_layer_index = data.get("active_layer_index", 0)
         doc.last_machine = data.get("last_machine")
+        doc.item_groups.load(data.get("item_groups", []))
 
         return doc
 
@@ -188,6 +192,10 @@ class Doc(DocItem):
         # Only once run, so a document never run saves as before.
         if self.last_machine is not None:
             data["last_machine"] = self.last_machine
+        # Only once grouped, likewise.
+        item_groups = self.item_groups.to_list()
+        if item_groups:
+            data["item_groups"] = item_groups
         return data
 
     def add_asset(

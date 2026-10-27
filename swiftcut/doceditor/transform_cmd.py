@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,7 @@ class TransformCmd:
     def create_transform_transaction(
         self,
         changes: list[tuple[DocItem, Matrix, Matrix]],
+        propagate: bool = True,
     ):
         """
         Creates a single, undoable transaction for a list of matrix changes
@@ -34,10 +36,14 @@ class TransformCmd:
         Args:
             changes: A list of tuples, where each tuple contains
                 (DocItem_to_change, old_matrix, new_matrix).
+            propagate: Also moves the other items of the changed items'
+                groups (see _followers).
         """
         history_manager = self._editor.history_manager
         if not changes:
             return
+        if propagate:
+            changes = changes + self._followers(changes)
 
         logger.debug(
             f"Creating transform transaction for {len(changes)} item(s)."
@@ -55,6 +61,71 @@ class TransformCmd:
                     old_value=old_matrix,
                 )
                 t.execute(cmd)
+
+    def _followers(
+        self, changes: list[tuple[DocItem, Matrix, Matrix]]
+    ) -> list[tuple[DocItem, Matrix, Matrix]]:
+        """
+        The changes that carry the changed items' groups along: every
+        other item of each outermost group a changed item is in (one on
+        a hidden layer, say) gets the world move of the first changed
+        item of that group.
+        """
+        groups = self._editor.doc.item_groups
+        changed = {item.uid for item, _old, _new in changes}
+        done: set[str] = set()
+        followers = []
+        for item, old_matrix, new_matrix in changes:
+            top = groups.top_of(item.uid)
+            if top is None or top.uid in done:
+                continue
+            done.add(top.uid)
+            parent_world = (
+                item.parent.get_world_transform()
+                if item.parent
+                else Matrix.identity()
+            )
+            delta = (parent_world @ new_matrix) @ (
+                parent_world @ old_matrix
+            ).invert()
+            for member in groups.items_of(top):
+                if member.uid in changed:
+                    continue
+                new_world = delta @ member.get_world_transform()
+                followers.append(
+                    (
+                        member,
+                        member.matrix.copy(),
+                        self._world_to_local_matrix(member, new_world),
+                    )
+                )
+        return followers
+
+    def _closure(self, items: list[DocItem], propagate: bool) -> list[DocItem]:
+        """The items, then (with propagate) the rest of their groups'
+        items: what moves when they move."""
+        if not propagate:
+            return items
+        return self._editor.doc.item_groups.closure(items)
+
+    def _with_groups(
+        self, items: list[DocItem], propagate: bool
+    ) -> Iterator[tuple[DocItem, list[DocItem]]]:
+        """Each item with what moves with it, the item first: its
+        group's items (with propagate), or the item alone. An item that
+        moves with an earlier one's group is left out, so the first of
+        a group's items in the list is its anchor."""
+        groups = self._editor.doc.item_groups
+        done: set[str] = set()
+        for item in items:
+            if item.uid in done:
+                continue
+            if propagate and groups.top_of(item.uid) is not None:
+                moved = groups.closure([item])
+            else:
+                moved = [item]
+            done.update(member.uid for member in moved)
+            yield item, moved
 
     @staticmethod
     def group_bbox_world(
@@ -161,6 +232,7 @@ class TransformCmd:
         items: list[DocItem],
         dx_mm: float,
         dy_mm: float,
+        propagate: bool = True,
     ):
         """
         Moves a list of DocItems by a given delta in world coordinates,
@@ -170,10 +242,12 @@ class TransformCmd:
             items: The list of DocItems to move.
             dx_mm: The distance to move along the X-axis in millimeters.
             dy_mm: The distance to move along the Y-axis in millimeters.
+            propagate: Also moves the rest of the items' groups.
         """
         history_manager = self._editor.history_manager
         if not items:
             return
+        items = self._closure(items, propagate)
         dx_mm, dy_mm = self.bed_move(items, dx_mm, dy_mm)
         if dx_mm == 0.0 and dy_mm == 0.0:
             return
@@ -271,7 +345,13 @@ class TransformCmd:
                 )
                 t.execute(cmd)
 
-    def set_position(self, items: list[DocItem], x: float, y: float):
+    def set_position(
+        self,
+        items: list[DocItem],
+        x: float,
+        y: float,
+        propagate: bool = True,
+    ):
         """
         Sets the position of **every** item individually using machine
         coordinates.  Each item's top-left corner is moved to the world
@@ -282,6 +362,9 @@ class TransformCmd:
             items: List of items to move.
             x: Target X position in machine coordinates.
             y: Target Y position in machine coordinates.
+            propagate: The rest of an item's group moves by the item's
+                delta; of several items of one group, the first one is
+                placed.
         """
         history_manager = self._editor.history_manager
         if not items:
@@ -290,9 +373,7 @@ class TransformCmd:
         machine = get_context().machine
 
         with history_manager.transaction(_("Move item(s)")) as t:
-            for item in items:
-                old_matrix = item.matrix.copy()
-
+            for item, moved in self._with_groups(items, propagate):
                 # Convert target Machine Coordinate to World Coordinate
                 # We need the item's size for correct conversion if origin is
                 # right/top.
@@ -308,32 +389,41 @@ class TransformCmd:
 
                 current_pos = item.pos
                 dx, dy = self.bed_move(
-                    [item], x_world - current_pos[0], y_world - current_pos[1]
+                    moved, x_world - current_pos[0], y_world - current_pos[1]
                 )
 
-                # Apply translation to matrix
-                new_matrix = Matrix.translation(dx, dy) @ old_matrix
+                for member in moved:
+                    old_matrix = member.matrix.copy()
+                    # Apply translation to matrix
+                    new_matrix = Matrix.translation(dx, dy) @ old_matrix
 
-                if old_matrix.is_close(new_matrix):
-                    continue
+                    if old_matrix.is_close(new_matrix):
+                        continue
 
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
+                    cmd = ChangePropertyCommand(
+                        target=member,
+                        property_name="matrix",
+                        new_value=new_matrix,
+                        old_value=old_matrix,
+                    )
+                    t.execute(cmd)
 
-    def set_angle(self, items: list[DocItem], angle: float):
+    def set_angle(
+        self, items: list[DocItem], angle: float, propagate: bool = True
+    ):
         """Sets **every** item's local rotation angle to *angle* degrees,
-        preserving each item's own world-space center."""
+        preserving each item's own world-space center. With propagate,
+        an item in a group turns its group about the group's centre
+        instead (see set_angle_group, the item the anchor)."""
         history_manager = self._editor.history_manager
         if not items:
             return
 
         with history_manager.transaction(_("Change item angle")) as t:
-            for item in items:
+            for item, moved in self._with_groups(items, propagate):
+                if len(moved) > 1:
+                    self._turn_group(t, moved, angle)
+                    continue
                 old_matrix = item.matrix.copy()
                 item.angle = angle
                 self._into_bed([item], [old_matrix])
@@ -350,15 +440,22 @@ class TransformCmd:
                 )
                 t.execute(cmd)
 
-    def set_shear(self, items: list[DocItem], shear: float):
+    def set_shear(
+        self, items: list[DocItem], shear: float, propagate: bool = True
+    ):
         """Sets **every** item's local shear angle to *shear* degrees,
-        preserving each item's own world-space center."""
+        preserving each item's own world-space center. With propagate,
+        an item in a group shears its group instead (see
+        set_shear_group, the item the anchor)."""
         history_manager = self._editor.history_manager
         if not items:
             return
 
         with history_manager.transaction(_("Change item shear")) as t:
-            for item in items:
+            for item, moved in self._with_groups(items, propagate):
+                if len(moved) > 1:
+                    self._shear_group(t, moved, shear)
+                    continue
                 old_matrix = item.matrix.copy()
                 item.shear = shear
                 self._into_bed([item], [old_matrix])
@@ -382,6 +479,7 @@ class TransformCmd:
         height: float | None = None,
         fixed_ratio: bool = False,
         sizes: list[tuple[float, float]] | None = None,
+        propagate: bool = True,
     ):
         """Sets the size of each item individually.
 
@@ -393,6 +491,10 @@ class TransformCmd:
                          aspect ratio if one dimension is None.
             sizes: A list of ``(width, height)`` tuples, one per item.
                    If provided this takes precedence over ``width``/``height``.
+            propagate: An item in a group scales its group about the
+                group's centre instead, by the factors that give the
+                item its new size (along the world axes, as
+                set_size_group does).
         """
         history_manager = self._editor.history_manager
         if not items:
@@ -422,17 +524,28 @@ class TransformCmd:
 
             return final_w, final_h
 
+        targets = dict(zip(items, sizes)) if sizes is not None else {}
         with history_manager.transaction(_("Resize item(s)")) as t:
-            for i, item in enumerate(items):
-                old_matrix = item.matrix.copy()
-
+            for item, moved in self._with_groups(items, propagate):
                 if sizes is not None:
-                    new_width, new_height = sizes[i]
+                    new_width, new_height = targets[item]
                 else:
                     new_width, new_height = _calculate_missing_dim(
                         item, width, height
                     )
 
+                if len(moved) > 1:
+                    # A side too thin to measure keeps its length.
+                    cur_w, cur_h = item.size
+                    self._scale_group(
+                        t,
+                        moved,
+                        new_width / cur_w if cur_w > 1e-9 else 1.0,
+                        new_height / cur_h if cur_h > 1e-9 else 1.0,
+                    )
+                    continue
+
+                old_matrix = item.matrix.copy()
                 # The set_size method will rebuild the matrix,
                 # preserving pos/angle
                 item.set_size(new_width, new_height)
@@ -450,7 +563,13 @@ class TransformCmd:
                 )
                 t.execute(cmd)
 
-    def set_position_group(self, items: list[DocItem], x: float, y: float):
+    def set_position_group(
+        self,
+        items: list[DocItem],
+        x: float,
+        y: float,
+        propagate: bool = True,
+    ):
         """Moves the selection so its **combined bounding box** reaches
         the given target in machine coordinates.
 
@@ -458,11 +577,13 @@ class TransformCmd:
         bounding-box corner that the machine origin refers to (top-left,
         top-right, bottom-left or bottom-right).  The conversion uses the
         combined size of all items, so the whole group lands exactly at
-        the target.
+        the target. With propagate the selection is its items' closure
+        (see _closure).
         """
         history_manager = self._editor.history_manager
         if not items:
             return
+        items = self._closure(items, propagate)
 
         bbox_min_x, bbox_min_y, bbox_max_x, bbox_max_y = self.group_bbox_world(
             items
@@ -503,18 +624,28 @@ class TransformCmd:
                 )
                 t.execute(cmd)
 
-    def set_angle_group(self, items: list[DocItem], angle: float):
+    def set_angle_group(
+        self, items: list[DocItem], angle: float, propagate: bool = True
+    ):
         """Rotates the whole selection so the anchor item (``items[0]``)
         reaches *angle* degrees.
 
         The rotation is applied as a world-space delta around the group's
         bounding-box centre.  Every item receives the same delta, so
         relative positions are preserved and the group rotates as a whole.
+        With propagate the selection is its items' closure (see
+        _closure).
         """
         history_manager = self._editor.history_manager
         if not items:
             return
+        items = self._closure(items, propagate)
 
+        with history_manager.transaction(_("Change item angle")) as t:
+            self._turn_group(t, items, angle)
+
+    def _turn_group(self, t, items: list[DocItem], angle: float):
+        """set_angle_group's turn, recorded in the transaction *t*."""
         anchor = items[0]
         delta_angle = angle - anchor.angle
         if abs(delta_angle - round(delta_angle / 360.0) * 360.0) < 1e-9:
@@ -522,24 +653,23 @@ class TransformCmd:
 
         center = self.group_center_world(items)
 
-        with history_manager.transaction(_("Change item angle")) as t:
-            old_matrices = [item.matrix.copy() for item in items]
-            for item in items:
-                world_transform_old = item.get_world_transform()
-                rotate_transform_world = Matrix.rotation(
-                    delta_angle, center=center
-                )
-                world_transform_new = (
-                    rotate_transform_world @ world_transform_old
-                )
+        old_matrices = [item.matrix.copy() for item in items]
+        for item in items:
+            world_transform_old = item.get_world_transform()
+            rotate_transform_world = Matrix.rotation(
+                delta_angle, center=center
+            )
+            world_transform_new = rotate_transform_world @ world_transform_old
 
-                item.matrix = self._world_to_local_matrix(
-                    item, world_transform_new
-                )
-            self._into_bed(items, old_matrices)
-            self._record(t, items, old_matrices)
+            item.matrix = self._world_to_local_matrix(
+                item, world_transform_new
+            )
+        self._into_bed(items, old_matrices)
+        self._record(t, items, old_matrices)
 
-    def set_shear_group(self, items: list[DocItem], shear: float):
+    def set_shear_group(
+        self, items: list[DocItem], shear: float, propagate: bool = True
+    ):
         """Shears the whole selection so the anchor item (``items[0]``)
         reaches *shear* degrees.
 
@@ -549,24 +679,30 @@ class TransformCmd:
         translation, so composing world-space deltas would accumulate
         decomposed drift between pieces and prevent reset from converging.
         Every item's local shear changes by the same delta so they all
-        display the same value.
+        display the same value. With propagate the selection is its
+        items' closure (see _closure).
         """
         history_manager = self._editor.history_manager
         if not items:
             return
+        items = self._closure(items, propagate)
 
+        with history_manager.transaction(_("Change item shear")) as t:
+            self._shear_group(t, items, shear)
+
+    def _shear_group(self, t, items: list[DocItem], shear: float):
+        """set_shear_group's shear, recorded in the transaction *t*."""
         anchor = items[0]
         delta_deg = shear - anchor.shear
         if abs(delta_deg) < 1e-9:
             return
 
-        with history_manager.transaction(_("Change item shear")) as t:
-            old_matrices = [item.matrix.copy() for item in items]
-            for item in items:
-                target_shear = item.shear + delta_deg
-                item.shear = target_shear
-            self._into_bed(items, old_matrices)
-            self._record(t, items, old_matrices)
+        old_matrices = [item.matrix.copy() for item in items]
+        for item in items:
+            target_shear = item.shear + delta_deg
+            item.shear = target_shear
+        self._into_bed(items, old_matrices)
+        self._record(t, items, old_matrices)
 
     def set_size_group(
         self,
@@ -574,6 +710,7 @@ class TransformCmd:
         width: float | None = None,
         height: float | None = None,
         fixed_ratio: bool = False,
+        propagate: bool = True,
     ):
         """Resizes the whole selection uniformly so the combined bounding
         box reaches the given *width* and *height* in world space.
@@ -583,11 +720,13 @@ class TransformCmd:
 
         When only one dimension is provided and *fixed_ratio* is ``True``,
         the missing dimension is calculated from the group's current aspect
-        ratio.
+        ratio. With propagate the selection is its items' closure (see
+        _closure).
         """
         history_manager = self._editor.history_manager
         if not items:
             return
+        items = self._closure(items, propagate)
 
         bbox_min_x, bbox_min_y, bbox_max_x, bbox_max_y = self.group_bbox_world(
             items
@@ -618,27 +757,31 @@ class TransformCmd:
         scale_x = final_w / cur_w
         scale_y = final_h / cur_h
 
-        center = (
-            (bbox_min_x + bbox_max_x) / 2.0,
-            (bbox_min_y + bbox_max_y) / 2.0,
-        )
-
         with history_manager.transaction(_("Resize item(s)")) as t:
-            old_matrices = [item.matrix.copy() for item in items]
-            for item in items:
-                world_old = item.get_world_transform()
+            self._scale_group(t, items, scale_x, scale_y)
 
-                # Build world-space scale around centre
-                scale_matrix = (
-                    Matrix.identity()
-                    .post_translate(center[0], center[1])
-                    .post_scale(scale_x, scale_y)
-                    .post_translate(-center[0], -center[1])
-                )
-                world_new = scale_matrix @ world_old
-                item.matrix = self._world_to_local_matrix(item, world_new)
-            self._into_bed(items, old_matrices)
-            self._record(t, items, old_matrices)
+    def _scale_group(
+        self, t, items: list[DocItem], scale_x: float, scale_y: float
+    ):
+        """Scales the items about their combined box's centre along the
+        world axes, recorded in the transaction *t*."""
+        center = self.group_center_world(items)
+
+        old_matrices = [item.matrix.copy() for item in items]
+        for item in items:
+            world_old = item.get_world_transform()
+
+            # Build world-space scale around centre
+            scale_matrix = (
+                Matrix.identity()
+                .post_translate(center[0], center[1])
+                .post_scale(scale_x, scale_y)
+                .post_translate(-center[0], -center[1])
+            )
+            world_new = scale_matrix @ world_old
+            item.matrix = self._world_to_local_matrix(item, world_new)
+        self._into_bed(items, old_matrices)
+        self._record(t, items, old_matrices)
 
     def reset_position(self, items: list[DocItem]):
         """Moves every item's top-left corner to machine (0, 0)."""

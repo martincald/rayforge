@@ -109,6 +109,7 @@ def _populate_standard_items(menu: Gio.Menu):
 
     menu.append_item(Gio.MenuItem.new(_("Group"), "win.group"))
     menu.append_item(Gio.MenuItem.new(_("Ungroup"), "win.ungroup"))
+    menu.append_item(Gio.MenuItem.new(_("Combine"), "win.combine"))
 
     # Separator
     menu.append_section(None, Gio.Menu.new())

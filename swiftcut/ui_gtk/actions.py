@@ -406,6 +406,7 @@ class ActionManager:
         # Grouping Actions
         self._add_action("group", self.on_group_action)
         self._add_action("ungroup", self.on_ungroup_action)
+        self._add_action("combine", self.on_combine_action)
 
         # Split Action
         self._add_action("split", self.on_split_action)
@@ -806,7 +807,25 @@ class ActionManager:
         self.win.surface.select_items(items)
 
     def on_group_action(self, action, param):
-        """Handler for the 'group' action."""
+        """
+        Handler for the 'group' action: groups the selected items as
+        they are, each on its own layer, and selects the group's items.
+        """
+        group = self.editor.group.group_items(
+            self.win.surface.get_selected_top_level_items()
+        )
+        if group is None:
+            return
+        # Those on hidden layers are not selectable: they stay out.
+        self.win.surface.select_items(
+            self.editor.doc.item_groups.items_of(group)
+        )
+
+    def on_combine_action(self, action, param):
+        """
+        Handler for the 'combine' action: puts two or more items of one
+        layer in a Group container there.
+        """
         selected_elements = self.win.surface.get_selected_elements()
         if len(selected_elements) < 2:
             return
@@ -823,7 +842,7 @@ class ActionManager:
         ):
             return
 
-        self.editor.group.group_items(
+        self.editor.group.combine_items(
             parent_layer,
             items_to_group,
             on_done=lambda group: self.win.surface.select_items([group]),

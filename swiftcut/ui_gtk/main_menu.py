@@ -126,6 +126,7 @@ class MainMenu(Gio.Menu):
         grouping_group = Gio.Menu()
         grouping_group.append(_("Group"), "win.group")
         grouping_group.append(_("Ungroup"), "win.ungroup")
+        grouping_group.append(_("Combine"), "win.combine")
         arrange_menu.append_section(None, grouping_group)
 
         layer_group = Gio.Menu()

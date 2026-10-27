@@ -1,8 +1,10 @@
 # flake8: noqa: E402
 """
-Group takes two or more shapes on one layer; Ungroup dissolves a group
-or splits a shape into its paths. Both are on the right-click menu of a
-shape, also when the click lands on one of its paths.
+Group ties two or more shapes, on any layers, into a group; Combine
+puts two or more shapes of one layer in a Group container; Ungroup
+dissolves a group, else a container, or splits a shape into its paths.
+All three are on the right-click menu of a shape, also when the click
+lands on one of its paths.
 """
 
 import os
@@ -28,6 +30,7 @@ from gi.repository import Adw, Gio, GLib
 from raygeo.geo import Geometry
 
 from swiftcut.core.group import Group
+from swiftcut.core.item_group import ItemGroup
 from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.shared.tasker import task_mgr
@@ -140,7 +143,7 @@ def _screen(win, wp, local_x, local_y):
 
 
 class TestThePathMenu:
-    def test_has_group_ungroup_and_add_tab(self, win):
+    def test_has_group_ungroup_combine_and_add_tab(self, win):
         wp = _shape(win.doc_editor.doc.active_layer, (50, 50))
 
         with patch.object(context_menu, "_show_popover") as show:
@@ -150,8 +153,19 @@ class TestThePathMenu:
 
         actions = _actions(show.call_args.args[2])
         assert actions[0] == "win.tab-add"
-        for action in ("win.group", "win.ungroup", "win.move-to-layer"):
+        for action in (
+            "win.group",
+            "win.ungroup",
+            "win.combine",
+            "win.move-to-layer",
+        ):
             assert action in actions
+        at = actions.index("win.group")
+        assert actions[at : at + 3] == [
+            "win.group",
+            "win.ungroup",
+            "win.combine",
+        ]
 
     def test_a_right_click_on_a_path_selects_its_shape(self, win):
         layer = win.doc_editor.doc.active_layer
@@ -192,7 +206,7 @@ class TestThePathMenu:
 
 
 class TestSensitivity:
-    def test_group_needs_two_shapes_on_one_layer(self, win):
+    def test_combine_needs_two_shapes_on_one_layer(self, win):
         doc = win.doc_editor.doc
         layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
         a = _shape(doc.active_layer, (10, 10))
@@ -201,15 +215,45 @@ class TestSensitivity:
 
         win.surface.select_items([a])
         _iterate()
-        assert not _enabled(win, "group")
+        assert not _enabled(win, "combine")
 
         win.surface.select_items([a, b])
         _iterate()
-        assert _enabled(win, "group")
+        assert _enabled(win, "combine")
 
         win.surface.select_items([a, on_b])
         _iterate()
+        assert not _enabled(win, "combine")
+
+    def test_group_takes_shapes_on_different_layers_combine_does_not(
+        self, win
+    ):
+        doc = win.doc_editor.doc
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        a = _shape(doc.active_layer, (10, 10))
+        on_b = _shape(layer_b, (90, 10))
+
+        win.surface.select_items([a])
+        _iterate()
         assert not _enabled(win, "group")
+
+        win.surface.select_items([a, on_b])
+        _iterate()
+        assert _enabled(win, "group")
+        assert not _enabled(win, "combine")
+
+    def test_shapes_in_a_group_cannot_be_combined(self, win):
+        layer = win.doc_editor.doc.active_layer
+        a = _shape(layer, (10, 10))
+        b = _shape(layer, (50, 10))
+        win.doc_editor.group.group_items([a, b])
+        win.surface.select_items([a, b])
+        _iterate()
+
+        assert not _enabled(win, "combine")
+        # One unit: nothing more to group, but it ungroups.
+        assert not _enabled(win, "group")
+        assert _enabled(win, "ungroup")
 
     def test_ungroup_needs_a_group_or_a_shape_of_several_paths(self, win):
         layer = win.doc_editor.doc.active_layer
@@ -226,14 +270,14 @@ class TestSensitivity:
 
 
 class TestTheActions:
-    def test_group_selects_the_new_group(self, win):
+    def test_combine_selects_the_new_container(self, win):
         layer = win.doc_editor.doc.active_layer
         a = _shape(layer, (10, 10))
         b = _shape(layer, (50, 10))
         win.surface.select_items([a, b])
         _iterate()
 
-        win.activate_action("win.group", None)
+        win.activate_action("win.combine", None)
         _iterate_until_idle()
 
         (group,) = layer.get_content_items()
@@ -260,3 +304,67 @@ class TestTheActions:
         history.undo()
         _iterate()
         assert layer.get_content_items() == [wp]
+
+
+class TestGroupAcrossLayers:
+    def test_group_ties_shapes_on_two_layers_and_selects_them(self, win):
+        doc = win.doc_editor.doc
+        layer_a = doc.active_layer
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        a = _shape(layer_a, (10, 10))
+        on_b = _shape(layer_b, (50, 10))
+        win.surface.select_items([a, on_b])
+        _iterate()
+        history = win.doc_editor.history_manager
+        entries = len(history.undo_stack)
+
+        win.activate_action("win.group", None)
+        _iterate()
+
+        (group,) = doc.item_groups
+        assert isinstance(group, ItemGroup)
+        assert set(doc.item_groups.items_of(group)) == {a, on_b}
+        # Each stays on its own layer, as it was.
+        assert layer_a.get_content_items() == [a]
+        assert layer_b.get_content_items() == [on_b]
+        assert set(win.surface.get_selected_items()) == {a, on_b}
+        assert len(history.undo_stack) == entries + 1
+        assert _enabled(win, "ungroup")
+        assert not _enabled(win, "combine")
+
+    def test_group_leaves_a_hidden_layers_shape_unselected(self, win):
+        doc = win.doc_editor.doc
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        a = _shape(doc.active_layer, (10, 10))
+        b = _shape(doc.active_layer, (30, 10))
+        on_b = _shape(layer_b, (50, 10))
+        win.doc_editor.group.group_items([a, on_b])
+        layer_b.set_visible(False)
+        win.surface.select_items([a, b])
+        _iterate()
+
+        win.activate_action("win.group", None)
+        _iterate()
+
+        outer = doc.item_groups.top_of(on_b.uid)
+        assert outer is not None
+        assert set(doc.item_groups.items_of(outer)) == {a, b, on_b}
+        assert set(win.surface.get_selected_items()) == {a, b}
+
+    def test_ungroup_dissolves_the_group_and_selects_its_shapes(self, win):
+        doc = win.doc_editor.doc
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        a = _shape(doc.active_layer, (10, 10))
+        on_b = _shape(layer_b, (50, 10), paths=2)
+        win.surface.select_items([a, on_b])
+        _iterate()
+        win.activate_action("win.group", None)
+        _iterate()
+
+        win.activate_action("win.ungroup", None)
+        _iterate()
+
+        assert list(doc.item_groups) == []
+        # Not split: the group is all Ungroup took apart.
+        assert layer_b.get_content_items() == [on_b]
+        assert set(win.surface.get_selected_items()) == {a, on_b}
