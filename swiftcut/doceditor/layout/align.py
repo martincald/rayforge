@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from raygeo.geo import Matrix
@@ -30,7 +30,7 @@ class BboxAlignLeftStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             delta_x = target_x - wp_bbox[0]
@@ -46,8 +46,9 @@ class BboxAlignCenterStrategy(LayoutStrategy):
         self,
         items: Sequence[DocItem],
         surface_width_mm: float | None = None,
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
     ):
-        super().__init__(items)
+        super().__init__(items, followers)
         self.surface_width_mm = surface_width_mm
 
     def calculate_deltas(
@@ -64,7 +65,7 @@ class BboxAlignCenterStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             wp_center_x = wp_bbox[0] + (wp_bbox[2] - wp_bbox[0]) / 2
@@ -81,8 +82,9 @@ class BboxAlignRightStrategy(LayoutStrategy):
         self,
         items: Sequence[DocItem],
         surface_width_mm: float | None = None,
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
     ):
-        super().__init__(items)
+        super().__init__(items, followers)
         self.surface_width_mm = surface_width_mm
 
     def calculate_deltas(
@@ -99,7 +101,7 @@ class BboxAlignRightStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             delta_x = target_x - wp_bbox[2]
@@ -115,8 +117,9 @@ class BboxAlignTopStrategy(LayoutStrategy):
         self,
         items: Sequence[DocItem],
         surface_height_mm: float | None = None,
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
     ):
-        super().__init__(items)
+        super().__init__(items, followers)
         self.surface_height_mm = surface_height_mm
 
     def calculate_deltas(
@@ -133,7 +136,7 @@ class BboxAlignTopStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             delta_y = target_y - wp_bbox[3]
@@ -149,8 +152,9 @@ class BboxAlignMiddleStrategy(LayoutStrategy):
         self,
         items: Sequence[DocItem],
         surface_height_mm: float | None = None,
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
     ):
-        super().__init__(items)
+        super().__init__(items, followers)
         self.surface_height_mm = surface_height_mm
 
     def calculate_deltas(
@@ -167,7 +171,7 @@ class BboxAlignMiddleStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             wp_center_y = wp_bbox[1] + (wp_bbox[3] - wp_bbox[1]) / 2
@@ -194,7 +198,7 @@ class BboxAlignBottomStrategy(LayoutStrategy):
 
         deltas = {}
         for wp in self.items:
-            wp_bbox = self._get_item_world_bbox(wp)
+            wp_bbox = self._unit_bbox(wp)
             if not wp_bbox:
                 continue
             delta_y = target_y - wp_bbox[1]
@@ -212,8 +216,9 @@ class PositionAtStrategy(LayoutStrategy):
         self,
         items: Sequence[DocItem],
         position_mm: tuple[float, float],
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
     ):
-        super().__init__(items)
+        super().__init__(items, followers)
         self.position_mm = position_mm
 
     def calculate_deltas(

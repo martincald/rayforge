@@ -893,56 +893,68 @@ class ActionManager:
             self.editor.stock.convert_to_stock(wp)
 
     # --- Alignment Action Handlers ---
+    # Each moves a group as one object, except in edit-in-group mode.
 
     def on_align_h_center(self, action, param):
         items = list(self.win.surface.get_selected_items())
         w, _ = self.win.surface.get_size_mm()
-        self.editor.layout.center_horizontally(items, w)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.center_horizontally(items, w, propagate=propagate)
 
     def on_align_v_center(self, action, param):
         items = list(self.win.surface.get_selected_items())
         _, h = self.win.surface.get_size_mm()
-        self.editor.layout.center_vertically(items, h)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.center_vertically(items, h, propagate=propagate)
 
     def on_align_left(self, action, param):
         items = list(self.win.surface.get_selected_items())
-        self.editor.layout.align_left(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.align_left(items, propagate=propagate)
 
     def on_align_right(self, action, param):
         items = list(self.win.surface.get_selected_items())
         w, _ = self.win.surface.get_size_mm()
-        self.editor.layout.align_right(items, w)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.align_right(items, w, propagate=propagate)
 
     def on_align_top(self, action, param):
         items = list(self.win.surface.get_selected_items())
         _, h = self.win.surface.get_size_mm()
-        self.editor.layout.align_top(items, h)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.align_top(items, h, propagate=propagate)
 
     def on_align_bottom(self, action, param):
         items = list(self.win.surface.get_selected_items())
-        self.editor.layout.align_bottom(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.align_bottom(items, propagate=propagate)
 
     def on_spread_h(self, action, param):
         items = list(self.win.surface.get_selected_items())
-        self.editor.layout.spread_horizontally(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.spread_horizontally(items, propagate=propagate)
 
     def on_spread_v(self, action, param):
         items = list(self.win.surface.get_selected_items())
-        self.editor.layout.spread_vertically(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.spread_vertically(items, propagate=propagate)
 
     def on_layout_pixel_perfect(self, action, param):
         items = list(self.win.surface.get_selected_items())
-        self.editor.layout.layout_pixel_perfect(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.layout.layout_pixel_perfect(items, propagate=propagate)
 
     def on_flip_horizontal(self, action, param):
         """Handler for the 'flip-horizontal' action."""
         items = list(self.win.surface.get_selected_items())
-        self.editor.transform.flip_horizontal(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.transform.flip_horizontal(items, propagate=propagate)
 
     def on_flip_vertical(self, action, param):
         """Handler for the 'flip-vertical' action."""
         items = list(self.win.surface.get_selected_items())
-        self.editor.transform.flip_vertical(items)
+        propagate = self.win.surface.editing_group is None
+        self.editor.transform.flip_vertical(items, propagate=propagate)
 
     def on_array_grid(self, action, param):
         """Handler for the 'array-grid' action: opens the grid dialog."""

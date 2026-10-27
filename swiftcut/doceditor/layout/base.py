@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from blinker import Signal
@@ -26,9 +26,19 @@ class LayoutStrategy(ABC):
 
     Each strategy calculates the necessary transformation deltas to apply
     to a list of DocItems to achieve a specific layout.
+
+    An item may have followers: the other items of its group, which
+    move with it by its delta. The item and its followers are one
+    object to the layout, measured by their combined box (see
+    _unit_bbox).
     """
 
-    def __init__(self, items: Sequence[DocItem], **kwargs):
+    def __init__(
+        self,
+        items: Sequence[DocItem],
+        followers: Mapping[DocItem, Sequence[DocItem]] | None = None,
+        **kwargs,
+    ):
         if not items:
             raise ValueError("LayoutStrategy requires at least one item.")
         # Filter out items that are descendants of other items in the selection
@@ -38,6 +48,9 @@ class LayoutStrategy(ABC):
             raise ValueError(
                 "LayoutStrategy requires at least one item after filtering."
             )
+        self.followers: dict[DocItem, list[DocItem]] = {
+            item: list(moved) for item, moved in (followers or {}).items()
+        }
         self.error_reported = Signal()
 
     @staticmethod
@@ -104,6 +117,25 @@ class LayoutStrategy(ABC):
         max_y = max(p[1] for p in all_corners)
         return (min_x, min_y, max_x, max_y)
 
+    def _unit_bbox(self, item: DocItem) -> Rect | None:
+        """
+        The world bounding box of an item and its followers together,
+        (min_x, min_y, max_x, max_y).
+        """
+        boxes = [
+            box
+            for member in (item, *self.followers.get(item, ()))
+            if (box := self._get_item_world_bbox(member))
+        ]
+        if not boxes:
+            return None
+        return (
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        )
+
     def _get_selection_world_bbox(
         self,
     ) -> Rect | None:
@@ -115,7 +147,7 @@ class LayoutStrategy(ABC):
         overall_min_y, overall_max_y = float("inf"), float("-inf")
 
         for item in self.items:
-            bbox = self._get_item_world_bbox(item)
+            bbox = self._unit_bbox(item)
             if not bbox:
                 continue
             min_x, min_y, max_x, max_y = bbox

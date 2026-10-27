@@ -1170,3 +1170,56 @@ def test_a_canvas_change_without_propagate_leaves_the_group(
     )
 
     assert b.matrix == before
+
+
+@pytest.mark.parametrize(
+    "method, mirror",
+    [
+        ("flip_horizontal", Matrix.flip_horizontal),
+        ("flip_vertical", Matrix.flip_vertical),
+    ],
+)
+@pytest.mark.parametrize("hide_b", [False, True])
+def test_a_flip_mirrors_the_group_about_its_centre(
+    doc_editor, no_bed, method, mirror, hide_b
+):
+    a, b = _across_layers(doc_editor, hide_b=hide_b)
+    b.pos = (80, 40)
+    # The group's box is 40..90 x 30..70: A's centre (50, 35) is left
+    # of and below the group's centre, B's (85, 55) right of and above.
+    centre = TransformCmd.group_center_world([a, b])
+    assert centre == pytest.approx((65.0, 50.0))
+    expected = [
+        mirror(center=centre) @ item.get_world_transform() for item in (a, b)
+    ]
+    before = [a.matrix.copy(), b.matrix.copy()]
+    steps = len(doc_editor.history_manager.undo_stack)
+
+    # B on a hidden layer is not selected; it follows all the same.
+    getattr(TransformCmd(doc_editor), method)([a] if hide_b else [a, b])
+
+    for item, world in zip((a, b), expected):
+        assert item.get_world_transform().is_close(world)
+        assert item.get_world_transform().is_flipped()
+    if method == "flip_horizontal":
+        assert _centre(a) == pytest.approx((80.0, 35.0))
+        assert _centre(b) == pytest.approx((45.0, 55.0))
+    else:
+        assert _centre(a) == pytest.approx((50.0, 65.0))
+        assert _centre(b) == pytest.approx((85.0, 45.0))
+    _one_undo_step_restores(doc_editor, [a, b], before, steps)
+
+
+@pytest.mark.parametrize("method", ["flip_horizontal", "flip_vertical"])
+def test_a_flip_without_propagate_mirrors_each_about_its_own_centre(
+    doc_editor, no_bed, method
+):
+    a, b = _across_layers(doc_editor)
+    centre_a, centre_b = _centre(a), _centre(b)
+
+    getattr(TransformCmd(doc_editor), method)([a, b], propagate=False)
+
+    assert _centre(a) == pytest.approx(centre_a)
+    assert _centre(b) == pytest.approx(centre_b)
+    assert a.get_world_transform().is_flipped()
+    assert b.get_world_transform().is_flipped()

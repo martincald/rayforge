@@ -446,3 +446,41 @@ class TestEditingInsideAGroup:
         win.surface.leave_group_edit()
         _iterate()
         assert provider.propagate
+
+    def _flip_and_align_left(self, win, editing):
+        """Flips and aligns left the group's item a, inside the group
+        when editing; returns on_b, the x of a's and on_b's centres,
+        and on_b's matrix before."""
+        group, a, on_b = self._grouped(win)
+        if editing:
+            win.surface.enter_group_edit(group)
+        win.surface.select_items([a])
+        _iterate()
+        b_matrix = on_b.matrix.copy()
+
+        win.activate_action("win.flip-horizontal", None)
+        win.activate_action("win.align-left", None)
+        _iterate_until_idle()
+
+        assert a.get_world_transform().is_flipped()
+        x_a, x_b = (
+            wp.get_world_transform().transform_point((0.5, 0.5))[0]
+            for wp in (a, on_b)
+        )
+        return on_b, x_a, x_b, b_matrix
+
+    def test_flip_and_align_move_the_whole_group(self, win):
+        on_b, x_a, x_b, _ = self._flip_and_align_left(win, editing=False)
+
+        # Mirrored about the group's centre (x = 40), then the group's
+        # box (10..70) to the left edge.
+        assert x_a == pytest.approx(50.0)
+        assert x_b == pytest.approx(10.0)
+        assert on_b.get_world_transform().is_flipped()
+
+    def test_flip_and_align_inside_the_group_move_the_item_alone(self, win):
+        on_b, x_a, _, b_matrix = self._flip_and_align_left(win, editing=True)
+
+        # About its own centre, then to the left edge, alone.
+        assert x_a == pytest.approx(10.0)
+        assert on_b.matrix == b_matrix

@@ -36,7 +36,9 @@ class NestLayoutStrategy(LayoutStrategy):
     least (see shared.placement.arrange); mirroring is kept. Their
     outlines keep 1 mm from each other and from every other workpiece
     in the document, and their frames stay inside the boundary. Items
-    that fit nowhere stay where they are, with a notice.
+    that fit nowhere stay where they are, with a notice. An item and
+    its followers are laid out as one piece, framed by their combined
+    box.
 
     The document is read when the strategy is built, which must be on
     the main thread; arrange_args hands that to arrange, which may run
@@ -69,13 +71,19 @@ class NestLayoutStrategy(LayoutStrategy):
             x0, y0, x1, y1 = stock_box
             self._boundary = (x0, y0, x1 - x0, y1 - y0)
 
-        # Pieces name their item by its index in self.items.
+        # Pieces name their item by its index in self.items. An item
+        # and its followers are one piece, moved by the item's delta.
         self._pieces: list[Piece] = []
         self._parents: dict[DocItem, Matrix] = {}
         moving: set[DocItem] = set()
         for n, item in enumerate(self.items):
-            outlines = item_world_polygons(item)
-            box = self._get_item_world_bbox(item)
+            unit = (item, *self.followers.get(item, ()))
+            outlines = [
+                polygon
+                for member in unit
+                for polygon in item_world_polygons(member)
+            ]
+            box = self._unit_bbox(item)
             if not outlines or not box:
                 continue
             x0, y0, x1, y1 = box
@@ -86,8 +94,9 @@ class NestLayoutStrategy(LayoutStrategy):
                 if item.parent
                 else Matrix.identity()
             )
-            moving.add(item)
-            moving.update(item.get_descendants(of_type=WorkPiece))
+            for member in unit:
+                moving.add(member)
+                moving.update(member.get_descendants(of_type=WorkPiece))
         self._obstacles = [
             polygon
             for workpiece in doc.all_workpieces
@@ -100,20 +109,22 @@ class NestLayoutStrategy(LayoutStrategy):
 
     def changed(self) -> bool:
         """
-        Whether, since the strategy read the document, an item left it,
-        or an item, workpiece or stock in it moved, came or went.
+        Whether, since the strategy read the document, an item or a
+        follower left it, or an item, follower, workpiece or stock in
+        it moved, came or went.
         """
         return self._positions() != self._read
 
     def _positions(self) -> list[tuple[DocItem, Doc | None, Matrix]]:
         """
-        The items, workpieces and stocks, each with its document and
-        world transform.
+        The items, followers, workpieces and stocks, each with its
+        document and world transform.
         """
         return [
             (item, item.doc, item.get_world_transform())
             for item in (
                 *self.items,
+                *(f for moved in self.followers.values() for f in moved),
                 *self.doc.all_workpieces,
                 *self.doc.stock_items,
             )
@@ -154,7 +165,8 @@ class NestLayoutStrategy(LayoutStrategy):
         From arrange's result, the delta for each item that fits: a
         turn about its frame's centre and a move, in world space,
         expressed in its parent's space (layout_cmd applies it as
-        `delta @ item.matrix`). Items that do not fit get a notice.
+        `delta @ item.matrix`, and moves the item's followers by it).
+        Items that do not fit get a notice.
         """
         if not placements:
             return {}

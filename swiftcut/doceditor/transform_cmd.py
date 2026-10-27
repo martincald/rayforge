@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
@@ -271,79 +271,69 @@ class TransformCmd:
                 )
                 t.execute(cmd)
 
-    def flip_horizontal(self, items: list[DocItem]):
+    def flip_horizontal(self, items: list[DocItem], propagate: bool = True):
         """
         Flips a list of DocItems horizontally (mirrors along the Y-axis),
         creating a single undoable transaction for the operation.
 
         Args:
             items: The list of DocItems to flip horizontally.
+            propagate: Flips each item's group as one, about the
+                group's centre (see _flip).
         """
-        history_manager = self._editor.history_manager
-        if not items:
-            return
+        self._flip(
+            items, Matrix.flip_horizontal, _("Flip Horizontal"), propagate
+        )
 
-        with history_manager.transaction(_("Flip Horizontal")) as t:
-            for item in items:
-                old_matrix = item.matrix.copy()
-                # Get the world center of the item before transformation
-                # This ensures we always flip around the same point
-                world_center = item.get_world_transform().transform_point(
-                    (0.5, 0.5)
-                )
-
-                # Create a flip matrix (scale by -1 on X-axis) around world
-                # center
-                flip_matrix = Matrix.flip_horizontal(center=world_center)
-                new_matrix = flip_matrix @ old_matrix
-
-                if old_matrix.is_close(new_matrix):
-                    continue
-
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
-
-    def flip_vertical(self, items: list[DocItem]):
+    def flip_vertical(self, items: list[DocItem], propagate: bool = True):
         """
         Flips a list of DocItems vertically (mirrors along the X-axis),
         creating a single undoable transaction for the operation.
 
         Args:
             items: The list of DocItems to flip vertically.
+            propagate: Flips each item's group as one, about the
+                group's centre (see _flip).
+        """
+        self._flip(items, Matrix.flip_vertical, _("Flip Vertical"), propagate)
+
+    def _flip(
+        self,
+        items: list[DocItem],
+        flip: Callable[..., Matrix],
+        name: str,
+        propagate: bool,
+    ):
+        """
+        Mirrors each item about its own centre in the world, as one undo
+        step named *name*; *flip* makes the mirror matrix about a centre.
+        With propagate, an item in a group and the rest of the group's
+        items (see _with_groups) are mirrored as one, about the centre
+        of their combined box.
         """
         history_manager = self._editor.history_manager
         if not items:
             return
 
-        with history_manager.transaction(_("Flip Vertical")) as t:
-            for item in items:
-                old_matrix = item.matrix.copy()
-                # Get the world center of the item before transformation
-                # This ensures we always flip around the same point
-                world_center = item.get_world_transform().transform_point(
-                    (0.5, 0.5)
-                )
+        with history_manager.transaction(name) as t:
+            for _item, moved in self._with_groups(items, propagate):
+                flip_matrix = flip(center=self.group_center_world(moved))
+                for member in moved:
+                    old_matrix = member.matrix.copy()
+                    new_matrix = self._world_to_local_matrix(
+                        member, flip_matrix @ member.get_world_transform()
+                    )
 
-                # Create a flip matrix (scale by -1 on Y-axis) around world
-                # center
-                flip_matrix = Matrix.flip_vertical(center=world_center)
-                new_matrix = flip_matrix @ old_matrix
+                    if old_matrix.is_close(new_matrix):
+                        continue
 
-                if old_matrix.is_close(new_matrix):
-                    continue
-
-                cmd = ChangePropertyCommand(
-                    target=item,
-                    property_name="matrix",
-                    new_value=new_matrix,
-                    old_value=old_matrix,
-                )
-                t.execute(cmd)
+                    cmd = ChangePropertyCommand(
+                        target=member,
+                        property_name="matrix",
+                        new_value=new_matrix,
+                        old_value=old_matrix,
+                    )
+                    t.execute(cmd)
 
     def set_position(
         self,

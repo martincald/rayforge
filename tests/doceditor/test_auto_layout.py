@@ -5,7 +5,8 @@ inside the boundary, the benchmarks end at least as compact as the
 old layout left them (but the one in E3_GAP), every other workpiece is
 kept clear of and left where it is, and one undo puts everything
 back. It is worked out in a worker process, with progress; cancelled,
-or if the document changes meanwhile, it changes nothing.
+or if the document changes meanwhile, it changes nothing. A group is
+one piece, its items on other layers too.
 """
 
 import asyncio
@@ -18,6 +19,7 @@ from raygeo.geo import Matrix
 
 from swiftcut.core.doc import Doc
 from swiftcut.core.group import Group
+from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.layout import NestLayoutStrategy, nest
 from swiftcut.doceditor.layout_cmd import AUTO_LAYOUT_KEY
@@ -407,3 +409,64 @@ async def test_obstacle_moved_mid_run_moves_nothing(
     assert [workpiece.matrix for workpiece in workpieces] == before
     assert len(history.undo_stack) == entries
     assert notices == [CHANGED]
+
+
+def _grouped_across_layers(editor):
+    """
+    A 100 x 60 outline on the active layer and a 30 x 20 artwork inside
+    it on another layer, in one group, the artwork over the bed centre
+    (700, 450): an obstacle there would keep the outline away from it.
+    """
+    outline = WorkPiece(name="Outline")
+    outline.set_size(100, 60)
+    outline.pos = (620, 400)
+    editor.doc.active_layer.add_child(outline)
+    engrave = Layer(name="Engrave")
+    editor.doc.add_child(engrave)
+    artwork = WorkPiece(name="Artwork")
+    artwork.set_size(30, 20)
+    artwork.pos = (680, 440)
+    engrave.add_child(artwork)
+    assert editor.group.group_items([outline, artwork]) is not None
+    return outline, artwork
+
+
+def _offset(item, other) -> np.ndarray:
+    """Where other is in item's space: unchanged while both move as
+    one."""
+    return (
+        item.get_world_transform().invert() @ other.get_world_transform()
+    ).to_numpy()
+
+
+@pytest.mark.asyncio
+async def test_a_group_is_laid_out_as_one_piece(doc_editor, task_mgr, bed):
+    outline, artwork = _grouped_across_layers(doc_editor)
+    offset = _offset(outline, artwork)
+
+    await _auto_layout(doc_editor, task_mgr, [outline, artwork])
+
+    # The only piece goes to the bed centre, over where the artwork was.
+    x, y, w, h = bench.frame_box(outline)
+    assert (x + w / 2, y + h / 2) == pytest.approx((700, 450))
+    assert np.allclose(_offset(outline, artwork), offset, atol=1e-9)
+
+
+@pytest.mark.asyncio
+async def test_nothing_selected_brings_groups_on_other_layers_along(
+    doc_editor, task_mgr, bed
+):
+    outline, artwork = _grouped_across_layers(doc_editor)
+    offset = _offset(outline, artwork)
+    before = [outline.matrix.copy(), artwork.matrix.copy()]
+    history = doc_editor.history_manager
+    entries = len(history.undo_stack)
+
+    await _auto_layout(doc_editor, task_mgr, [])
+
+    x, y, w, h = bench.frame_box(outline)
+    assert (x + w / 2, y + h / 2) == pytest.approx((700, 450))
+    assert np.allclose(_offset(outline, artwork), offset, atol=1e-9)
+    assert len(history.undo_stack) == entries + 1
+    history.undo()
+    assert [outline.matrix, artwork.matrix] == before

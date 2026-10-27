@@ -4,6 +4,8 @@ import logging
 from gettext import gettext as _
 from typing import TYPE_CHECKING
 
+from raygeo.geo import Matrix
+
 from ..core.item import DocItem
 from ..core.undo import ChangePropertyCommand
 from ..shared.placement import arrange
@@ -22,8 +24,6 @@ from .layout import (
 )
 
 if TYPE_CHECKING:
-    from raygeo.geo import Matrix
-
     from ..shared.tasker.manager import TaskManager
     from ..shared.tasker.task import Task
     from .editor import DocEditor
@@ -35,7 +35,11 @@ AUTO_LAYOUT_KEY = "auto-layout"
 
 
 class LayoutCmd:
-    """Handles alignment, distribution, and automatic layout of items."""
+    """
+    Handles alignment, distribution, and automatic layout of items.
+    With propagate (the default), each moves a group as one object
+    (see _units).
+    """
 
     def __init__(self, editor: DocEditor, task_manager: TaskManager):
         self._editor = editor
@@ -94,7 +98,9 @@ class LayoutCmd:
 
             # The result of the task is the dictionary of transformation
             # deltas.
-            self._apply_deltas(task.result(), transaction_name)
+            self._apply_deltas(
+                task.result(), transaction_name, strategy.followers
+            )
 
         # This simple coroutine just runs the calculation in the background
         # and returns the result.
@@ -112,15 +118,59 @@ class LayoutCmd:
             key=f"layout-{transaction_name}",  # key to prevent concurrent runs
         )
 
+    def _units(
+        self, items: list[DocItem], propagate: bool
+    ) -> tuple[list[DocItem], dict[DocItem, list[DocItem]]]:
+        """
+        The items a layout places, and the followers of each. With
+        propagate, an item's outermost group is one object: the first
+        of the items in it stands for it, and the group's other items,
+        on hidden layers too, are its followers. Without, the items
+        alone.
+        """
+        if not propagate:
+            return items, {}
+        groups = self._editor.doc.item_groups
+        placed: list[DocItem] = []
+        followers: dict[DocItem, list[DocItem]] = {}
+        seen: set[str] = set()
+        for item in items:
+            top = groups.top_of(item.uid)
+            if top is None:
+                placed.append(item)
+            elif top.uid not in seen:
+                seen.add(top.uid)
+                placed.append(item)
+                followers[item] = [
+                    member
+                    for member in groups.items_of(top)
+                    if member is not item
+                ]
+        return placed, followers
+
     def _apply_deltas(
-        self, deltas: dict[DocItem, Matrix], transaction_name: str
+        self,
+        deltas: dict[DocItem, Matrix],
+        transaction_name: str,
+        followers: dict[DocItem, list[DocItem]],
     ):
-        """Applies the deltas (`delta @ item.matrix`) as one undo step."""
+        """
+        Applies the deltas (`delta @ item.matrix`) as one undo step. An
+        item's followers make the same move in the world.
+        """
         if not deltas:
             return  # No changes to apply
 
+        changes = list(deltas.items())
+        for item, delta_matrix in deltas.items():
+            parent = _parent_world(item)
+            world = parent @ delta_matrix @ parent.invert()
+            for follower in followers.get(item, ()):
+                own = _parent_world(follower)
+                changes.append((follower, own.invert() @ world @ own))
+
         with self._editor.history_manager.transaction(transaction_name) as t:
-            for item, delta_matrix in deltas.items():
+            for item, delta_matrix in changes:
                 old_matrix = item.matrix.copy()
                 new_matrix = delta_matrix @ old_matrix
                 cmd = ChangePropertyCommand(
@@ -132,111 +182,148 @@ class LayoutCmd:
                 t.execute(cmd)
 
     def center_horizontally(
-        self, selected_items: list[DocItem], surface_width_mm: float
+        self,
+        selected_items: list[DocItem],
+        surface_width_mm: float,
+        propagate: bool = True,
     ):
         """Action handler for centering selected items horizontally."""
         if not selected_items:
             return
 
+        items, followers = self._units(selected_items, propagate)
         strategy = BboxAlignCenterStrategy(
-            selected_items, surface_width_mm=surface_width_mm
+            items, surface_width_mm=surface_width_mm, followers=followers
         )
         self.execute_layout(strategy, _("Center Horizontally"))
 
     def center_vertically(
-        self, selected_items: list[DocItem], surface_height_mm: float
+        self,
+        selected_items: list[DocItem],
+        surface_height_mm: float,
+        propagate: bool = True,
     ):
         """Action handler for centering selected items vertically."""
         if not selected_items:
             return
 
+        items, followers = self._units(selected_items, propagate)
         strategy = BboxAlignMiddleStrategy(
-            selected_items, surface_height_mm=surface_height_mm
+            items, surface_height_mm=surface_height_mm, followers=followers
         )
         self.execute_layout(strategy, _("Center Vertically"))
 
-    def align_left(self, selected_items: list[DocItem]):
+    def align_left(
+        self, selected_items: list[DocItem], propagate: bool = True
+    ):
         """Action handler for aligning selected items to the left."""
         if not selected_items:
             return
 
-        strategy = BboxAlignLeftStrategy(selected_items)
+        items, followers = self._units(selected_items, propagate)
+        strategy = BboxAlignLeftStrategy(items, followers=followers)
         self.execute_layout(strategy, _("Align Left"))
 
     def align_right(
-        self, selected_items: list[DocItem], surface_width_mm: float
+        self,
+        selected_items: list[DocItem],
+        surface_width_mm: float,
+        propagate: bool = True,
     ):
         """Action handler for aligning selected items to the right."""
         if not selected_items:
             return
 
+        items, followers = self._units(selected_items, propagate)
         strategy = BboxAlignRightStrategy(
-            selected_items, surface_width_mm=surface_width_mm
+            items, surface_width_mm=surface_width_mm, followers=followers
         )
         self.execute_layout(strategy, _("Align Right"))
 
     def align_top(
-        self, selected_items: list[DocItem], surface_height_mm: float
+        self,
+        selected_items: list[DocItem],
+        surface_height_mm: float,
+        propagate: bool = True,
     ):
         """Action handler for aligning selected items to the top."""
         if not selected_items:
             return
 
+        items, followers = self._units(selected_items, propagate)
         strategy = BboxAlignTopStrategy(
-            selected_items, surface_height_mm=surface_height_mm
+            items, surface_height_mm=surface_height_mm, followers=followers
         )
         self.execute_layout(strategy, _("Align Top"))
 
-    def align_bottom(self, selected_items: list[DocItem]):
+    def align_bottom(
+        self, selected_items: list[DocItem], propagate: bool = True
+    ):
         """Action handler for aligning selected items to the bottom."""
         if not selected_items:
             return
 
-        strategy = BboxAlignBottomStrategy(selected_items)
+        items, followers = self._units(selected_items, propagate)
+        strategy = BboxAlignBottomStrategy(items, followers=followers)
         self.execute_layout(strategy, _("Align Bottom"))
 
-    def spread_horizontally(self, selected_items: list[DocItem]):
+    def spread_horizontally(
+        self, selected_items: list[DocItem], propagate: bool = True
+    ):
         """Action handler for spreading selected items horizontally."""
         if not selected_items:
             return
 
-        strategy = SpreadHorizontallyStrategy(selected_items)
+        items, followers = self._units(selected_items, propagate)
+        strategy = SpreadHorizontallyStrategy(items, followers=followers)
         self.execute_layout(strategy, _("Spread Horizontally"))
 
-    def spread_vertically(self, selected_items: list[DocItem]):
+    def spread_vertically(
+        self, selected_items: list[DocItem], propagate: bool = True
+    ):
         """Action handler for spreading selected items vertically."""
         if not selected_items:
             return
 
-        strategy = SpreadVerticallyStrategy(selected_items)
+        items, followers = self._units(selected_items, propagate)
+        strategy = SpreadVerticallyStrategy(items, followers=followers)
         self.execute_layout(strategy, _("Spread Vertically"))
 
     def position_at(
-        self, selected_items: list[DocItem], position_mm: tuple[float, float]
+        self,
+        selected_items: list[DocItem],
+        position_mm: tuple[float, float],
+        propagate: bool = True,
     ):
         """Action handler for positioning the selection's center at a point."""
         if not selected_items:
             return
 
+        items, followers = self._units(selected_items, propagate)
         strategy = PositionAtStrategy(
-            items=selected_items, position_mm=position_mm
+            items=items, position_mm=position_mm, followers=followers
         )
         self.execute_layout(strategy, _("Position at Point"))
 
-    def layout_pixel_perfect(self, selected_items: list[DocItem]):
+    def layout_pixel_perfect(
+        self, selected_items: list[DocItem], propagate: bool = True
+    ):
         """
         Action handler for Auto Layout on true outlines. The document
         is read here; the layout is worked out in a worker process, as
         the task AUTO_LAYOUT_KEY (with progress, and cancelling it
         changes nothing), and applied on the main thread as one undo
-        step, unless the document changed meanwhile.
+        step, unless the document changed meanwhile. With nothing
+        selected it lays out the active layer's items, and with
+        propagate their groups, members on other layers too.
         """
         items_to_layout = self.get_items_to_layout(selected_items)
 
         if not items_to_layout:
             return
 
-        strategy = NestLayoutStrategy(items=items_to_layout)
+        items, followers = self._units(items_to_layout, propagate)
+        strategy = NestLayoutStrategy(items=items, followers=followers)
         args = strategy.arrange_args()
         if args is None:
             self._editor.notification_requested.send(
@@ -269,7 +356,7 @@ class LayoutCmd:
                 return
             strategy.error_reported.connect(on_error_reported)
             deltas = strategy.deltas(task.result())
-            self._apply_deltas(deltas, _("Auto Layout"))
+            self._apply_deltas(deltas, _("Auto Layout"), strategy.followers)
 
         self._task_manager.run_process(
             arrange, *args, key=AUTO_LAYOUT_KEY, when_done=when_done
@@ -304,3 +391,10 @@ class LayoutCmd:
                     items_to_layout.append(item)
 
         return items_to_layout
+
+
+def _parent_world(item: DocItem) -> Matrix:
+    """The world transform of an item's parent (identity if none)."""
+    return (
+        item.parent.get_world_transform() if item.parent else Matrix.identity()
+    )

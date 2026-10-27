@@ -22,7 +22,7 @@ class SpreadHorizontallyStrategy(LayoutStrategy):
 
         wps_with_bboxes = []
         for wp in self.items:
-            bbox = self._get_item_world_bbox(wp)
+            bbox = self._unit_bbox(wp)
             if bbox:
                 wps_with_bboxes.append((wp, bbox))
 
@@ -67,7 +67,7 @@ class SpreadVerticallyStrategy(LayoutStrategy):
 
         wps_with_bboxes = []
         for wp in self.items:
-            bbox = self._get_item_world_bbox(wp)
+            bbox = self._unit_bbox(wp)
             if bbox:
                 wps_with_bboxes.append((wp, bbox))
 
