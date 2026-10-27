@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, cast
 import cairo
 from blinker import Signal
 from gi.repository import Gdk, GLib, Gtk
+from raygeo.geo import Matrix
 
 from ...context import get_context
 from ...core.bed_bounds import bed_rect
 from ...core.group import Group
 from ...core.item import DocItem
+from ...core.item_group import ItemGroup
 from ...core.layer import Layer
 from ...core.stock import StockItem
 from ...core.stock_asset import StockAsset
@@ -22,6 +24,9 @@ from ...machine.models.machine_panel import MachinePanel
 from ...pipeline.artifact import RenderContext
 from ...shared.units.formatter import get_preferred_unit_factor
 from ..canvas import CanvasElement, WorldSurface
+from ..canvas.multiselect import MultiSelectionGroup
+from ..canvas.overlays import render_selection_frame
+from ..canvas.region import ElementRegion
 from ..shared.keyboard import SNAP_OVERRIDE_MASK, is_primary_modifier
 from . import context_menu
 from .elements.axis_extent_frame import (
@@ -97,6 +102,9 @@ class WorkSurface(WorldSurface):
         self._cam_visible = cam_visible
         self._transform_start_states: dict[CanvasElement, dict] = {}
         self.right_click_context: dict | None = None
+        # The group edited inside, in edit-in-group mode (see
+        # enter_group_edit).
+        self._editing_group: ItemGroup | None = None
 
         # Click-to-zero mode state
         self._click_to_zero_mode = False
@@ -439,9 +447,7 @@ class WorkSurface(WorldSurface):
         if self.right_click_context:
             context_type = self.right_click_context["type"]
             if context_type in ("item", "geometry") and not hit_elem.selected:
-                self.unselect_all()
-                hit_elem.selected = True
-                self._finalize_selection_state()
+                self.select_items([hit_elem.data])
             if context_type == "item":
                 context_menu.show_item_context_menu(
                     self, gesture, item=hit_elem.data
@@ -463,6 +469,7 @@ class WorkSurface(WorldSurface):
             f"History changed, synchronizing selection state. Sender: {sender}"
         )
         self._sync_selection_state()
+        self._check_group_edit()
         self.queue_draw()
 
     def _on_pipeline_data_stale(self, sender, **kwargs):
@@ -489,9 +496,11 @@ class WorkSurface(WorldSurface):
     def _on_doc_objects_changed(self, sender, **kwargs):
         """Objects came, went or moved: the snap lines rebuild."""
         self.invalidate_snap_candidates()
+        self._check_group_edit()
 
     def _on_document_changed(self, sender, **kwargs):
         """Reconnect all doc signals when a new doc is loaded."""
+        self._editing_group = None
         self._disconnect_doc_signals()
         self._connect_doc_signals()
         self._update_pipeline_view_context()
@@ -657,9 +666,10 @@ class WorkSurface(WorldSurface):
                 )
 
         # Step 3: Delegate to the command handler to create the transaction.
+        # Inside a group, what moved moves alone.
         if changes_to_commit:
             self.editor.transform.create_transform_transaction(
-                changes_to_commit
+                changes_to_commit, propagate=self._editing_group is None
             )
 
         self._transform_start_states.clear()
@@ -714,6 +724,13 @@ class WorkSurface(WorldSurface):
             f"Button press: n_press={n_press}, pos=({x:.2f}, {y:.2f})"
         )
 
+        if (
+            gesture.get_button() == Gdk.BUTTON_PRIMARY
+            and not self._space_pressed
+            and not self.edit_context
+        ):
+            n_press = self._press_group_edit(n_press, x, y)
+
         # The base class method handles hit testing and updates
         # self.edit_context
         super().on_button_press(gesture, n_press, x, y)
@@ -754,6 +771,34 @@ class WorkSurface(WorldSurface):
             # create an undoable command to change it.
             if active_layer and active_layer != self.doc.active_layer:
                 self.editor.layer.set_active_layer(active_layer)
+
+    def _press_group_edit(self, n_press: int, x: float, y: float) -> int:
+        """
+        Enters or leaves edit-in-group mode on a primary press, before
+        the press selects: one on empty canvas or on an item outside the
+        edited group leaves it; a double-click on an item in a group
+        enters the group (see _unit_of) and counts as a single click in
+        it. Returns the press count left to handle.
+        """
+        self._update_hover_state(*self._get_world_coords(x, y))
+        if self._hovered_region not in (
+            ElementRegion.NONE,
+            ElementRegion.BODY,
+        ):
+            return n_press
+        hit = self._hovered_elem
+        item = hit.data if hit else None
+        if self._editing_group is not None and (
+            hit is None
+            or (isinstance(item, DocItem) and not self._in_edited_group(item))
+        ):
+            self.leave_group_edit()
+        if n_press == 2 and isinstance(item, DocItem):
+            unit = self._unit_of(item)
+            if isinstance(unit, ItemGroup):
+                self.enter_group_edit(unit)
+                return 1
+        return n_press
 
     def on_motion(self, gesture: Gtk.Gesture, x: float, y: float) -> None:
         if self._click_to_zero_mode or self._test_cut_pick_mode:
@@ -1577,15 +1622,26 @@ class WorkSurface(WorldSurface):
         if super().on_key_pressed(controller, keyval, keycode, state):
             return True
 
+        # Escape leaves the group edited inside, selecting all of it.
+        if keyval == Gdk.KEY_Escape and self._editing_group is not None:
+            items = self.doc.item_groups.items_of(self._editing_group)
+            self.leave_group_edit()
+            self.select_items(items)
+            return True
+
         is_primary = is_primary_modifier(state)
         is_shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+        # Inside a group, what moves moves alone.
+        propagate = self._editing_group is None
 
         # Handle moving workpiece to another layer
         if is_primary and (
             keyval == Gdk.KEY_Page_Up or keyval == Gdk.KEY_Page_Down
         ):
             direction = -1 if keyval == Gdk.KEY_Page_Up else 1
-            self.editor.layer.move_selected_to_adjacent_layer(self, direction)
+            self.editor.layer.move_selected_to_adjacent_layer(
+                self, direction, propagate
+            )
             return True
 
         # Handle clipboard and duplication
@@ -1638,7 +1694,9 @@ class WorkSurface(WorldSurface):
             if not is_primary and not state & SNAP_OVERRIDE_MASK:
                 move_x, move_y = self.snap_nudge(move_x, move_y)
             self.transform_initiated.send(self)
-            self.editor.transform.nudge_items(selected_items, move_x, move_y)
+            self.editor.transform.nudge_items(
+                selected_items, move_x, move_y, propagate
+            )
             return True
 
         return False
@@ -1758,6 +1816,7 @@ class WorkSurface(WorldSurface):
         """
         if self.edit_context and self.edit_context.handle_edit_select_all():
             return
+        self.leave_group_edit()
         for elem in self.root.get_all_children_recursive():
             if isinstance(elem.data, DocItem) and elem.selectable:
                 elem.selected = True
@@ -1767,17 +1826,138 @@ class WorkSurface(WorldSurface):
     def select_items(self, items_to_select: Sequence[DocItem]):
         """
         Clears the current selection and selects the canvas elements
-        corresponding to the given list of DocItem objects.
+        corresponding to the given list of DocItem objects, each with
+        its unit (see _selection_units). An item outside the edited
+        group leaves edit-in-group mode first.
         """
+        if self._editing_group is not None and not all(
+            self._in_edited_group(item) for item in items_to_select
+        ):
+            self.leave_group_edit()
         self.unselect_all()
         uids_to_select = {item.uid for item in items_to_select}
 
-        for elem in self.root.get_all_children_recursive():
+        chosen = {
+            elem
+            for elem in self.root.get_all_children_recursive()
             if (
                 isinstance(elem.data, DocItem)
                 and elem.data.uid in uids_to_select
                 and elem.selectable
-            ):
-                elem.selected = True
+            )
+        }
+        for elem in self._selection_units(chosen):
+            elem.selected = True
 
         self._finalize_selection_state()
+
+    @property
+    def editing_group(self) -> ItemGroup | None:
+        """The group edited inside; None outside edit-in-group mode."""
+        return self._editing_group
+
+    def enter_group_edit(self, group: ItemGroup):
+        """
+        Enters edit-in-group mode for group, with nothing selected: a
+        click selects one of its items, or a group in it, without the
+        rest, and what moves then moves alone.
+        """
+        self._editing_group = group
+        self.root.unselect_all()
+        self._finalize_selection_state()
+
+    def leave_group_edit(self):
+        """
+        Leaves edit-in-group mode; what is selected is selected again
+        with its whole unit.
+        """
+        if self._editing_group is None:
+            return
+        self._editing_group = None
+        self.select_items(self.get_selected_items())
+
+    def _check_group_edit(self):
+        """
+        Leaves edit-in-group mode once its group is gone from the
+        document or none of its items is on a visible layer.
+        """
+        group = self._editing_group
+        if group is None:
+            return
+        groups = self.doc.item_groups
+        if groups.get(group.uid) is not group or not any(
+            isinstance(item.parent, Layer) and item.parent.visible
+            for item in groups.items_of(group)
+        ):
+            self.leave_group_edit()
+
+    def _unit_of(self, item: DocItem) -> DocItem | ItemGroup:
+        """
+        What selecting item selects: the outermost group it is in or,
+        in edit-in-group mode, the one it is in one level below the
+        edited group; the item itself when it is in neither.
+        """
+        groups = self.doc.item_groups
+        unit: DocItem | ItemGroup = item
+        parent = groups.parent_of(item.uid)
+        while parent is not None and parent is not self._editing_group:
+            unit = parent
+            parent = groups.parent_of(parent.uid)
+        return unit
+
+    def _in_edited_group(self, item: DocItem) -> bool:
+        """Whether item is in the edited group, at any depth."""
+        groups = self.doc.item_groups
+        return (
+            self._editing_group is not None
+            and groups.parent_of(self._unit_of(item).uid)
+            is self._editing_group
+        )
+
+    def _selection_units(
+        self, elements: set[CanvasElement]
+    ) -> set[CanvasElement]:
+        """
+        The elements with the rest of their units (see _unit_of): every
+        selectable element, so on a visible layer, of the same unit.
+        """
+        units = {
+            self._unit_of(elem.data)
+            for elem in elements
+            if isinstance(elem.data, DocItem)
+        }
+        if not any(isinstance(unit, ItemGroup) for unit in units):
+            return elements
+        return elements | {
+            elem
+            for elem in self.root.get_all_children_recursive()
+            if elem.selectable
+            and isinstance(elem.data, DocItem)
+            and self._unit_of(elem.data) in units
+        }
+
+    def _render_overlays(self, ctx: cairo.Context):
+        """
+        In edit-in-group mode, first draws the edited group's box, around
+        its items on visible layers, as a dashed frame.
+        """
+        if self._editing_group is not None:
+            uids = {
+                item.uid
+                for item in self.doc.item_groups.items_of(self._editing_group)
+            }
+            members = [
+                elem
+                for elem in self.root.get_all_children_recursive()
+                if elem.selectable
+                and isinstance(elem.data, DocItem)
+                and elem.data.uid in uids
+            ]
+            if members:
+                box = MultiSelectionGroup(members, self)
+                render_selection_frame(
+                    ctx,
+                    box,
+                    self.view_transform @ Matrix.translation(box.x, box.y),
+                )
+        super()._render_overlays(ctx)

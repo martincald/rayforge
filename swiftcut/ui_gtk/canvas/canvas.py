@@ -718,9 +718,12 @@ class Canvas(Gtk.DrawingArea):
                     if not hit.selected:
                         self.root.unselect_all()
                         selection_changed = True
-                        hit.selected = True
+                        for elem in self._selection_units({hit}):
+                            elem.selected = True
                 else:  # Shift-click toggles selection.
-                    hit.selected = not hit.selected
+                    selected = not hit.selected
+                    for elem in self._selection_units({hit}):
+                        elem.selected = selected
                     selection_changed = True
                 # A standard click always updates the active element.
                 self._active_elem = hit
@@ -1731,25 +1734,32 @@ class Canvas(Gtk.DrawingArea):
         )
         selection_changed = False
 
-        for elem in self.root.get_all_children_recursive():
-            if elem.selectable:
-                x, y, w, h = elem.get_world_bounding_box()
-                elem_corners = [
-                    (x, y),
-                    (x + w, y),
-                    (x + w, y + h),
-                    (x, y + h),
-                ]
-                intersects = obb_intersects_aabb(elem_corners, selection_rect)
-
-                # Select if it intersects or was part of the initial set
-                # in shift-mode.
-                newly_selected = (
-                    elem in self._selection_before_framing
-                ) or intersects
-                if elem.selected != newly_selected:
-                    elem.selected = newly_selected
-                    selection_changed = True
+        selectable = [
+            elem
+            for elem in self.root.get_all_children_recursive()
+            if elem.selectable
+        ]
+        chosen = set()
+        for elem in selectable:
+            x, y, w, h = elem.get_world_bounding_box()
+            elem_corners = [
+                (x, y),
+                (x + w, y),
+                (x + w, y + h),
+                (x, y + h),
+            ]
+            # Select if it intersects or was part of the initial set
+            # in shift-mode.
+            if elem in self._selection_before_framing or obb_intersects_aabb(
+                elem_corners, selection_rect
+            ):
+                chosen.add(elem)
+        chosen = self._selection_units(chosen)
+        for elem in selectable:
+            newly_selected = elem in chosen
+            if elem.selected != newly_selected:
+                elem.selected = newly_selected
+                selection_changed = True
 
         if selection_changed:
             self._finalize_selection_state()
@@ -1765,15 +1775,34 @@ class Canvas(Gtk.DrawingArea):
         if points is None or len(points) < 3:
             return
         lasso = [self._get_world_coords(x, y) for x, y in points]
-        for elem in self.root.get_all_children_recursive():
-            if elem.selectable:
-                x, y, w, h = elem.get_world_bounding_box()
-                newly_selected = (
-                    elem in self._selection_before_framing
-                ) or point_in_polygon((x + w / 2, y + h / 2), lasso)
-                if elem.selected != newly_selected:
-                    elem.selected = newly_selected
+        selectable = [
+            elem
+            for elem in self.root.get_all_children_recursive()
+            if elem.selectable
+        ]
+        chosen = set()
+        for elem in selectable:
+            x, y, w, h = elem.get_world_bounding_box()
+            if elem in self._selection_before_framing or point_in_polygon(
+                (x + w / 2, y + h / 2), lasso
+            ):
+                chosen.add(elem)
+        chosen = self._selection_units(chosen)
+        for elem in selectable:
+            newly_selected = elem in chosen
+            if elem.selected != newly_selected:
+                elem.selected = newly_selected
         self.queue_draw()
+
+    def _selection_units(
+        self, elements: set[CanvasElement]
+    ) -> set[CanvasElement]:
+        """
+        The elements, with every element a selection takes along with one
+        of them as one unit. Here each element is a unit of its own; a
+        subclass ties elements together.
+        """
+        return elements
 
     def on_key_pressed(
         self, controller, keyval: int, keycode: int, state: Gdk.ModifierType

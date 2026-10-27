@@ -796,17 +796,17 @@ class TransformCmd:
         """Sets every item's angle to 0°."""
         self.set_angle(items, 0.0)
 
-    def reset_angle_group(self, items: list[DocItem]):
+    def reset_angle_group(self, items: list[DocItem], propagate: bool = True):
         """Resets the group's rotation to 0°."""
-        self.set_angle_group(items, 0.0)
+        self.set_angle_group(items, 0.0, propagate)
 
     def reset_shear(self, items: list[DocItem]):
         """Sets every item's shear to 0°."""
         self.set_shear(items, 0.0)
 
-    def reset_shear_group(self, items: list[DocItem]):
+    def reset_shear_group(self, items: list[DocItem], propagate: bool = True):
         """Resets the group's shear to 0°."""
-        self.set_shear_group(items, 0.0)
+        self.set_shear_group(items, 0.0, propagate)
 
     @classmethod
     def get_position_group(

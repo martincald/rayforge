@@ -184,18 +184,25 @@ class LayerCmd:
         self._editor.history_manager.execute(cmd)
 
     def move_selected_to_adjacent_layer(
-        self, surface: WorkSurface, direction: int
+        self, surface: WorkSurface, direction: int, propagate: bool = True
     ):
         """
-        Creates an undoable command to move selected workpieces to the
-        next or previous valid (non-stock) layer, preserving the selection.
+        Moves the selected items to the layer after or before the first
+        one's, in one undoable step (see move_items_to_layer), preserving
+        the selection.
 
         Args:
             surface: The WorkSurface instance containing the selection.
             direction: 1 for the next layer (down), -1 for the previous (up).
+            propagate: Also moves the rest of the items' groups.
         """
-        selected_wps = surface.get_selected_workpieces()
-        if not selected_wps:
+        # In canvas order, layer by layer as the document has them.
+        selected = [
+            item
+            for item in surface.get_selected_items()
+            if isinstance(item, (WorkPiece, Group))
+        ]
+        if not selected:
             return
 
         doc = self._editor.doc
@@ -207,7 +214,7 @@ class LayerCmd:
 
         # Assume all selected workpieces are on the same layer, which is a
         # reasonable constraint for this operation.
-        current_layer = selected_wps[0].layer
+        current_layer = selected[0].layer
         if not current_layer:
             return
 
@@ -221,20 +228,15 @@ class LayerCmd:
             ) % len(workpiece_layers)
             new_layer = workpiece_layers[new_index]
 
-            # 1. Create the model-only command.
-            cmd = MoveWorkpiecesLayerCommand(
-                selected_wps, new_layer, current_layer
-            )
-
-            # 2. Execute the command. The history manager updates the model,
-            #    which triggers signals that cause the UI to destructively
+            # 1. Move them. The history manager updates the model, which
+            #    triggers signals that cause the UI to destructively
             #    rebuild the moved elements in a new layer element.
-            self._editor.history_manager.execute(cmd)
+            self.move_items_to_layer(selected, new_layer, propagate)
 
-            # 3. After the model and UI have been updated, explicitly
+            # 2. After the model and UI have been updated, explicitly
             #    re-apply the selection to the newly created UI elements by
             #    telling the surface to select the same model objects again.
-            surface.select_items(selected_wps)
+            surface.select_items(selected)
 
         except ValueError:
             # This can happen if the current layer is not in the filtered list,
@@ -322,10 +324,21 @@ class LayerCmd:
         )
         self._editor.history_manager.execute(cmd)
 
-    def move_items_to_layer(self, items: list[DocItem], target_layer: Layer):
-        """Creates an undoable command to move items to a specific layer."""
+    def move_items_to_layer(
+        self,
+        items: list[DocItem],
+        target_layer: Layer,
+        propagate: bool = True,
+    ):
+        """
+        Creates an undoable command to move items to a specific layer.
+        With propagate the rest of their groups' items go along, those on
+        hidden layers too; they all stay in their groups.
+        """
         if not items:
             return
+        if propagate:
+            items = self._editor.doc.item_groups.closure(items)
 
         by_layer: dict[Layer, list[DocItem]] = {}
         for item in items:

@@ -120,6 +120,10 @@ class PropertyProvider(ABC):
     group_subtitle: str = ""
     """Subtitle for the separate Expander, updated by update_widgets()."""
 
+    propagate: bool = True
+    """Whether a transform of the items also moves the rest of their
+    groups (see TransformCmd); False while editing inside a group."""
+
     def __init__(self):
         self.editor: DocEditor
         self.items: list[DocItem] = []

@@ -35,6 +35,9 @@ from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.shared.tasker import task_mgr
 from swiftcut.ui_gtk.canvas2d import context_menu
+from swiftcut.ui_gtk.doceditor.property_providers.transform import (
+    TransformPropertyProvider,
+)
 from swiftcut.ui_gtk.mainwindow import MainWindow
 
 pytestmark = pytest.mark.ui
@@ -368,3 +371,78 @@ class TestGroupAcrossLayers:
         # Not split: the group is all Ungroup took apart.
         assert layer_b.get_content_items() == [on_b]
         assert set(win.surface.get_selected_items()) == {a, on_b}
+
+
+class TestGroupMemberOrder:
+    def test_members_are_in_document_order(self, win):
+        doc = win.doc_editor.doc
+        layer_a = doc.active_layer
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        assert doc.layers.index(layer_a) < doc.layers.index(layer_b)
+        first = _shape(layer_a, (10, 10))
+        second = _shape(layer_a, (40, 10))
+        on_b = _shape(layer_b, (70, 10))
+        win.surface.select_items([first, second, on_b])
+        _iterate()
+
+        # The selection comes from a set, in any order.
+        with patch.object(
+            win.surface,
+            "get_selected_top_level_items",
+            return_value=[on_b, second, first],
+        ):
+            win.activate_action("win.group", None)
+        _iterate()
+
+        (group,) = doc.item_groups
+        assert group.member_uids == [first.uid, second.uid, on_b.uid]
+
+
+class TestEditingInsideAGroup:
+    def _grouped(self, win):
+        doc = win.doc_editor.doc
+        layer_b = next(lyr for lyr in doc.layers if lyr.name == "B")
+        a = _shape(doc.active_layer, (10, 10))
+        on_b = _shape(layer_b, (50, 10))
+        group = win.doc_editor.group.group_items([a, on_b])
+        return group, a, on_b
+
+    def test_group_ungroup_and_combine_are_off(self, win):
+        group, a, _ = self._grouped(win)
+        win.surface.select_items([a])
+        _iterate()
+        assert _enabled(win, "ungroup")
+
+        win.surface.enter_group_edit(group)
+        win.surface.select_items([a])
+        _iterate()
+        assert not _enabled(win, "group")
+        assert not _enabled(win, "ungroup")
+        assert not _enabled(win, "combine")
+
+        win.surface.leave_group_edit()
+        _iterate()
+        assert _enabled(win, "ungroup")
+
+    def test_a_typed_angle_turns_the_member_alone(self, win):
+        group, a, on_b = self._grouped(win)
+        provider = next(
+            p
+            for p in win.item_props_widget.providers
+            if isinstance(p, TransformPropertyProvider)
+        )
+        win.surface.enter_group_edit(group)
+        win.surface.select_items([a])
+        _iterate()
+        assert not provider.propagate
+        b_matrix = on_b.matrix.copy()
+
+        provider._on_angle_changed(MagicMock(get_value=lambda: 30.0))
+        _iterate()
+
+        assert a.angle == pytest.approx(-30.0)
+        assert on_b.matrix == b_matrix
+
+        win.surface.leave_group_edit()
+        _iterate()
+        assert provider.propagate

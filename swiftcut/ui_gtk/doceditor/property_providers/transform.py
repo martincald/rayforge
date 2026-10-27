@@ -358,6 +358,7 @@ class TransformPropertyProvider(PropertyProvider):
                     width=new_width_from_ui,
                     height=None,
                     fixed_ratio=self.fixed_ratio_switch.get_active(),
+                    propagate=self.propagate,
                 )
             else:
                 self.editor.transform.set_size(
@@ -365,6 +366,7 @@ class TransformPropertyProvider(PropertyProvider):
                     width=new_width_from_ui,
                     height=None,
                     fixed_ratio=self.fixed_ratio_switch.get_active(),
+                    propagate=self.propagate,
                 )
         finally:
             self._in_update = False
@@ -390,12 +392,14 @@ class TransformPropertyProvider(PropertyProvider):
                     self.items,
                     height=new_height_from_ui,
                     fixed_ratio=self.fixed_ratio_switch.get_active(),
+                    propagate=self.propagate,
                 )
             else:
                 self.editor.transform.set_size(
                     items=self.items,
                     height=new_height_from_ui,
                     fixed_ratio=self.fixed_ratio_switch.get_active(),
+                    propagate=self.propagate,
                 )
         finally:
             self._in_update = False
@@ -433,11 +437,17 @@ class TransformPropertyProvider(PropertyProvider):
             logger.debug(f"Handling X change to {new_x_machine} (machine)")
             if len(self.items) > 1:
                 self.editor.transform.set_position_group(
-                    self.items, new_x_machine, current_y_machine
+                    self.items,
+                    new_x_machine,
+                    current_y_machine,
+                    propagate=self.propagate,
                 )
             else:
                 self.editor.transform.set_position(
-                    self.items, new_x_machine, current_y_machine
+                    self.items,
+                    new_x_machine,
+                    current_y_machine,
+                    propagate=self.propagate,
                 )
         finally:
             self._in_update = False
@@ -475,11 +485,17 @@ class TransformPropertyProvider(PropertyProvider):
             logger.debug(f"Handling Y change to {new_y_machine} (machine)")
             if len(self.items) > 1:
                 self.editor.transform.set_position_group(
-                    self.items, current_x_machine, new_y_machine
+                    self.items,
+                    current_x_machine,
+                    new_y_machine,
+                    propagate=self.propagate,
                 )
             else:
                 self.editor.transform.set_position(
-                    self.items, current_x_machine, new_y_machine
+                    self.items,
+                    current_x_machine,
+                    new_y_machine,
+                    propagate=self.propagate,
                 )
         finally:
             self._in_update = False
@@ -496,9 +512,13 @@ class TransformPropertyProvider(PropertyProvider):
             logger.debug(f"Handling angle change to {new_angle}")
 
             if len(self.items) > 1:
-                self.editor.transform.set_angle_group(self.items, new_angle)
+                self.editor.transform.set_angle_group(
+                    self.items, new_angle, self.propagate
+                )
             else:
-                self.editor.transform.set_angle(self.items, new_angle)
+                self.editor.transform.set_angle(
+                    self.items, new_angle, self.propagate
+                )
         finally:
             self._in_update = False
             logger.debug("_on_angle_changed finished.")
@@ -514,10 +534,12 @@ class TransformPropertyProvider(PropertyProvider):
 
             if len(self.items) > 1:
                 self.editor.transform.set_shear_group(
-                    self.items, new_shear_from_ui
+                    self.items, new_shear_from_ui, self.propagate
                 )
             else:
-                self.editor.transform.set_shear(self.items, new_shear_from_ui)
+                self.editor.transform.set_shear(
+                    self.items, new_shear_from_ui, self.propagate
+                )
         finally:
             self._in_update = False
             logger.debug("_on_shear_changed finished.")
@@ -561,6 +583,7 @@ class TransformPropertyProvider(PropertyProvider):
             self.editor.transform.set_size(
                 items=items_to_resize,
                 sizes=sizes_to_set,
+                propagate=self.propagate,
             )
 
     def _on_reset_dimension_clicked(self, button, dimension_to_reset: str):
@@ -602,27 +625,32 @@ class TransformPropertyProvider(PropertyProvider):
             self.editor.transform.set_size(
                 items=items_to_resize,
                 sizes=sizes_to_set,
+                propagate=self.propagate,
             )
 
     def _on_reset_angle_clicked(self, button):
         if not self.items:
             return
         if len(self.items) > 1:
-            self.editor.transform.reset_angle_group(self.items)
+            self.editor.transform.reset_angle_group(self.items, self.propagate)
         else:
             items_to_reset = [item for item in self.items if item.angle != 0.0]
             if items_to_reset:
-                self.editor.transform.set_angle(items_to_reset, 0.0)
+                self.editor.transform.set_angle(
+                    items_to_reset, 0.0, self.propagate
+                )
 
     def _on_reset_shear_clicked(self, button):
         if not self.items:
             return
         if len(self.items) > 1:
-            self.editor.transform.reset_shear_group(self.items)
+            self.editor.transform.reset_shear_group(self.items, self.propagate)
         else:
             items_to_reset = [item for item in self.items if item.shear != 0.0]
             if items_to_reset:
-                self.editor.transform.set_shear(items_to_reset, 0.0)
+                self.editor.transform.set_shear(
+                    items_to_reset, 0.0, self.propagate
+                )
 
     def _on_reset_x_clicked(self, button):
         if not self.items:
@@ -648,7 +676,7 @@ class TransformPropertyProvider(PropertyProvider):
             cur_y_wcs = self.y_row.get_value_in_base_units()
             cur_y_machine = cur_y_wcs + offset_machine[1]
             self.editor.transform.set_position_group(
-                self.items, offset_machine[0], cur_y_machine
+                self.items, offset_machine[0], cur_y_machine, self.propagate
             )
         else:
             target_x_machine = offset_machine[0]
@@ -658,7 +686,7 @@ class TransformPropertyProvider(PropertyProvider):
             current_y_machine = current_y_wcs + offset_machine[1]
 
             self.editor.transform.set_position(
-                self.items, target_x_machine, current_y_machine
+                self.items, target_x_machine, current_y_machine, self.propagate
             )
 
     def _on_reset_y_clicked(self, button):
@@ -685,7 +713,7 @@ class TransformPropertyProvider(PropertyProvider):
             cur_x_wcs = self.x_row.get_value_in_base_units()
             cur_x_machine = cur_x_wcs + offset_machine[0]
             self.editor.transform.set_position_group(
-                self.items, cur_x_machine, offset_machine[1]
+                self.items, cur_x_machine, offset_machine[1], self.propagate
             )
         else:
             target_y_machine = offset_machine[1]
@@ -695,5 +723,5 @@ class TransformPropertyProvider(PropertyProvider):
             current_x_machine = current_x_wcs + offset_machine[0]
 
             self.editor.transform.set_position(
-                self.items, current_x_machine, target_y_machine
+                self.items, current_x_machine, target_y_machine, self.propagate
             )

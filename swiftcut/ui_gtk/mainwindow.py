@@ -1526,7 +1526,10 @@ class MainWindow(Adw.ApplicationWindow):
             selected_items.remove(active_item)
             selected_items.insert(0, active_item)
 
-        self.item_props_widget.set_items(selected_items)
+        # Inside a group, a typed value moves the selected items alone.
+        self.item_props_widget.set_items(
+            selected_items, propagate=self.surface.editing_group is None
+        )
         self.item_revealer.set_reveal_child(bool(selected_items))
         self.bottom_panel.update_position_menu_sensitivity()
         self._update_actions_and_ui()
@@ -1830,14 +1833,17 @@ class MainWindow(Adw.ApplicationWindow):
         # two or more items sharing one parent, none in a group; Ungroup
         # a group, else a Group container or a shape of several paths
         # (counted, not joined at their ends: this runs on every change,
-        # and joining thousands of lines takes long).
+        # and joining thousands of lines takes long). None of them while
+        # editing inside a group.
         selected_items = self.surface.get_selected_items()
         item_groups = doc.item_groups
         units = item_groups.units(selected_items)
-        am.get_action("group").set_enabled(len(units) >= 2)
+        editing = self.surface.editing_group is not None
+        am.get_action("group").set_enabled(len(units) >= 2 and not editing)
 
         can_combine = (
-            len(selected_items) >= 2
+            not editing
+            and len(selected_items) >= 2
             and len({item.parent for item in selected_items}) == 1
             and not any(
                 item_groups.parent_of(item.uid) for item in selected_items
@@ -1856,7 +1862,7 @@ class MainWindow(Adw.ApplicationWindow):
             )
             for item in selected_items
         )
-        am.get_action("ungroup").set_enabled(can_ungroup)
+        am.get_action("ungroup").set_enabled(can_ungroup and not editing)
 
         # Update sensitivity for Layer actions
         can_move_layers = has_selection and len(doc.layers) > 1

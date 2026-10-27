@@ -205,3 +205,44 @@ def test_a_group_moves_to_a_layer_with_its_children(layer_cmd):
     assert group.parent is target
     assert wp.parent is group
     assert wp.layer is target
+
+
+def test_a_group_moves_whole_in_one_undo_step_and_stays_grouped(layer_cmd):
+    """Every item of the group goes, one on a hidden layer too."""
+    layer_a, target, hidden = _layers_with(layer_cmd, "A", "B", "C")
+    hidden.set_visible(False)
+    wp = WorkPiece(name="wp")
+    other = WorkPiece(name="other")
+    layer_a.add_child(wp)
+    hidden.add_child(other)
+    editor = layer_cmd._editor
+    group = editor.group.group_items([wp, other])
+    hm = editor.history_manager
+    before = len(hm.undo_stack)
+
+    layer_cmd.move_items_to_layer([wp], target)
+
+    assert wp.layer is target and other.layer is target
+    assert editor.doc.item_groups.items_of(group) == [wp, other]
+    assert len(hm.undo_stack) == before + 1
+
+    hm.undo()
+    assert wp.layer is layer_a
+    assert other.layer is hidden
+    assert editor.doc.item_groups.items_of(group) == [wp, other]
+
+
+def test_without_propagate_only_the_items_move(layer_cmd):
+    layer_a, target, layer_c = _layers_with(layer_cmd, "A", "B", "C")
+    wp = WorkPiece(name="wp")
+    other = WorkPiece(name="other")
+    layer_a.add_child(wp)
+    layer_c.add_child(other)
+    editor = layer_cmd._editor
+    group = editor.group.group_items([wp, other])
+
+    layer_cmd.move_items_to_layer([wp], target, propagate=False)
+
+    assert wp.layer is target
+    assert other.layer is layer_c
+    assert editor.doc.item_groups.top_of(wp.uid) is group

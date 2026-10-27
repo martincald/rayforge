@@ -156,8 +156,14 @@ class DocItemPropertiesWidget(Gtk.Box):
                     widget.set_visible(False)
                     self._rows_container.append(widget)
 
-    def set_items(self, items: list[DocItem] | None):
-        """Sets the currently selected items and updates the UI."""
+    def set_items(self, items: list[DocItem] | None, propagate: bool = True):
+        """
+        Sets the currently selected items and updates the UI. Without
+        propagate a transform typed in moves the items alone, not the
+        rest of their groups.
+        """
+        for provider in self.providers:
+            provider.propagate = propagate
         for item in self.items:
             item.updated.disconnect(self._on_item_data_changed)
             item.transform_changed.disconnect(self._on_item_data_changed)

@@ -348,3 +348,46 @@ class TestThePanelMenu:
         _choose(win, _submenu(_panel_menu(win, wp), "Move to Layer"), "B")
 
         assert wp.layer is _layer(win, "B")
+
+
+class TestAGroup:
+    def test_moves_whole_hidden_member_too_and_stays_grouped(self, win):
+        a = _shape(win, "A", (20, 20))
+        on_c = _shape(win, "C", (80, 20))
+        group = win.doc_editor.group.group_items([a, on_c])
+        _layer(win, "C").set_visible(False)
+        win.surface.select_items([a])
+        _iterate()
+        assert set(win.surface.get_selected_items()) == {a}
+        history = win.doc_editor.history_manager
+        before = len(history.undo_stack)
+
+        _choose(win, _submenu(_canvas_menu(win, a), "Move to Layer"), "B")
+
+        assert a.layer is _layer(win, "B")
+        assert on_c.layer is _layer(win, "B")
+        item_groups = win.doc_editor.doc.item_groups
+        assert item_groups.items_of(group) == [a, on_c]
+        # On a visible layer now, it is selected with its group.
+        assert set(win.surface.get_selected_items()) == {a, on_c}
+        assert len(history.undo_stack) == before + 1
+
+        history.undo()
+        assert a.layer is _layer(win, "A")
+        assert on_c.layer is _layer(win, "C")
+
+    def test_inside_the_group_only_the_member_moves(self, win):
+        a = _shape(win, "A", (20, 20))
+        on_c = _shape(win, "C", (80, 20))
+        group = win.doc_editor.group.group_items([a, on_c])
+        win.surface.enter_group_edit(group)
+        win.surface.select_items([a])
+        _iterate()
+
+        _choose(win, _submenu(_canvas_menu(win, a), "Move to Layer"), "B")
+
+        assert a.layer is _layer(win, "B")
+        assert on_c.layer is _layer(win, "C")
+        assert win.doc_editor.doc.item_groups.top_of(a.uid) is group
+        assert win.surface.editing_group is group
+        assert set(win.surface.get_selected_items()) == {a}

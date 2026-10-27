@@ -781,14 +781,16 @@ class ActionManager:
 
     def on_layer_move_up(self, action, param):
         """Handler for the 'layer-move-up' action."""
+        surface = self.win.surface
         self.editor.layer.move_selected_to_adjacent_layer(
-            self.win.surface, direction=-1
+            surface, direction=-1, propagate=surface.editing_group is None
         )
 
     def on_layer_move_down(self, action, param):
         """Handler for the 'layer-move-down' action."""
+        surface = self.win.surface
         self.editor.layer.move_selected_to_adjacent_layer(
-            self.win.surface, direction=1
+            surface, direction=1, propagate=surface.editing_group is None
         )
 
     def on_move_to_layer(self, action, param):
@@ -798,22 +800,38 @@ class ActionManager:
             (lyr for lyr in self.editor.doc.layers if lyr.uid == layer_uid),
             None,
         )
-        items = self.win.surface.get_selected_top_level_items()
+        surface = self.win.surface
+        items = surface.get_selected_top_level_items()
         if layer is None or not items:
             return
-        self.editor.layer.move_items_to_layer(items, layer)
+        # Inside a group only the selected items move.
+        self.editor.layer.move_items_to_layer(
+            items, layer, propagate=surface.editing_group is None
+        )
         # The moved elements are rebuilt in their new layer: select the
         # same items again.
-        self.win.surface.select_items(items)
+        surface.select_items(items)
 
     def on_group_action(self, action, param):
         """
         Handler for the 'group' action: groups the selected items as
         they are, each on its own layer, and selects the group's items.
         """
-        group = self.editor.group.group_items(
-            self.win.surface.get_selected_top_level_items()
+        # Its members in document order: layer by layer, each layer's
+        # items in order.
+        order = {
+            item.uid: i
+            for i, item in enumerate(
+                item
+                for layer in self.editor.doc.layers
+                for item in layer.get_content_items()
+            )
+        }
+        items = sorted(
+            self.win.surface.get_selected_top_level_items(),
+            key=lambda item: order.get(item.uid, len(order)),
         )
+        group = self.editor.group.group_items(items)
         if group is None:
             return
         # Those on hidden layers are not selectable: they stay out.
