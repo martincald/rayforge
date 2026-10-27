@@ -8,6 +8,7 @@ from gi.repository import Gdk, Gtk
 from ...core.doc import Doc
 from ...core.layer import Layer
 from ..layout import COMPACT_SPACE_CONTROL, COMPACT_SPACE_GROUP, icon_button
+from .groups_column import GroupsColumn
 from .layer_column import _LAYER_UID_PREFIX, LayerColumn
 
 if TYPE_CHECKING:
@@ -45,6 +46,13 @@ class LayersTab(Gtk.Box):
         self.columns_box.set_valign(Gtk.Align.FILL)
         self.scrolled.set_child(self.columns_box)
         self.append(self.scrolled)
+
+        # Before the layer cards; the layer columns come and go after it.
+        self.groups_column = GroupsColumn(self.doc, editor)
+        self.groups_column.select_items_requested.connect(
+            self._on_column_select_items
+        )
+        self.columns_box.append(self.groups_column)
 
         self._pan_gesture = Gtk.GestureDrag.new()
         self._pan_gesture.set_button(Gdk.BUTTON_MIDDLE)
@@ -89,6 +97,7 @@ class LayersTab(Gtk.Box):
         self._disconnect_signals()
         self.doc = doc
         self._connect_signals()
+        self.groups_column.set_doc(doc)
         self._rebuild()
 
     def _connect_signals(self):
@@ -103,6 +112,7 @@ class LayersTab(Gtk.Box):
 
     def do_destroy(self):
         self._disconnect_signals()
+        self.groups_column.do_destroy()
 
     def _on_structure_changed(self, sender, **kwargs):
         """
@@ -165,7 +175,9 @@ class LayersTab(Gtk.Box):
             return
         moved_uids = {i.uid for i in items}
         selected_uids = {i.uid for i in self._selected_items}
-        if moved_uids & selected_uids:
+        # A member dragged off the Groups card moves alone, though a
+        # click on it selected its whole group.
+        if moved_uids & selected_uids and not self.groups_column.dragging:
             items = list(self._selected_items)
         self.editor.layer.move_items_to_layer(items, target_layer)
 

@@ -23,6 +23,7 @@ DOCK_MODULES = (
     "doceditor/asset_browser.py",
     "doceditor/bottom_panel.py",
     "doceditor/group_row.py",
+    "doceditor/groups_column.py",
     "doceditor/layer_column.py",
     "doceditor/layers_tab.py",
     "doceditor/workflow_row.py",
