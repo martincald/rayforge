@@ -303,10 +303,9 @@ class TestPieces:
         self, doc_editor, task_mgr, bed, tmp_path
     ):
         """
-        The importer reads a clipPath outside <defs> as a path: the
-        layer's workpiece is the rect and the clip's square. The tree
-        has the rect only, so the one piece is the rect, not the
-        workpiece.
+        A clipPath outside <defs> is no path (visible_svg moves it into
+        <defs>): the layer's workpiece is the rect alone, and the one
+        piece, cut from it as a lone fragment, is the rect.
         """
         path = tmp_path / "lone.svg"
         path.write_text(
@@ -322,8 +321,8 @@ class TestPieces:
 
         (piece,) = await _import(doc_editor, task_mgr, path, options=options)
 
-        assert single.size == pytest.approx((70, 70))
-        assert _contours(single) == 2
+        assert single.size == pytest.approx((20, 10))
+        assert _contours(single) == 1
         assert piece.size == pytest.approx((20, 10))
         assert _contours(piece) == 1
         assert (piece.source_layer, piece.source_color) == ("L", "#0000ff")

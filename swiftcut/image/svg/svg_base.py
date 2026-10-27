@@ -22,6 +22,7 @@ from ..structures import (
     ParsingResult,
 )
 from .renderer import SVG_RENDERER
+from .svg_tree import visible_svg
 from .svgutil import (
     PPI,
     extract_color_manifest,
@@ -68,7 +69,9 @@ class SvgImporterBase(Importer):
                 raise ET.ParseError(f"XML Parse Error: {e}")
 
             size_mm = get_natural_size(self.raw_data)
-            layer_data = extract_layer_manifest(self.raw_data)
+            # Only what shows is listed (a hidden layer is not).
+            visible = visible_svg(self.raw_data)
+            layer_data = extract_layer_manifest(visible)
             layers = [
                 LayerInfo(
                     id=layer["id"],
@@ -77,7 +80,7 @@ class SvgImporterBase(Importer):
                 )
                 for layer in layer_data
             ]
-            color_data = extract_color_manifest(self.raw_data)
+            color_data = extract_color_manifest(visible)
             color_layers = [
                 LayerInfo(
                     id=layer["id"],
@@ -183,7 +186,9 @@ class SvgImporterBase(Importer):
         Note: document_bounds are in Native Units (ViewBox units if available,
         otherwise Pixels).
         """
-        self.trimmed_data = self._analytical_trim(self.raw_data)
+        # What draws nothing is no geometry: trimmed_data, and every
+        # read of geometry after it, holds only what shows.
+        self.trimmed_data = self._analytical_trim(visible_svg(self.raw_data))
         if not self.trimmed_data:
             logger.error("Failed to prepare trimmed SVG data.")
             self.add_error(_("Failed to prepare trimmed SVG data."))

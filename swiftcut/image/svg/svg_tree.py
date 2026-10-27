@@ -57,6 +57,10 @@ SHAPES = {"path", "rect", "circle", "ellipse", "line", "polyline", "polygon"}
 # Properties that pass from a parent to its children.
 INHERITED = ("fill", "stroke", "color", "visibility")
 
+# Elements drawn only where something refers to them: visible_svg
+# leaves what they hold as it is.
+DEFINITIONS = {"defs", "symbol", "clipPath", "mask", "pattern", "marker"}
+
 _CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
 _CSS_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _CLASS_SELECTOR = re.compile(r"^\.([\w-]+)$")
@@ -69,10 +73,12 @@ def build_svg_tree(
 ) -> ImportTree:
     """
     The ImportTree of an SVG. A linked image is looked up next to
-    source_file; ppi sizes a file without physical units. What cannot
-    be imported (text not outlined, missing or unknown images) is
-    skipped with a warning in the tree's warnings.
+    source_file; ppi sizes a file without physical units. What draws
+    nothing (visible_svg) is left out; what cannot be imported (text
+    not outlined, missing or unknown images) is skipped with a
+    warning in the tree's warnings.
     """
+    data = visible_svg(data)
     root = ET.fromstring(data)
     builder = _SvgTreeBuilder(root, source_file)
     tree = ImportTree(
@@ -102,6 +108,32 @@ def _unit_to_mm(data: bytes, ppi: float) -> float:
     return width_mm / width_px
 
 
+def visible_svg(data: bytes) -> bytes:
+    """
+    The SVG with what draws nothing taken out, for reading its
+    geometry and structure: what is display:none or opacity 0, with
+    all it holds; a shape with neither fill nor stroke; a shape or
+    image not visible; and the <clipPath> and <mask> elements outside
+    <defs>, which move into it (they still clip and mask by id).
+    What lies in a definition (DEFINITIONS) and what an href or a
+    url(#id) points at stay as they are; what something points at
+    moves into <defs> when what holds it goes. Each element taken
+    out is logged. Data that is not an SVG, or an SVG with nothing to
+    take out, comes back unchanged.
+    """
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        return data
+    if _local(root) != "svg":
+        return data
+    pruner = _Pruner(root)
+    pruner.prune(root, _props(root, pruner.class_rules, {"fill": "black"}))
+    if not pruner.changed:
+        return data
+    return ET.tostring(root, encoding="utf-8")
+
+
 def _local(element: ET.Element) -> str:
     """An element's tag without its namespace."""
     tag = element.tag
@@ -115,6 +147,33 @@ def _parse_declarations(text: str | None) -> dict[str, str]:
         name, sep, value = item.partition(":")
         if sep and name.strip():
             props[name.strip().lower()] = value.strip()
+    return props
+
+
+def _props(
+    element: ET.Element,
+    class_rules: list[tuple[str, dict[str, str]]],
+    inherited: dict[str, str],
+) -> dict[str, str]:
+    """
+    An element's style: its presentation attributes, overridden by
+    its classes' rules, overridden by its style attribute; what it
+    leaves unset (or sets to inherit) comes from inherited.
+    """
+    own = {
+        name: element.get(name)
+        for name in (*INHERITED, "clip-path", "display", "opacity")
+        if element.get(name) is not None
+    }
+    classes = set((element.get("class") or "").split())
+    for name, props in class_rules:
+        if name in classes:
+            own.update(props)
+    own.update(_parse_declarations(element.get("style")))
+    props = {name: inherited[name] for name in INHERITED if name in inherited}
+    for name, value in own.items():
+        if value != "inherit":
+            props[name] = value
     return props
 
 
@@ -172,7 +231,10 @@ class _SvgTreeBuilder:
         """Adds the layers, and what lies outside them, to tree_root."""
         world = Matrix(parse_svg_transform(self.root.get("transform", "")))
         top = _Context(
-            world, self._props(self.root, {"fill": "black"}), None, None
+            world,
+            _props(self.root, self.class_rules, {"fill": "black"}),
+            None,
+            None,
         )
         layers = {
             id(g): (lid, name) for g, lid, name in layer_groups(self.root)
@@ -207,7 +269,7 @@ class _SvgTreeBuilder:
         world = ctx.world
         if transform:
             world = ctx.world @ Matrix(parse_svg_transform(transform))
-        props = self._props(element, ctx.props)
+        props = _props(element, self.class_rules, ctx.props)
         clip = self._clip(element, props, world)
         return _Context(
             world, props, layer, clip if clip is not None else ctx.clip
@@ -343,32 +405,6 @@ class _SvgTreeBuilder:
                     if match:
                         rules.append((match.group(1), props))
         return rules
-
-    def _props(
-        self, element: ET.Element, inherited: dict[str, str]
-    ) -> dict[str, str]:
-        """
-        An element's style: its presentation attributes, overridden by
-        its classes' rules, overridden by its style attribute; what it
-        leaves unset (or sets to inherit) comes from inherited.
-        """
-        own = {
-            name: element.get(name)
-            for name in (*INHERITED, "clip-path")
-            if element.get(name) is not None
-        }
-        classes = set((element.get("class") or "").split())
-        for name, props in self.class_rules:
-            if name in classes:
-                own.update(props)
-        own.update(_parse_declarations(element.get("style")))
-        props = {
-            name: inherited[name] for name in INHERITED if name in inherited
-        }
-        for name, value in own.items():
-            if value != "inherit":
-                props[name] = value
-        return props
 
     @staticmethod
     def _color(props: dict[str, str]) -> str | None:
@@ -540,3 +576,144 @@ class _SvgTreeBuilder:
                 "Illustrator: Type > Create Outlines."
             ).format(text=text)
         )
+
+
+class _Pruner:
+    """Takes what draws nothing out of a parsed SVG, in place."""
+
+    def __init__(self, root: ET.Element):
+        self.root = root
+        self.class_rules = _SvgTreeBuilder._class_rules(root)
+        self.referenced = _referenced_ids(root)
+        self.viewbox = _viewbox(root)
+        self.defs: ET.Element | None = None
+        self.changed = False
+
+    def prune(self, parent: ET.Element, inherited: dict[str, str]) -> None:
+        """Takes out what parent holds that draws nothing."""
+        for child in list(parent):
+            tag = _local(child)
+            if tag in ("clipPath", "mask"):
+                self._move_to_defs(parent, child)
+                kind = "clip" if tag == "clipPath" else "mask"
+                _log_skipped(child, "", f"{kind} definition")
+                continue
+            if tag in DEFINITIONS or child.get("id") in self.referenced:
+                continue
+            props = _props(child, self.class_rules, inherited)
+            why = self._why_invisible(child, tag, props)
+            if why is None:
+                if tag in CONTAINERS:
+                    self.prune(child, props)
+                continue
+            parent.remove(child)
+            self.changed = True
+            self._rescue(child)
+            _log_skipped(child, *why)
+
+    def _why_invisible(
+        self, element: ET.Element, tag: str, props: dict[str, str]
+    ) -> tuple[str, str] | None:
+        """Why an element draws nothing, as (kind, reason); else None."""
+        if props.get("display", "").strip() == "none":
+            return "hidden", "display:none"
+        if _is_zero(props.get("opacity")):
+            return "invisible", "opacity 0"
+        if tag not in SHAPES and tag != "image":
+            return None
+        visibility = props.get("visibility", "").strip()
+        if visibility in ("hidden", "collapse"):
+            return "hidden", f"visibility:{visibility}"
+        paints = (
+            props.get("fill", "black").strip(),
+            props.get("stroke", "none").strip(),
+        )
+        if tag in SHAPES and all(
+            paint in ("none", "transparent") for paint in paints
+        ):
+            if self._covers_viewbox(element):
+                return "invisible", "artboard background"
+            return "invisible", "no fill or stroke"
+        return None
+
+    def _covers_viewbox(self, element: ET.Element) -> bool:
+        """Whether a rect covers the whole viewBox, as an artboard does."""
+        if self.viewbox is None or _local(element) != "rect":
+            return False
+        vb_x, vb_y, vb_w, vb_h = self.viewbox
+        x = _length(element, "x") or 0.0
+        y = _length(element, "y") or 0.0
+        width = _length(element, "width") or 0.0
+        height = _length(element, "height") or 0.0
+        slack = 1e-3 * max(vb_w, vb_h)
+        return (
+            x <= vb_x + slack
+            and y <= vb_y + slack
+            and x + width >= vb_x + vb_w - slack
+            and y + height >= vb_y + vb_h - slack
+        )
+
+    def _rescue(self, element: ET.Element) -> None:
+        """Moves what something points at, inside element, into defs."""
+        for child in list(element):
+            if child.get("id") in self.referenced:
+                self._move_to_defs(element, child)
+            else:
+                self._rescue(child)
+
+    def _move_to_defs(self, parent: ET.Element, element: ET.Element) -> None:
+        if self.defs is None:
+            self.defs = next(
+                (c for c in self.root if _local(c) == "defs"), None
+            )
+        if self.defs is None:
+            # The root's own namespace, "{...}" or none, before "svg".
+            self.defs = ET.Element(self.root.tag[: -len("svg")] + "defs")
+            self.root.insert(0, self.defs)
+        parent.remove(element)
+        self.defs.append(element)
+        self.changed = True
+
+
+def _referenced_ids(root: ET.Element) -> set[str]:
+    """The ids an href="#id" or a url(#id) anywhere in the SVG names."""
+    ids = set()
+    for element in root.iter():
+        for name, value in element.attrib.items():
+            value = value.strip()
+            if name.rsplit("}", 1)[-1] == "href" and value.startswith("#"):
+                ids.add(value[1:])
+            else:
+                ids.update(_URL.findall(value))
+        if _local(element) == "style":
+            ids.update(_URL.findall(element.text or ""))
+    return ids
+
+
+def _viewbox(root: ET.Element) -> tuple[float, float, float, float] | None:
+    """The root's viewBox, None if it has none or a bad one."""
+    text = (root.get("viewBox") or "").replace(",", " ")
+    try:
+        x, y, w, h = map(float, text.split())
+    except ValueError:
+        return None
+    return x, y, w, h
+
+
+def _is_zero(opacity: str | None) -> bool:
+    """Whether an opacity ("0", "0.0", "0%") is zero."""
+    try:
+        return float((opacity or "").strip().rstrip("%")) <= 0
+    except ValueError:
+        return False
+
+
+def _log_skipped(element: ET.Element, kind: str, reason: str) -> None:
+    """Logs an element visible_svg takes out: tag, id if any, reason."""
+    name = element.get("id")
+    what = " ".join(
+        word
+        for word in (kind, _local(element), f'"{name}"' if name else "")
+        if word
+    )
+    logger.info(f"SVG import: skipped {what} ({reason})")

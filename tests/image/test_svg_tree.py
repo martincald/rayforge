@@ -1,5 +1,7 @@
 import base64
+import logging
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 import pytest
 import pyvips
@@ -8,12 +10,15 @@ from raygeo.geo import Geometry
 from swiftcut.core.vectorization_spec import LayerImportMode, PassthroughSpec
 from swiftcut.image.import_tree import GroupNode, ImageNode, PathNode
 from swiftcut.image.svg.importer import SvgImporter
-from swiftcut.image.svg.svg_tree import build_svg_tree
-from swiftcut.image.svg.svgutil import extract_layer_manifest
+from swiftcut.image.svg.renderer import SVG_RENDERER
+from swiftcut.image.svg.svg_tree import build_svg_tree, visible_svg
+from swiftcut.image.svg.svgutil import SVG_NS, extract_layer_manifest
 
 TESTS_DIR = Path(__file__).parent.parent
 ILLUSTRATOR = TESTS_DIR / "fixtures" / "import" / "illustrator_two_layers.svg"
 TWO_LAYERS = TESTS_DIR / "image" / "svg" / "twolayer.svg"
+SHWESHWE = TESTS_DIR / "fixtures" / "import" / "shweshwe.svg"
+LOGGER = "swiftcut.image.svg.svg_tree"
 # A 1x1 PNG.
 PNG = (
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgAB"
@@ -332,3 +337,166 @@ class TestImages:
 
 def _two_by_one_png() -> bytes:
     return pyvips.Image.black(2, 1).pngsave_buffer()
+
+
+def _ids(data: bytes) -> list[str]:
+    """The ids in an SVG, in document order."""
+    return [e.get("id") for e in ET.fromstring(data).iter() if e.get("id")]
+
+
+def _defs_ids(data: bytes) -> list[str]:
+    """The ids of what the root's first <defs> holds."""
+    root = ET.fromstring(data)
+    (defs, *_rest) = [c for c in root if c.tag == f"{{{SVG_NS}}}defs"]
+    return [c.get("id") for c in defs]
+
+
+class TestVisibleSvg:
+    def test_a_hidden_illustrator_layer_goes_with_its_image(self):
+        """
+        shweshwe.svg's Layer_1 is hidden through a CSS class
+        (.st1{display:none}): the tree has neither it nor its photo.
+        """
+        data = visible_svg(SHWESHWE.read_bytes())
+        tree = build_svg_tree(data, SHWESHWE)
+
+        assert [layer.name for layer in tree.layers()] == ["Layer_2"]
+        assert list(tree.root.images()) == []
+        assert len(list(tree.root.paths())) == 5
+        assert b"ns0:" not in data
+
+    def test_hidden_transparent_and_paintless_elements_go(self, caplog):
+        caplog.set_level(logging.INFO, logger=LOGGER)
+        data = _svg(
+            "<style>.ghost{opacity:0}.hide{display:none}</style>"
+            "<rect id='frame' x='0' y='0' width='100' height='100' "
+            "fill='none'/>"
+            "<rect id='nopaint' x='1' y='1' width='5' height='5' "
+            "fill='transparent' stroke='none'/>"
+            "<rect id='op' x='1' y='1' width='5' height='5' opacity='0'/>"
+            "<rect id='op-class' x='1' y='1' width='5' height='5' "
+            "class='ghost'/>"
+            "<rect id='op-style' x='1' y='1' width='5' height='5' "
+            "style='opacity:0%'/>"
+            "<g display='none'><rect id='in-hidden' x='1' y='1' "
+            "width='5' height='5'/></g>"
+            "<rect id='disp-class' class='hide' x='1' y='1' width='5' "
+            "height='5'/>"
+            "<image id='hidden-image' visibility='hidden' width='5' "
+            f"height='5' href='data:image/png;base64,{PNG}'/>"
+            "<rect id='kept' x='1' y='1' width='5' height='5'/>"
+        )
+
+        assert _ids(visible_svg(data)) == ["kept"]
+        assert [r.message for r in caplog.records] == [
+            f"SVG import: skipped {what}"
+            for what in (
+                'invisible rect "frame" (artboard background)',
+                'invisible rect "nopaint" (no fill or stroke)',
+                'invisible rect "op" (opacity 0)',
+                'invisible rect "op-class" (opacity 0)',
+                'invisible rect "op-style" (opacity 0)',
+                "hidden g (display:none)",
+                'hidden rect "disp-class" (display:none)',
+                'hidden image "hidden-image" (visibility:hidden)',
+            )
+        ]
+
+    def test_fill_stroke_and_visibility_are_inherited(self):
+        """
+        A fill="none" group keeps its stroked child; a stroke on the
+        group keeps its fill-none children; a visible child of a
+        hidden group stays.
+        """
+        data = _svg(
+            "<g fill='none'><rect id='stroked' stroke='#000' x='0' y='0' "
+            "width='5' height='5'/><rect id='bare' x='0' y='0' "
+            "width='5' height='5'/></g>"
+            "<g stroke='#f00'><circle id='outlined' fill='none' cx='5' "
+            "cy='5' r='2'/></g>"
+            "<g visibility='hidden'><rect id='hidden' x='0' y='0' "
+            "width='5' height='5'/><rect id='shown' visibility='visible' "
+            "x='0' y='0' width='5' height='5'/></g>"
+        )
+
+        assert _ids(visible_svg(data)) == ["stroked", "outlined", "shown"]
+
+    def test_what_an_href_points_at_is_kept(self):
+        """
+        A <use> may give what it shows its paint; what it shows is kept
+        even inside a hidden group (moved into defs, where it still
+        resolves), as is a clip a visible element uses.
+        """
+        data = _svg(
+            "<g fill='none'><rect id='r' x='0' y='0' width='5' "
+            "height='5'/></g><use href='#r' stroke='#000'/>"
+            "<g display='none'><path id='p' d='M0 0 L5 5'/>"
+            "<clipPath id='c'><rect x='0' y='0' width='5' height='5'/>"
+            "</clipPath></g><use xlink:href='#p' stroke='#000'/>"
+            "<g clip-path='url(#c)'><rect id='clipped' x='0' y='0' "
+            "width='9' height='9'/></g>"
+        )
+
+        out = visible_svg(data)
+
+        assert "r" in _ids(out)
+        assert _defs_ids(out) == ["p", "c"]
+        assert b'xlink:href="#p"' in out
+        assert b"ns0:" not in out
+        assert len(list(build_svg_tree(out).root.paths())) == 4
+
+    def test_definitions_are_left_as_they_are(self):
+        data = _svg(
+            "<defs><rect id='in-defs' fill='none' x='0' y='0' width='1' "
+            "height='1'/></defs><symbol id='s'><rect id='in-symbol' "
+            "display='none' x='0' y='0' width='1' height='1'/></symbol>"
+            "<pattern id='pat'><rect id='in-pattern' fill='none' x='0' "
+            "y='0' width='1' height='1'/></pattern><marker id='m'>"
+            "<rect id='in-marker' opacity='0' x='0' y='0' width='1' "
+            "height='1'/></marker>"
+        )
+
+        assert visible_svg(data) is data
+
+    def test_clips_and_masks_outside_defs_move_into_defs(self, caplog):
+        """
+        Into the root's <defs>, made its first child when there is
+        none; a clip still clips there, for the renderer too.
+        """
+        caplog.set_level(logging.INFO, logger=LOGGER)
+        data = _svg(
+            "<g><clipPath id='left'><rect x='0' y='0' width='50' "
+            "height='100'/></clipPath></g><mask id='m'><rect x='0' "
+            "y='0' width='1' height='1' fill='white'/></mask>"
+            "<rect clip-path='url(#left)' x='0' y='0' width='100' "
+            "height='100'/>"
+        )
+
+        out = visible_svg(data)
+
+        root = ET.fromstring(out)
+        assert root[0].tag == f"{{{SVG_NS}}}defs"
+        assert _defs_ids(out) == ["left", "m"]
+        assert [r.message for r in caplog.records] == [
+            'SVG import: skipped clipPath "left" (clip definition)',
+            'SVG import: skipped mask "m" (mask definition)',
+        ]
+        image = SVG_RENDERER.render_base_image(out, 10, 10)
+        assert image.getpoint(2, 5)[-1] == 255
+        assert image.getpoint(7, 5)[-1] == 0
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            b"<svg>Not XML</svg",
+            b"<html><rect fill='none' width='1' height='1'/></html>",
+            b"",
+        ],
+    )
+    def test_data_that_is_not_an_svg_comes_back_unchanged(self, data):
+        assert visible_svg(data) is data
+
+    def test_an_svg_with_nothing_to_take_out_comes_back_unchanged(self):
+        data = TWO_LAYERS.read_bytes()
+
+        assert visible_svg(data) is data
