@@ -17,6 +17,7 @@ from raygeo.ops import Ops
 from swiftcut.core.color import ColorSet
 from swiftcut.image.util.srgb import create_lut_from_color
 from swiftcut.pipeline.job_preview import CUT, SCAN, TRAVEL, JobPreviewModel
+from swiftcut.ui_gtk.canvas.overlays import ACCENT_RGB
 from swiftcut.ui_gtk.canvas2d.elements import job_preview
 from swiftcut.ui_gtk.canvas2d.elements.job_preview import (
     JobPreviewElement,
@@ -210,11 +211,14 @@ class TestDrawing:
         element.draw_overlay(ctx)
 
         assert element.visible is True
-        assert ctx.strokes() == []
         assert _alpha(surface, 50, 20) == 0
-        # The head waits on the first point.
-        assert [call[0] for call in ctx.calls] == ["paint", "fill"]
-        assert _alpha(surface, 10, 20) > 0
+        # The head waits on the first point, the laser off: a ring.
+        assert [call[:3] for call in ctx.calls] == [
+            ("paint",),
+            ("stroke", (), 1.5),
+        ]
+        assert _alpha(surface, 10, 20) == 0
+        assert _alpha(surface, 12, 20) > 0
 
     def test_at_the_total_every_segment_is_drawn(self, element):
         model = element.model
@@ -227,8 +231,9 @@ class TestDrawing:
         # The cuts, the raster line, and the travel between them.
         for x, y in ((50, 20), (50, 50), (50, 80), (90, 35)):
             assert _alpha(surface, x, y) > 0, (x, y)
-        # Nothing is under way any more: no partial stroke.
-        assert ctx.strokes() == []
+        # Nothing is under way any more: no partial stroke, and the head
+        # is a ring, the laser off.
+        assert [call[1:3] for call in ctx.strokes()] == [((), 1.5)]
 
     def test_the_segment_under_way_is_drawn_to_the_head(self, element):
         cut = element.model.segments[1]
@@ -242,6 +247,28 @@ class TestDrawing:
         ]
         assert _alpha(surface, 30, 20) > 0
         assert _alpha(surface, 75, 20) == 0
+
+    @pytest.mark.parametrize(
+        "index, firing",
+        [(1, True), (2, False), (3, True), (5, True)],
+    )
+    def test_the_head_is_a_dot_while_the_laser_is_on_else_a_ring(
+        self, element, index, firing
+    ):
+        """
+        Filled on the cuts and the raster line, a ring on the travel
+        between them, so a travel over a line already cut (Merge Lines'
+        pass along a shared edge) does not read as a second cut.
+        """
+        segment = element.model.segments[index]
+        element.set_time((segment.t0 + segment.t1) / 2)
+        ctx, _surface = _context()
+
+        element.draw_overlay(ctx)
+
+        accent = pytest.approx((*ACCENT_RGB, 1.0))
+        ring = ("stroke", (), 1.5, accent)
+        assert ctx.calls[-1] == (("fill", accent) if firing else ring)
 
     def test_a_model_built_as_it_is_drawn_draws_the_same(self, themed):
         """from_ops_lazily's model draws, at any time, what from_ops' does."""

@@ -3,7 +3,10 @@ The job preview on the canvas: the job's ops, drawn as far as a time.
 
 Travels are dashed, cuts solid, raster lines thin and solid, so a
 raster sweeps across line by line. A cut at zero power draws as the
-travel it is. The head is a dot on the segment it is running.
+travel it is. The head is a dot on the segment it is running, filled
+while the laser is on and a ring while it is off, so a pass over a
+line already cut (Merge Lines' travel along a shared edge) reads as a
+move, not a second cut.
 
 Finished segments are kept in an image of the canvas, so a frame only
 adds the segments finished since the last one. Copies of that image
@@ -35,6 +38,8 @@ _LINE = 1.0
 _CUT_LINE = 2.0
 _TRAVEL_DASH = (4.0, 3.0)
 _HEAD_RADIUS = 3.0
+# The ring the head is while the laser is off.
+_HEAD_RING = 1.5
 
 # How many copies of the finished image a job keeps, evenly spaced by
 # segment count: scrubbing back redraws at most 1/(this + 1) of the job.
@@ -161,8 +166,16 @@ class JobPreviewElement(CanvasElement):
         if head is not None:
             x, y = view.transform_point(*head)
             ctx.set_source_rgb(*ACCENT_RGB)
-            ctx.arc(x, y, _HEAD_RADIUS, 0.0, 2.0 * math.pi)
-            ctx.fill()
+            if model.firing_at(self.time):
+                ctx.arc(x, y, _HEAD_RADIUS, 0.0, 2.0 * math.pi)
+                ctx.fill()
+            else:
+                # Inside the dot's edge, so both are the same size.
+                radius = _HEAD_RADIUS - _HEAD_RING / 2
+                ctx.arc(x, y, radius, 0.0, 2.0 * math.pi)
+                ctx.set_line_width(_HEAD_RING)
+                ctx.set_dash(())
+                ctx.stroke()
         ctx.restore()
 
     def _finished_image(

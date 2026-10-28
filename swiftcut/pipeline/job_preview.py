@@ -191,6 +191,18 @@ class JobPreviewModel:
             return path[-1]
         return self.segments[-1].points[-1] if self.segments else None
 
+    def firing_at(self, t: float) -> bool:
+        """
+        Whether the laser is on at time t: the head is running a cut or
+        a raster line. It is off on a travel (a zero-power cut among
+        them), while the head waits, and before and after the job.
+        """
+        index = self.index_at(t)
+        if index >= len(self.segments):
+            return False
+        segment = self.segments[index]
+        return segment.kind != TRAVEL and segment.t0 <= t
+
     def _grow(self) -> bool:
         """Builds the next segment; False when there is none left."""
         if self._rest is None:

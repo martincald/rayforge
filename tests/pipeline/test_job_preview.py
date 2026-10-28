@@ -263,6 +263,48 @@ class TestScrubbing:
         assert model.index_at(model.segments[1].t1 / 2) == 1
 
 
+class TestFiring:
+    """The laser is on while the head runs a cut or a raster line."""
+
+    @pytest.fixture
+    def model(self):
+        return JobPreviewModel.from_ops(_mixed_ops(), MACHINE)
+
+    def test_on_cuts_and_raster_lines_off_on_travels(self, model):
+        # Halfway through each segment: travel, cut, arc, zero-power
+        # cut, travel, raster line.
+        firing = [model.firing_at((s.t0 + s.t1) / 2) for s in model.segments]
+
+        assert firing == [False, True, True, False, False, True]
+
+    def test_off_while_the_head_waits(self, model):
+        arc, after = model.segments[2], model.segments[3]
+
+        assert not model.firing_at((arc.t1 + after.t0) / 2)
+
+    def test_off_before_and_after_the_job(self, model):
+        assert not model.firing_at(-1.0)
+        assert not model.firing_at(model.total_time)
+        assert not model.firing_at(model.total_time + 10.0)
+
+    def test_a_merged_edge_is_run_with_the_laser_off(self):
+        """
+        Merge Lines turns the second cut of a shared edge into a travel
+        along it: the head runs the edge again, the laser off.
+        """
+        ops = Ops()
+        ops.set_power(1.0)
+        ops.move_to(0.0, 0.0)
+        ops.line_to(0.0, 20.0)  # the shared edge, cut
+        ops.move_to(0.0, 0.0)  # back along it: the merged second cut
+        model = JobPreviewModel.from_ops(ops, MACHINE)
+        _start, cut, merged = model.segments
+
+        assert merged.points == cut.points[::-1]
+        assert model.firing_at((cut.t0 + cut.t1) / 2)
+        assert not model.firing_at((merged.t0 + merged.t1) / 2)
+
+
 def _long_ops(moves: int) -> Ops:
     """Every kind of move, over and over, the power changing."""
     ops = Ops()
@@ -305,6 +347,7 @@ class TestBuildingLazily:
             assert lazy.index_at(t) == full.index_at(t)
             assert lazy.path_at(t) == full.path_at(t)
             assert lazy.point_at(t) == full.point_at(t)
+            assert lazy.firing_at(t) == full.firing_at(t)
 
     @pytest.mark.parametrize("index", [0, 5, 2000])
     def test_on_a_segment_end_it_answers_as_from_ops(self, index):
