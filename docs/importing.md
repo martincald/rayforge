@@ -87,7 +87,7 @@ layer and color stay with the cut.
 placed image imports as an image workpiece of its own, cropped to its
 clip path, on its source layer; the vector pieces no longer show it.
 Check the steps of its layer before you run the job: like any imported
-picture, it lands on a layer whose default step is Contour, which cuts
+picture, it lands on a layer whose default step is Cut, which cuts
 around the picture's box. Move it to a layer with an Engrave step.
 
 ### Limits

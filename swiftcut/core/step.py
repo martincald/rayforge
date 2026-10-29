@@ -41,6 +41,20 @@ _COOLANT_MODE_BY_NAME = {
     for mode in (CoolantMode.OFF, CoolantMode.FLOOD, CoolantMode.MIST)
 }
 
+# Step types that were removed, by the type their steps load as.
+_REMOVED_STEP_TYPES = {
+    "ShrinkWrapStep": "ContourStep",
+    "WavefrontStep": "ContourStep",
+}
+
+# Type labels no registered step has any more, by the type that had
+# them. Documents saved without a step_type name the type by its label.
+_LEGACY_TYPELABELS = {
+    "Contour": "ContourStep",
+    "Shrink Wrap": "ShrinkWrapStep",
+    "Wavefront": "WavefrontStep",
+}
+
 
 def legacy_producer_params(data: dict[str, Any]) -> dict[str, Any]:
     """Return the legacy ``opsproducer_dict.params`` payload, if any.
@@ -118,6 +132,10 @@ class Step(DocItem, ABC):
         # Set when a step of an unknown type is deserialized, so the
         # original type name can be reported and round-tripped.
         self._original_step_type: str | None = None
+
+        # The removed step type this step was loaded from, if any. Not
+        # saved: the step saves as its own type.
+        self.converted_from: str | None = None
 
     @classmethod
     def recipe_varset(cls) -> VarSet:
@@ -482,19 +500,34 @@ class Step(DocItem, ABC):
         }
 
         step_type_name = data.get("step_type")
-        if step_type_name:
-            step_class = step_registry.get(step_type_name)
+        typelabel = data.get("typelabel")
+        saved_type = step_type_name
+        # Saved without a step_type, under a label no registered step
+        # has: the type is the one that had that label.
+        if (
+            not saved_type
+            and typelabel
+            and step_registry.get_by_typelabel(typelabel) is None
+        ):
+            saved_type = _LEGACY_TYPELABELS.get(typelabel)
+        # A removed type loads as the type that replaced it.
+        converted_from = (
+            saved_type if saved_type in _REMOVED_STEP_TYPES else None
+        )
+        if saved_type:
+            step_class = step_registry.get(
+                _REMOVED_STEP_TYPES.get(saved_type, saved_type)
+            )
         else:
             step_class = None
 
-        if step_class is None:
-            typelabel = data.get("typelabel")
-            if typelabel:
-                step_class = step_registry.get_by_typelabel(typelabel)
+        if step_class is None and typelabel:
+            step_class = step_registry.get_by_typelabel(typelabel)
 
         if step_class is not None and step_class is not cls:
             return step_class.from_dict(data)
 
+        registered = step_class is not None
         if step_class is None:
             step_class = cls
             # Preserve the original step type name so a missing step
@@ -504,9 +537,20 @@ class Step(DocItem, ABC):
         else:
             original_step_type = None
 
-        step = step_class(typelabel=data["typelabel"], name=data.get("name"))
+        typelabel = data["typelabel"]
+        name = data.get("name")
+        if registered and step_class.TYPELABEL:
+            # The label is the class's, renamed or in another language
+            # since the save. A name the user never changed is the
+            # label, so it follows.
+            if name == typelabel:
+                name = None
+            typelabel = step_class.TYPELABEL
+        step = step_class(typelabel=typelabel, name=name)
         if original_step_type:
             step._original_step_type = original_step_type
+        if registered:
+            step.converted_from = converted_from
         step.uid = data["uid"]
         step.matrix = Matrix.from_list(data["matrix"])
         step.visible = data["visible"]

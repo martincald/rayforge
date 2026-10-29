@@ -52,16 +52,12 @@ def test_shipped_defaults_are_valid(context_initializer):
     translated = _translated()
     assert set(translated) == set(ids)
 
-    steps = step_registry.all_steps().values()
     for entry in entries:
         assert set(entry["machines"]) == set(BUNDLED_NAMES), entry["id"]
-        step = data["operations"][entry["operation"]]["step"]
-        matches = [c for c in steps if c.ASSEMBLER_NAME == step]
-        assert len(matches) == 1, step
 
         recipe = Recipe.from_dict(translated[entry["id"]])
         assert recipe.extra == {}, recipe.name
-        assert matches[0].__name__ == recipe.target_step_types[0], recipe.name
+        assert len(recipe.target_step_types) == 1, recipe.name
         assert normalize_color(entry["color"]) is not None, recipe.name
         for step_type in recipe.target_step_types:
             step_class = step_registry.get(step_type)
@@ -80,16 +76,12 @@ def test_shipped_defaults_are_valid(context_initializer):
 
 
 def test_operations_map_to_step_types():
-    """Cut and scan are contours, engrave is a raster fill."""
+    """Cut is a contour, scan its own step, engrave is a raster fill."""
     translated = _translated()
-    for uid in (
-        "mdf-6-cut",
-        "mdf-3-cut",
-        "mdf-scan",
-        "acrylic-scan",
-        "foamboard-3-scan",
-    ):
+    for uid in ("mdf-6-cut", "mdf-3-cut"):
         assert translated[uid]["target_step_types"] == ["ContourStep"], uid
+    for uid in ("mdf-scan", "acrylic-scan", "foamboard-3-scan"):
+        assert translated[uid]["target_step_types"] == ["ScanStep"], uid
     for uid in ("mdf-engrave", "acrylic-3-engrave"):
         assert translated[uid]["target_step_types"] == ["EngraveStep"], uid
 

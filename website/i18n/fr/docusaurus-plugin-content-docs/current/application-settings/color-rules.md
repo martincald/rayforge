@@ -42,7 +42,7 @@ dialogue de l'éditeur :
   vide, la valeur hexadécimale est utilisée.
 - **Type d'étape** — L'opération à créer lorsque cette couleur est
   importée. Tout type d'étape enregistré est disponible, y compris ceux
-  fournis par les [addons](addons) (ex. Shrink Wrap, Material Test
+  fournis par les [addons](addons) (ex. Material Test
   Grid).
 
 ### 3. Enregistrer

@@ -1,14 +1,14 @@
 ---
-description: "Contour cutting traces vector outlines to cut shapes from material. Configure laser power, speed, passes, and kerf compensation for clean cuts."
+description: "The Cut operation traces vector outlines to cut shapes from material. Configure laser power, speed, passes, and kerf compensation for clean cuts."
 ---
 
-# Contour Cutting
+# Cut
 
-Contour cutting traces the outline of vector shapes to cut them free from material. It's the most common laser operation for creating parts, signs, and decorative pieces.
+The Cut operation traces the outline of vector shapes to cut them free from material. It's the most common laser operation for creating parts, signs, and decorative pieces.
 
 ## Overview
 
-Contour operations:
+Cut operations:
 
 - Follow vector paths (lines, curves, shapes)
 - Cut along the perimeter of objects
@@ -17,9 +17,9 @@ Contour operations:
 - Work with any closed or open vector shape
 
 
-## When to Use Contour
+## When to Use Cut
 
-Use contour cutting for:
+Use Cut for:
 
 - Cutting parts free from stock material
 - Creating outlines and borders
@@ -27,12 +27,12 @@ Use contour cutting for:
 - Perforating or scoring (with reduced power)
 - Creating stencils and templates
 
-**Don't use contour for:**
+**Don't use Cut for:**
 
 - Filling areas (use [Engrave](engrave) instead)
 - Bitmap images (convert to vectors first)
 
-## Creating a Contour Operation
+## Creating a Cut Operation
 
 ### Step 1: Select Objects
 
@@ -40,25 +40,25 @@ Use contour cutting for:
 2. Select the objects you want to cut
 3. Ensure shapes are closed paths for complete cuts
 
-### Step 2: Add Contour Operation
+### Step 2: Add Cut Operation
 
-- **Menu:** Operations Add Contour
+- **Menu:** Operations Add Cut
 - **Shortcut:** <kbd>ctrl+shift+c</kbd>
-- **Right-click:** Context menu Add Operation Contour
+- **Right-click:** Context menu Add Operation Cut
 
 ### Step 3: Configure Settings
 
-![Contour step settings](/screenshots/step-settings-contour-general.png)
+![Cut step settings](/screenshots/step-settings-contour-general.png)
 
 ## Key Settings
 
 The step settings dialog has three tabs: **Step Settings**, **Laser**, and **Post Processing**. Settings are described in tab order below.
 
-### Contour Settings
+### Cut Settings
 
-![Contour step settings](/screenshots/step-settings-contour-general.png)
+![Cut step settings](/screenshots/step-settings-contour-general.png)
 
-The **Contour Settings** group on the *Step Settings* tab controls how the outline is traced.
+The **Cut Settings** group on the *Step Settings* tab controls how the outline is traced.
 
 #### Cut Side & Path Offset
 
@@ -184,9 +184,9 @@ See [Kerf](../kerf.md) for detailed guide.
 
 ## Post-Processing
 
-![Contour post-processing settings](/screenshots/step-settings-contour-post.png)
+![Cut post-processing settings](/screenshots/step-settings-contour-post.png)
 
-Contour operations support several post-processing options:
+Cut operations support several post-processing options:
 
 - **[Smooth Path](../smooth.md)** - Reduce jagged edges in cutting paths
 - **[Holding Tabs](../holding-tabs.md)** - Keep cut pieces attached to stock material
@@ -279,7 +279,7 @@ Pass depth only works if your machine has Z-axis control. For machines without Z
 
 ### Coordinate System
 
-Contour operations work in:
+Cut operations work in:
 
 - **Units:** Millimeters (mm)
 - **Origin:** Depends on machine and job setup
@@ -296,7 +296,7 @@ Rayforge converts vector shapes to G-code:
 
 ### G-code Commands
 
-Typical contour G-code:
+Typical Cut G-code:
 
 ```gcode
 G0 X10 Y10          ; Rapid move to start

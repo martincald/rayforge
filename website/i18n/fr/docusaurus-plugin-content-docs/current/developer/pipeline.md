@@ -398,8 +398,8 @@ agrégat par step, et les nœuds `job`, `job:machinexform` et
 `run_intent` planifie l'exécution des nœuds sur des threads
 travailleurs rayon sous le GIL. L'instance partagée `RaygeoPipeline`
 contient le cache de nœuds indexé par clé de nœud ; `Intent.update`
-est le seul point d'entrée d'invalidation. Calcul, raster, shrinkwrap,
-wavefront, contour, rendu de vue et transformation/encodage machine
+est le seul point d'entrée d'invalidation. Calcul, raster,
+contour, rendu de vue et transformation/encodage machine
 s'exécutent tous dans des threads raygeo.
 
 ## Génération d'Artefacts

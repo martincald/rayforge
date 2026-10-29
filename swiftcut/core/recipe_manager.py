@@ -24,9 +24,13 @@ DEFAULTS_VERSION_FILE = ".defaults-version"
 _BUILTIN_KEYS = ("builtin", "builtin_hash", "modified_from")
 
 # The step class each "step" of the lab's authoring format stands for,
-# by the step's ASSEMBLER_NAME. Hardcoded because the step registry can
-# be empty when the bundle is synced; tests check it against the steps.
-_BUNDLE_STEP_TYPES = {"contour": "ContourStep", "raster": "EngraveStep"}
+# by class name. Hardcoded because the step registry can be empty when
+# the bundle is synced; tests check each class is registered.
+_BUNDLE_STEP_TYPES = {
+    "contour": "ContourStep",
+    "scan": "ScanStep",
+    "raster": "EngraveStep",
+}
 
 
 def content_hash(data: dict) -> str:

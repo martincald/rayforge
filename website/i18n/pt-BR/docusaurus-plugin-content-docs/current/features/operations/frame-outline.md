@@ -22,7 +22,7 @@ Use contorno de moldura para:
 
 **Não use contorno de moldura para:**
 
-- Formas irregulares ao redor de múltiplos objetos (use [Shrink Wrap](shrink-wrap) em vez disso)
+- Formas irregulares ao redor de múltiplos objetos
 - Cortar peças individuais (use [Contorno](contour) em vez disso)
 - Seguir a forma exata do seu design
 
@@ -298,7 +298,6 @@ M5                 ; Laser desligado
 ## Tópicos Relacionados
 
 - **[Corte de Contorno](contour)** - Cortando contornos de objetos individuais
-- **[Shrink Wrap](shrink-wrap)** - Limites irregulares eficientes
 - **[Abas de Fixação](../holding-tabs.md)** - Mantendo peças seguras durante o corte
 - **[Fluxo de Trabalho Multi-Camadas](../multi-layer.md)** - Organizando operações de forma eficaz
 - **[Compensação de Kerf](../kerf.md)** - Melhorando a precisão dimensional

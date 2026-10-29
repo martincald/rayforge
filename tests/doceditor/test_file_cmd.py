@@ -2114,3 +2114,29 @@ def test_a_project_never_run_names_no_machine(file_cmd, tmp_path):
 
     assert notices == []
     assert file_cmd._editor.doc.last_machine is None
+
+
+_CONVERTED = (
+    "Shrink Wrap and Wavefront steps are no longer available; they were "
+    "converted to Cut."
+)
+
+
+def test_converted_steps_are_named_once_on_open(file_cmd):
+    """A project with Shrink Wrap and Wavefront steps opens with one
+    notice for both."""
+    notices = _notices(file_cmd._editor)
+
+    path = TESTS_DIR / "assets" / "allsteps.ryp"
+    assert file_cmd.load_project_from_path(path) is True
+
+    assert [n for n in notices if n[0] == _CONVERTED] == [(_CONVERTED, True)]
+
+
+def test_a_project_without_removed_steps_opens_without_the_notice(file_cmd):
+    notices = _notices(file_cmd._editor)
+
+    path = TESTS_DIR / "assets" / "contour.ryp"
+    assert file_cmd.load_project_from_path(path) is True
+
+    assert all(message != _CONVERTED for message, _ in notices)

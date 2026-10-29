@@ -102,5 +102,5 @@ If automated kerf compensation isn't available, compensate in your design softwa
 
 ## Related Pages
 
-- [Contour Operation](operations/contour) - Cutting operations
+- [Cut](operations/contour) - Cutting operations
 - [Material Test Grid](operations/material-test-grid) - Find optimal settings

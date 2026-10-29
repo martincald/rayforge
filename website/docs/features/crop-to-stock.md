@@ -52,4 +52,4 @@ You have a large design but only a small piece of material:
 ## Related Topics
 
 - [Stock Handling](stock-handling) - Setting up material boundaries
-- [Contour Cutting](operations/contour) - Primary cutting operation
+- [Cut](operations/contour) - Primary cutting operation

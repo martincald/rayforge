@@ -173,6 +173,6 @@ Toggle tabs on/off without deleting them:
 
 ## Related Pages
 
-- [Contour Cutting](operations/contour) - Primary operation that uses tabs
+- [Cut](operations/contour) - Primary operation that uses tabs
 - [Multi-Layer Workflow](multi-layer) - Managing tabs across multiple layers
 

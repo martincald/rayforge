@@ -1,12 +1,13 @@
 # SwiftCut bundled material recipes.
 # Built-in recipes are read-only in the app; bump `version` whenever
 # values change so updated apps replace the built-in set.
-# Versions 1 and 2 were placeholder sets; this list is version 3.
-version: 3
+# Versions 1 and 2 were placeholder sets; this list was version 3.
+# Version 5 makes the scan recipes target the Scan step.
+version: 5
 
 operations:
   cut:     { step: contour, description: "Vector cut through the material" }
-  scan:    { step: contour, description: "Line scan: outline at low power" }
+  scan:    { step: scan,    description: "Line scan: outline at low power" }
   engrave: { step: raster,  description: "Raster fill engrave; adjust manually for depth or color" }
 
 recipes:

@@ -412,7 +412,7 @@ class StepCmd:
 
     def initialize_default_steps(self):
         """
-        Adds a default Contour step to the first layer if it has no steps.
+        Adds a default Cut step to the first layer if it has no steps.
 
         Called on application startup or when a new empty document is created.
         """
@@ -447,8 +447,8 @@ class StepCmd:
           step type is not registered (e.g. its addon was uninstalled),
           it falls back to the default behavior below and logs a
           warning.
-        - If workpieces have fills: add Contour + Engrave steps
-        - If workpieces have only unfilled vectors: add Contour only
+        - If workpieces have fills: add Cut + Engrave steps
+        - If workpieces have only unfilled vectors: add Cut only
         """
         contour_cls = step_registry.get("ContourStep")
         engrave_cls = step_registry.get("EngraveStep")

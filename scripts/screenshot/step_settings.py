@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 TARGET = get_target("step-settings:contour:general")
 
+# Target step types whose step label has since changed, by the label
+# the step has now (as find_step_by_type normalizes it).
+STEP_LABELS = {
+    "contour": "cut",
+    "frame-outline": "frame",
+}
+
 ENGRAVE_MODES = {
     "constant_power": "CONSTANT_POWER",
     "dither": "DITHER",
@@ -88,7 +95,7 @@ def main():
         f"Target: {TARGET} -> type={step_type}, page={page}, mode={mode}"
     )
 
-    found = find_step_by_type(win, step_type)
+    found = find_step_by_type(win, STEP_LABELS.get(step_type, step_type))
     if found is None:
         logger.error(f"No step found with type: {step_type}")
         app.quit_idle()

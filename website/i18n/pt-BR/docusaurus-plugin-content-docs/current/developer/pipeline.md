@@ -390,7 +390,7 @@ e [Construção de Estágios](#construção-de-estágios) acima.
 `run_intent` agenda a execução de nós em threads trabalhadores rayon
 sob o GIL. A instância compartilhada `RaygeoPipeline` mantém o cache
 de nós indexado por chave de nó; `Intent.update` é o único ponto de
-entrada de invalidação. Computação, raster, shrinkwrap, wavefront,
+entrada de invalidação. Computação, raster,
 contorno, renderização de visualização e transformação/codificação de
 máquina executam todos em threads raygeo.
 

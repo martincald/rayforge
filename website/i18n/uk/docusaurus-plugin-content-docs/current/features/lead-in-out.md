@@ -36,5 +36,4 @@
 
 - [Контурне різання](operations/contour) - Основна операція різання
 - [Контур рамки](operations/frame-outline) - Різання прямокутної межі
-- [Shrink Wrap](operations/shrink-wrap) - Ефективне різання межі
 - [Утримуючі лапки](holding-tabs) - Утримання деталей під час різання

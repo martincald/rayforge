@@ -37,7 +37,7 @@ Klicke auf **Farbregel hinzufügen**, um den Bearbeitungsdialog zu öffnen:
   bleibt, wird der Hex-Wert verwendet.
 - **Schritt-Typ** — Die Operation, die erstellt wird, wenn diese Farbe
   importiert wird. Jeder registrierte Schritt-Typ ist verfügbar, einschließlich
-  der von [Addons](addons) bereitgestellten (z.B. Shrink Wrap, Material Test
+  der von [Addons](addons) bereitgestellten (z.B. Material Test
   Grid).
 
 ### 3. Speichern

@@ -26,8 +26,8 @@ Use frame outline for:
 
 **Don't use frame outline for:**
 
-- Irregular shapes around multiple objects (use [Shrink Wrap](shrink-wrap) instead)
-- Cutting individual parts (use [Contour](contour) instead)
+- Irregular shapes around multiple objects
+- Cutting individual parts (use [Cut](contour) instead)
 - Following the exact shape of your design
 
 ## Creating a Frame Outline Operation
@@ -208,12 +208,12 @@ Frame Outline operations support several post-processing options:
 
 ## Combining with Other Operations
 
-### Frame + Engrave + Contour
+### Frame + Engrave + Cut
 
 Typical workflow for a finished piece:
 
 1. **Layer 1:** Engrave details (text, images)
-2. **Layer 2:** Contour cut individual parts
+2. **Layer 2:** Cut individual parts
 3. **Layer 3:** Frame outline (cut free)
 
 **Execution order ensures:**
@@ -301,8 +301,7 @@ M5                 ; Laser off
 
 ## Related Topics
 
-- **[Contour Cutting](contour)** - Cutting individual object outlines
-- **[Shrink Wrap](shrink-wrap)** - Efficient irregular boundaries
+- **[Cut](contour)** - Cutting individual object outlines
 - **[Holding Tabs](../holding-tabs.md)** - Keeping parts secure during cutting
 - **[Multi-Layer Workflow](../multi-layer.md)** - Organizing operations effectively
 - **[Kerf Compensation](../kerf.md)** - Improving dimensional accuracy

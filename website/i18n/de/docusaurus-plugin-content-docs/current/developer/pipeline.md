@@ -401,8 +401,8 @@ ein Aggregat pro Step und die Knoten `job`, `job:machinexform` und
 `run_intent` plant die Knotenausführung auf rayon-Worker-Threads
 unter der GIL. Die gemeinsame `RaygeoPipeline`-Instanz hält den
 Knoten-Cache, keyed nach Knotenschlüssel; `Intent.update` ist der
-einzige Invalidierungseinstiegspunkt. Compute, Raster, Shrinkwrap,
-Wavefront, Kontur, View-Rendering und Maschinentransformation/
+einzige Invalidierungseinstiegspunkt. Compute, Raster,
+Kontur, View-Rendering und Maschinentransformation/
 Codierung laufen alle in raygeo-Threads.
 
 ## Artifact-Generierung

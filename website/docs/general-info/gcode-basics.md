@@ -12,7 +12,7 @@ Rayforge converts your designs into G-code through a multi-step process:
 
 ```mermaid
 flowchart TD
-    A[Design - Workpieces + Layers] --> B[Operations - Contour, Engrave, etc.]
+    A[Design - Workpieces + Layers] --> B[Operations - Cut, Engrave, etc.]
     B --> C[Toolpaths - Lines, arcs, points]
     C --> D[G-code Commands - GRBL dialect]
     D --> E[Output File - .gcode]

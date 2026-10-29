@@ -309,7 +309,7 @@ def test_the_job_layers_are_the_visible_steps_with_their_settings(
             "name": "Layer 2",
             "steps": [
                 {
-                    "type": "Contour",
+                    "type": "Cut",
                     "speed": 500,
                     "power": 1.0,
                     "min_power": 1.0,

@@ -50,5 +50,5 @@ Optimization runs automatically. Just enable it and the software handles the res
 
 ## Related Topics
 
-- [Contour Cutting](operations/contour) - Primary cutting operation
+- [Cut](operations/contour) - Primary cutting operation
 - [Holding Tabs](holding-tabs) - Keeping parts secure during cutting

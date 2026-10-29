@@ -22,7 +22,7 @@ Utilisez le contour de cadrage pour :
 
 **N'utilisez pas le contour de cadrage pour :**
 
-- Formes irrégulières autour de plusieurs objets (utilisez [Shrink Wrap](shrink-wrap) à la place)
+- Formes irrégulières autour de plusieurs objets
 - Couper des pièces individuelles (utilisez [Contour](contour) à la place)
 - Suivre la forme exacte de votre design
 
@@ -298,7 +298,6 @@ M5                 ; Laser éteint
 ## Sujets Connexes
 
 - **[Coupe de Contour](contour)** - Contours d'objets individuels de coupe
-- **[Shrink Wrap](shrink-wrap)** - Limites irrégulières efficaces
 - **[Ponts de Maintien](../holding-tabs.md)** - Maintenir les pièces sécurisées pendant la coupe
 - **[Flux de Travail Multi-Couches](../multi-layer.md)** - Organiser efficacement les opérations
 - **[Compensation de Kerf](../kerf.md)** - Améliorer la précision dimensionnelle

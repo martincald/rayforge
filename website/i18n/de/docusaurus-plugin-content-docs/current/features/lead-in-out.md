@@ -36,5 +36,4 @@ Es ist als Nachbearbeitungsoption für Kontur-, Rahmenumriss- und Shrink-Wrap-Op
 
 - [Kontur-Schneiden](operations/contour) - Primäre Schneideoperation
 - [Rahmenumriss](operations/frame-outline) - Rechteckige Begrenzungsschneidung
-- [Shrink Wrap](operations/shrink-wrap) - Effiziente Begrenzungsschneidung
 - [Halte-Laschen](holding-tabs) - Teile während des Schneidens sichern

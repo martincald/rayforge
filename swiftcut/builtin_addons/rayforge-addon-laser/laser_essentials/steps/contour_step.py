@@ -37,10 +37,12 @@ if TYPE_CHECKING:
 
 
 class ContourStep(LaserStep):
-    TYPELABEL = _("Contour")
+    TYPELABEL = _("Cut")
     ICON = "step-contour-symbolic"
     REQUIRED_MACHINE_CAPS = frozenset({MachineCapability.LASER})
     ASSEMBLER_NAME = "contour"
+    # The operation's typical feed rate, in mm/min.
+    TYPICAL_CUT_SPEED = 1800
 
     @classmethod
     def recipe_varset(cls) -> VarSet:
@@ -266,7 +268,7 @@ class ContourStep(LaserStep):
         # Operating feed defaults are machine-derived: the machine only
         # exposes its ceiling, so the default is that ceiling, bounded by
         # the operation's typical feed rate.
-        step.cut_speed = min(machine.max_cut_speed, 1800)
+        step.cut_speed = min(machine.max_cut_speed, cls.TYPICAL_CUT_SPEED)
         params = machine.get_pwm_params(default_head)
         if params is not None:
             step.frequency = params.frequency

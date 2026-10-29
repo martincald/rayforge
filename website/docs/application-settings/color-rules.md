@@ -16,7 +16,7 @@ When you import a vector file, Rayforge can group the incoming shapes by
 their color. Each distinct color becomes a layer. If a color rule
 exists for that color, the layer is given the rule's step type
 automatically. Colors without a rule receive the default behavior
-(Contour for outlines, plus Engrave if the shapes have fills).
+(Cut for outlines, plus Engrave if the shapes have fills).
 
 After the step type is assigned, the normal [recipe matching](recipes)
 system runs on top — so color rules determine *what* operation runs,
@@ -40,7 +40,7 @@ Click **Add Color Rule** to open the editor dialog:
   used.
 - **Step Type** — The operation to create when this color is imported.
   Any registered step type is available, including ones provided by
-  [addons](addons) (e.g. Shrink Wrap, Material Test Grid).
+  [addons](addons) (e.g. Material Test Grid).
 
 ### 3. Save
 
@@ -102,9 +102,9 @@ A common setup for multi-color SVG designs:
    - Green (`#00ff00`) for scoring
 
 2. **In Rayforge**, create three color rules:
-   - `#ff0000` → Contour
+   - `#ff0000` → Cut
    - `#0000ff` → Engrave
-   - `#00ff00` → Contour (with different recipe settings)
+   - `#00ff00` → Scan
 
 3. **Import the SVG.** The import dialog auto-selects Colors, and each
    color group gets its step type automatically.
@@ -118,12 +118,12 @@ Color rules and recipes are complementary:
 
 | Feature     | What it sets                | When it applies     |
 | ----------- | --------------------------- | ------------------- |
-| Color Rules | Step type (Contour, etc.)   | At import time      |
+| Color Rules | Step type (Cut, etc.)       | At import time      |
 | Recipes     | Step settings (power, etc.) | At step creation    |
 
 A typical setup is to use color rules to pick the operation and recipes
 to configure the parameters. For example, a red color rule maps to
-Contour, and a recipe scoped to the Contour step type on your current
+Cut, and a recipe scoped to the Cut step type on your current
 material applies the right cut speed and power.
 
 ---

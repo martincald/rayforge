@@ -37,7 +37,7 @@ Clique em **Adicionar Regra de Cor** para abrir o diálogo do editor:
   hexadecimal é usado.
 - **Tipo de Etapa** — A operação a ser criada quando esta cor é importada.
   Qualquer tipo de etapa registrado está disponível, incluindo os fornecidos
-  por [addons](addons) (por exemplo, Shrink Wrap, Material Test Grid).
+  por [addons](addons) (por exemplo, Material Test Grid).
 
 ### 3. Salve
 

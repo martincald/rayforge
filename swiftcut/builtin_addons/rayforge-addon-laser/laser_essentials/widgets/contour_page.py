@@ -109,7 +109,7 @@ class ContourStepSettingsPage(LaserStepSettingsPage):
 
     def _add_step_sections(self):
         self.add_section(
-            _("Contour Settings"),
+            _("Cut Settings"),
             CutSideRow,
             OffsetRow,
             CutOrderRow,

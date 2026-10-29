@@ -22,7 +22,7 @@ Verwende Rahmen-Umriss für:
 
 **Verwende Rahmen-Umriss nicht für:**
 
-- Unregelmäßige Formen um mehrere Objekte (verwende stattdessen [Schrumpfumhüllung](shrink-wrap))
+- Unregelmäßige Formen um mehrere Objekte
 - Schneiden einzelner Teile (verwende stattdessen [Kontur](contour))
 - Dem genauen Umriss deines Designs folgen
 
@@ -298,7 +298,6 @@ M5                 ; Laser aus
 ## Verwandte Themen
 
 - **[Kontur-Schneiden](contour)** - Einzelne Objektumrisse schneiden
-- **[Schrumpfumhüllung](shrink-wrap)** - Effiziente unregelmäßige Grenzen
 - **[Halte-Laschen](../holding-tabs.md)** - Teile während des Schneidens sichern
 - **[Mehrschicht-Workflow](../multi-layer.md)** - Operationen effektiv organisieren
 - **[Schnittbreiten-Kompensation](../kerf.md)** - Dimensionsgenauigkeit verbessern

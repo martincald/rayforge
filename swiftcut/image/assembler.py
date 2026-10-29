@@ -215,15 +215,15 @@ class ItemAssembler:
         """
         is_image = bool(settings.get("_is_image_layer"))
         if is_image:
-            step_name, typelabel = "EngraveStep", "Engrave"
+            step_name = "EngraveStep"
         else:
-            step_name, typelabel = "ContourStep", "Contour"
+            step_name = "ContourStep"
         cls = step_registry.get(step_name)
         if cls is None:
             return
 
         try:
-            step = cls(typelabel=typelabel, name=layer.name)
+            step = cls(typelabel=cls.TYPELABEL, name=layer.name)
             per_wp, per_step = cls.get_default_transformers_dicts()
             step.per_workpiece_transformers_dicts = per_wp
             step.per_step_transformers_dicts = per_step

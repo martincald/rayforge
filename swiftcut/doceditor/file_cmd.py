@@ -1365,6 +1365,16 @@ class FileCmd:
             self._editor.mark_as_saved()
             self._editor.doc.updated.send(self._editor.doc)
 
+            if new_doc.converted_step_types:
+                self._editor.notification_requested.send(
+                    self,
+                    message=_(
+                        "Shrink Wrap and Wavefront steps are no longer "
+                        "available; they were converted to Cut."
+                    ),
+                    persistent=True,
+                )
+
             labels = _unsupported_coolant_labels(
                 new_doc, self._editor.context.machine
             )

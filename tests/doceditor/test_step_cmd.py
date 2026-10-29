@@ -9,6 +9,7 @@ from swiftcut.core.doc import Doc
 from swiftcut.core.recipe import Recipe
 from swiftcut.core.recipe_manager import RecipeManager
 from swiftcut.core.step import Step
+from swiftcut.core.step_registry import step_registry
 from swiftcut.doceditor.step_cmd import StepCmd
 
 # Read at import, before the autouse no_builtin_recipe_sync fixture
@@ -753,34 +754,60 @@ def test_a_mdf_pick_engraves_with_the_shipped_base_engrave(
     assert engrave.min_power == pytest.approx(0.10)
 
 
-def test_the_shipped_scan_applies_to_a_contour_step(
+def test_the_shipped_scan_applies_to_a_scan_step(
     step_cmd, doc_editor, machines, lab_recipes, layer_steps
 ):
-    _, contour, _ = layer_steps
+    layer, _, _ = layer_steps
+    scan = step_registry.get("ScanStep").create(doc_editor.context)
+    layer.workflow.add_step(scan)
     recipe = lab_recipes.recipes["mdf-scan"]
-    assert recipe.target_step_types == ["ContourStep"]
+    assert recipe.target_step_types == ["ScanStep"]
 
     with doc_editor.history_manager.transaction("test") as t:
-        step_cmd.apply_recipe(contour, recipe, t)
+        step_cmd.apply_recipe(scan, recipe, t)
 
-    assert contour.applied_recipe_uid == "mdf-scan"
-    assert contour.cut_speed == 30000  # 500 mm/s
-    assert contour.power == pytest.approx(0.18)
-    assert contour.min_power == pytest.approx(0.18)
+    assert scan.applied_recipe_uid == "mdf-scan"
+    assert scan.cut_speed == 30000  # 500 mm/s
+    assert scan.power == pytest.approx(0.18)
+    assert scan.min_power == pytest.approx(0.18)
 
 
-def test_a_material_pick_prefers_the_cut_over_the_scan(machines, lab_recipes):
+def test_a_material_pick_matches_the_steps_own_type(machines, lab_recipes):
+    """A cut recipe never fills a Scan step, nor a scan recipe a Cut."""
     machine = machines["ilab-614"]
 
-    def picked(material, thickness):
+    def picked(material, thickness, step_type):
         recipe = lab_recipes.find_material_recipe(
-            material, thickness, machine, "ContourStep"
+            material, thickness, machine, step_type
         )
-        return recipe.uid
+        return recipe.uid if recipe else None
 
-    assert picked("mdf", 6.0) == "mdf-6-cut"
-    assert picked("foamboard", 3.0) == "foamboard-3-cut"
-    assert picked("mdf", 4.5) == "mdf-scan"
+    assert picked("mdf", 6.0, "ContourStep") == "mdf-6-cut"
+    assert picked("foamboard", 3.0, "ContourStep") == "foamboard-3-cut"
+    assert picked("mdf", 4.5, "ContourStep") is None
+    assert picked("mdf", 6.0, "ScanStep") == "mdf-scan"
+    assert picked("mdf", 4.5, "ScanStep") == "mdf-scan"
+
+
+def test_a_new_step_takes_the_shipped_recipe_of_its_own_type(
+    step_cmd, doc_editor, machines, lab_recipes, layer_steps
+):
+    """On an MDF 6 mm layer a new Scan step gets the scan's numbers and
+    a new Cut step the cut's."""
+    layer, _, _ = layer_steps
+    step_cmd.apply_material(layer, ("mdf", 6.0))
+    scan = step_registry.get("ScanStep").create(doc_editor.context)
+    cut = step_registry.get("ContourStep").create(doc_editor.context)
+
+    step_cmd.apply_best_recipe_to_step(scan, layer=layer)
+    step_cmd.apply_best_recipe_to_step(cut, layer=layer)
+
+    assert scan.applied_recipe_uid == "mdf-scan"
+    assert scan.cut_speed == 30000  # 500 mm/s
+    assert scan.power == pytest.approx(0.18)
+    assert cut.applied_recipe_uid == "mdf-6-cut"
+    assert cut.cut_speed == 1200  # 20 mm/s
+    assert cut.power == pytest.approx(0.65)
 
 
 def test_acrylic_has_the_same_numbers_on_both_machines(

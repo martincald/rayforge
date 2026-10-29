@@ -27,7 +27,7 @@ for both hobbyists and professionals.
 
 | Feature                      | Description                                                                                          |
 | :--------------------------- | :--------------------------------------------------------------------------------------------------- |
-| **Versatile Operations**     | Supports Contour, Raster Engraving (with cross-hatch fill), Shrink Wrap, Depth Engraving, and Frame. |
+| **Versatile Operations**     | Supports Cut, Scan, Raster Engraving (with cross-hatch fill), Depth Engraving, and Frame.            |
 | **2.5D Cutting**             | Multi-pass cuts with configurable step-down for thick materials.                                     |
 | **True 4th Axis Support**    | Full rotary axis support - as 4th axis, or axis replacement mode for hobby machines.                 |
 | **Animated 3D Simulation**   | Simulate toolpaths in 3D with animated playback, scrubber, and speed control.                        |

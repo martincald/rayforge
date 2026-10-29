@@ -596,3 +596,14 @@ class Doc(DocItem):
                     if step_registry.get(name) is None:
                         missing.add(step.original_step_type or step.typelabel)
         return missing
+
+    @property
+    def converted_step_types(self) -> set[str]:
+        """Removed step types this document's steps were loaded from."""
+        return {
+            step.converted_from
+            for layer in self.layers
+            if layer.workflow
+            for step in layer.workflow.steps
+            if step.converted_from
+        }

@@ -22,7 +22,7 @@ Usa el perfilado de marco para:
 
 **No uses perfilado de marco para:**
 
-- Formas irregulares alrededor de múltiples objetos (usa [Envoltura Ajustada](shrink-wrap) en su lugar)
+- Formas irregulares alrededor de múltiples objetos
 - Cortar piezas individuales (usa [Contorno](contour) en su lugar)
 - Seguir la forma exacta de tu diseño
 
@@ -298,7 +298,6 @@ M5                 ; Láser apagado
 ## Temas Relacionados
 
 - **[Corte de Contorno](contour)** - Cortar contornos de objetos individuales
-- **[Envoltura Ajustada](shrink-wrap)** - Límites irregulares eficientes
 - **[Pestañas de Sujeción](../holding-tabs.md)** - Mantener piezas seguras durante el corte
 - **[Flujo de Trabajo Multi-Capa](../multi-layer.md)** - Organizar operaciones efectivamente
 - **[Compensación de Kerf](../kerf.md)** - Mejorar la precisión dimensional

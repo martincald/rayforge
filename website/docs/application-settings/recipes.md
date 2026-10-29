@@ -53,7 +53,7 @@ everything:
 - **Task Type**: Select the operation category this recipe applies to
   (Cut, Engrave, etc.), or leave as "Any" to apply to all task types
 - **Step Type**: Restrict the recipe to a specific operation type
-  (e.g. "Contour" or "Raster"). The list is filtered to the step types
+  (e.g. "Cut" or "Engrave"). The list is filtered to the step types
   that support the selected task type. Leave as "Any Type" to match
   every step type within the task
 - **Material**: Select a material type or leave open for any material
@@ -92,7 +92,7 @@ based on:
 - **Task type matching**: Recipes are tied to specific operation
   categories
 - **Step type matching**: Recipes can target a specific operation type
-  (e.g. only "Contour" steps)
+  (e.g. only "Cut" steps)
 
 A recipe only matches when all of its criteria are satisfied. When a new
 step is created, Rayforge searches the recipe library for matching

@@ -38,7 +38,7 @@ def test_step_types_shown(ui_context_initializer):
         target_step_types=["ContourStep"],
     )
     subtitle = _row_for(recipe)._get_subtitle()
-    assert "Contour" in subtitle
+    assert "Cut" in subtitle
     assert "Any" not in subtitle
 
 
@@ -49,7 +49,7 @@ def test_multiple_step_types_joined(ui_context_initializer):
         target_step_types=["ContourStep", "FrameStep"],
     )
     subtitle = _row_for(recipe)._get_subtitle()
-    assert "Contour" in subtitle
+    assert "Cut" in subtitle
     assert "Frame" in subtitle
 
 

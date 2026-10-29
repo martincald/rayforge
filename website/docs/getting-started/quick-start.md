@@ -35,7 +35,7 @@ Use the canvas tools to position and adjust your design:
 
 Operations define how Rayforge will process your design. Common operations include:
 
-- **Contour**: Cut along the outline of shapes
+- **Cut**: Cut along the outline of shapes
 - **Raster Engrave**: Fill shapes with back-and-forth lines (for engraving)
 - **Depth Engrave**: Create 3D depth effects from images
 
@@ -43,7 +43,7 @@ Operations define how Rayforge will process your design. Common operations inclu
 
 1. Select your design on the canvas
 2. Click **Operations → Add Operation** or press <kbd>ctrl+shift+a</kbd>
-3. Choose the operation type (e.g., "Contour" for cutting)
+3. Choose the operation type (e.g., "Cut" for cutting)
 4. Configure the operation settings:
    - **Power**: Laser power percentage (start low and test!)
    - **Speed**: Movement speed in mm/min

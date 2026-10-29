@@ -36,5 +36,4 @@ Está disponible como opción de postprocesamiento en operaciones de contorno, c
 
 - [Corte de Contorno](operations/contour) - Operación de corte principal
 - [Contorno de Marco](operations/frame-outline) - Corte de límite rectangular
-- [Shrink Wrap](operations/shrink-wrap) - Corte de límite eficiente
 - [Pestañas de Sujeción](holding-tabs) - Mantener las piezas seguras durante el corte

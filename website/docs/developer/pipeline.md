@@ -330,7 +330,7 @@ The process begins with the **Doc Model**, which contains:
 
 - **WorkPieces:** Individual design elements (SVGs, images) placed on
   the canvas
-- **Steps:** Processing instructions (Contour, Raster, etc.) with
+- **Steps:** Processing instructions (Cut, Engrave, etc.) with
   settings, organised into a per-layer `Workflow`
 - **Layers:** Grouping of workpieces, each with its own workflow, WCS
   and rotary config
@@ -378,7 +378,7 @@ and [Stage Construction](#stage-construction) above.
 `run_intent` schedules node execution on rayon worker threads under
 the GIL. The shared `RaygeoPipeline` instance holds the node cache
 keyed by node key; `Intent.update` is the sole invalidation entry
-point. Compute, raster, shrinkwrap, wavefront, contour, view
+point. Compute, raster, contour, view
 rendering, and machine-transform/encoding all run in raygeo threads.
 
 ## Artifact Generation

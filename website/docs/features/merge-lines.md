@@ -32,4 +32,4 @@ which gives you explicit control over the number of passes.
 
 - [Path Optimization](path-optimization) - Reducing unnecessary travel moves
 - [Multi-Pass](multi-pass) - Intentional multiple passes over the same path
-- [Contour Cutting](operations/contour) - The main cutting operation
+- [Cut](operations/contour) - The main cutting operation

@@ -57,10 +57,8 @@ module.exports = {
               items: [
                 'features/operations/contour',
                 'features/operations/engrave',
-                'features/operations/shrink-wrap',
                 'features/operations/frame-outline',
                 'features/operations/material-test-grid',
-                'features/operations/wavefront',
               ],
             },
             {

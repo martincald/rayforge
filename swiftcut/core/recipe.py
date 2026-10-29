@@ -24,8 +24,8 @@ _GENERIC_STEP_TYPE_SCORE = 1 << 16
 # at the time step capabilities were removed. Used only by
 # :meth:`Recipe.from_dict` to preserve the targeting of old recipe files.
 _LEGACY_CAPABILITY_STEPS: dict[str, list[str]] = {
-    "CUT": ["ContourStep", "FrameStep", "WavefrontStep", "ShrinkWrapStep"],
-    "SCORE": ["ContourStep", "FrameStep", "ShrinkWrapStep"],
+    "CUT": ["ContourStep", "FrameStep"],
+    "SCORE": ["ContourStep", "FrameStep"],
     "ENGRAVE": ["EngraveStep"],
     "MATERIAL_TEST": ["MaterialTestStep"],
 }

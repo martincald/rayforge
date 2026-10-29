@@ -164,7 +164,7 @@ graph TD
 
 - **`Step`**
   - **Role:** A single processing instruction within a `Workflow` (e.g.,
-    "Contour Cut" or "Raster Engrave"). It is a configuration object
+    "Cut" or "Engrave"). It is a configuration object
     holding dictionaries that define the producer, modifiers, and
     transformers to be used.
 

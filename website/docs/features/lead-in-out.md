@@ -61,7 +61,6 @@ shrink wrap operations.
 
 ## Related Topics
 
-- [Contour Cutting](operations/contour) - Primary cutting operation
+- [Cut](operations/contour) - Primary cutting operation
 - [Frame Outline](operations/frame-outline) - Rectangular boundary cutting
-- [Shrink Wrap](operations/shrink-wrap) - Efficient boundary cutting
 - [Holding Tabs](holding-tabs) - Keeping parts secured during cutting

@@ -9,7 +9,6 @@ from laser_essentials.steps import (
     ContourStep,
     EngraveStep,
     FrameStep,
-    ShrinkWrapStep,
 )
 from laser_essentials.steps.laser_step import LaserStep
 
@@ -61,13 +60,6 @@ class TestRecipeKeys:
         for key in ("cut_side", "offset_mm"):
             assert key in FrameStep.recipe_keys()
 
-    def test_shrinkwrap_step_extends_laser(self):
-        assert set(LaserStep.recipe_keys()).issubset(
-            set(ShrinkWrapStep.recipe_keys())
-        )
-        for key in ("cut_side", "offset_mm", "gravity"):
-            assert key in ShrinkWrapStep.recipe_keys()
-
 
 class TestRecipeVarsetKeys:
     """recipe_varset() keys are consistent with recipe_keys().
@@ -101,9 +93,4 @@ class TestRecipeVarsetKeys:
     def test_frame_step_varset_covers_step_keys(self):
         keys = [var.key for var in FrameStep.recipe_varset()]
         for key in FrameStep.recipe_keys():
-            assert key in keys, f"Missing var for recipe key '{key}'"
-
-    def test_shrinkwrap_step_varset_covers_step_keys(self):
-        keys = [var.key for var in ShrinkWrapStep.recipe_varset()]
-        for key in ShrinkWrapStep.recipe_keys():
             assert key in keys, f"Missing var for recipe key '{key}'"

@@ -50,5 +50,5 @@ Angles sharper than this value are preserved as corners rather than smoothed (0-
 
 ## Related Topics
 
-- [Contour Cutting](operations/contour) - Primary cutting operation
+- [Cut](operations/contour) - Primary cutting operation
 - [Path Optimization](path-optimization) - Reducing travel distance

@@ -31,7 +31,7 @@
   红色"、"雕刻蓝色"）。如果留空，则使用十六进制值。
 - **步骤类型** — 导入此颜色时要创建的操作。任何已注册的步骤
   类型都可用，包括由 [插件](addons) 提供的步骤类型（例如
-  Shrink Wrap、Material Test Grid）。
+  Material Test Grid）。
 
 ### 3. 保存
 

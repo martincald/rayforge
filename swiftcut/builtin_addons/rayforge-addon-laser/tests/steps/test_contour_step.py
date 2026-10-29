@@ -30,7 +30,7 @@ def mock_context():
 class TestContourStep:
     def test_instantiation(self):
         step = ContourStep(name="Test")
-        assert step.typelabel == "Contour"
+        assert step.typelabel == "Cut"
         assert step.name == "Test"
 
     def test_create(self, mock_context):
@@ -377,3 +377,107 @@ class TestContourComputePayload:
         assert token_params == kwargs
         assert token_params is not None
         assert token_params["cut_side"] == "inside"
+
+
+def _saved_step(step_type, typelabel, name):
+    """A step as an older document saved it."""
+    data = {
+        "uid": "saved-step",
+        "type": "step",
+        "name": name,
+        "matrix": Matrix.identity().to_list(),
+        "typelabel": typelabel,
+        "visible": False,
+        "power": 0.3,
+        "cut_speed": 900,
+        "travel_speed": 7000,
+        "per_workpiece_transformers_dicts": [
+            {"name": "TabOpsTransformer", "enabled": True},
+        ],
+        "per_step_transformers_dicts": [],
+        "children": [],
+    }
+    if step_type:
+        data["step_type"] = step_type
+    return data
+
+
+class TestCutLabel:
+    """Contour steps are labelled Cut, saved documents included."""
+
+    def test_an_unrenamed_contour_becomes_cut(self):
+        restored = Step.from_dict(
+            _saved_step("ContourStep", "Contour", "Contour")
+        )
+
+        assert type(restored) is ContourStep
+        assert restored.typelabel == "Cut"
+        assert restored.name == "Cut"
+        assert restored.converted_from is None
+
+    def test_a_renamed_contour_keeps_its_name(self):
+        restored = Step.from_dict(
+            _saved_step("ContourStep", "Contour", "Outline")
+        )
+
+        assert restored.typelabel == "Cut"
+        assert restored.name == "Outline"
+
+    def test_a_label_only_contour_resolves_by_its_old_label(self):
+        restored = Step.from_dict(_saved_step(None, "Contour", "Contour"))
+
+        assert type(restored) is ContourStep
+        assert restored.name == "Cut"
+        assert restored.original_step_type is None
+
+
+class TestRemovedStepsLoadAsCut:
+    """Shrink Wrap and Wavefront steps load as Cut steps."""
+
+    @pytest.mark.parametrize(
+        "step_type, typelabel, removed",
+        [
+            ("ShrinkWrapStep", "Shrink Wrap", "ShrinkWrapStep"),
+            ("WavefrontStep", "Wavefront", "WavefrontStep"),
+            (None, "Shrink Wrap", "ShrinkWrapStep"),
+            (None, "Wavefront", "WavefrontStep"),
+        ],
+    )
+    def test_converted_to_cut(self, step_type, typelabel, removed):
+        restored = Step.from_dict(_saved_step(step_type, typelabel, typelabel))
+
+        assert type(restored) is ContourStep
+        assert restored.typelabel == "Cut"
+        assert restored.name == "Cut"
+        assert restored.converted_from == removed
+        # Not a missing type: no dialog, and it saves as a Cut.
+        assert restored.original_step_type is None
+        assert restored.to_dict()["step_type"] == "ContourStep"
+
+    def test_the_common_settings_survive(self):
+        restored = Step.from_dict(
+            _saved_step("WavefrontStep", "Wavefront", "Pocket")
+        )
+
+        assert restored.uid == "saved-step"
+        assert restored.name == "Pocket"
+        assert restored.visible is False
+        assert restored.power == 0.3
+        assert restored.cut_speed == 900
+        assert restored.travel_speed == 7000
+        tabs = next(
+            t
+            for t in restored.per_workpiece_transformers_dicts
+            if t["name"] == "TabOpsTransformer"
+        )
+        assert tabs["enabled"] is True
+
+    def test_a_saved_cut_reloads_without_a_conversion(self):
+        converted = Step.from_dict(
+            _saved_step("ShrinkWrapStep", "Shrink Wrap", "Shrink Wrap")
+        )
+
+        restored = Step.from_dict(converted.to_dict())
+
+        assert type(restored) is ContourStep
+        assert restored.converted_from is None

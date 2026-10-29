@@ -38,7 +38,6 @@ TARGETS = {
     "main:array:point-rotation": "array_point_rotation",
     "main:array:circular": "array_circular",
     "material-test": "material_test",
-    "operations:wavefront": "wavefront",
     "recipe-editor:general": "recipe_editor_general",
     "recipe-editor:applicability": "recipe_editor_applicability",
     "recipe-editor:settings": "recipe_editor_settings",
@@ -56,12 +55,6 @@ TARGETS = {
     "step-settings:frame-outline:general": "step_settings",
     "step-settings:frame-outline:laser": "step_settings",
     "step-settings:frame-outline:post": "step_settings",
-    "step-settings:shrink-wrap:general": "step_settings",
-    "step-settings:shrink-wrap:laser": "step_settings",
-    "step-settings:shrink-wrap:post": "step_settings",
-    "step-settings:wavefront:general": "step_settings",
-    "step-settings:wavefront:laser": "step_settings",
-    "step-settings:wavefront:post": "step_settings",
 }
 
 

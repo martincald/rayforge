@@ -399,8 +399,8 @@ Véase [Claves Estables](#claves-estables),
 `run_intent` programa la ejecución de nodos en hilos trabajadores
 rayon bajo el GIL. La instancia compartida `RaygeoPipeline` mantiene
 la caché de nodos indexada por clave de nodo; `Intent.update` es el
-único punto de entrada de invalidación. Cómputo, ráster, shrinkwrap,
-wavefront, contorno, renderizado de vista y transformación/codificación
+único punto de entrada de invalidación. Cómputo, ráster,
+contorno, renderizado de vista y transformación/codificación
 de máquina se ejecutan todos en hilos raygeo.
 
 ## Generación de Artefactos

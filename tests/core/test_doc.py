@@ -1,3 +1,5 @@
+import json
+import zipfile
 from pathlib import Path
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -964,3 +966,123 @@ def test_a_doc_never_run_saves_without_last_machine(doc):
     assert "last_machine" not in data
     assert Doc.from_dict(data).last_machine is None
     assert Doc.from_dict(data).to_dict() == data
+
+
+ASSETS = Path(__file__).parent.parent / "assets"
+
+
+def _project(name: str) -> dict:
+    """The project.json of a .ryp file in tests/assets, zipped or not."""
+    path = ASSETS / name
+    if zipfile.is_zipfile(path):
+        with zipfile.ZipFile(path) as zf:
+            return json.loads(zf.read("project.json"))
+    return json.loads(path.read_text())
+
+
+def _saved_steps(data: dict) -> list[dict]:
+    workflow = next(
+        c for c in data["children"][0]["children"] if c["type"] == "workflow"
+    )
+    return workflow["children"]
+
+
+def test_removed_steps_load_as_cut(context_initializer):
+    """Shrink Wrap and Wavefront steps load as Cut steps, with their
+    common settings, and nothing is reported missing."""
+    data = _project("allsteps.ryp")
+    saved = _saved_steps(data)
+
+    doc = Doc.from_dict(data)
+
+    steps = doc.layers[0].workflow.steps
+    assert [type(s).__name__ for s in steps] == [
+        "ContourStep",
+        "EngraveStep",
+        "ContourStep",
+        "FrameStep",
+        "ContourStep",
+    ]
+    assert [s.typelabel for s in steps] == [
+        "Cut",
+        "Engrave",
+        "Cut",
+        "Frame",
+        "Cut",
+    ]
+    assert [s.converted_from for s in steps] == [
+        None,
+        None,
+        "ShrinkWrapStep",
+        None,
+        "WavefrontStep",
+    ]
+    assert doc.missing_step_types == set()
+    assert doc.converted_step_types == {"ShrinkWrapStep", "WavefrontStep"}
+    for step, saved_step in zip(steps, saved, strict=True):
+        assert step.uid == saved_step["uid"]
+        assert step.power == saved_step["power"]
+        assert step.cut_speed == saved_step["cut_speed"]
+        assert step.visible == saved_step["visible"]
+        names = {t["name"] for t in step.per_workpiece_transformers_dicts}
+        assert {
+            t["name"] for t in saved_step["per_workpiece_transformers_dicts"]
+        } <= names
+    wavefront = steps[4]
+    assert (wavefront.power, wavefront.cut_speed) == (0.8, 490)
+    # The geometry is the workpieces', and they are untouched.
+    (saved_wp,) = [
+        c for c in data["children"][0]["children"] if c["type"] == "workpiece"
+    ]
+    (wp,) = doc.layers[0].workpieces
+    assert wp.uid == saved_wp["uid"]
+    assert (
+        wp.to_dict()["source_segment"]["pristine_geometry"]
+        == saved_wp["source_segment"]["pristine_geometry"]
+    )
+    assert len(doc.get_all_assets()) == len(data["assets"])
+
+
+def test_converted_steps_save_as_cut(context_initializer):
+    doc = Doc.from_dict(_project("allsteps.ryp"))
+
+    data = doc.to_dict()
+
+    step_types = [s["step_type"] for s in _saved_steps(data)]
+    assert step_types == [
+        "ContourStep",
+        "EngraveStep",
+        "ContourStep",
+        "FrameStep",
+        "ContourStep",
+    ]
+    reloaded = Doc.from_dict(data)
+    assert reloaded.converted_step_types == set()
+    assert reloaded.missing_step_types == set()
+
+
+def test_label_only_contour_and_shrink_wrap_load_as_cut(context_initializer):
+    """A document saved without step types names them by label."""
+    doc = Doc.from_dict(_project("allsteps-v1.0.2.ryp"))
+
+    steps = doc.layers[0].workflow.steps
+    contour, shrink_wrap = steps[0], steps[4]
+    assert type(contour).__name__ == "ContourStep"
+    assert (contour.typelabel, contour.name) == ("Cut", "Cut")
+    assert contour.converted_from is None
+    assert type(shrink_wrap).__name__ == "ContourStep"
+    assert (shrink_wrap.typelabel, shrink_wrap.name) == ("Cut", "Cut")
+    assert doc.converted_step_types == {"ShrinkWrapStep"}
+    # Its Engrave (...) and Frame Outline labels were unresolved before
+    # this change too; Contour and Shrink Wrap are not among them.
+    assert doc.missing_step_types.isdisjoint({"Contour", "Shrink Wrap"})
+
+
+def test_a_contour_document_converts_nothing(context_initializer):
+    doc = Doc.from_dict(_project("contour.ryp"))
+
+    (step,) = doc.layers[0].workflow.steps
+    assert type(step).__name__ == "ContourStep"
+    assert step.typelabel == "Cut"
+    assert doc.converted_step_types == set()
+    assert doc.missing_step_types == set()

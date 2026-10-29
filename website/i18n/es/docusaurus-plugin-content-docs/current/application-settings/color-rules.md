@@ -39,8 +39,7 @@ Haz clic en **Añadir regla de color** para abrir el diálogo del editor:
   en blanco, se usa el valor hexadecimal.
 - **Tipo de paso** — La operación que se creará al importar este color.
   Está disponible cualquier tipo de paso registrado, incluidos los
-  proporcionados por [complementos](addons) (p. ej. Shrink Wrap,
-  Material Test Grid).
+  proporcionados por [complementos](addons) (p. ej. Material Test Grid).
 
 ### 3. Guardar
 

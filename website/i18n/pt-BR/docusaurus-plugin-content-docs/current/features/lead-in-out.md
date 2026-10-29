@@ -36,5 +36,4 @@ Está disponível como opção de pós-processamento em operações de contorno,
 
 - [Corte de Contorno](operations/contour) - Operação de corte principal
 - [Contorno de Moldura](operations/frame-outline) - Corte de limite retangular
-- [Shrink Wrap](operations/shrink-wrap) - Corte de limite eficiente
 - [Abas de Fixação](holding-tabs) - Manter peças seguras durante o corte

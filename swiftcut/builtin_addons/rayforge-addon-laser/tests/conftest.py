@@ -14,7 +14,7 @@ from laser_essentials.steps import (
     EngraveStep,
     FrameStep,
     MaterialTestStep,
-    ShrinkWrapStep,
+    ScanStep,
 )
 
 from swiftcut.addon_mgr.addon_manager import AddonManager
@@ -42,12 +42,13 @@ def machine():
 
 
 def _register_steps():
-    """Register all steps from laser_essentials addon."""
+    """Register all steps from laser_essentials addon, in the order
+    worker.py registers them."""
     step_registry.register(ContourStep, addon_name="laser_essentials")
     step_registry.register(EngraveStep, addon_name="laser_essentials")
+    step_registry.register(ScanStep, addon_name="laser_essentials")
     step_registry.register(FrameStep, addon_name="laser_essentials")
     step_registry.register(MaterialTestStep, addon_name="laser_essentials")
-    step_registry.register(ShrinkWrapStep, addon_name="laser_essentials")
 
 
 @pytest.fixture(scope="session", autouse=True)

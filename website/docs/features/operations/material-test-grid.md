@@ -246,4 +246,4 @@ Run the same grid configuration on different materials to build your material li
 ## Related Topics
 
 - **[Engrave](engrave)** - Understanding engrave operations
-- **[Contour Cutting](contour)** - Understanding cut operations
+- **[Cut](contour)** - Understanding cut operations

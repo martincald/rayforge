@@ -57,5 +57,5 @@ Multiple faster passes often produce cleaner edges than one slow pass, especiall
 
 ## Related Topics
 
-- [Contour Cutting](operations/contour) - Primary cutting operation
+- [Cut](operations/contour) - Primary cutting operation
 - [Engrave](operations/engrave) - Engraving operations

@@ -36,5 +36,4 @@ Elle est disponible en option de post-traitement sur les opérations de contour,
 
 - [Coupe de Contour](operations/contour) - Opération de coupe principale
 - [Contour de Cadre](operations/frame-outline) - Coupe de limite rectangulaire
-- [Shrink Wrap](operations/shrink-wrap) - Coupe de limite efficace
 - [Ponts de Maintien](holding-tabs) - Maintenir les pièces sécurisées pendant la coupe

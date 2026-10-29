@@ -36,5 +36,4 @@
 
 - [轮廓切割](operations/contour) - 主要切割操作
 - [框架轮廓](operations/frame-outline) - 矩形边界切割
-- [收缩包络](operations/shrink-wrap) - 高效边界切割
 - [固定标签](holding-tabs) - 在切割过程中保持零件固定

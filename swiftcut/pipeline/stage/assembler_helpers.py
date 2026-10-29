@@ -151,17 +151,15 @@ def build_part_vector(
     """Build a ``Part`` carrying vector geometry for an assembler.
 
     This absorbs the Part-construction logic shared by
-    ``ContourProducer``, ``FrameProducer``, ``ShrinkWrapProducer``,
-    and ``WavefrontProducer``.
+    ``ContourProducer`` and ``FrameProducer``.
 
     Resolution order:
 
     1. **Vector source** — if the workpiece has boundaries and
        ``override_threshold`` is False, use ``workpiece.to_part()``.
-       When ``normalize_windings`` is True (e.g. WavefrontStep),
-       the geometry is re-scaled manually so that
-       ``normalize_winding_orders()`` can be applied before
-       constructing the Part.
+       When ``normalize_windings`` is True, the geometry is re-scaled
+       manually so that ``normalize_winding_orders()`` can be applied
+       before constructing the Part.
 
     2. **Raster fallback** — if a ``surface`` is available (either
        because there are no boundaries or because
@@ -177,8 +175,8 @@ def build_part_vector(
             trace the surface instead.
         threshold: Brightness threshold (0–1) for raster tracing.
         normalize_windings: If True, normalize winding orders
-            (outer CCW, inner CW) on the scaled geometry.  Required
-            by wavefront/pocketing assemblers.
+            (outer CCW, inner CW) on the scaled geometry, as
+            pocketing assemblers need.
     """
     boundaries = workpiece.boundaries
     has_vector_source = boundaries is not None and not boundaries.is_empty()

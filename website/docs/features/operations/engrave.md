@@ -105,7 +105,7 @@ Use engrave operations for:
 
 **Don't use engrave for:**
 
-- Cutting through material (use [Contour](contour) instead)
+- Cutting through material (use [Cut](contour) instead)
 - Precise outlines (raster creates filled areas)
 - Fine line work (vectors are cleaner)
 
@@ -458,7 +458,7 @@ See [Overscan](../overscan.md) for details.
 
 ## Related Topics
 
-- **[Contour Cutting](contour)** - Cutting outlines and shapes
+- **[Cut](contour)** - Cutting outlines and shapes
 - **[Overscan](../overscan.md)** - Improving engraving quality
 - **[Material Test Grid](material-test-grid)** - Finding optimal settings
 - **[Multi-Layer Workflow](../multi-layer.md)** - Combining engrave with other operations
