@@ -300,6 +300,41 @@ def test_hold_start_delay_is_200ms(ui_context_initializer):
     assert jog_widget._HOLD_START_DELAY_MS == 200
 
 
+@pytest.mark.ui
+@pytest.mark.parametrize(
+    "button1, touch, down",
+    [(True, False, True), (False, False, False), (False, True, True)],
+)
+def test_the_hold_timer_asks_whether_the_button_is_still_down(
+    ui_context_initializer, button1, touch, down
+):
+    """
+    A release still queued behind a busy main loop has already lifted
+    the button, so the timer finds it up; a touch has no button to ask
+    about, so it is taken as down.
+    """
+    from gi.repository import Gdk
+
+    widget, _machine = _widget(ui_context_initializer, MagicMock())
+    mask = Gdk.ModifierType.BUTTON1_MASK if button1 else 0
+    native = MagicMock()
+    native.get_surface.return_value.get_device_position.return_value = (
+        True,
+        0.0,
+        0.0,
+        mask,
+    )
+    gesture = MagicMock()
+    gesture.get_current_sequence.return_value = object() if touch else None
+    widget._hold_gestures[(_east(),)] = gesture
+
+    with (
+        patch.object(widget, "get_native", return_value=native),
+        patch.object(widget, "get_display"),
+    ):
+        assert widget._pointer_button_down((_east(),)) is down
+
+
 def _hold(widget, *directions):
     """Press an arrow and let the hold delay elapse."""
     widget._on_jog_pressed(None, 1, 0.0, 0.0, directions)

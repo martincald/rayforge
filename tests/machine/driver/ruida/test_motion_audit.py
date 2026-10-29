@@ -6,6 +6,7 @@ so no transport, no simulator and no network is involved.
 """
 
 import asyncio
+import itertools
 
 import pytest
 import pytest_asyncio
@@ -84,6 +85,64 @@ def moves_after_stop(commands: list[bytes]) -> list[bytes]:
     if STOP not in commands:
         return []
     return moves(commands[commands.index(STOP) :])
+
+
+def reach(target: tuple[int, int], read: tuple[int, int]) -> int:
+    """How far a target lies from a position, on the longer axis."""
+    return max(abs(target[0] - read[0]), abs(target[1] - read[1]))
+
+
+async def until(predicate, timeout: float = 2.0) -> None:
+    """Let the driver's tasks run until predicate holds."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while not predicate():
+        assert loop.time() < deadline, "timed out"
+        await asyncio.sleep(0.001)
+
+
+class MovingHeadSpy(MotionClientSpy):
+    """A head that covers a fixed distance between two reads.
+
+    Every read moves it that far toward the last target and is traced
+    next to the moves, so a test can tell which read each move was
+    computed from. D8 01 is recorded and does not brake it.
+    """
+
+    def __init__(self, position, per_read_um):
+        super().__init__(position)
+        self.freeze_position = True
+        self.per_read_um = per_read_um
+        self.target = position
+        self.trace: list[tuple[str, tuple[int, int]]] = []
+
+    async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
+        await super().rapid_move_xy(x_um, y_um, light=light)
+        self.target = (x_um, y_um)
+        self.trace.append(("move", self.target))
+
+    async def read_position(self, timeout: float = 2.0):
+        step = self.per_read_um
+        self.position = (
+            self.position[0]
+            + max(-step, min(self.target[0] - self.position[0], step)),
+            self.position[1]
+            + max(-step, min(self.target[1] - self.position[1], step)),
+        )
+        self.trace.append(("read", self.position))
+        return await super().read_position(timeout)
+
+
+def reads_before_moves(trace) -> list[tuple[tuple[int, int], tuple]]:
+    """Each move's target with the read that came just before it."""
+    pairs = []
+    last_read = None
+    for kind, pos in trace:
+        if kind == "read":
+            last_read = pos
+        else:
+            pairs.append((pos, last_read))
+    return pairs
 
 
 async def run_go_scale(driver) -> None:
@@ -202,8 +261,7 @@ class TestStopReachesEveryMotion:
 
         await driver.jog_key_down("x", 1)
         await driver.jog_key_down("y", 1)
-        # A diagonal restarts once by design, so count from the stop
-        # rather than from the first D8 01 the restart itself sent.
+        await until(lambda: moves(spy.commands))
         before = len(moves(spy.commands))
         await driver.cancel()
         await driver.jog_key_up("x", 1)
@@ -233,7 +291,7 @@ class TestStopReachesEveryMotion:
 
     @pytest.mark.asyncio
     async def test_key_up_cannot_be_overtaken_by_its_key_down(self, driver):
-        """MOT-06: a run-to-limit must never land after its own stop."""
+        """MOT-06: a hold move must never land after its own stop."""
         spy = MotionClientSpy(position=(100000, 100000))
         driver._client = spy
         driver._last_known_pos = None
@@ -258,12 +316,89 @@ class TestStopReachesEveryMotion:
         driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", 1)
+        await until(lambda: moves(spy.commands))
         spy.position = None  # the resync read times out
         await driver.jog_key_up("x", 1)
 
-        # The cache must not still claim the head reached the far limit
-        # it was only ever commanded toward.
-        assert driver._last_known_pos != (399000, 100000)
+        # The cache must not still claim the head reached the target it
+        # was only ever commanded toward.
+        commanded = move_target(moves(spy.commands)[-1])
+        assert driver._last_known_pos != commanded
+
+
+class TestReleaseNeedsNoBrake:
+    """MOT-05: a hold is short moves, so D8 01 is only a courtesy."""
+
+    @pytest.mark.asyncio
+    async def test_each_hold_move_is_one_step_from_a_read(self, driver):
+        """
+        Every target is one step from the read before it, and the next
+        is sent only once a read finds the head within half a step of
+        the last: never computed from the previous target, so one move
+        at most is outstanding.
+        """
+        spy = MovingHeadSpy(position=(100000, 100000), per_read_um=1000)
+        driver._client = spy
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
+
+        await driver.jog_key_down("x", 1)
+        await until(lambda: len(moves(spy.commands)) >= 4)
+        await driver.jog_key_up("x", 1)
+
+        pairs = reads_before_moves(spy.trace)
+        assert all(reach(target, read) <= 5000 for target, read in pairs)
+        for (previous, _), (_, read) in itertools.pairwise(pairs):
+            assert reach(previous, read) <= 2500
+
+    @pytest.mark.asyncio
+    async def test_a_release_stops_within_one_step_unbraked(self, driver):
+        """
+        With D8 01 dropped on the floor, the head still has at most one
+        step to run after the release, and nothing more is sent.
+        """
+        spy = MovingHeadSpy(position=(100000, 100000), per_read_um=1000)
+        driver._client = spy
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
+
+        async def ignored():
+            pass
+
+        spy.stop_process = ignored
+
+        await driver.jog_key_down("x", 1)
+        await until(lambda: len(moves(spy.commands)) >= 3)
+        last_read = next(p for k, p in reversed(spy.trace) if k == "read")
+        await driver.jog_key_up("x", 1)
+        sent = len(moves(spy.commands))
+        await asyncio.sleep(0.02)
+
+        assert STOP not in spy.commands
+        assert len(moves(spy.commands)) == sent
+        assert reach(spy.target, last_read) <= 5000
+        assert driver._hold_task.done()
+        assert driver._jog_busy is False
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "speed_mm_min, step_um",
+        [(60, 500), (1200, 3000), (12000, 5000), (60000, 5000)],
+    )
+    async def test_the_step_is_the_jog_speed_for_0_15_s_clamped(
+        self, driver, speed_mm_min, step_um
+    ):
+        """1 mm/s gives the 0.5 mm floor, 20 mm/s 3 mm, 200 mm/s 5 mm."""
+        spy = MotionClientSpy(position=(100000, 100000))
+        driver._client = spy
+        await driver.set_jog_speed(speed_mm_min)
+
+        await driver.jog_key_down("x", 1)
+        await until(lambda: moves(spy.commands))
+        await driver.jog_key_up("x", 1)
+
+        assert move_target(moves(spy.commands)[0]) == (
+            100000 + step_um,
+            100000,
+        )
 
 
 class TestBusyFlagNeverLeaks:
@@ -320,6 +455,25 @@ class TestBusyFlagNeverLeaks:
         assert spy.commands == []
         assert driver._jog_busy is False
 
+    @pytest.mark.asyncio
+    async def test_a_hold_that_raises_still_stops(self, driver):
+        """MOT-27: an unexpected error ends the hold with a stop."""
+        spy = MotionClientSpy(position=(100000, 100000))
+        driver._client = spy
+
+        async def broken(epoch, step_um):
+            raise ValueError("unexpected")
+
+        driver._hold_moves = broken
+
+        await driver.jog_key_down("x", 1)
+        with pytest.raises(ValueError):
+            await driver._hold_task
+
+        assert spy.commands[-1] == STOP
+        assert driver._jog_keys_down == set()
+        assert driver._jog_busy is False
+
 
 class TestOneSpeedUnitPath:
     """mm/min meets um/s in exactly one place."""
@@ -332,6 +486,8 @@ class TestOneSpeedUnitPath:
         driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", 1)
+        await until(lambda: spy.commands)
+        await driver.jog_key_up("x", 1)
 
         expected = int(driver.DEFAULT_JOG_SPEED * 1000 / 60)
         assert spy.commands[0] == b"\xc9\x02" + encode35(expected)
@@ -358,14 +514,35 @@ class TestOriginIsNeverInvented:
 
     @pytest.mark.asyncio
     async def test_hold_jog_refuses_an_unknown_position(self, driver):
-        """MOT-08: same for the press-and-hold run to the bed limit."""
+        """MOT-08: same for a press-and-hold, which moves from a read."""
         spy = MotionClientSpy(position=None)
         driver._client = spy
         driver._last_known_pos = None
 
         await driver.jog_key_down("x", 1)
+        await driver._hold_task
 
         assert moves(spy.commands) == []
+        assert driver._jog_busy is False
+        assert driver._jog_keys_down == set()
+
+    @pytest.mark.asyncio
+    async def test_a_hold_that_loses_the_position_stops(self, driver):
+        """MOT-08: a failed read mid-hold ends it; it never moves blind."""
+        spy = MotionClientSpy(position=(100000, 100000))
+        driver._client = spy
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
+
+        await driver.jog_key_down("x", 1)
+        await until(lambda: moves(spy.commands))
+        spy.position = None
+        await driver._hold_task
+        emitted = len(moves(spy.commands))
+        await asyncio.sleep(0.01)
+
+        assert len(moves(spy.commands)) == emitted
+        assert spy.commands[-1] == STOP
+        assert driver._jog_keys_down == set()
         assert driver._jog_busy is False
 
     @pytest.mark.asyncio
@@ -396,24 +573,30 @@ class TestReversedAxesJogTheRightWay:
     """calculate_jog already signs the delta; the driver must agree."""
 
     @pytest.mark.asyncio
-    async def test_hold_jog_runs_to_the_limit_the_arrow_points_at(
+    async def test_hold_jog_steps_toward_the_end_the_arrow_points_at(
         self, driver
     ):
         """MOT-07: a reversed X must not swap the arrows."""
         machine = driver._machine
         machine.set_reverse_x_axis(True)
-        driver._client = spy = MotionClientSpy(position=(-100000, 100000))
-        driver._last_known_pos = (-100000, 100000)
+        # The controller counts +12 mm: machine X -12 mm, app space.
+        driver._client = spy = MotionClientSpy(position=(12000, 100000))
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
 
         delta = machine.panel.calculate_jog(JogDirection.EAST, 10.0)[Axis.X]
         key = 1 if delta > 0 else -1
 
         await driver.jog_key_down("x", key)
+        await until(lambda: len(moves(spy.commands)) >= 3)
+        await asyncio.sleep(0.01)
+        await driver.jog_key_up("x", key)
 
-        # The right arrow signs X positive, so the run ends at the top
-        # of the reversed range: machine X = -1 mm in app space, which
-        # is +1 mm on the controller's own 0..extent scale.
-        assert move_target(moves(spy.commands)[0])[0] == 1000
+        # The right arrow signs X positive, so the hold steps toward
+        # the top of the reversed range and stops there: machine X =
+        # -1 mm in app space, which is +1 mm on the controller's own
+        # 0..extent scale. One 5 mm step at a time, never past it.
+        xs = [move_target(m)[0] for m in moves(spy.commands)]
+        assert xs == [7000, 2000, 1000]
 
     @pytest.mark.asyncio
     async def test_step_jog_moves_the_way_the_arrow_points(self, driver):

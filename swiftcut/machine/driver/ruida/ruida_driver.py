@@ -213,13 +213,22 @@ class RuidaDriver(Driver):
     SCALE_CORNER_TIMEOUT = 15.0
     MACHINE_STATUS_ADDRESS = 0x0400
     STATUS_JOB_RUNNING_BIT = 0x00000001
-    # Press-and-hold jog: one long move toward the bed limit, halted by
-    # D8 01 on release. The head stops this far inside the limit so a
-    # hold that runs to the end never drives into the hard stop.
+    # Press-and-hold jog: a chain of short moves, never one run to the
+    # bed limit, so a release ends within one step whether or not D8 01
+    # brakes a rapid (MOTION_AUDIT.md MOT-05). The head stops this far
+    # inside the limit so a hold that runs to the end never drives into
+    # the hard stop.
     JOG_LIMIT_MARGIN_MM = 1.0
+    # One hold step is as far as the jog speed carries the head in this
+    # time, kept within these lengths: long enough not to crawl at a
+    # low speed, short enough that a release that is never braked
+    # still stops close by at a high one.
+    JOG_HOLD_STEP_TIME = 0.15  # s
+    JOG_HOLD_STEP_MIN_UM = 500
+    JOG_HOLD_STEP_MAX_UM = 5000
     # A single-step jog is "settled" once the head is this close to the
     # commanded target, or once the move's own travel time plus this
-    # grace period has passed.
+    # grace period has passed. A hold polls at the same interval.
     JOG_SETTLE_TOLERANCE_UM = 500
     JOG_SETTLE_GRACE = 1.0
     JOG_SETTLE_POLL_INTERVAL = 0.05
@@ -262,6 +271,9 @@ class RuidaDriver(Driver):
         self._last_x_um: int | None = None
         self._last_y_um: int | None = None
         self._jog_keys_down: set[tuple[str, int]] = set()
+        # The press-and-hold sequence, from the first key down until a
+        # stop has waited it out (_hold_jog, _stop_jog_motion).
+        self._hold_task: asyncio.Task | None = None
         # True while any interactive motion is in flight -- a jog, a
         # single step, or a start-corner move. It is the ignore
         # interlock: input that arrives while it is set is dropped,
@@ -1562,14 +1574,17 @@ class RuidaDriver(Driver):
 
     async def jog_key_down(self, axis: str, direction: int) -> None:
         """
-        Start a continuous jog: one long move toward the bed limit.
+        Start a continuous jog, or steer the one already running.
 
-        Ignored while a single-step jog or a start-corner move is
-        running. A key that joins a hold already running -- the two
-        halves of a diagonal button arrive as separate presses -- stops
-        the move in flight and re-issues it for the combined direction,
-        so exactly one move is ever outstanding and nothing queues up
-        behind the finger.
+        The first key down starts the hold sequence (_hold_jog): short
+        moves, each at most one step past the last polled position. A
+        key that joins a hold already running -- the two halves of a
+        diagonal button arrive as separate presses -- only changes the
+        direction of the next move, so one move at most is outstanding
+        and nothing queues up behind the finger.
+
+        Ignored while a single-step jog, a start-corner move or a job
+        is running.
         """
         assert self._client
         key = (axis.lower(), direction)
@@ -1584,45 +1599,28 @@ class RuidaDriver(Driver):
 
         self._jog_keys_down.add(key)
         logger.debug(f"Jog key down: {key[0]}{direction:+d}")
-        if holding:
-            await self._stop_jog_motion()
-        try:
+        if not holding:
             self._jog_busy = True
-            await self._set_travel_speed(self._jog_speed_mm_min)
-            if not await self._jog_to_limit():
-                self._jog_keys_down.discard(key)
-        except (OSError, RuntimeError) as e:
-            logger.warning(f"Hold jog failed to start: {e}")
-            self._jog_keys_down.discard(key)
-        finally:
-            # The flag tracks motion, not intent: if no key survived
-            # the awaits, nothing is moving and the interlock must not
-            # stay up. Releasing it here is what keeps a diagonal
-            # whose halves were released mid-flight from bricking every
-            # later jog.
-            if not self._jog_keys_down:
-                self._jog_busy = False
+            self._hold_task = asyncio.create_task(
+                self._hold_jog(self._frame_epoch), name="ruida-hold-jog"
+            )
 
     async def jog_key_up(self, axis: str, direction: int) -> None:
+        """
+        Let go of a held key.
+
+        The last key let go ends the hold: _stop_jog_motion waits the
+        sequence out before its next move, then sends D8 01 and
+        resyncs. One half of a diagonal let go only steers the next
+        move along the axis still held.
+        """
         key = (axis.lower(), direction)
         if key not in self._jog_keys_down:
             return
         self._jog_keys_down.discard(key)
         logger.debug(f"Jog key up: {key[0]}{direction:+d}")
-        await self._stop_jog_motion()
         if not self._jog_keys_down:
-            return
-        try:
-            # One half of a diagonal let go: keep going on the rest.
-            self._jog_busy = True
-            if not await self._jog_to_limit():
-                self._jog_keys_down.clear()
-        except (OSError, RuntimeError) as e:
-            logger.warning(f"Hold jog failed to continue: {e}")
-            self._jog_keys_down.clear()
-        finally:
-            if not self._jog_keys_down:
-                self._jog_busy = False
+            await self._stop_jog_motion()
 
     async def release_all_jog_keys(self) -> None:
         keys = sorted(self._jog_keys_down)
@@ -1639,26 +1637,35 @@ class RuidaDriver(Driver):
         """
         Halt whatever is moving and resync the cached position.
 
-        The stop goes out first so the head is already braking while
-        the position read is in flight; whatever comes back is where
-        the head actually ended up. A read that fails leaves the cache
+        A hold sequence is waited out first: the epoch bump ends it
+        before its next move, so the stop follows its last one. It is
+        waited for, not cancelled: a send cut off mid-write would free
+        the client's lock while the bytes are still going out. The
+        stop then goes out so the head is already braking while the
+        position read is in flight; whatever comes back is where the
+        head actually ended up. A read that fails leaves the cache
         empty rather than holding the target the head was only ever
         commanded toward -- an unknown position is recoverable, a
         confident wrong one is not.
 
         Bumping the frame epoch makes this the single halt for every
-        kind of interactive motion: a start-corner move running concurrently
-        sees the change and abandons itself.
+        kind of interactive motion: a start-corner move or a hold
+        running concurrently sees the change and abandons itself.
 
-        HARDWARE NOTE: this assumes D8 01 halts an interactive rapid.
-        See MOTION_AUDIT.md MOT-05 -- nothing in this repository
-        confirms it, and the fallback if it is wrong is to keep the
-        long move but chunk it into 25 mm relative moves, issued only
-        once the polled position shows the previous chunk nearly
-        consumed -- still behind the busy flag, so the queue never
-        grows past one outstanding move.
+        HARDWARE NOTE: nothing in this repository confirms that D8 01
+        halts an interactive D9 10 rapid (MOTION_AUDIT.md MOT-05), and
+        a hold no longer depends on it: every hold move ends at most
+        one step past the last polled position (_hold_jog), so a
+        release stops the head within that step even if D8 01 does
+        nothing. It is still sent as a courtesy. A single step, a
+        start-corner move or a Go Scale corner is one finite move the
+        user asked for; nothing follows it after a stop, but without a
+        brake it runs to its own end.
         """
         self._frame_epoch += 1
+        hold = self._hold_task
+        if hold is not None and hold is not asyncio.current_task():
+            await asyncio.wait([hold])
         if not self._client:
             self._jog_busy = False
             return
@@ -1671,41 +1678,112 @@ class RuidaDriver(Driver):
         finally:
             self._jog_busy = False
 
-    async def _jog_to_limit(self) -> bool:
+    async def _hold_jog(self, epoch: int) -> None:
         """
-        Move toward the bed limit along the held direction(s).
+        Drive the held keys as a chain of short moves until let go.
 
-        Returns whether a move was actually commanded. A caller that
-        gets False is holding the interlock over nothing and must let
-        it go.
+        Each move is a D9 10 to the last polled position plus one step
+        along every held axis (_hold_step_target). The next one goes
+        out only once a poll shows the previous one nearly consumed,
+        within half a step of its target, and it is computed from that
+        poll, never from the previous target. So one move at most is
+        outstanding, and wherever a release finds the head it has at
+        most one step left to run, braked by D8 01 or not.
+
+        The step is the distance the jog speed covers in
+        JOG_HOLD_STEP_TIME, clamped to JOG_HOLD_STEP_MIN_UM ..
+        JOG_HOLD_STEP_MAX_UM. Background polling is suspended for the
+        whole hold, so the poller sends no reads of its own meanwhile;
+        one already in flight may finish alongside the first read,
+        whose reply still reaches the right reader. The sequence ends
+        once the keys are empty or the frame epoch it started under has
+        moved; whoever moved it stops the head. Anything else that ends
+        it, a failed position read or send included, ends it with a
+        stop of its own: it never moves blind, and never leaves the
+        busy interlock up.
         """
-        if not self._held_deltas():
-            return False
-
-        origin = await self._jog_origin()
-        if origin is None:
-            logger.warning(
-                "Hold jog not started: the head position is unknown",
-                extra=self._log_extra("USER_COMMAND"),
-            )
-            return False
-
-        # Re-read the held keys after the await. A release that landed
-        # while the position read was in flight must win, or the head
-        # departs for the bed limit with nothing held down.
-        deltas = self._held_deltas()
-        if not deltas:
-            return False
-
-        margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
-        target = tuple(
-            self._axis_limit(
-                origin[i], deltas[name], self._axis_range(name), margin_um
-            )
-            for i, name in enumerate(("x", "y"))
+        step_um = max(
+            self.JOG_HOLD_STEP_MIN_UM,
+            min(
+                int(
+                    self._jog_speed_mm_min
+                    / 60
+                    * self.JOG_HOLD_STEP_TIME
+                    * 1000
+                ),
+                self.JOG_HOLD_STEP_MAX_UM,
+            ),
         )
-        await self._jog_move_to(target[0], target[1])
-        return True
+        with self._polling_suspended():
+            try:
+                await self._hold_moves(epoch, step_um)
+            except (OSError, RuntimeError) as e:
+                logger.warning(f"Hold jog failed: {e}")
+            finally:
+                if self._frame_epoch == epoch:
+                    # Nothing stopped the hold; it ended itself.
+                    self._jog_keys_down.clear()
+                    await self._stop_jog_motion()
+
+    async def _hold_moves(self, epoch: int, step_um: int) -> None:
+        """The hold's poll-and-move loop; returns once released or blind."""
+
+        def held() -> dict[str, int] | None:
+            """The held directions, or None once the hold is over."""
+            if self._frame_epoch != epoch:
+                return None
+            return self._held_deltas()
+
+        if not held():
+            return
+        assert self._client
+        await self._set_travel_speed(self._jog_speed_mm_min)
+        target: tuple[int, int] | None = None
+        while held():
+            pos = self._from_controller(await self._client.read_position())
+            deltas = held()
+            if not deltas:
+                return
+            if pos is None:
+                logger.warning(
+                    "Hold jog stopped: the head position is unknown",
+                    extra=self._log_extra("USER_COMMAND"),
+                )
+                return
+            self._last_known_pos = pos
+            if target is None or (
+                max(abs(pos[0] - target[0]), abs(pos[1] - target[1]))
+                <= step_um // 2
+            ):
+                step_target = self._hold_step_target(pos, deltas, step_um)
+                target = None
+                if step_target != pos:
+                    target = await self._jog_move_to(*step_target)
+            await asyncio.sleep(self.JOG_SETTLE_POLL_INTERVAL)
+
+    def _hold_step_target(
+        self, pos: tuple[int, int], deltas: dict[str, int], step_um: int
+    ) -> tuple[int, int]:
+        """
+        One step on from pos along every held axis.
+
+        Never past the bed limit less JOG_LIMIT_MARGIN_MM: an axis
+        already there, or not held, stays where it is.
+        """
+        margin_um = int(self.JOG_LIMIT_MARGIN_MM * 1000)
+        target = []
+        for i, name in enumerate(("x", "y")):
+            direction = deltas[name]
+            limit = self._axis_limit(
+                pos[i], direction, self._axis_range(name), margin_um
+            )
+            if direction > 0:
+                target.append(min(pos[i] + step_um, limit))
+            elif direction < 0:
+                target.append(max(pos[i] - step_um, limit))
+            else:
+                target.append(pos[i])
+        return target[0], target[1]
 
     def _held_deltas(self) -> dict[str, int] | None:
         """The summed direction per axis, or None when nothing is held."""

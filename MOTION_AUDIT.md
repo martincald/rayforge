@@ -415,7 +415,7 @@ driver's own comment at lines 833-838 flags this as unverified.
 - **Severity:** SAFETY
 - **Location:** `swiftcut/machine/driver/ruida/ruida_driver.py:833`
 - **Class:** Failure class 6 — stop semantics of the interactive-motion subsystem (Ruida)
-- **Status:** NEEDS-HARDWARE - observe whether memory 0x0421 keeps changing after a D8 01 sent mid-flight into a D9 10 rapid. If it does, D8 01 does not brake an interactive move and the chunked-move fallback in _stop_jog_motion's docstring has to be built. Capture the exchange as a second fixture either way.
+- **Status:** No longer load-bearing (2026-10-29): hold jog is bounded moves; D8 01 is a courtesy. A hold sends `D9 10` moves of at most one step (5 mm at most) past the last polled position, so a release stops the head within that step whether or not `D8 01` brakes it: `tests/machine/driver/ruida/test_motion_audit.py::TestReleaseNeedsNoBrake`, `tests/ui_gtk/machine/test_jog_widget_to_driver.py::test_a_hold_commands_only_short_moves`. What `D8 01` does to a `D9 10` in flight is still unknown, so the hardware check below still stands for the one-move cases: a Stop during a single step, a start-corner move or a Go Scale corner sends nothing more, but without a brake that move runs to its own end. See "Hold jog is short moves (2026-10-29)".
 - **Phase 2:** no automated reproduction; see the note below
 
 **Evidence**
@@ -4548,7 +4548,7 @@ survive adversarial review or duplicate a finding above.
 | Severity | Status | Count | Findings |
 | --- | --- | --- | --- |
 | SAFETY | Fixed | 8 | MOT-01, MOT-02, MOT-03, MOT-04, MOT-06, MOT-07, MOT-08, MOT-09 |
-| SAFETY | Needs hardware | 1 | MOT-05 |
+| SAFETY | No longer load-bearing | 1 | MOT-05 |
 | BROKEN | Fixed | 6 | MOT-10, MOT-11, MOT-12, MOT-13, MOT-14, MOT-15 |
 | DEGRADED | Fixed | 20 | MOT-16, MOT-18, MOT-19, MOT-20, MOT-21, MOT-22, MOT-23, MOT-25, MOT-26, MOT-27, MOT-28, MOT-29, MOT-30, MOT-31, MOT-32, MOT-33, MOT-34, MOT-35, MOT-36, MOT-37 |
 | DEGRADED | Deferred | 2 | MOT-17, MOT-24 |
@@ -4559,7 +4559,7 @@ survive adversarial review or duplicate a finding above.
 | --- | --- |
 | Fixed | 45 |
 | Fixed, byte unverified | 3 |
-| Needs hardware | 1 |
+| No longer load-bearing | 1 |
 | Deferred | 2 |
 | **Total** | **51** |
 
@@ -4573,8 +4573,12 @@ survive adversarial review or duplicate a finding above.
   read fails rather than keeping the target the head was only
   commanded toward. Covered by
   `TestStopReachesEveryMotion` and `TestEveryReleasePathStops`.
-  The one thing this cannot promise is that `D8 01` brakes the
-  controller: see MOT-05.
+  It cannot promise that `D8 01` brakes the controller (MOT-05).
+  Since 2026-10-29 a hold does not need it to: every hold move ends
+  at most one step past the last polled position, so a release
+  stops the head within that step either way. A Stop during a
+  single step, a start-corner move or a Go Scale corner still needs
+  `D8 01` to cut that one move short.
 - **Input during motion is ignored, never queued.** The driver's
   busy interlock covers jog, step jog and trace alike, a job holds
   it for its whole upload and run, and a jog that commands nothing
@@ -4672,7 +4676,7 @@ Effect on earlier findings:
 | MOT-02 | Test moved to `test_ruida_scale_jobs.py::TestGoScaleIsMovement` |
 | MOT-24 | Still resolved: the outline is computed from the same anchor as the job's pre-move (`test_ruida_start_corner.py::TestGoScaleTracesTheJobOutline`) |
 | MOT-26 | Jog-panel speed is the one `C9 02`; tested in `TestGoScaleTracesTheJobOutline` |
-| MOT-05 | Still a hardware check: Stop relies on `D8 01` halting a `D9 10` rapid |
+| MOT-05 | Still a hardware check: Stop relies on `D8 01` halting a `D9 10` rapid. Amended 2026-10-29: not for a hold, which is bounded moves with `D8 01` as a courtesy; a Stop during a Go Scale corner still relies on it to cut that corner short |
 | MOT-30, MOT-52 | Still TODO: `_jog_move_to` clamps an off-bed corner to the bed without a word |
 
 ## No traffic but the job while it runs (2026-10-29)
@@ -4716,3 +4720,82 @@ starts; on `5ce02f8db` it records `0x0431`, `0x0441` and four ENQs
 inside the job over UDP, and `0x0431`, `0x0441` over USB. Still a
 hardware check: one full job with the lid closed and the app open,
 without a lockup.
+
+## Hold jog is short moves (2026-10-29)
+
+The owner saw a jog run to the bed edge instead of the step
+distance. `tests/ui_gtk/machine/test_jog_widget_to_driver.py`
+reproduces it end to end: the jog widget's own press, timer and
+release handlers, a real `MachineCmd` and task manager, a real
+`RuidaDriver` and `RuidaClient`, and a fake controller that logs
+every command. Its `D9 10` teleports, so a runaway shows as a
+target far from the last read. A slow main loop is modelled by
+running the hold timer by hand before the release. The right arrow
+from (100, 100) mm on a 200 mm bed (machine X runs down on this
+profile), on `a2a5bd03c`:
+
+| Sequence | Command log | Long move? |
+| --- | --- | --- |
+| (a) click released before the 200 ms timer | `C9 02`, `D9 10` (90, 100) | No |
+| (a') click the timer beat | `C9 02`, `D9 10` (1, 100), key-up, `D8 01` | Yes: 99 mm, only `D8 01` stops it |
+| (b) hold, then release | the same | Yes; with `D8 01` dropped nothing stops it |
+| (c) arrow key during a hold | the same; the key's step is ignored | Yes, the hold's own move |
+| (d) hold timer fires during a step's settle | `C9 02`, `D9 10` (90, 100) | No: the key-down is ignored |
+| (e) release while the hold's read is unanswered | `C9 02`, read, key-up, `D8 01` | No (MOT-06 fix) |
+| (e) release while the hold's `D9 10` is being written | `C9 02`, key-up, `D9 10` (1, 100), `D8 01` | Yes |
+| (f) key-up starting before its key-down | cannot happen | - |
+| arrow key held, auto-repeating | `C9 02`, `D9 10` (90, 100) | No |
+
+(f): both are unkeyed tasks, but both reach the loop through
+`call_soon_threadsafe`, `TaskManager._run_task` and `Task.run`'s
+`create_task`, so they start in the order the widget sent them,
+and `jog_key_down` records its key before its first await.
+
+**Root cause.** Every hold, including a click the hold timer took
+for one, was a single `D9 10` to 1 mm from the bed edge, stopped
+only by `D8 01` on release, which nothing has confirmed brakes a
+rapid (MOT-05). A press becomes a hold when the 200 ms timer fires
+first: on a press that long, or on a busy main loop that runs the
+timer ahead of a release it has already queued.
+
+**Fix.**
+
+- **A hold is short moves.** One task per hold
+  (`RuidaDriver._hold_task`) holds the busy interlock and suspends
+  polling. It reads the head and sends a `D9 10` one step on along
+  every held axis, never past the limit margin; the next goes out
+  only when a read finds the head within half a step of the target,
+  and is computed from that read, never from the target. The step is
+  the jog speed for 0.15 s, clamped to 0.5 .. 5 mm. A diagonal half
+  let go or added only steers the next move. A failed read or send
+  stops the hold.
+- **Release** bumps the frame epoch and waits the task out (never
+  cancelling a send), then `_stop_jog_motion` sends `D8 01` as a
+  courtesy and resyncs. With `D8 01` dropped the head has at most one
+  step to run: `TestReleaseNeedsNoBrake`.
+- **A click is one step.** The hold timer asks whether the button is
+  still physically down (`JogWidget._pointer_button_down`); if not,
+  the release finds the hold still pending and moves one step. A
+  touch has no button to ask about and holds as before.
+- The hold does not wait for a poll already on the wire: the
+  per-address FIFO waiters (MOT-20) give each reply to its reader,
+  and draining first is a rule for a running job. Waiting on
+  `_poller_idle` could stall a disconnect, which releases the keys
+  from inside the poll.
+
+All the sequences above now pass. Rewritten for the new design:
+the hold tests of MOT-03, MOT-08, MOT-21 and MOT-28, MOT-07's
+(`test_hold_jog_steps_toward_the_end_the_arrow_points_at`) and
+`test_ruida_driver.py::TestHoldJog`. New: MOT-08's
+`test_a_hold_that_loses_the_position_stops`. The HARDWARE NOTE
+quoted in MOT-05's evidence is rewritten in the code.
+
+Not changed: a second click during a step's settle replaces the
+keyed `jog` task, so the second step is measured from the first
+one's commanded target. Two clicks, two steps; nothing runs away.
+
+Still hardware checks: how a hold feels, since it can pause for a
+poll between steps (5 mm is 25 ms at 200 mm/s); whether Windows
+reports the button as physically up while its release is still
+queued, as macOS does; and every bound here assumes a `D9 10`
+target is in the frame `0x0421`/`0x0431` report (MOT-38).

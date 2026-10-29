@@ -1642,71 +1642,93 @@ def _motion(commands: list[bytes]) -> list[bytes]:
     return [c for c in commands if c[:1] == b"\xd9"]
 
 
+def _targets(commands: list[bytes]) -> list[tuple[int, int]]:
+    """Where each D9 10 in a recorded stream sends the head."""
+    return [(decode35(m[3:8]), decode35(m[8:13])) for m in _motion(commands)]
+
+
+async def _until(predicate, timeout: float = 2.0) -> None:
+    """Let the driver's hold run until predicate holds."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while not predicate():
+        assert loop.time() < deadline, "timed out"
+        await asyncio.sleep(0.001)
+
+
 class TestHoldJog:
-    """A hold is one long move, halted by D8 01 on release."""
+    """A hold is a chain of short moves; D8 01 on release is a courtesy."""
 
     @pytest.mark.asyncio
     async def test_driver_reports_hold_jog_support(self, driver):
         assert driver.can_hold_jog() is True
 
     @pytest.mark.asyncio
-    async def test_press_emits_speed_then_one_long_move(self, driver):
-        spy = _JogClientSpy()
+    async def test_press_emits_speed_then_one_step(self, driver):
+        spy = _JogClientSpy(position=(100000, 100000))
         driver._client = spy
-        driver._last_known_pos = (100000, 100000)
         driver._machine.set_axis_extents(400.0, 300.0)
         await driver.set_jog_speed(1200)  # 20 mm/s
 
         await driver.jog_key_down("x", 1)
+        await _until(lambda: _motion(spy.commands))
+        await driver.jog_key_up("x", 1)
 
         assert spy.commands[0] == b"\xc9\x02" + encode35(20000)
         moves = _motion(spy.commands)
-        assert len(moves) == 1
         assert moves[0][:3] == b"\xd9\x10\x00"
-        # 400 mm bed, 1 mm margin, Y unchanged.
-        assert decode35(moves[0][3:8]) == 399000
-        assert decode35(moves[0][8:13]) == 100000
+        # 20 mm/s for 0.15 s is a 3 mm step from the head as read, Y
+        # unchanged.
+        assert _targets(spy.commands)[0] == (103000, 100000)
 
     @pytest.mark.asyncio
-    async def test_negative_direction_runs_to_the_near_limit(self, driver):
-        spy = _JogClientSpy()
+    async def test_negative_direction_stops_at_the_near_limit(self, driver):
+        spy = _JogClientSpy(position=(100000, 8000))
         driver._client = spy
-        driver._last_known_pos = (100000, 100000)
         driver._machine.set_axis_extents(400.0, 300.0)
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
 
         await driver.jog_key_down("y", -1)
+        await _until(lambda: len(_motion(spy.commands)) >= 2)
+        await asyncio.sleep(0.01)
+        await driver.jog_key_up("y", -1)
 
-        moves = _motion(spy.commands)
-        assert decode35(moves[0][3:8]) == 100000
-        assert decode35(moves[0][8:13]) == 1000
+        # 5 mm steps toward Y = 0, the last one short, ending 1 mm
+        # inside it; at the margin the hold sends nothing more.
+        assert _targets(spy.commands) == [(100000, 3000), (100000, 1000)]
 
     @pytest.mark.asyncio
-    async def test_diagonal_hold_runs_both_axes_to_their_limits(self, driver):
+    async def test_diagonal_hold_steers_without_a_restart(self, driver):
         """The two halves of a diagonal arrive as separate presses."""
         spy = _JogClientSpy(position=(100000, 100000))
         driver._client = spy
-        driver._last_known_pos = (100000, 100000)
         driver._machine.set_axis_extents(400.0, 300.0)
+        driver.JOG_SETTLE_POLL_INTERVAL = 0.001
 
         await driver.jog_key_down("x", -1)
-        spy.position = (100000, 100000)
         await driver.jog_key_down("y", 1)
+        await _until(lambda: _motion(spy.commands))
+        await driver.jog_key_up("x", -1)
+        diagonal = len(_motion(spy.commands))
+        await _until(lambda: len(_motion(spy.commands)) > diagonal)
+        await driver.jog_key_up("y", 1)
 
-        # The second press stops the first move before re-issuing, so
-        # only one move is ever outstanding.
-        moves = _motion(spy.commands)
-        assert len(moves) == 2
-        assert spy.commands.index(b"\xd8\x01") < spy.commands.index(moves[1])
-        assert decode35(moves[1][3:8]) == 1000
-        assert decode35(moves[1][8:13]) == 299000
+        # Both halves count from the first step; letting go of X only
+        # steers what follows along Y. Nothing was stopped in between.
+        targets = _targets(spy.commands)
+        assert targets[0] == (95000, 105000)
+        x_after = {x for x, _ in targets[diagonal:]}
+        assert x_after == {targets[diagonal - 1][0]}
+        assert spy.commands.count(b"\xd8\x01") == 1
+        assert spy.commands[-1] == b"\xd8\x01"
 
     @pytest.mark.asyncio
     async def test_release_stops_and_resyncs(self, driver):
-        spy = _JogClientSpy()
+        spy = _JogClientSpy(position=(100000, 100000))
         driver._client = spy
-        driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", 1)
+        await _until(lambda: _motion(spy.commands))
         spy.position = (222000, 100000)
         reads_before = spy.reads
         await driver.jog_key_up("x", 1)
@@ -1719,16 +1741,17 @@ class TestHoldJog:
 
     @pytest.mark.asyncio
     async def test_click_during_a_hold_emits_nothing(self, driver):
-        spy = _JogClientSpy()
+        spy = _JogClientSpy(position=(100000, 100000))
         driver._client = spy
-        driver._last_known_pos = (100000, 100000)
 
         await driver.jog_key_down("x", 1)
+        await _until(lambda: _motion(spy.commands))
         emitted = len(spy.commands)
         await driver.jog(6000, x=10.0)
 
         assert len(spy.commands) == emitted
         assert driver._jog_keys_down == {("x", 1)}
+        await driver.jog_key_up("x", 1)
 
     @pytest.mark.asyncio
     async def test_input_while_a_step_settles_emits_nothing(self, driver):

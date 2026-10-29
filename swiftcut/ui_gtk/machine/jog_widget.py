@@ -89,6 +89,9 @@ class JogWidget(Gtk.Widget):
         # One armed hold per button, so a second press cannot disarm
         # the first one's timer.
         self._pending_holds: dict[tuple[JogDirection, ...], int] = {}
+        self._hold_gestures: dict[
+            tuple[JogDirection, ...], Gtk.GestureClick
+        ] = {}
         self._root_active_handler: int | None = None
         self._root_window: Gtk.Window | None = None
 
@@ -278,6 +281,7 @@ class JogWidget(Gtk.Widget):
         gesture.connect("pressed", self._on_jog_pressed, directions)
         gesture.connect("released", self._on_jog_released, directions)
         gesture.connect("cancel", self._on_jog_cancelled, directions)
+        self._hold_gestures[directions] = gesture
         # Dragging off the button must stop the motion. GTK4 does not
         # deliver crossing events while an implicit pointer grab is in
         # effect, so "leave" never arrives between press and release
@@ -617,11 +621,46 @@ class JogWidget(Gtk.Widget):
         return True
 
     def _start_hold(self, directions: tuple[JogDirection, ...]):
-        """Hand the held directions to the driver's repeat jog."""
+        """
+        Hand the held directions to the driver's repeat jog.
+
+        Only while the button is still down. A busy main loop can run
+        this timer ahead of a release it has already queued; that
+        press was a click, so the hold stays pending for the release
+        to cancel, and the release moves one step.
+        """
+        if not self._pointer_button_down(directions):
+            return GLib.SOURCE_CONTINUE
         self._pending_holds.pop(directions, None)
         for key in self._jog_keys(*directions):
             self._press_jog_key(directions, key)
         return GLib.SOURCE_REMOVE
+
+    def _pointer_button_down(
+        self, directions: tuple[JogDirection, ...]
+    ) -> bool:
+        """
+        Whether the press that armed a hold is physically down.
+
+        Asked of the windowing system rather than of the gesture, which
+        has not seen a release still queued behind a busy main loop. A
+        touch has no button to ask about; when nothing can be told the
+        answer is yes, and the hold starts as it always did.
+        """
+        gesture = self._hold_gestures.get(directions)
+        native = self.get_native()
+        surface = native.get_surface() if native else None
+        seat = self.get_display().get_default_seat()
+        pointer = seat.get_pointer() if seat else None
+        if (
+            gesture is None
+            or gesture.get_current_sequence() is not None
+            or surface is None
+            or pointer is None
+        ):
+            return True
+        found, _x, _y, mask = surface.get_device_position(pointer)
+        return not found or bool(mask & Gdk.ModifierType.BUTTON1_MASK)
 
     def _on_jog_pressed(self, gesture, n_press, x, y, directions):
         if not self._hold_jog_supported():
