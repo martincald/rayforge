@@ -197,6 +197,10 @@ class RuidaDriver(Driver):
     # stays user-selectable; this only picks the initial slot.
     DEFAULT_WCS = "REF0"
     STATUS_POLL_INTERVAL = 0.5
+    # How long a job waits for a poll already in flight to finish
+    # before its first chunk. The longest is a position poll: three
+    # reads of CONNECTION_TIMEOUT each.
+    POLL_DRAIN_TIMEOUT = 7.0
     # Consecutive unanswered status reads before a completion wait
     # decides the controller is gone rather than busy.
     STATUS_MISS_LIMIT = 8
@@ -247,6 +251,11 @@ class RuidaDriver(Driver):
         self._is_connected = False
         self._response_timeout = self.CONNECTION_TIMEOUT
         self._polling_suspensions = 0
+        # Clear while the connection loop's keepalive or polls are
+        # awaiting the wire. Suspending polling stops the next one,
+        # not the one already sent, so a job waits on this too.
+        self._poller_idle = asyncio.Event()
+        self._poller_idle.set()
         # The two axes are reported in separate replies, so they are
         # cached separately; _last_known_pos is only a position once
         # both halves are in.
@@ -694,72 +703,83 @@ class RuidaDriver(Driver):
                 while self._keep_running and self._is_connected:
                     current_time = asyncio.get_event_loop().time()
 
-                    # The keepalive has to leave on its own schedule.
-                    # It used to be sent once, at connect, and never
-                    # again: liveness rode entirely on the position
-                    # poll, which a job upload suspends.
-                    if self._connection == "usb":
-                        # A status read. It pauses with polling: a
-                        # job, homing or move owns the wire then and
-                        # polls status itself.
-                        if (
+                    self._poller_idle.clear()
+                    try:
+                        # The keepalive has to leave on its own schedule.
+                        # It used to be sent once, at connect, and never
+                        # again: liveness rode entirely on the position
+                        # poll, which a job upload suspends. Over both
+                        # links it pauses with polling, though: while a
+                        # job runs, its own traffic is all that goes out.
+                        if self._connection == "usb":
+                            # A status read. It pauses with polling: a
+                            # job, homing or move owns the wire then and
+                            # polls status itself.
+                            if (
+                                not self._suppress_polling
+                                and current_time - last_keepalive
+                                >= self.USB_KEEPALIVE_INTERVAL
+                            ):
+                                status = await self._client._read_memory_wait(
+                                    self.MACHINE_STATUS_ADDRESS,
+                                    timeout=self.CONNECTION_TIMEOUT,
+                                )
+                                last_keepalive = (
+                                    asyncio.get_event_loop().time()
+                                )
+                                if status is not None:
+                                    keepalive_misses = 0
+                                else:
+                                    keepalive_misses += 1
+                                if (
+                                    keepalive_misses
+                                    >= self.USB_KEEPALIVE_MISS_LIMIT
+                                ):
+                                    logger.warning(
+                                        f"Controller missed "
+                                        f"{keepalive_misses} status reads "
+                                        f"in a row, reconnecting",
+                                        extra=self._log_extra("MACHINE_EVENT"),
+                                    )
+                                    self._is_connected = False
+                                    await self._disconnect_transports()
+                                    break
+                        elif (
                             not self._suppress_polling
                             and current_time - last_keepalive
-                            >= self.USB_KEEPALIVE_INTERVAL
+                            >= self.KEEPALIVE_INTERVAL
                         ):
-                            status = await self._client._read_memory_wait(
-                                self.MACHINE_STATUS_ADDRESS,
-                                timeout=self.CONNECTION_TIMEOUT,
-                            )
-                            last_keepalive = asyncio.get_event_loop().time()
-                            if status is not None:
-                                keepalive_misses = 0
-                            else:
-                                keepalive_misses += 1
-                            if (
-                                keepalive_misses
-                                >= self.USB_KEEPALIVE_MISS_LIMIT
-                            ):
+                            await self._client.keep_alive()
+                            last_keepalive = current_time
+
+                        if (
+                            not self._suppress_polling
+                            and current_time - last_poll_time
+                            >= self.POSITION_POLL_INTERVAL
+                        ):
+                            # The poll is its own liveness proof: it waits
+                            # on the reply to the register it asked for,
+                            # not on "some packet arrived", which any
+                            # unrelated ack used to satisfy.
+                            if not await self._poll_position():
                                 logger.warning(
-                                    f"Controller missed "
-                                    f"{keepalive_misses} status reads "
-                                    f"in a row, reconnecting",
+                                    "Controller stopped responding, "
+                                    "reconnecting",
                                     extra=self._log_extra("MACHINE_EVENT"),
                                 )
                                 self._is_connected = False
                                 await self._disconnect_transports()
                                 break
-                    elif current_time - last_keepalive >= (
-                        self.KEEPALIVE_INTERVAL
-                    ):
-                        await self._client.keep_alive()
-                        last_keepalive = current_time
+                            last_poll_time = asyncio.get_event_loop().time()
 
-                    if (
-                        not self._suppress_polling
-                        and current_time - last_poll_time
-                        >= self.POSITION_POLL_INTERVAL
-                    ):
-                        # The poll is its own liveness proof: it waits
-                        # on the reply to the register it asked for,
-                        # not on "some packet arrived", which any
-                        # unrelated ack used to satisfy.
-                        if not await self._poll_position():
-                            logger.warning(
-                                "Controller stopped responding, reconnecting",
-                                extra=self._log_extra("MACHINE_EVENT"),
-                            )
-                            self._is_connected = False
-                            await self._disconnect_transports()
-                            break
-                        last_poll_time = asyncio.get_event_loop().time()
-
-                    if (
-                        not self._suppress_polling
-                        and current_time - last_ref_poll_time >= 2.0
-                    ):
-                        await self._poll_ref_point_mode()
-                        last_ref_poll_time = current_time
+                        if (
+                            not self._suppress_polling
+                            and current_time - last_ref_poll_time >= 2.0
+                        ):
+                            await self._poll_ref_point_mode()
+                            last_ref_poll_time = current_time
+                    finally:
+                        self._poller_idle.set()
 
                     await asyncio.sleep(self.LOOP_TICK_INTERVAL)
 
@@ -928,7 +948,20 @@ class RuidaDriver(Driver):
             with self._polling_suspended():
                 # The proven sender had no concurrent traffic:
                 # keepalive and position polling stay suspended for
-                # the whole send.
+                # the whole send and until the job-running bit
+                # clears. Position reads interleaved with a running
+                # job have locked the controller up, so a poll
+                # already on the wire finishes before the first chunk.
+                try:
+                    await asyncio.wait_for(
+                        self._poller_idle.wait(), self.POLL_DRAIN_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "A background poll is still waiting on the "
+                        "controller; sending the job anyway",
+                        extra=self._log_extra("USER_COMMAND"),
+                    )
                 await asyncio.sleep(0.2)
                 if self._connection == "usb":
                     sent = await self._client.stream_job(
@@ -953,6 +986,16 @@ class RuidaDriver(Driver):
         finally:
             self._job_running = False
             self._last_known_pos = None
+
+        # Nothing read the head while the job ran: one read resyncs
+        # it, still suspended so the poller does not overlap it. A
+        # failed read leaves the position unknown.
+        if self._client:
+            with self._polling_suspended():
+                try:
+                    self._set_known_pos(await self._client.read_position())
+                except (OSError, RuntimeError, asyncio.TimeoutError) as e:
+                    logger.debug(f"Position read after the job failed: {e}")
 
         if sent:
             logger.info("Job finished", extra=self._log_extra("USER_COMMAND"))

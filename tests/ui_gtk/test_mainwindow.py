@@ -479,6 +479,50 @@ def test_both_stop_buttons_cancel_through_one_method(app_and_window):
         ]
 
 
+@pytest.mark.ui
+def test_the_head_dot_hides_while_a_job_runs(app_and_window):
+    """
+    Nothing reads the head while a job runs (MOTION_AUDIT.md,
+    2026-10-29), so the canvas hides the dot rather than leave it
+    where the job started, does not move it, and shows it again at
+    the head afterwards.
+    """
+    _app, win = app_and_window
+    machine = win.bottom_panel.jog_widget.machine
+    surface = win.surface
+    before = DeviceState(machine_pos=(10.0, 20.0, 0.0))
+    after = DeviceState(machine_pos=(40.0, 30.0, 0.0))
+
+    with (
+        _connected(machine, has_ops=True),
+        patch.object(machine, "device_state", before),
+    ):
+        win.machine_cmd.job_state_changed.send(win.machine_cmd)
+        assert surface._laser_dot.visible
+        assert surface._laser_dot_pos_mm == (10.0, 20.0)
+
+        with (
+            patch.object(
+                MachineCmd,
+                "is_job_running",
+                new_callable=PropertyMock,
+                return_value=True,
+            ),
+            patch.object(machine, "device_state", after),
+        ):
+            win.machine_cmd.job_state_changed.send(win.machine_cmd)
+            assert not surface._laser_dot.visible
+            surface._on_machine_state_changed(machine, after)
+            win._update_actions_and_ui()
+            assert not surface._laser_dot.visible
+            assert surface._laser_dot_pos_mm == (10.0, 20.0)
+
+        with patch.object(machine, "device_state", after):
+            win.machine_cmd.job_state_changed.send(win.machine_cmd)
+            assert surface._laser_dot.visible
+            assert surface._laser_dot_pos_mm == (40.0, 30.0)
+
+
 # The test cut: a 10 mm square at the active layer's settings, asked
 # for first, where the canvas marks it.
 

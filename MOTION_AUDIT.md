@@ -4674,3 +4674,45 @@ Effect on earlier findings:
 | MOT-26 | Jog-panel speed is the one `C9 02`; tested in `TestGoScaleTracesTheJobOutline` |
 | MOT-05 | Still a hardware check: Stop relies on `D8 01` halting a `D9 10` rapid |
 | MOT-30, MOT-52 | Still TODO: `_jog_move_to` clamps an off-bed corner to the bed without a word |
+
+## No traffic but the job while it runs (2026-10-29)
+
+On the real machine, position polling during a job -- `DA 00 04 21`
+and `DA 00 04 31` reads interleaved with the job the controller is
+running -- has locked the controller up. The rule from here on:
+
+- **From the first job chunk until the job-running bit clears, only
+  the job goes out.** That is the job's chunks (the UDP upload or the
+  USB stream), then the completion wait's status reads of `0x0400`
+  at `STATUS_POLL_INTERVAL`. No `0x0421`, `0x0431` or `0x0441` read,
+  no ENQ keepalive and no ref point mode poll. The UDP keepalive used
+  to send ENQ all through a job; it now pauses with polling, as the
+  USB status-read keepalive already did.
+- **A poll already on the wire finishes first.** Suspending polling
+  only stops the next poll, so one in flight when Start arrived could
+  still send its `0x0431` and `0x0441` reads after the first chunk.
+  `run()` now waits for the connection loop to be idle
+  (`_poller_idle`, at most `POLL_DRAIN_TIMEOUT`) before the 0.2 s
+  quiet gap and the first chunk. Over UDP a stray reply's lone `CC`
+  could also be taken for a chunk's ACK (`RuidaClient._handle_response`).
+- **One position read after.** When the job ends, is stopped during
+  the upload or is cancelled, `run()` reads the head once (`0x0421`,
+  `0x0431`), still suspended, and the poller resumes after it. A
+  failed read leaves the position unknown.
+- **The UI follows `MachineCmd.is_job_running`.** The jog panel's
+  readout says "running" and the canvas hides the head dot; both
+  show the head again when the job ends.
+- **Stop keeps its resync.** `cancel()` still goes through
+  `_stop_jog_motion` (Phase 3 invariant), which reads the position
+  right after `D8 01`, possibly before the running bit clears. After a
+  Stop there are two reads: that one and `run()`'s.
+- **The start-corner pre-move** reads the head before the stream, as
+  before; the rule starts at the first chunk.
+
+Covered by
+`tests/machine/driver/ruida/test_job_traffic_quiet.py::test_nothing_but_the_job_goes_out_while_it_runs`
+(UDP and USB), which parks a position poll on the wire when the job
+starts; on `5ce02f8db` it records `0x0431`, `0x0441` and four ENQs
+inside the job over UDP, and `0x0431`, `0x0441` over USB. Still a
+hardware check: one full job with the lid closed and the app open,
+without a lockup.

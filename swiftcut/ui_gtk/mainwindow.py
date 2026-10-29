@@ -1790,8 +1790,11 @@ class MainWindow(Adw.ApplicationWindow):
                 and bool(active_driver and active_driver.can_focus_z())
                 and not is_job_or_task_active
             )
-            self.surface.set_laser_dot_visible(connected)
-            if state and connected:
+            # Nothing reads the head while a job runs, so the dot
+            # would sit where the job started: it is hidden instead.
+            show_dot = connected and not self.machine_cmd.is_job_running
+            self.surface.set_laser_dot_visible(show_dot)
+            if state and show_dot:
                 x, y = state.machine_pos[:2]
                 if x is not None and y is not None:
                     self.surface.set_laser_dot_position(x, y)

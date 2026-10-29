@@ -914,6 +914,9 @@ class WorkSurface(WorldSurface):
 
     def _on_machine_state_changed(self, machine: Machine, state):
         """Handles machine state changes including position updates."""
+        # A hidden dot stays put; whoever shows it again places it.
+        if not self._laser_dot.visible:
+            return
         m_pos = state.machine_pos
         if m_pos and all(p is not None for p in m_pos):
             m_x, m_y = m_pos[0], m_pos[1]

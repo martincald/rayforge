@@ -734,9 +734,17 @@ class JogWidget(Gtk.Widget):
         These are the machine's own coordinates, so they match what the
         controller panel reads. Which corner they run from depends on
         the profile's origin setting, so the tooltip names it.
+
+        Nothing reads the head while a job runs, so the readout says
+        so instead of holding the position from before the job.
         """
-        pos = self.machine.device_state.machine_pos if self.machine else None
-        self.position_label.set_label(self._format_position(pos))
+        if self.machine_cmd and self.machine_cmd.is_job_running:
+            self.position_label.set_label(_("running"))
+        else:
+            pos = (
+                self.machine.device_state.machine_pos if self.machine else None
+            )
+            self.position_label.set_label(self._format_position(pos))
         self.position_label.set_tooltip_text(self._position_origin_hint())
 
     def _on_machine_state_changed(self, machine, state):
@@ -895,6 +903,7 @@ class JogWidget(Gtk.Widget):
     def _on_job_state_changed(self, sender):
         """A job started or ended."""
         self._update_button_sensitivity()
+        self._update_position()
 
     def _on_document_settled(self, sender, **kwargs):
         """A document with no ops has no outline to scale."""

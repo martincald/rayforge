@@ -1008,6 +1008,8 @@ async def test_a_usb_job_never_waits_for_a_chunk_ack(lite_context, mocker):
     await driver._client.connect()
     driver._move_to_start_corner = AsyncMock(return_value=True)
     driver._wait_for_job_completion = AsyncMock()
+    # Nothing answers the position read after the job on this port.
+    driver._client.read_position = AsyncMock(return_value=None)
     send_job = mocker.spy(driver._client, "send_job")
     try:
         await asyncio.wait_for(

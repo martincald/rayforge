@@ -1233,6 +1233,11 @@ class StubRuidaTransport:
 
     async def send_command(self, command: bytes):
         self.sent.append(command)
+        # A job ends with one position read; the head answers it here,
+        # every other reply is the test's to send.
+        if command in (b"\xda\x00\x04\x21", b"\xda\x00\x04\x31"):
+            reply = b"\xda\x01" + command[2:] + encode35(0)
+            self.decoded_received.send(self, data=reply)
 
 
 def make_encoded() -> EncodedOutput:

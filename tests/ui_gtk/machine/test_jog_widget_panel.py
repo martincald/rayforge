@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import gi
 import pytest
+from blinker import Signal
 
 gi.require_version("Gtk", "4.0")
 
@@ -71,7 +72,9 @@ def test_stop_cancels_the_job(ui_context_initializer):
 
 @pytest.mark.ui
 def test_position_readout_starts_unknown(ui_context_initializer):
-    widget, _machine = _widget(ui_context_initializer, MagicMock())
+    widget, _machine = _widget(
+        ui_context_initializer, MagicMock(is_job_running=False)
+    )
 
     assert widget.position_label.get_label() == "X —  Y —"
 
@@ -80,12 +83,40 @@ def test_position_readout_starts_unknown(ui_context_initializer):
 def test_position_readout_follows_the_polled_position(
     ui_context_initializer,
 ):
-    widget, machine = _widget(ui_context_initializer, MagicMock())
+    widget, machine = _widget(
+        ui_context_initializer, MagicMock(is_job_running=False)
+    )
     state = DeviceState(machine_pos=(123.44, 567.81, 0.0))
 
     machine.set_device_state(state)
     widget._on_machine_state_changed(machine, state)
 
+    assert widget.position_label.get_label() == "X 123.4  Y 567.8"
+
+
+@pytest.mark.ui
+def test_position_readout_says_running_during_a_job(ui_context_initializer):
+    """
+    Nothing reads the head while a job runs (MOTION_AUDIT.md,
+    2026-10-29), so the readout says "running" rather than holding the
+    position from before the job, and shows the head again after it.
+    """
+    machine_cmd = MagicMock(is_job_running=False, job_state_changed=Signal())
+    widget, machine = _widget(ui_context_initializer, machine_cmd)
+    before = DeviceState(machine_pos=(10.0, 20.0, 0.0))
+    machine.set_device_state(before)
+    widget._on_machine_state_changed(machine, before)
+
+    machine_cmd.is_job_running = True
+    machine_cmd.job_state_changed.send(machine_cmd)
+    assert widget.position_label.get_label() == "running"
+    widget._on_machine_state_changed(machine, before)
+    assert widget.position_label.get_label() == "running"
+
+    after = DeviceState(machine_pos=(123.44, 567.81, 0.0))
+    machine.set_device_state(after)
+    machine_cmd.is_job_running = False
+    machine_cmd.job_state_changed.send(machine_cmd)
     assert widget.position_label.get_label() == "X 123.4  Y 567.8"
 
 

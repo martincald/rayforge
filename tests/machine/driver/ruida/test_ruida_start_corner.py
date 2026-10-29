@@ -162,6 +162,9 @@ async def _run_job(driver, ops) -> _ClientSpy:
     """Run a job through the driver and return what it sent."""
     spy = _ClientSpy()
     driver._client = spy
+    # A fresh spy is a head back at HEAD, which a previous job's
+    # position read did not see.
+    driver._last_known_pos = None
     doc = Doc()
     encoded = RuidaEncoder().encode(ops, driver._machine, doc)
     await driver.run(encoded, doc, ops)
