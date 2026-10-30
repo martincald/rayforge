@@ -3,7 +3,9 @@
 # values change so updated apps replace the built-in set.
 # Versions 1 and 2 were placeholder sets; this list was version 3.
 # Version 5 makes the scan recipes target the Scan step.
-version: 5
+# Version 6 slows the ilab-614's MDF 6 mm cut to 12.5 mm/s and the MDF
+# and acrylic scans to 300 mm/s on both machines.
+version: 6
 
 operations:
   cut:     { step: contour, description: "Vector cut through the material" }
@@ -19,7 +21,7 @@ recipes:
     operation: cut
     color: "#8B5A2B"
     machines:
-      ilab-614: { speed_mm_s: 20,   power_pct: 65 }
+      ilab-614: { speed_mm_s: 12.5,   power_pct: 65 }
       ilab-626: { speed_mm_s: 12.5, power_pct: 75 }
 
   - id: mdf-3-cut
@@ -39,8 +41,8 @@ recipes:
     operation: scan
     color: "#C8A27A"
     machines:
-      ilab-614: { speed_mm_s: 500, power_pct: 18 }
-      ilab-626: { speed_mm_s: 500, power_pct: 18 }
+      ilab-614: { speed_mm_s: 300, power_pct: 18 }
+      ilab-626: { speed_mm_s: 300, power_pct: 18 }
 
   - id: mdf-engrave
     name: "MDF · Engrave (base)"
@@ -81,8 +83,8 @@ recipes:
     operation: scan
     color: "#7FB6F2"
     machines:
-      ilab-614: { speed_mm_s: 500, power_pct: 10 }
-      ilab-626: { speed_mm_s: 500, power_pct: 10 }
+      ilab-614: { speed_mm_s: 300, power_pct: 10 }
+      ilab-626: { speed_mm_s: 300, power_pct: 10 }
 
   - id: acrylic-3-engrave
     name: "Acrylic 3 mm · Engrave (base)"

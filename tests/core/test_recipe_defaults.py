@@ -90,7 +90,7 @@ def test_lab_numbers_in_model_units():
     """mm/s and percent become the model's mm/min and 0..1."""
     translated = _translated()
     mdf_cut = translated["mdf-6-cut"]["machine_settings"]
-    assert mdf_cut["ilab-614"]["cut_speed"] == 1200
+    assert mdf_cut["ilab-614"]["cut_speed"] == 750
     assert mdf_cut["ilab-614"]["power"] == pytest.approx(0.65)
     assert mdf_cut["ilab-614"]["min_power"] == pytest.approx(0.65)
     assert mdf_cut["ilab-626"]["cut_speed"] == 750

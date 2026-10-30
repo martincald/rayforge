@@ -724,8 +724,8 @@ def test_a_6_mm_mdf_pick_fills_the_contour_from_the_shipped_cut(
     step_cmd.apply_material(layer, ("mdf", 6.0))
 
     assert contour.applied_recipe_uid == "mdf-6-cut"
-    assert contour.cut_speed == 1200
-    assert contour.cut_speed / 60 == 20  # mm/s in the file, mm/min here
+    assert contour.cut_speed == 750
+    assert contour.cut_speed / 60 == 12.5  # mm/s in the file, mm/min here
     assert contour.power == pytest.approx(0.65)
     assert contour.min_power == pytest.approx(0.65)
     # The file says "#8B5A2B"; the app stores colors in lower case.
@@ -767,7 +767,7 @@ def test_the_shipped_scan_applies_to_a_scan_step(
         step_cmd.apply_recipe(scan, recipe, t)
 
     assert scan.applied_recipe_uid == "mdf-scan"
-    assert scan.cut_speed == 30000  # 500 mm/s
+    assert scan.cut_speed == 18000  # 300 mm/s
     assert scan.power == pytest.approx(0.18)
     assert scan.min_power == pytest.approx(0.18)
 
@@ -803,10 +803,10 @@ def test_a_new_step_takes_the_shipped_recipe_of_its_own_type(
     step_cmd.apply_best_recipe_to_step(cut, layer=layer)
 
     assert scan.applied_recipe_uid == "mdf-scan"
-    assert scan.cut_speed == 30000  # 500 mm/s
+    assert scan.cut_speed == 18000  # 300 mm/s
     assert scan.power == pytest.approx(0.18)
     assert cut.applied_recipe_uid == "mdf-6-cut"
-    assert cut.cut_speed == 1200  # 20 mm/s
+    assert cut.cut_speed == 750  # 12.5 mm/s
     assert cut.power == pytest.approx(0.65)
 
 
