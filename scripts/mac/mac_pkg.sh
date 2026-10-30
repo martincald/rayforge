@@ -43,8 +43,9 @@ if [ -n "${DEVELOPER_ID_APP:-}${DEVELOPER_ID_INSTALLER:-}" ]; then
             "DEVELOPER_ID_INSTALLER and NOTARY_KEYCHAIN_PROFILE." >&2
         exit 1
     fi
-    if ! codesign -dv "$APP" 2>&1 | \
-            grep -q "^Authority=Developer ID Application"; then
+    APP_SIGNATURE=$(codesign -dv "$APP" 2>&1)
+    if ! grep -q "^Authority=Developer ID Application" <<<"$APP_SIGNATURE"
+    then
         echo "$APP is not signed with a Developer ID: build it with" \
             "DEVELOPER_ID_APP set." >&2
         exit 1

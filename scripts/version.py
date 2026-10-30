@@ -24,6 +24,8 @@ refuses while tracked files have uncommitted changes, which the tag
 would not contain.
 """
 
+from __future__ import annotations
+
 import argparse
 import re
 import subprocess

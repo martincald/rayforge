@@ -12,8 +12,10 @@
 # expects. As root it also installs the package: over an older
 # SwiftCut.app, over itself, refused under a newer one, and a rollback
 # build (ALLOW_DOWNGRADE=1) over that newer one. Quit SwiftCut first.
-# Afterwards the Mac is as it was: an app that was in /Applications is
-# put back, and the test's install, receipt and version file are gone.
+# Afterwards the Mac is as it was: an app, receipt and version file
+# that were there are put back, and the test's own are gone. If macOS
+# says Terminal was prevented from modifying apps, allow it in System
+# Settings > Privacy & Security > App Management.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -201,8 +203,13 @@ data_hash() {
 mkdir "$WORK/saved"
 [ -e "$APP" ] && mv "$APP" "$WORK/saved/SwiftCut.app"
 [ -f "$VERSION_FILE" ] && cp "$VERSION_FILE" "$WORK/saved/installed_version"
+RECEIPTS=(/var/db/receipts/org.ilab.SwiftCut.plist
+    /var/db/receipts/org.ilab.SwiftCut.bom)
 HAD_RECEIPT=0
-pkgutil --pkg-info org.ilab.SwiftCut >/dev/null 2>&1 && HAD_RECEIPT=1
+if [ -f "${RECEIPTS[0]}" ]; then
+    HAD_RECEIPT=1
+    cp "${RECEIPTS[@]}" "$WORK/saved/"
+fi
 restore() {
     [ -e "$APP" ] && "$LSREGISTER" -u "$APP" >/dev/null 2>&1
     rm -rf "$APP"
@@ -215,7 +222,9 @@ restore() {
         rm -f "$VERSION_FILE"
         rmdir "$(dirname "$VERSION_FILE")" 2>/dev/null
     fi
-    if (( HAD_RECEIPT == 0 )); then
+    if (( HAD_RECEIPT == 1 )); then
+        cp "$WORK/saved/org.ilab.SwiftCut".{plist,bom} /var/db/receipts/
+    else
         pkgutil --forget org.ilab.SwiftCut >/dev/null 2>&1
     fi
     rm -rf "$WORK"
