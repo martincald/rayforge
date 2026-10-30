@@ -25,7 +25,7 @@ swiftcut = "swiftcut.app:main"
 
 [build-system]
 requires = [
-  "setuptools >= 40.9.0", "setuptools-git-versioning"
+  "setuptools >= 40.9.0"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -35,10 +35,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 include = ["swiftcut*"]
 
-[tool.setuptools-git-versioning]
-enabled = true
-
 [tool.setuptools.dynamic]
+version = {file = ["VERSION"]}
 dependencies = {file = ["requirements.txt"]}
 
 [tool.ruff]

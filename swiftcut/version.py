@@ -1,28 +1,20 @@
 import os
-import subprocess
-import sys
 
 __dir__ = os.path.dirname(__file__)
 
 
-def get_version_from_git() -> str | None:
-    kwargs = {
-        "stderr": subprocess.DEVNULL,
-        "cwd": __dir__,
-    }
-    if sys.platform == "win32":
-        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-
-    try:
-        # Use **kwargs to pass the arguments
-        output = subprocess.check_output(["git", "describe"], **kwargs)
-    except (
-        subprocess.CalledProcessError,
-        FileNotFoundError,
-        NotADirectoryError,
-    ):
+def get_version_from_checkout() -> str | None:
+    """VERSION at the root of a source checkout, the one source of the
+    version (scripts/version.py). pyproject.toml beside it tells a
+    checkout from a stray VERSION file in site-packages."""
+    root = os.path.dirname(__dir__)
+    if not os.path.isfile(os.path.join(root, "pyproject.toml")):
         return None
-    return output.decode("ascii").strip()
+    try:
+        with open(os.path.join(root, "VERSION"), "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
 
 
 def get_version_from_pkg() -> str | None:

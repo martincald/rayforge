@@ -179,6 +179,11 @@ depends-on = ["compile-translations"]
 # Builds dist/SwiftCut.app and dist/SwiftCut.dmg from this environment.
 cmd = "bash scripts/mac/mac_build.sh --pixi --all"
 
+[tasks.version-bump]
+# `pixi run version-bump patch|minor|major`: writes the next version to
+# VERSION, commits it and tags the commit v<version>.
+cmd = "python scripts/version.py bump"
+
 [tasks.build-deb-source]
 # Builds a source package, ready for upload to a PPA.
 cmd = "bash scripts/build-deb.sh --source"

@@ -38,6 +38,11 @@ hiddenimports += collect_submodules('swiftcut.image')
 hiddenimports += collect_submodules('swiftcut.core')
 hiddenimports.append('swiftcut.ui_gtk.canvas2d.elements.workpiece')
 
+# VERSION and the build number (scripts/version.py), which mac_build.sh
+# exports after checking them.
+_version = os.environ['SWIFTCUT_VERSION']
+_build_number = os.environ['SWIFTCUT_BUILD_NUMBER']
+
 # Use modern .icon (via Assets.car) when available, fall back to .icns.
 _use_car = os.path.exists('Assets.car')
 _icon = None if _use_car else 'swiftcut.icns'
@@ -114,11 +119,15 @@ app = BUNDLE(
     coll,
     name='SwiftCut.app',
     icon=_icon,
+    # Fixed for good: every MDM tells apps apart by this id, and a new
+    # one would make SwiftCut a different app on every lab Mac.
     bundle_identifier='org.ilab.SwiftCut',
     info_plist={
         **({'CFBundleIconName': 'swiftcut'} if _use_car else {}),
         'CFBundleName': 'SwiftCut',
         'CFBundleDisplayName': 'SwiftCut',
+        'CFBundleShortVersionString': _version,
+        'CFBundleVersion': _build_number,
         'NSHighResolutionCapable': True,
         'NSHumanReadableCopyright': '© 2026 Martín Calderón',
         # Asked the first time the app reaches the cutter over UDP;

@@ -77,7 +77,7 @@ jobs:
 
       - name: Build macOS artifacts
         run: |
-          printf "5\n" | bash scripts/mac/mac_build.sh --version "${VERSION}"
+          printf "5\n" | bash scripts/mac/mac_build.sh
 
       - name: Smoke test Intel app
         run: |
@@ -131,7 +131,7 @@ jobs:
 
       - name: Build macOS artifacts
         run: |
-          printf "5\n" | bash scripts/mac/mac_build.sh --version "${VERSION}"
+          printf "5\n" | bash scripts/mac/mac_build.sh
 
       - name: Smoke test ARM app
         run: |

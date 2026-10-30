@@ -7,7 +7,6 @@ DO_DMG=0
 DO_RUN_APP=0
 USE_PIXI=0
 NON_INTERACTIVE=0
-VERSION_OVERRIDE=""
 MACOS_MIN_VERSION="12.0"
 PYINSTALLER_VERSION="6.22.3"
 MACOS_NUMPY_VERSION="1.26.4"
@@ -24,10 +23,6 @@ print_info() {
 
 while (($#)); do
     case "$1" in
-        --version)
-            VERSION_OVERRIDE="$2"
-            shift
-            ;;
         --pixi)
             # Build from the active pixi environment, which already
             # carries GTK 4, libadwaita and every Python dependency,
@@ -100,6 +95,14 @@ if (( DO_RUN_APP == 1 )); then
     "$APP_BIN"
     exit 0
 fi
+
+# VERSION is the one source of the version (scripts/version.py): the
+# check refuses one that is not newer than every release tag, unless
+# this commit is that release, before any time goes into the build.
+VERSION=$(python3 scripts/version.py check)
+SWIFTCUT_BUILD_NUMBER=$(python3 scripts/version.py build-number)
+export SWIFTCUT_VERSION="$VERSION" SWIFTCUT_BUILD_NUMBER
+echo "Version $VERSION, build $SWIFTCUT_BUILD_NUMBER"
 
 if (( USE_PIXI == 1 )); then
     if [ -z "${CONDA_PREFIX:-}" ]; then
@@ -229,13 +232,6 @@ fi
 
 bash scripts/update_translations.sh --compile-only
 
-# --always falls back to a bare commit SHA when the repo has no tags,
-# and it always succeeds, so the `||` arm never fires - that shipped a
-# raw SHA as the product version. Keep the SHA as build metadata on an
-# explicit dev version instead.
-VERSION=${VERSION_OVERRIDE:-$(git describe --tags --exact-match 2>/dev/null \
-    || git describe --tags 2>/dev/null \
-    || echo "0.0.0+g$(git rev-parse --short HEAD 2>/dev/null || echo unknown)")}
 echo "$VERSION" > swiftcut/version.txt
 
 if (( DO_BUILD == 1 )); then

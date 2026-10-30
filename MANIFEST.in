@@ -1,3 +1,4 @@
+include VERSION
 recursive-include swiftcut/resources *
 recursive-include swiftcut/locale *.mo
 recursive-include swiftcut/builtin_addons *.py *.yaml *.po *.pot *.mo *.png *.jpg *.jpeg *.gif *.svg *.ico

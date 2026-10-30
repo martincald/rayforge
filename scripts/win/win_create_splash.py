@@ -1,7 +1,8 @@
 """Generate the Windows splash image from the SwiftCut app icon SVG.
 
 The splash is the brand plate: the icon's own gradient taken
-full-bleed, with the swift knocked out in white beside the wordmark.
+full-bleed, with the swift knocked out in white beside the wordmark,
+and the version from VERSION in the bottom right corner.
 
 Corners are rounded. PyInstaller's Tk splash keys transparency off
 pure magenta on Windows (see PyInstaller's splash_templates.py), so
@@ -35,6 +36,7 @@ from PIL import Image, ImageDraw, ImageFont
 here = Path(__file__).parent.parent.parent
 source_path = here / "swiftcut/resources/icons/org.ilab.SwiftCut.svg"
 splash_path = here / "swiftcut_splash.png"
+VERSION = (here / "VERSION").read_text(encoding="utf-8").strip()
 
 # Pixels per point: 2 for the macOS Retina splash, 1 for Windows.
 SCALE = 2 if sys.platform == "darwin" else 1
@@ -47,6 +49,8 @@ CREDIT = "by Martín Calderón"
 CREDIT_SIZE = 15 * SCALE
 CREDIT_GAP = 8 * SCALE
 CREDIT_COLOR = (0xE3, 0xEE, 0xFF)
+VERSION_SIZE = 12 * SCALE
+VERSION_MARGIN = 14 * SCALE
 MAGENTA = (255, 0, 255)
 
 # Brand tokens, from docs/design/swift-cut-tokens.md.
@@ -155,6 +159,7 @@ def load_font(size, windows_names, mac_weight):
 
 font = load_font(FONT_SIZE, ("segoeuisb.ttf", "segoeuib.ttf"), "Semibold")
 credit_font = load_font(CREDIT_SIZE, ("segoeui.ttf",), "Regular")
+version_font = load_font(VERSION_SIZE, ("segoeui.ttf",), "Regular")
 
 draw = ImageDraw.Draw(canvas)
 text = "SwiftCut"
@@ -185,6 +190,17 @@ draw.text(
     ),
     CREDIT,
     font=credit_font,
+    fill=CREDIT_COLOR + (255,),
+)
+version_text = f"Version {VERSION}"
+version_box = draw.textbbox((0, 0), version_text, font=version_font)
+draw.text(
+    (
+        WIDTH - VERSION_MARGIN - version_box[2],
+        HEIGHT - VERSION_MARGIN - version_box[3],
+    ),
+    version_text,
+    font=version_font,
     fill=CREDIT_COLOR + (255,),
 )
 

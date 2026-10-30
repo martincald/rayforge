@@ -4,6 +4,8 @@ MIT attribution (the original author's copyright notice), which the
 MIT license requires we preserve.
 """
 
+from pathlib import Path
+
 import gi
 import pytest
 
@@ -22,6 +24,7 @@ ATTRIBUTION = (
     "Based on Rayforge, created by Samuel Abels, used under the MIT License."
 )
 RAYFORGE_COPYRIGHT = "© 2025 Samuel Abels"
+VERSION = (Path(__file__).parents[2] / "VERSION").read_text().strip()
 
 
 def _iter_widgets(widget):
@@ -133,3 +136,12 @@ def test_dependency_list_names_only_what_the_app_talks_through():
     comm = dict(get_dependency_info()["File Formats & Communication"])
 
     assert list(comm) == ["ezdxf", "pypdf", "PyYAML", "pyserial"]
+
+
+@pytest.mark.ui
+def test_about_dialog_shows_the_version_file():
+    dialog = AboutDialog()
+    try:
+        assert VERSION in _label_texts(dialog)
+    finally:
+        dialog.destroy()

@@ -29,17 +29,7 @@ jobs:
         id: set-version
         shell: bash
         run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION=${{ github.ref_name }}
-          elif git describe --tags >/dev/null 2>&1; then
-            VERSION=$(git describe --tags)
-          else
-            VERSION="0.0.0-$(git rev-parse --short HEAD)"
-          fi
-          if [ -z "$VERSION" ]; then
-            echo "Error: No git version number found!"
-            exit 1
-          fi
+          VERSION=$(cat VERSION)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
@@ -114,7 +104,7 @@ jobs:
         shell: msys2 {0}
         run: |
           # The build script will source .msys2_env internally.
-          bash scripts/win/win_build.sh "${{ env.VERSION }}"
+          bash scripts/win/win_build.sh
 
       - name: Compress PyInstaller Bundle
         shell: msys2 {0}

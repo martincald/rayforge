@@ -585,7 +585,7 @@ def main():
             return GLib.SOURCE_REMOVE
 
     # Import version for the --version flag.
-    from swiftcut import __version__
+    from swiftcut import __version__, const
 
     parser = argparse.ArgumentParser(
         description=_("A GCode generator for laser cutters.")
@@ -656,7 +656,10 @@ def main():
 
     # Set logging level based on the command-line argument.
     setup_logging(args.loglevel)
-    logger.info(f"Application starting with log level {args.loglevel.upper()}")
+    logger.info(
+        f"{const.APP_NAME} {__version__} starting with log level "
+        f"{args.loglevel.upper()}"
+    )
 
     # ===================================================================
     # SECTION 3: PLATFORM SPECIFIC INITIALIZATION
