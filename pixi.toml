@@ -191,6 +191,11 @@ depends-on = ["build-mac"]
 # VERSION, commits it and tags the commit v<version>.
 cmd = "python scripts/version.py bump"
 
+[tasks.release]
+# `pixi run release patch|minor|major`: version-bump with a CHANGELOG.md
+# entry, then the app, the DMG and the PKG (scripts/release.sh).
+cmd = "bash scripts/release.sh"
+
 [tasks.build-deb-source]
 # Builds a source package, ready for upload to a PPA.
 cmd = "bash scripts/build-deb.sh --source"

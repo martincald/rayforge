@@ -1,0 +1,97 @@
+name: Release PKG
+
+# A v<version> tag (pixi run release) builds SwiftCut-<version>.pkg
+# and the DMG, installs the package on the runner with
+# scripts/test_pkg.sh, and attaches both to a GitHub Release.
+#
+# Signing is optional. With these repository secrets the app is signed
+# with a Developer ID and the package signed, notarized and stapled;
+# without them both are unsigned:
+#   DEVELOPER_ID_APP          "Developer ID Application: <name> (<team>)"
+#   DEVELOPER_ID_INSTALLER    "Developer ID Installer: <name> (<team>)"
+#   MACOS_CERTIFICATES_P12    both identities as one base64 .p12
+#   MACOS_CERTIFICATES_PASSWORD
+#   NOTARY_APPLE_ID, NOTARY_TEAM_ID, NOTARY_PASSWORD (app-specific)
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  pkg:
+    name: Build and release the PKG
+    runs-on: macos-26
+    env:
+      DEVELOPER_ID_APP: ${{ secrets.DEVELOPER_ID_APP }}
+      DEVELOPER_ID_INSTALLER: ${{ secrets.DEVELOPER_ID_INSTALLER }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The build number counts every commit, and the version
+          # check needs the release tags.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.10.1
+        with:
+          pixi-version: v0.68.1
+          frozen: true
+          cache: true
+          cache-key: pixi-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+
+      - name: Import the signing identities
+        if: env.DEVELOPER_ID_APP != ''
+        env:
+          P12: ${{ secrets.MACOS_CERTIFICATES_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATES_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/identities.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/identities.p12" -k "$KEYCHAIN" \
+            -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          security default-keychain -d user -s "$KEYCHAIN"
+          rm "$RUNNER_TEMP/identities.p12"
+          xcrun notarytool store-credentials swiftcut-notary \
+            --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" \
+            --password "$NOTARY_PASSWORD"
+          echo "NOTARY_KEYCHAIN_PROFILE=swiftcut-notary" >> "$GITHUB_ENV"
+
+      - name: Build the app, the DMG and the PKG
+        run: pixi run --frozen build-pkg
+
+      - name: Install the PKG on the runner
+        run: |
+          VERSION=$(cat VERSION)
+          MODE=unsigned
+          [ -n "$DEVELOPER_ID_APP" ] && MODE=signed
+          sudo bash scripts/test_pkg.sh "dist/SwiftCut-$VERSION.pkg" "$MODE"
+          cp dist/SwiftCut.dmg "dist/SwiftCut-$VERSION.dmg"
+          shasum -a 256 "dist/SwiftCut-$VERSION.pkg" \
+            "dist/SwiftCut-$VERSION.dmg" | sed 's| dist/| |' \
+            > dist/SHA256SUMS
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: SwiftCut ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/SwiftCut-${{ env.VERSION }}.pkg
+            dist/SwiftCut-${{ env.VERSION }}.dmg
+            dist/SHA256SUMS
