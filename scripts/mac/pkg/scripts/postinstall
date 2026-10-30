@@ -1,0 +1,20 @@
+#!/bin/bash
+# Runs as root after the payload; $3 is the target volume. Never
+# launches the app: an MDM may install with nobody logged in.
+TARGET="${3%/}"
+APP="$TARGET/Applications/SwiftCut.app"
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+
+# Owned by root, readable by all, writable by none but root; X keeps
+# the execute bits on directories and executables only.
+chown -R root:wheel "$APP"
+chmod -R u=rwX,go=rX "$APP"
+
+"$LSREGISTER" -f "$APP"
+
+# What IT checks for: the version this package installed.
+mkdir -p "$TARGET/Library/Application Support/SwiftCut"
+/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+    "$APP/Contents/Info.plist" \
+    > "$TARGET/Library/Application Support/SwiftCut/installed_version"
+exit 0

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The SwiftCut.pkg product definition. scripts/mac/mac_pkg.sh fills
+     in the version, the app's architectures and the rollback flag. -->
+<installer-gui-script minSpecVersion="2">
+    <title>SwiftCut @VERSION@</title>
+    <options customize="never" hostArchitectures="@ARCHS@"/>
+    <!-- The boot volume only. -->
+    <domains enable_anywhere="false" enable_currentUserHome="false"
+             enable_localSystem="true"/>
+    <volume-check script="true">
+        <allowed-os-versions>
+            <os-version min="12.0"/>
+        </allowed-os-versions>
+    </volume-check>
+    <installation-check script="no_downgrade()"/>
+    <script><![CDATA[
+var VERSION = '@VERSION@';
+var ALLOW_DOWNGRADE = @ALLOW_DOWNGRADE@;
+
+// Refuses to replace a newer installed SwiftCut, unless this package
+// is an emergency rollback build. The same version reinstalls.
+function no_downgrade() {
+    var bundle = system.files.bundleAtPath('/Applications/SwiftCut.app');
+    if (!bundle || !bundle.CFBundleShortVersionString || ALLOW_DOWNGRADE) {
+        return true;
+    }
+    var installed = bundle.CFBundleShortVersionString;
+    if (system.compareVersions(installed, VERSION) > 0) {
+        my.result.type = 'Fatal';
+        my.result.title = 'A newer SwiftCut is installed';
+        my.result.message = 'SwiftCut ' + installed + ' is installed, '
+            + 'which is newer than this package (' + VERSION + ').';
+        return false;
+    }
+    return true;
+}
+    ]]></script>
+    <choices-outline>
+        <line choice="default">
+            <line choice="org.ilab.SwiftCut"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="org.ilab.SwiftCut" visible="false">
+        <pkg-ref id="org.ilab.SwiftCut"/>
+    </choice>
+    <pkg-ref id="org.ilab.SwiftCut" version="@VERSION@"
+             onConclusion="none">SwiftCut-component.pkg</pkg-ref>
+</installer-gui-script>

@@ -179,6 +179,13 @@ depends-on = ["compile-translations"]
 # Builds dist/SwiftCut.app and dist/SwiftCut.dmg from this environment.
 cmd = "bash scripts/mac/mac_build.sh --pixi --all"
 
+[tasks.build-pkg]
+# Builds the app and the DMG, then dist/SwiftCut-<version>.pkg, the
+# installer for MDM deployment (docs/deploy/mdm.md); signed and
+# notarized when DEVELOPER_ID_APP and DEVELOPER_ID_INSTALLER are set.
+cmd = "bash scripts/mac/mac_pkg.sh"
+depends-on = ["build-mac"]
+
 [tasks.version-bump]
 # `pixi run version-bump patch|minor|major`: writes the next version to
 # VERSION, commits it and tags the commit v<version>.

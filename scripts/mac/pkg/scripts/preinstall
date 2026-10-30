@@ -1,0 +1,30 @@
+#!/bin/bash
+# Runs as root before the payload; $3 is the target volume. Quits a
+# running SwiftCut and removes the installed bundle, so no file of the
+# old version survives a change in the bundle's layout. User data in
+# ~/Library/Application Support/swiftcut is never touched.
+APP="${3%/}/Applications/SwiftCut.app"
+
+# pgrep first: telling an app that is not running to quit launches it.
+if pgrep -x SwiftCut >/dev/null; then
+    # Ask the logged-in user's copy to quit, as that user; at the login
+    # window, or under an MDM with nobody logged in, there is none.
+    console_user=$(stat -f %Su /dev/console)
+    if [ -n "$console_user" ] && [ "$console_user" != root ]; then
+        launchctl asuser "$(id -u "$console_user")" \
+            sudo -u "$console_user" \
+            osascript -e 'tell application id "org.ilab.SwiftCut" to quit' \
+            >/dev/null 2>&1 &
+    fi
+    for _ in 1 2 3 4 5; do
+        pgrep -x SwiftCut >/dev/null || break
+        sleep 1
+    done
+    # Whatever is left - a save dialog, a splash, another user's copy.
+    pkill -x SwiftCut
+    sleep 2
+    pkill -9 -x SwiftCut
+fi
+
+rm -rf "$APP"
+exit 0

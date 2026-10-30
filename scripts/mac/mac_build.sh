@@ -679,9 +679,29 @@ SH
 
     # Note: GTK4 typelibs are automatically bundled by PyInstaller to Resources/gi_typelibs
 
+    # With a Developer ID (DEVELOPER_ID_APP, the identity's name in
+    # the keychain), every Mach-O inside is signed first, then the
+    # bundle and its main executable with the entitlements, all with
+    # the hardened runtime and a secure timestamp, as notarization
+    # requires. scripts/mac/mac_pkg.sh then signs the package.
+    if [ -n "${DEVELOPER_ID_APP:-}" ]; then
+        APP_BUNDLE="$(pwd)/dist/SwiftCut.app"
+        echo "Signing app bundle with $DEVELOPER_ID_APP..."
+        rm -rf "$APP_BUNDLE/Contents/_CodeSignature"
+        find "$APP_BUNDLE/Contents" -type f \
+            ! -path "$APP_BUNDLE/Contents/MacOS/SwiftCut" -print0 | \
+            while IFS= read -r -d '' bin; do
+                file -b "$bin" | grep -q '^Mach-O' || continue
+                codesign --force --timestamp --options runtime \
+                    --sign "$DEVELOPER_ID_APP" "$bin"
+            done
+        codesign --force --timestamp --options runtime \
+            --entitlements scripts/mac/entitlements.plist \
+            --sign "$DEVELOPER_ID_APP" "$APP_BUNDLE"
+        codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
     # Re-sign after install_name_tool and dylib rewrites to keep
     # macOS code-signing validation valid on Apple Silicon.
-    if [ "$(uname -m)" = "arm64" ]; then
+    elif [ "$(uname -m)" = "arm64" ]; then
         APP_BUNDLE="$(pwd)/dist/SwiftCut.app"
         echo "Re-signing app bundle..."
         if [ ! -d "$APP_BUNDLE" ]; then
@@ -710,6 +730,13 @@ SH
     # Make sure the plist still points to the wrapper.
     /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable SwiftCut" \
         "$APP_ROOT/Info.plist" 2>/dev/null || true
+
+    BUNDLE_VERSION=$(/usr/libexec/PlistBuddy \
+        -c "Print :CFBundleShortVersionString" "$APP_ROOT/Info.plist")
+    if [ "$BUNDLE_VERSION" != "$VERSION" ]; then
+        echo "The bundle says $BUNDLE_VERSION, VERSION says $VERSION." >&2
+        exit 1
+    fi
 
     echo "Cleaning dist/*.whl and dist/*.gz after app bundle..."
     rm -f dist/*.whl dist/*.gz dist/*.tar.gz
