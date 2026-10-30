@@ -1,18 +1,30 @@
 # CLAUDE.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Behavioral guidelines plus SwiftCut project protocol. Read AGENTS.md
+too (upstream conventions: PEP8, 79-char lines, pixi tasks). Where
+this file and AGENTS.md conflict, this file wins.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+**Tradeoff:** These guidelines bias toward caution over speed. For
+trivial tasks, use judgment.
 
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
 Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- State your assumptions explicitly.
+- If multiple interpretations exist, present them; don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- If uncertain and the task defines a DEFAULT WHEN UNCERTAIN, apply it
+  and record the decision in your report. If no default exists and the
+  ambiguity is material, stop and ask. Never guess creatively.
+
+Process defaults when a task does not say otherwise: do every task
+listed, in the order given (or dependency order if you state why),
+one conventional commit per task on the current branch, and proceed
+without waiting for confirmation. A check you cannot perform in this
+environment is done in the closest available form and marked
+NEEDS-OWNER in the report; it is never a reason to stop.
 
 ## 2. Simplicity First
 
@@ -24,52 +36,97 @@ Before implementing:
 - No error handling for impossible scenarios.
 - If you write 200 lines and it could be 50, rewrite it.
 
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+Ask yourself: "Would a senior engineer say this is overcomplicated?"
+If yes, simplify.
 
 ## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
-When editing existing code:
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
+- If you notice unrelated dead code, mention it; don't delete it.
 - Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
 
-The test: Every changed line should trace directly to the user's request.
+The test: every changed line traces directly to the user's request.
 
 ## 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+- "Add validation" → write tests for invalid inputs, make them pass.
+- "Fix the bug" → write a test that reproduces it, make it pass.
+- "Refactor X" → tests pass before and after.
 
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
+For multi-step tas, state a brief plan: step → verify: check.
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+## 5. Graphify
 
----
+The knowledge graph lives at graphify-out/ (god nodes, communities,
+cross-file relationships).
+- FIRST action on any task: `graphify query "<question>"` for the
+  modules, call paths and tests involved. `graphify path "<A>" "<B>"`
+  for relationships, `graphify explain "<concept>"` for a focused
+  concept. Cite the result in your plan.
+- graphify-out/wiki/index.md for broad navigation; GRAPH_REPORT.md
+  only for architecture review or when query/path/explain fall short.
+- LAST action after the final commit: `graphify update .`
+- graphify-out/ is gitignored; never commit it.
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+## 6. Strict Boss (non-trivial tasks)
 
-## graphify
+You are the lead, not the implementer. Decompose into work packages
+with acceptance criteria; delegate to subagents (VoltAgent: debugger,
+refactoring-specialist, python-pro, performance-engineer; cavecraft
+haiku reviewers for cheap first-pass diff review). Every delivery must
+carry evidence: the diff, the exact test command and its output, and
+what was NOT verified. Reject by default with file:line reasons;
+re-dispatch with the rejection attached; max 3 rounds, then ESCALATE.
+Approve only what you verified yourself: run the suite, run the grep
+gates, read the diff.
+Trivial tasks (a default value, a label, a sign flip): skip the boss
+layer, keep Graphify and tests.
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+## 7. Protected (never modify unless the task explicitly allows it)
 
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- machine/driver/ruida/** (driver, client, encoder, protocol,
+  transport, server, simulator, fixtures, tests)
+- pipeline job path: intent_builder aggregate assembly, build_rd_bytes,
+  send_job, export .rd
+- jog panel behavior: hold-jog + safety releases, Home, Go Scale, Cut
+  Scale + confirmation, start-corner selector, X/Y readout
+- mm/s units everywhere; Min/Max power fields; Start/Pause/Stop
+- layer/step system; Swift Cut theme + layout tokens (docs/design/)
+- MOTION_AUDIT.md invariants (stop-resync, busy interlock)
+Gate before approval: `git diff --stat` shows nothing under those
+paths unless the task allowed it.
+
+## 8. Source of truth for protocol questions
+
+1. tests/machine/driver/ruida/fixtures/rdworks_reference.rd (real
+   controller output). Wins every conflict.
+2. docs/reference/rdcam_*.md (RDCAM.dll decompile: opcodes, parameter
+   IDs, USB open sequence), process-ordering audit, MOTION_AUDIT.md.
+3. external/meerk40t (MIT, read-only reference).
+4. Community docs.
+Never invent opcodes or byte layouts.
+
+## 9. Invariants
+
+- Units: model stores mm/min, UI shows mm/s, encoder emits µm/s.
+  Exactly ONE conversion site per value path.
+- Exactly ONE axis-direction mapping site (jog_widget._jog_deltas).
+  Corner pre-positioning and Go/Cut Scale derive from it.
+- Start position: jobs use D8 12 (current head position); the corner
+  selector pre-moves the head, never translates geometry.
+- UDP frames: swizzle then 16-bit sum prefix. USB/serial: swizzle,
+  no prefix. Chunks ≤1000 bytes on command boundaries, ACK-paced.
+
+## 10. Environment and baselines
+
+- macOS: pixi (`pixi run format | lint | test`).
+- Windows: pixi does not solve win-64; use the scratchpad win-64 env
+  (conda-forge pyvips). Launch: `run.bat app` (console) or `run.bat
+  app-gui`. Build: `run.bat build` → dist/SwiftCut/SwiftCut.exe.
+- Test baseline: 1 known Windows timing failure (MOT-14) acceptable;
