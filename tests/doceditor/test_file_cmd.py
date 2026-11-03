@@ -58,6 +58,7 @@ from swiftcut.shared.tasker.manager import TaskManager
 
 TESTS_DIR = Path(__file__).parent.parent
 LARGE_DXF = TESTS_DIR / "perf" / "large.dxf"
+MANY_SHAPES_DXF = TESTS_DIR / "perf" / "many_shapes.dxf"
 SWITCH_PLATE = (
     TESTS_DIR / "image" / "lightburn" / "assets" / "switch_plate.lbrn2"
 )
@@ -1233,6 +1234,25 @@ class TestImportAsIndividualShapes:
             pytest.approx(r, abs=1e-6) for r in _PATH_RECTS
         ]
         assert _world_length(pieces) == pytest.approx(_PATH_LENGTH)
+        assert len(history.undo_stack) == entries + 1
+
+        history.undo()
+
+        assert doc_editor.doc.all_workpieces == []
+
+    @pytest.mark.asyncio
+    async def test_a_300_piece_file_is_300_pieces_in_one_undo_step(
+        self, doc_editor, task_mgr, bed
+    ):
+        history = doc_editor.history_manager
+        entries = len(history.undo_stack)
+
+        pieces = await self._import(
+            doc_editor, task_mgr, MANY_SHAPES_DXF, split_paths=True
+        )
+
+        assert len(pieces) == 300
+        assert all(wp.boundaries.is_closed() for wp in pieces)
         assert len(history.undo_stack) == entries + 1
 
         history.undo()
