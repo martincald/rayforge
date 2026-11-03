@@ -67,8 +67,11 @@ class MotionClientSpy:
         await self.read_gate.wait()
         return self.position
 
-    async def send_job(self, blob, on_start=None, on_chunk=None):
+    async def send_job(
+        self, blob, on_start=None, on_chunk=None, should_stop=None
+    ):
         self.blobs.append(blob)
+        return True
 
 
 def moves(commands: list[bytes]) -> list[bytes]:

@@ -1301,12 +1301,15 @@ class StubJobClient:
     async def rapid_move_xy(self, x_um: int, y_um: int, light: bool = False):
         self.position = (x_um, y_um)
 
-    async def send_job(self, blob, on_start=None, on_chunk=None):
+    async def send_job(
+        self, blob, on_start=None, on_chunk=None, should_stop=None
+    ):
         self.blobs.append(blob)
         if on_start:
             on_start(len(blob), 1)
         if on_chunk:
             on_chunk(1, 1, len(blob), 1)
+        return True
 
 
 async def wait_for_sent(
@@ -1401,6 +1404,51 @@ async def test_persistent_nak_aborts_job(driver, monkeypatch):
         nak_task.cancel()
 
     assert not finished
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_a_udp_upload_sends_no_further_chunk(
+    driver, monkeypatch
+):
+    """
+    Stop pressed while a job uploads over UDP ends the upload: once
+    the D8 01 is out, no job chunk follows it (REVIEW-0.1.1 F-02).
+    """
+    transport = StubRuidaTransport()
+    driver._client = RuidaClient(cast(RuidaTransport, transport))
+    stub_job_blob(monkeypatch, [b"\x88" + bytes(10)] * 300)
+
+    async def answer_everything():
+        answered = 0
+        while True:
+            while answered < len(transport.sent):
+                command = transport.sent[answered]
+                answered += 1
+                if command == b"\xda\x00\x04\x00":
+                    reply = STATUS_IDLE_REPLY
+                elif command[:2] == b"\xda\x00":
+                    continue
+                else:
+                    reply = b"\xcc"
+                transport.decoded_received.send(transport, data=reply)
+            await asyncio.sleep(0.01)
+
+    task = asyncio.create_task(driver.run(make_encoded(), Doc(), Ops()))
+    await wait_for_sent(transport, 1)
+    stop = asyncio.create_task(driver.cancel())
+    await asyncio.sleep(0.05)
+    answers = asyncio.create_task(answer_everything())
+    try:
+        await asyncio.wait_for(asyncio.gather(task, stop), timeout=5.0)
+    finally:
+        answers.cancel()
+
+    stop_at = transport.sent.index(b"\xd8\x01")
+    chunks_after_stop = [
+        c for c in transport.sent[stop_at + 1 :] if c[0] == 0x88
+    ]
+    assert transport.sent[0][0] == 0x88
+    assert not chunks_after_stop
 
 
 @pytest.mark.asyncio

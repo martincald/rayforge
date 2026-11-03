@@ -281,7 +281,8 @@ class RuidaClient:
         blob: bytes,
         on_start: Callable[[int, int], None] | None = None,
         on_chunk: Callable[[int, int, int, int], None] | None = None,
-    ) -> None:
+        should_stop: Callable[[], bool] = lambda: False,
+    ) -> bool:
         """
         Send a complete swizzled .rd job blob to the controller.
 
@@ -298,6 +299,12 @@ class RuidaClient:
                 (blob_size, chunk_count).
             on_chunk: Called after each acknowledged chunk with
                 (index, chunk_count, chunk_size, attempts).
+            should_stop: Asked before each chunk; once it returns
+                True nothing more is sent, so a Stop that went out
+                between two chunks is the last thing on the wire.
+
+        Returns:
+            False if should_stop ended the upload, True otherwise.
 
         Raises:
             RuntimeError: If a chunk is not acknowledged after
@@ -309,6 +316,8 @@ class RuidaClient:
         if on_start:
             on_start(len(blob), len(chunks))
         for i, chunk in enumerate(chunks):
+            if should_stop():
+                return False
             attempts = await self._send_job_chunk(chunk)
             if not attempts:
                 raise RuntimeError(
@@ -318,6 +327,7 @@ class RuidaClient:
                 )
             if on_chunk:
                 on_chunk(i + 1, len(chunks), len(chunk), attempts)
+        return True
 
     async def _send_job_chunk(self, chunk: bytes) -> int:
         """

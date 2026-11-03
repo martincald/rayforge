@@ -948,7 +948,7 @@ class RuidaDriver(Driver):
         self._dump_job_blob(blob)
 
         # Every stop bumps the epoch, so a Stop from here on -- during
-        # the pre-move, the settle below or the USB stream -- ends it.
+        # the pre-move, the settle below or the upload -- ends it.
         epoch = self._frame_epoch
         if not await self._move_to_start_corner(ops):
             await self._report_ops_done(on_command_done, 0, num_ops)
@@ -982,12 +982,12 @@ class RuidaDriver(Driver):
                         on_start=self._log_send_start,
                     )
                 else:
-                    await self._client.send_job(
+                    sent = await self._client.send_job(
                         blob,
                         on_start=self._log_send_start,
                         on_chunk=self._log_chunk_acked,
+                        should_stop=lambda: self._frame_epoch != epoch,
                     )
-                    sent = True
                 if sent:
                     logger.info(
                         "Upload complete, waiting for job to finish",
@@ -1124,7 +1124,7 @@ class RuidaDriver(Driver):
         The red Stop button is the one control the user reaches for
         when anything is moving, so it cannot be a job-only command.
         Bumping the frame epoch aborts a start-corner move and ends a
-        USB job stream after its chunk in flight, dropping the held
+        job upload after its chunk in flight, dropping the held
         keys stops a release from restarting a hold, and
         _stop_jog_motion sends the same D8 01 a job cancel used to --
         once, after the stream lets go of the wire.

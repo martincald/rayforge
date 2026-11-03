@@ -123,8 +123,11 @@ class _ClientSpy:
     async def read_position(self, timeout: float = 2.0):
         return self.position
 
-    async def send_job(self, blob, on_start=None, on_chunk=None):
+    async def send_job(
+        self, blob, on_start=None, on_chunk=None, should_stop=None
+    ):
         self.blobs.append(blob)
+        return True
 
 
 @pytest_asyncio.fixture
