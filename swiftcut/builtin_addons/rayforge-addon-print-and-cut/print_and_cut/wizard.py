@@ -11,12 +11,18 @@ from swiftcut.doceditor.editor import DocEditor
 from swiftcut.machine.cmd import MachineCmd
 from swiftcut.machine.models.machine import Machine
 from swiftcut.ui_gtk.icons import get_icon
+from swiftcut.ui_gtk.layout import (
+    SPACE_CONTROL,
+    SPACE_GROUP,
+    SPACE_PAGE,
+    SPACE_SECTION,
+    SPACE_TIGHT,
+)
 from swiftcut.ui_gtk.machine.jog_widget import JogWidget
 from swiftcut.ui_gtk.shared.patched_dialog_window import (
     PatchedDialogWindow,
 )
 from swiftcut.ui_gtk.shared.pref_rows import LengthSpinRow
-from swiftcut.ui_gtk.layout import SPACE_CONTROL, SPACE_GROUP
 
 from .pick_surface import PickSurface
 
