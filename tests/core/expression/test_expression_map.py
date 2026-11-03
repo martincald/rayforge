@@ -87,3 +87,23 @@ def test_chained_attribute_access():
     today = datetime.now(tz=timezone.utc).date()
     result = _fmt("{d.year}", {"d": today})
     assert result == str(today.year)
+
+
+def test_a_template_cannot_reach_a_function_s_globals(tmp_path):
+    """Templates come from sketch files (REVIEW-0.1.1 F-05)."""
+    marker = tmp_path / "marker"
+    values = {"today": lambda: None}
+    templates = [
+        f"{{today.__globals__['__builtins__']['open']('{marker}', 'w')}}",
+        "{'{0.__globals__}'.format(today)}",
+        "{(x for x in []).gi_frame}",
+        "{[c for c in ().__class__.__mro__]}",
+    ]
+    for template in templates:
+        assert _fmt(template, values) == template
+    assert not marker.exists()
+
+
+def test_public_attributes_still_resolve_in_a_template():
+    day = datetime(2026, 11, 3, tzinfo=timezone.utc).date()
+    assert _fmt("{d.year}-{d.isoformat()}", {"d": day}) == ("2026-2026-11-03")

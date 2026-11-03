@@ -62,3 +62,28 @@ def test_evaluate_prevents_builtin_access():
 
     with pytest.raises(ValueError, match="Invalid expression"):
         evaluator.safe_evaluate("open('file.txt')", {})
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "().__class__.__base__.__subclasses__()",
+        "(lambda: 1)()",
+        "[x for x in (1, 2)][0]",
+        "(x for x in []).gi_frame",
+        "__builtins__",
+        "pi.real",
+        "max(**{'a': 1})",
+        "1 + " * 400 + "1",
+    ],
+)
+def test_more_than_a_formula_is_refused(expression):
+    """Expressions come from sketch files (REVIEW-0.1.1 F-05)."""
+    with pytest.raises(ValueError, match="Invalid expression"):
+        evaluator.safe_evaluate(expression, {})
+
+
+def test_formulas_with_calls_and_comparisons_still_evaluate():
+    context = {"a": 3.0, "b": 4.0}
+    assert evaluator.safe_evaluate("hypot(a, b) if a < b else 0", context) == 5
+    assert evaluator.safe_evaluate("floor(a / b) - -1", context) == 1.0

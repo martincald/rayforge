@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Any
 
-from .evaluator import MATH_CONTEXT
+from .evaluator import MATH_CONTEXT, compile_expression
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,8 @@ class ExpressionMap:
             key = match.group(1)
             expr, _, fmt = key.partition(":")
             try:
-                result = eval(expr.strip(), self._namespace)
+                code = compile_expression(expr, allow_attributes=True)
+                result = eval(code, self._namespace)
             except Exception as e:  # noqa: BLE001 - arbitrary user expression
                 logger.debug(f"Failed to evaluate expression '{expr}': {e}")
                 return match.group(0)

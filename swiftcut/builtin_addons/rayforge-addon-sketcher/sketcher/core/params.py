@@ -1,6 +1,8 @@
 import math
 from typing import Any
 
+from swiftcut.core.expression import compile_expression
+
 
 class ParameterContext:
     """
@@ -65,7 +67,8 @@ class ParameterContext:
             ctx.update(self._cache)
 
         try:
-            return eval(str(expression), {"__builtins__": None}, ctx)
+            code = compile_expression(str(expression))
+            return eval(code, {"__builtins__": None}, ctx)
         except Exception:  # noqa: BLE001 - arbitrary user expression eval
             return 0.0
 
@@ -104,7 +107,8 @@ class ParameterContext:
                     # The context for eval needs math and solved variables
                     eval_ctx = self._math_context.copy()
                     eval_ctx.update(self._cache)
-                    val = eval(expr, {"__builtins__": None}, eval_ctx)
+                    code = compile_expression(expr)
+                    val = eval(code, {"__builtins__": None}, eval_ctx)
                     self._cache[name] = val
                     progress = True
                 except (NameError, TypeError, SyntaxError):
