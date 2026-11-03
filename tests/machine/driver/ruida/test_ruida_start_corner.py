@@ -595,6 +595,18 @@ class TestGoScaleTracesTheJobOutline:
 
         assert spy.commands == []
 
+    @pytest.mark.asyncio
+    async def test_a_running_job_ignores_it(self, ruida_driver, machine):
+        """
+        The panel's Go Scale stays clickable during a job
+        (REVIEW-0.1.1 F-04); the driver must send nothing for it.
+        """
+        ruida_driver._job_running = True
+
+        spy = await _run_go_scale(ruida_driver)
+
+        assert spy.commands == []
+
 
 class TestOneCornerForEveryAction:
     """Start and Cut Scale place the head the same way."""
