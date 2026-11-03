@@ -98,6 +98,8 @@ def test_a_template_cannot_reach_a_function_s_globals(tmp_path):
         "{'{0.__globals__}'.format(today)}",
         "{(x for x in []).gi_frame}",
         "{[c for c in ().__class__.__mro__]}",
+        "{today().replace.__self__}",
+        "{(1).to_bytes.__func__}",
     ]
     for template in templates:
         assert _fmt(template, values) == template
