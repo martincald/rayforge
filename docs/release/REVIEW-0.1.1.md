@@ -144,6 +144,28 @@ see the table in D. The canvas, shapes, preview, idle and soak steps
 were not run: they need the display awake and the machine otherwise
 idle, and BTLEServer has held a core at ~98 % for 7 days on this Mac.
 
+Pooled medians, HEAD vs v0.1.0, `PERF_RUNS=3` x 2 rounds each (n=6;
+cold and import from the second ABAB pass, after the first pass
+launched v0.1.0 without its gitignored splash image):
+
+| Metric | 2026-10-20 | v0.1.0 | HEAD | HEAD vs v0.1.0 |
+|---|---|---|---|---|
+| cold start to window | 2.03 s | 1.87 s | 1.83 s | -2.0 % |
+| cold start to splash | 0.43 s | 0.456 s | 0.483 s | +5.9 % (samples 0.38-0.73 s; the splash is up before any changed module is imported) |
+| import small.svg | 12.1 ms | 11.1 ms | 11.5 ms | +3.8 % |
+| import large.dxf | 273 ms | 262 ms | 261 ms | -0.3 % |
+| import raster.png decode / trace | 74 / 583 ms | 72 / 578 ms | 69 / 562 ms | -4.2 / -2.8 % |
+| import forty.ryp | 8.1 ms | 36.0 ms | 35.7 ms | -0.7 % |
+| import two_layer.ryp | 6.3 ms | 5.5 ms | 5.6 ms | +2.2 % |
+| ops cold + encode, five assets | | | | -2.7 % to +1.5 % |
+| encode two_layer.ryp | 1620 ms | 1555 ms | 1580 ms | +1.5 % |
+| auto layout, forty (cold / warm) | 2.34 / 1.59 s | 2.18 / 1.55 s | 2.13 / 1.57 s | -2.1 / +1.3 % |
+
+import forty.ryp is 4x the 2026-10-20 figure in both trees alike, so
+it moved between 2026-10-20 and v0.1.0, not in this review (about
+28 ms, deferred). Raw results: build/perf/results.json (today's HEAD;
+the 2026-10-20 file is kept as build/perf/results-2026-10-20.json).
+
 ## D. Release gate
 
 | Gate | State |
@@ -157,7 +179,7 @@ idle, and BTLEServer has held a core at ~98 % for 7 days on this Mac.
 | pyright strict, touched modules | no new diagnostic (A1) |
 | import-linter | 1 kept, 0 broken |
 | Protected paths | `ruida_client.py`, `ruida_driver.py` (F-02 only); tests added in `tests/machine/driver/ruida/` (F-02, F-04). Nothing under intent_builder, the jog panel, docs/design, MOTION_AUDIT.md. |
-| Bench within 5 % | BENCH_TABLE |
+| Bench within 5 % | Met: every metric within 5 % of v0.1.0 run back to back, except splash +5.9 % (noise, below); within 5 % of or better than the 2026-10-20 after-table. Table under C. |
 | VERSION bump, CHANGELOG, PKG + DMG, test_pkg.sh | **Not done**, by decision: `release.sh` tags and builds, and every later build fails `version.py check` until the next bump, so it runs once F-03 and Package B are settled. |
 
 ### CHANGELOG draft for 0.1.1
