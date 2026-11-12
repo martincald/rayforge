@@ -13,6 +13,10 @@ in the shape of real exports (no real Illustrator or Fusion file yet):
 - cad_plate.dxf: two plates as Fusion or Onshape write them: outlines
   of separate LINE and ARC entities (rounded corners, entities out of
   order), CIRCLE holes, layer 0, millimetres.
+- layer_names.svg: an SVG in millimetres whose layers are named for
+  what they do, as Illustrator writes them (an id, the name with
+  spaces in data-name): "cut" (a filled square), "scan 3mm mdf" (an
+  outline), "engrave" (a filled circle) and "Layer 1" (an outline).
 
 The source-units fixtures: each a 100 x 50 mm outline (283.46 x 141.73
 pt, 377.95 x 188.98 px at 96 per inch) filling its page.
@@ -312,6 +316,26 @@ def cad_dxf(path: Path) -> None:
     doc.saveas(path)
 
 
+def layer_names_svg() -> str:
+    return """<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200mm" height="100mm" \
+viewBox="0 0 200 100">
+  <g id="cut">
+    <rect x="10" y="10" width="40" height="40" fill="#000"/>
+  </g>
+  <g id="scan_3mm_mdf" data-name="scan 3mm mdf">
+    <rect x="60" y="10" width="40" height="40" fill="none" stroke="#f00"/>
+  </g>
+  <g id="engrave">
+    <circle cx="130" cy="30" r="20" fill="#000"/>
+  </g>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect x="160" y="10" width="30" height="80" fill="none" stroke="#00f"/>
+  </g>
+</svg>
+"""
+
+
 def main() -> None:
     (HERE / "illustrator_two_layers.svg").write_text(illustrator_svg())
     (HERE / "illustrator_responsive.svg").write_text(illustrator_export_svg())
@@ -325,6 +349,7 @@ def main() -> None:
     )
     (HERE / "inkscape_mm.svg").write_text(inkscape_mm_svg())
     (HERE / "plain_px.svg").write_text(plain_px_svg())
+    (HERE / "layer_names.svg").write_text(layer_names_svg())
     traced_dxf(HERE / "illustrator_traced.dxf")
     cad_dxf(HERE / "cad_plate.dxf")
 

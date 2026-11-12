@@ -33,6 +33,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk
 
+from swiftcut import config
+from swiftcut.core.recipe_manager import RecipeManager
 from swiftcut.core.source_asset import SourceAsset
 from swiftcut.core.vectorization_spec import (
     LayerImportMode,
@@ -72,6 +74,11 @@ FOUR_WAY = [
     "Single shape",
 ]
 FALLBACK = "No layers or groups in this file; grouping by pieces"
+NAMED = FIXTURES / "layer_names.svg"
+MDF_3_MM = "MDF (Medium-Density Fiberboard) 3.00 mm"
+# Read at import, before the autouse no_builtin_recipe_sync fixture
+# clears it for each test.
+SHIPPED_DEFAULTS = config.BUILTIN_RECIPES_FILE
 
 
 def _iterate(duration: float = 0.2):
@@ -512,6 +519,119 @@ class TestBySourceWithNothingToGoBy:
         assert _listed_layers(dialog) == ["#000000"]
 
 
+@pytest.fixture
+def lab_recipes(ui_context_initializer, tmp_path, monkeypatch):
+    """The shipped lab recipes, in a private directory."""
+    mgr = RecipeManager(tmp_path / "recipes")
+    mgr.sync_builtins(SHIPPED_DEFAULTS)
+    monkeypatch.setattr(ui_context_initializer, "_recipe_mgr", mgr)
+    return mgr
+
+
+def _operations(dialog) -> dict[str, tuple[str, str, bool]]:
+    """Each source layer's chosen operation, row subtitle and whether
+    its dropdown shows, by layer id."""
+    return {
+        layer_id: (
+            _choices(dropdown)[dropdown.get_selected()],
+            row.get_subtitle(),
+            dropdown.get_visible(),
+        )
+        for layer_id, (row, dropdown, _n, _s) in dialog._operation_rows.items()
+    }
+
+
+def _set_operation(dialog, layer_id, label):
+    dropdown = dialog._operation_rows[layer_id][1]
+    dropdown.set_selected(_choices(dropdown).index(label))
+    _iterate_until_idle()
+
+
+class TestLayerOperations:
+    """
+    Each source layer's row says what its name gives (the operation,
+    and the material and recipe for it on the active machine) and
+    offers No operation, Cut, Scan or Engrave instead, where the
+    file's layers stay layers.
+    """
+
+    def test_rows_show_what_each_name_gives(self, open_dialog, lab_recipes):
+        dialog, responses = open_dialog(NAMED, SvgImporter)
+
+        assert _operations(dialog) == {
+            "cut": ("Cut", "Cut · step defaults", True),
+            "scan_3mm_mdf": (
+                "Scan",
+                f"Scan · {MDF_3_MM} · MDF · Scan",
+                True,
+            ),
+            "engrave": ("Engrave", "Engrave · step defaults", True),
+            "Layer_1": ("No operation", "No operation", True),
+        }
+        assert _choices(dialog._operation_rows["cut"][1]) == [
+            "No operation",
+            "Cut",
+            "Scan",
+            "Engrave",
+        ]
+        dialog._on_import_clicked(None)
+        assert responses[0]["options"].layer_operations == {}
+
+    def test_a_change_goes_in_the_options(self, open_dialog, lab_recipes):
+        dialog, responses = open_dialog(NAMED, SvgImporter)
+
+        _set_operation(dialog, "cut", "Engrave")
+        _set_operation(dialog, "Layer_1", "Cut")
+        _set_operation(dialog, "scan_3mm_mdf", "Cut")
+
+        operations = _operations(dialog)
+        assert operations["cut"][:2] == ("Engrave", "Engrave · step defaults")
+        assert operations["Layer_1"][:2] == ("Cut", "Cut · step defaults")
+        assert operations["scan_3mm_mdf"][:2] == (
+            "Cut",
+            f"Cut · {MDF_3_MM} · MDF 3 mm · Cut",
+        )
+        dialog._on_import_clicked(None)
+        assert responses[0]["options"].layer_operations == {
+            "cut": "engrave",
+            "Layer_1": "cut",
+            "scan_3mm_mdf": "cut",
+        }
+
+        _set_operation(dialog, "cut", "Cut")
+        _set_operation(dialog, "scan_3mm_mdf", "Scan")
+        _set_operation(dialog, "Layer_1", "No operation")
+
+        assert dialog._get_import_options().layer_operations == {}
+
+    def test_hidden_where_names_do_not_apply(self, open_dialog, lab_recipes):
+        """
+        One layer for all the source layers: no dropdowns, the rows
+        as they were, nothing chosen goes in the options.
+        """
+        dialog, _ = open_dialog(NAMED, SvgImporter)
+        _set_operation(dialog, "cut", "Engrave")
+
+        dialog.layer_per_source_row.set_active(False)
+        _iterate_until_idle()
+
+        operations = _operations(dialog)
+        assert [visible for _o, _s, visible in operations.values()] == [
+            False
+        ] * 4
+        assert operations["cut"][1] == "Layer with 1 vectors"
+        assert dialog._get_import_options().layer_operations == {}
+
+        dialog.layer_per_source_row.set_active(True)
+        _iterate_until_idle()
+
+        assert _operations(dialog)["cut"] == (
+            "Engrave",
+            "Engrave · step defaults",
+            True,
+        )
+
+
 class TestNotices:
     def test_by_source_without_layers_or_groups_says_pieces(self, open_dialog):
         dialog, _ = open_dialog(PLATES, DxfImporter)
@@ -642,8 +762,8 @@ class TestImportedFromTheDialog:
     def test_by_source_is_one_undo_step(self, import_from_dialog):
         """
         The Illustrator file by default: its layers Cut and Engrave as
-        SwiftCut layers, Engrave's groups one piece each, its PNG an
-        image workpiece; everything in one undo step.
+        SwiftCut layers, Engrave first, Engrave's groups one piece
+        each, its PNG an image workpiece; everything in one undo step.
         """
         editor, import_ = import_from_dialog
         doc = editor.doc
@@ -654,8 +774,8 @@ class TestImportedFromTheDialog:
         import_(ILLUSTRATOR, SvgImporter)
 
         new_layers = doc.layers[len(layers) :]
-        assert [layer.name for layer in new_layers] == ["Cut", "Engrave"]
-        cut, engrave = new_layers
+        assert [layer.name for layer in new_layers] == ["Engrave", "Cut"]
+        engrave, cut = new_layers
         (outline,) = cut.all_workpieces
         groups, (image,) = _vectors_and_images(engrave.all_workpieces)
         assert _contours(outline) == 1

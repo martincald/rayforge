@@ -97,9 +97,10 @@ class TestBySource:
         self, doc_editor, task_mgr, bed, sent
     ):
         """
-        Two layers, Cut and Engrave. Engrave's Logo (3 shapes) and Text
-        (2 letters, the O with its hole) are one piece each; the placed
-        PNG is an image workpiece.
+        Two layers, Cut and Engrave, named for what they do: Engrave
+        comes in first. Engrave's Logo (3 shapes) and Text (2 letters,
+        the O with its hole) are one piece each; the placed PNG is an
+        image workpiece.
         """
         layers_before = len(doc_editor.doc.layers)
 
@@ -108,8 +109,8 @@ class TestBySource:
         )
 
         new_layers = doc_editor.doc.layers[layers_before:]
-        assert [layer.name for layer in new_layers] == ["Cut", "Engrave"]
-        cut, engrave = new_layers
+        assert [layer.name for layer in new_layers] == ["Engrave", "Cut"]
+        engrave, cut = new_layers
         (outline,) = cut.all_workpieces
         logo, text, image = engrave.all_workpieces
         assert len(added) == 4
@@ -138,7 +139,7 @@ class TestBySource:
         await _import(
             doc_editor, task_mgr, ILLUSTRATOR, _illustrator_spec(), BY_SOURCE
         )
-        cut, engrave = doc_editor.doc.layers[-2:]
+        engrave, cut = doc_editor.doc.layers[-2:]
         (outline,) = cut.all_workpieces
         image = engrave.all_workpieces[-1]
 

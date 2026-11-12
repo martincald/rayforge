@@ -42,6 +42,13 @@ from raygeo.geo.types import Rect
 from ..core.item import DocItem
 from ..core.item_group import ItemGroup
 from ..core.layer import Layer
+from ..core.layer_name import (
+    CUT,
+    ENGRAVE,
+    SCAN,
+    STEP_TYPES,
+    parse_layer_name,
+)
 from ..core.vectorization_spec import (
     LayerImportMode,
     LayerSource,
@@ -66,6 +73,8 @@ from ..image.svg.importer import SvgImporter
 from .split_cmd import PathSplitStrategy
 
 if TYPE_CHECKING:
+    from ..context import RayforgeContext
+    from ..core.recipe import Recipe
     from ..core.source_asset import SourceAsset
     from ..image.base_importer import Importer
     from ..image.structures import ImportResult, ParsingResult
@@ -79,6 +88,10 @@ _POINT_TOLERANCE_MM = 1e-3
 # _TRACED_MEDIAN_AREA_MM2, looks like artwork traced into dots.
 _TRACED_MIN_PATHS = 100
 _TRACED_MEDIAN_AREA_MM2 = 4.0
+
+# The order of the layers an import adds, by operation; layers without
+# one come last.
+_OPERATION_ORDER = {ENGRAVE: 0, SCAN: 1, CUT: 2}
 
 
 class ImportGrouping(Enum):
@@ -95,14 +108,17 @@ class ImportOptions:
     """
     The "Import as" choices of one import: the grouping, whether a
     piece's interior detail goes to a layer of its own, whether placed
-    images come in, and (BY_SOURCE) whether each source layer gets a
-    layer of its own.
+    images come in, (BY_SOURCE) whether each source layer gets a
+    layer of its own, and, by source layer id, the operation chosen
+    for a source layer where it is not the one its name gives (None:
+    no operation).
     """
 
     grouping: ImportGrouping = ImportGrouping.SINGLE
     interior_on_own_layer: bool = False
     keep_images: bool = True
     layer_per_source_layer: bool = True
+    layer_operations: dict[str, str | None] = field(default_factory=dict)
 
 
 @dataclass
@@ -244,6 +260,118 @@ def _has_groups(node: GroupNode) -> bool:
         elif isinstance(child, GroupNode):
             return True
     return False
+
+
+# --- Layer names ---
+
+
+def names_apply(spec: VectorizationSpec | None) -> bool:
+    """
+    Whether the names of an import's source layers choose their
+    steps: when the file's layers are read (not its colors) and kept
+    as layers (not flattened).
+    """
+    return (
+        isinstance(spec, PassthroughSpec)
+        and spec.layer_source is LayerSource.SVG_LAYERS
+        and spec.layer_import_mode is not LayerImportMode.FLATTEN
+    )
+
+
+def layer_operation(
+    name: str, layer_id: str | None, options: ImportOptions
+) -> str | None:
+    """
+    The operation of a source layer: the one chosen for it, else the
+    one its name gives.
+    """
+    if layer_id in options.layer_operations:
+        return options.layer_operations[layer_id]
+    return parse_layer_name(name)[0]
+
+
+def layer_operations(
+    items: Sequence[DocItem],
+    spec: VectorizationSpec | None,
+    options: ImportOptions,
+) -> dict[str, str]:
+    """
+    The operation of each layer of an import's items that has one, by
+    layer uid, when names apply. A layer the importer gave steps (its
+    own settings) has none.
+    """
+    if not names_apply(spec):
+        return {}
+    found = {}
+    for item in items:
+        if not isinstance(item, Layer):
+            continue
+        if item.workflow is None or item.workflow.has_steps():
+            continue
+        operation = layer_operation(item.name, _source_layer_id(item), options)
+        if operation is not None:
+            found[item.uid] = operation
+    return found
+
+
+def _source_layer_id(layer: Layer) -> str | None:
+    """The id of the source layer a layer was made of, if known."""
+    for wp in _workpieces([layer]):
+        segment = wp.source_segment
+        if segment is not None and segment.layer_id is not None:
+            return segment.layer_id
+        if wp.source_layer is not None:
+            return wp.source_layer
+    return None
+
+
+def name_recipe(
+    name: str, operation: str | None, context: RayforgeContext
+) -> tuple[tuple[str, float], Recipe] | None:
+    """
+    The material (uid, thickness in mm) a layer's name gives, and its
+    recipe for the operation on the context's active machine; None
+    unless the name gives a material and a thickness and there is
+    such a recipe.
+    """
+    _operation, uid, thickness = parse_layer_name(name)
+    if operation is None or uid is None or thickness is None:
+        return None
+    recipe = context.recipe_mgr.find_material_recipe(
+        uid, thickness, context.machine, step_type=STEP_TYPES[operation]
+    )
+    if recipe is None:
+        return None
+    return (uid, thickness), recipe
+
+
+def order_new_layers(
+    pairs: list[tuple[DocItem, DocItem]],
+    doc: DocItem,
+    operations: dict[str, str],
+) -> list[tuple[DocItem, DocItem]]:
+    """
+    The (owner, item) pairs with the layers the import adds to doc
+    ordered by their operation (operations, by layer uid): engrave,
+    scan, cut, then the layers without one, each in the order they
+    came. Every other pair keeps its place.
+    """
+    slots = [
+        i
+        for i, (owner, item) in enumerate(pairs)
+        if owner is doc and isinstance(item, Layer)
+    ]
+    last = len(_OPERATION_ORDER)
+    ordered = sorted(
+        (pairs[i] for i in slots),
+        key=lambda pair: _OPERATION_ORDER.get(
+            operations.get(pair[1].uid, ""), last
+        ),
+    )
+    result = list(pairs)
+    for i, pair in zip(slots, ordered, strict=True):
+        result[i] = pair
+    return result
 
 
 # --- Worker phase ---

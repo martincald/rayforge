@@ -11,6 +11,7 @@ from raygeo.geo import Matrix
 from ...context import get_context
 from ...core.item import DocItem
 from ...core.layer import Layer
+from ...core.layer_name import CUT, ENGRAVE, SCAN, parse_layer_name
 from ...core.source_asset import SourceAsset
 from ...core.vectorization_spec import (
     LayerImportMode,
@@ -21,12 +22,19 @@ from ...core.vectorization_spec import (
 )
 from ...core.workpiece import WorkPiece
 from ...doceditor.file_cmd import PreviewResult
-from ...doceditor.import_materializer import ImportGrouping, ImportOptions
+from ...doceditor.import_materializer import (
+    ImportGrouping,
+    ImportOptions,
+    name_recipe,
+    names_apply,
+)
 from ...image.base_importer import Importer, ImporterFeature
 from ...image.geo_renderer import geometry_to_cairo
+from ...image.lightburn.importer import LightBurnImporter
 from ...image.structures import ImportManifest
 from ...image.svg.importer import SvgImporter
 from ...image.svg.svgutil import ILLUSTRATOR_PPI, PPI, units_per_inch
+from ...shared.units.formatter import format_value
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.slider import create_slider
@@ -38,6 +46,16 @@ logger = logging.getLogger(__name__)
 
 # A fixed, reasonable resolution for generating preview bitmaps.
 PREVIEW_RENDER_SIZE_PX = 1024
+
+# The operations a source layer can be given, in the order its
+# dropdown lists them.
+_OPERATIONS = [None, CUT, SCAN, ENGRAVE]
+_OPERATION_LABELS = {
+    None: _("No operation"),
+    CUT: _("Cut"),
+    SCAN: _("Scan"),
+    ENGRAVE: _("Engrave"),
+}
 
 
 class ImportDialog(PatchedDialogWindow):
@@ -70,6 +88,11 @@ class ImportDialog(PatchedDialogWindow):
         self._background_pixbuf: GdkPixbuf.Pixbuf | None = None
         self._in_update = False  # Prevent signal recursion
         self._layer_widgets: dict[Gtk.Switch, str] = {}
+        # Each source layer's row, operation dropdown, name and plain
+        # subtitle, by layer id.
+        self._operation_rows: dict[
+            str, tuple[Adw.ActionRow, Gtk.DropDown, str, str]
+        ] = {}
         self._layers_expander: Adw.ExpanderRow | None = None
         # What the layer rows held before By source took them over.
         self._saved_layer_rows: tuple[int, int] | None = None
@@ -92,6 +115,9 @@ class ImportDialog(PatchedDialogWindow):
         )
         self.layer_import_mode_row.connect(
             "notify::selected", self._schedule_preview_update
+        )
+        self.layer_import_mode_row.connect(
+            "notify::selected", self._update_operation_rows
         )
 
         self._layer_source_model = Gtk.StringList.new(
@@ -239,6 +265,10 @@ class ImportDialog(PatchedDialogWindow):
         structured = (
             importer_cls is not None
             and importer_cls.build_tree is not Importer.build_tree
+        )
+        # A LightBurn layer brings its own settings, not its name's.
+        self._layers_carry_settings = importer_cls is not None and (
+            issubclass(importer_cls, LightBurnImporter)
         )
         if structured:
             self._groupings = [
@@ -396,6 +426,7 @@ class ImportDialog(PatchedDialogWindow):
         )
         self._update_import_as_rows()
         self._sync_layer_rows()
+        self._update_operation_rows()
         self.warning_banner.set_revealed(False)
         self._schedule_preview_update()
 
@@ -659,6 +690,7 @@ class ImportDialog(PatchedDialogWindow):
             self._layers_expander = None
 
         self._layer_widgets.clear()
+        self._operation_rows.clear()
         if not (self._manifest.layers or self._manifest.color_layers):
             self.layers_group.set_visible(False)
             return
@@ -695,6 +727,15 @@ class ImportDialog(PatchedDialogWindow):
 
             if is_color_source:
                 row.add_prefix(self._make_color_swatch(layer_info.color))
+            elif not is_empty:
+                dropdown = self._make_operation_dropdown(layer_info.name)
+                row.add_suffix(dropdown)
+                self._operation_rows[layer_info.id] = (
+                    row,
+                    dropdown,
+                    layer_info.name,
+                    row.get_subtitle() or "",
+                )
 
             switch = Gtk.Switch(
                 active=not is_empty,
@@ -710,6 +751,86 @@ class ImportDialog(PatchedDialogWindow):
             self._layer_widgets[switch] = layer_info.id
 
         expander.add_row(self.layer_import_mode_row)
+        self._update_operation_rows()
+
+    def _make_operation_dropdown(self, name: str) -> Gtk.DropDown:
+        """
+        A source layer's operation: No operation, Cut, Scan or Engrave,
+        the one its name gives selected.
+        """
+        dropdown = Gtk.DropDown.new_from_strings(
+            [_OPERATION_LABELS[operation] for operation in _OPERATIONS]
+        )
+        dropdown.set_valign(Gtk.Align.CENTER)
+        dropdown.set_selected(_OPERATIONS.index(parse_layer_name(name)[0]))
+        dropdown.connect("notify::selected", self._update_operation_rows)
+        return dropdown
+
+    def _names_apply(self) -> bool:
+        """
+        Whether the source layers' names choose their steps on import:
+        a direct vector import (not a re-import) that keeps the file's
+        layers as layers, of an importer whose layers carry no settings
+        of their own.
+        """
+        return (
+            self.import_as_group.get_visible()
+            and not self._layers_carry_settings
+            and names_apply(self._get_current_spec())
+        )
+
+    def _update_operation_rows(self, *args):
+        """
+        Shows each source layer's operation dropdown, and what it will
+        get in its row's subtitle, where names apply; elsewhere the
+        rows are as they were.
+        """
+        if not self._operation_rows:
+            return
+        apply = self._names_apply()
+        for row, dropdown, name, plain in self._operation_rows.values():
+            dropdown.set_visible(apply)
+            operation = _OPERATIONS[dropdown.get_selected()]
+            row.set_subtitle(
+                self._operation_subtitle(name, operation) if apply else plain
+            )
+
+    def _operation_subtitle(self, name: str, operation: str | None) -> str:
+        """
+        What a source layer gets: its operation, and the material and
+        recipe its name gives for it on the active machine, else the
+        step's defaults.
+        """
+        if operation is None:
+            return _OPERATION_LABELS[None]
+        label = _OPERATION_LABELS[operation]
+        context = self.editor.context
+        found = name_recipe(name, operation, context)
+        if found is None:
+            return _("{operation} · step defaults").format(operation=label)
+        (uid, thickness), recipe = found
+        material = context.material_mgr.get_material(uid)
+        return _("{operation} · {material} {thickness} · {recipe}").format(
+            operation=label,
+            material=material.name if material else uid,
+            thickness=format_value(thickness, "length"),
+            recipe=recipe.name,
+        )
+
+    def _layer_operation_overrides(self) -> dict[str, str | None]:
+        """
+        The operations chosen for source layers that are not the ones
+        their names give, by layer id; none where names do not apply.
+        """
+        if not self._names_apply():
+            return {}
+        chosen = {}
+        for layer_id, entry in self._operation_rows.items():
+            _row, dropdown, name, _plain = entry
+            operation = _OPERATIONS[dropdown.get_selected()]
+            if operation != parse_layer_name(name)[0]:
+                chosen[layer_id] = operation
+        return chosen
 
     def _get_active_layer_ids(self) -> list[str] | None:
         if not self._layer_widgets:
@@ -1079,6 +1200,7 @@ class ImportDialog(PatchedDialogWindow):
             keep_images=self.keep_images_row.get_visible()
             and self.keep_images_row.get_active(),
             layer_per_source_layer=self.layer_per_source_row.get_active(),
+            layer_operations=self._layer_operation_overrides(),
         )
 
     def _on_import_clicked(self, button):

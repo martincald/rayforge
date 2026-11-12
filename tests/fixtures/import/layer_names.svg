@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200mm" height="100mm" viewBox="0 0 200 100">
+  <g id="cut">
+    <rect x="10" y="10" width="40" height="40" fill="#000"/>
+  </g>
+  <g id="scan_3mm_mdf" data-name="scan 3mm mdf">
+    <rect x="60" y="10" width="40" height="40" fill="none" stroke="#f00"/>
+  </g>
+  <g id="engrave">
+    <circle cx="130" cy="30" r="20" fill="#000"/>
+  </g>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect x="160" y="10" width="30" height="80" fill="none" stroke="#00f"/>
+  </g>
+</svg>

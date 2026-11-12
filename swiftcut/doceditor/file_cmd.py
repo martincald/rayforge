@@ -4,7 +4,7 @@ import logging
 import mimetypes
 import warnings
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from gettext import gettext as _
@@ -12,6 +12,7 @@ from gettext import ngettext
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
+    Any,
     Optional,
     cast,
 )
@@ -30,9 +31,10 @@ from ..core.bed_bounds import bed_rect, fits, items_outside
 from ..core.item import DocItem
 from ..core.item_group import AddItemGroupCommand
 from ..core.layer import Layer
+from ..core.layer_name import ENGRAVE, STEP_TYPES
 from ..core.source_asset import SourceAsset
 from ..core.step_registry import step_registry
-from ..core.undo import ListItemCommand
+from ..core.undo import ChangePropertyCommand, ListItemCommand
 from ..core.vectorization_spec import (
     LayerImportMode,
     PassthroughSpec,
@@ -63,9 +65,12 @@ from .import_materializer import (
     PreparedImport,
     effective_grouping,
     import_spec,
+    layer_operations,
     looks_traced,
     materialize,
+    name_recipe,
     options_for,
+    order_new_layers,
     prepare_import,
     skipped_image_warnings,
 )
@@ -545,10 +550,13 @@ class FileCmd:
         items: list[DocItem],
         mode: LayerImportMode,
         target_layer: Layer | None = None,
+        own_layers: Collection[str] = (),
     ) -> list[tuple[DocItem, DocItem]]:
         """
         Resolve each item to a (owner, item) pair based on the import mode.
         Returns a flat list of (destination_owner, item_to_add) tuples.
+        A layer whose uid is in own_layers goes in as a layer of its
+        own in MAP_TO_EXISTING too.
         """
         target_layer = cast(
             Layer,
@@ -560,7 +568,7 @@ class FileCmd:
         if mode == LayerImportMode.MAP_TO_EXISTING:
             existing = doc.layers
             for idx, item in enumerate(items):
-                if idx < len(existing):
+                if idx < len(existing) and item.uid not in own_layers:
                     dest = existing[idx]
                     for child in self._unwrap_item(item):
                         pairs.append((dest, child))
@@ -598,6 +606,10 @@ class FileCmd:
         gone; without prepared, as one workpiece per path with
         split_paths, else whole. prepared's groups (a piece's outline
         and interior) go in with them, in the same undo step.
+        A source layer whose name (or the operation chosen for it)
+        gives an operation goes in as a layer of its own with one step
+        of that operation (see _add_operation_step). The layers the
+        import adds go in engrave, scan, cut, then the others.
 
         Returns the list of destination layers that received items, and
         the content added (out of any layer wrapper).
@@ -615,11 +627,19 @@ class FileCmd:
         if isinstance(vectorization_spec, PassthroughSpec):
             mode = vectorization_spec.layer_import_mode
 
-        pairs = self._resolve_destinations(items, mode)
         if prepared is None:
             options = options_for(None, split_paths)
             prepared = PreparedImport(options, options.grouping)
-        pairs = materialize(pairs, source, prepared, self._editor.doc)
+        operations = layer_operations(
+            items, vectorization_spec, prepared.options
+        )
+        doc = self._editor.doc
+        pairs = self._resolve_destinations(items, mode, own_layers=operations)
+        pairs = materialize(pairs, source, prepared, doc)
+        order = dict(operations)
+        if prepared.interior_layer is not None:
+            order[prepared.interior_layer.uid] = ENGRAVE
+        pairs = order_new_layers(pairs, doc, order)
         content = self._get_positionable_content(
             [item for _owner, item in pairs]
         )
@@ -638,6 +658,9 @@ class FileCmd:
                 t.execute(
                     AddItemGroupCommand(self._editor.doc.item_groups, group)
                 )
+            for _owner, item in pairs:
+                if isinstance(item, Layer) and item.uid in operations:
+                    self._add_operation_step(item, operations[item.uid], t)
             if prepared.interior_layer is not None:
                 self._add_engrave_step(prepared.interior_layer)
 
@@ -651,6 +674,49 @@ class FileCmd:
                 dest_layers.append(_item)
                 seen.add(_item.uid)
         return dest_layers, content
+
+    def _add_operation_step(
+        self, layer: Layer, operation: str, transaction: Any
+    ) -> None:
+        """
+        Gives an imported layer one step of the operation its name (or
+        the choice made for it) gives. When its name gives a material
+        and thickness with a recipe for the operation on the active
+        machine, the layer takes that material, filled for that
+        machine, the step that recipe and the layer its color, in the
+        import's transaction; otherwise the step is set as every new
+        step is (the document's stock and the machine) and the layer
+        has no material.
+        """
+        step_cls = step_registry.get(STEP_TYPES[operation])
+        workflow = layer.workflow
+        if step_cls is None or workflow is None:
+            return
+        context = self._editor.context
+        machine = context.machine
+        found = name_recipe(layer.name, operation, context)
+        step = step_cls.create(context)
+        if found is None:
+            self._editor.step.apply_best_recipe_to_step(step)
+        else:
+            material, _recipe = found
+            transaction.execute(
+                ChangePropertyCommand(
+                    target=layer,
+                    property_name="material",
+                    new_value=material,
+                    setter_method_name="set_material",
+                )
+            )
+            transaction.execute(
+                ChangePropertyCommand(
+                    target=layer,
+                    property_name="material_machine",
+                    new_value=machine.name if machine else None,
+                )
+            )
+            self._editor.step.apply_best_recipe_to_step(step, layer)
+        workflow.add_step(step)
 
     def _add_engrave_step(self, layer: Layer) -> None:
         """
