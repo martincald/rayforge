@@ -7,6 +7,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from ...core.varset import Var, VarSet
 from ..icons import get_icon
+from ..shared.pref_rows.base import SpinRow
 from .adapter import RowAdapter, create_row_for_var, escape_title
 
 logger = logging.getLogger(__name__)
@@ -23,11 +24,16 @@ class _VarSetRowManager:
     """
 
     def _init_varset(
-        self, explicit_apply=False, debounce_ms=0, show_reset=False
+        self,
+        explicit_apply=False,
+        debounce_ms=0,
+        show_reset=False,
+        numeric_entries=False,
     ):
         self.explicit_apply = explicit_apply
         self.debounce_ms = debounce_ms
         self.show_reset = show_reset
+        self.numeric_entries = numeric_entries
         self.widget_map: dict[str, tuple[Adw.PreferencesRow, Var]] = {}
         self._adapters: dict[str, RowAdapter] = {}
         self._created_rows = []
@@ -103,6 +109,8 @@ class _VarSetRowManager:
                     continue
 
             row, adapter = create_row_for_var(var, "value")
+            if self.numeric_entries and isinstance(row, SpinRow):
+                row.attach_numeric_entry()
             if row:
                 self._wire_up_row(row, var, adapter)
                 self._add_row(row)
@@ -240,15 +248,23 @@ class VarSetRowList(Gtk.ListBox, _VarSetRowManager):
     """
     A Gtk.ListBox that populates itself with rows based on a VarSet.
     Intended for use inside Expander cards where Adw.PreferencesGroup
-    styling would be visually inconsistent.
+    styling would be visually inconsistent. With ``numeric_entries``
+    its spin rows commit typed values (SpinRow.attach_numeric_entry).
     """
 
     def __init__(
-        self, explicit_apply=False, debounce_ms=0, show_reset=False, **kwargs
+        self,
+        explicit_apply=False,
+        debounce_ms=0,
+        show_reset=False,
+        numeric_entries=False,
+        **kwargs,
     ):
         Gtk.ListBox.__init__(self, **kwargs)
         self.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._init_varset(explicit_apply, debounce_ms, show_reset)
+        self._init_varset(
+            explicit_apply, debounce_ms, show_reset, numeric_entries
+        )
 
     def _add_row(self, row):
         self.append(row)

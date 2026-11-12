@@ -40,3 +40,22 @@ def test_crop_offset_shows_inches_when_imperial(ui_context):
 
     assert group.offset_row.get_value_in_base_units() == pytest.approx(25.4)
     assert group.offset_row.get_value() == pytest.approx(1.0, abs=1e-2)
+
+
+@pytest.mark.ui
+def test_crop_offset_commits_a_typed_value_at_once(ui_context):
+    ui_context.config.unit_preferences["length"] = "mm"
+    group, _transformer = _build_group(ui_context)
+    assert group.offset_row.numeric_entry is not None
+    sent = []
+    group.param_changed.connect(
+        lambda sender, **kw: sent.append((kw["key"], kw["value"])),
+        weak=False,
+    )
+
+    group.offset_row.get_spin_button().set_text("10+2.7")
+    assert sent == []
+    group.offset_row.numeric_entry.commit()
+
+    assert sent == [("offset", pytest.approx(12.7))]
+    assert group._debounce_timer == 0

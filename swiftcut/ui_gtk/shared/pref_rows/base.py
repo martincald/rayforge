@@ -3,9 +3,11 @@ import logging
 from blinker import ANY, Signal
 from gi.repository import Adw, GLib, Gtk
 
+from ....shared.units.definitions import Unit
 from ...layout import suffix_box
 from ..adwfix import ensure_spinrow_min_width
 from ..gtk import SPINROW_SCROLL_GUARD_NAME, install_scroll_guard
+from ..numeric_entry import NumericEntry
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +49,9 @@ class SpinRow(Adw.ActionRow):
     Consumer signal wiring uses the blinker signal :attr:`value_changed`
     only; it fires on user edits but not on programmatic
     :meth:`set_value`. Pass ``debounce_ms > 0`` to coalesce rapid edits.
+
+    By default a user edit is every keystroke. After
+    :meth:`attach_numeric_entry` it is a committed value instead.
     """
 
     __gtype_name__ = "RayforgeSpinRow"
@@ -107,7 +112,10 @@ class SpinRow(Adw.ActionRow):
         # Mirror the historical Adw.SpinRow wiring: value-changed alone does
         # not fire on every keystroke, so also observe notify::text to keep
         # live consumers (e.g. array previews) responsive while typing.
-        self._spin_button.connect("notify::text", self._on_text_changed)
+        self._text_handler_id = self._spin_button.connect(
+            "notify::text", self._on_text_changed
+        )
+        self.numeric_entry: NumericEntry | None = None
 
         # Through the shared suffix box, so this row's field lines up
         # with the icon buttons in the rows around it.
@@ -118,6 +126,21 @@ class SpinRow(Adw.ActionRow):
         self._destroy_handler_id = self.connect("destroy", self._on_destroy)
 
         ensure_spinrow_min_width(self)
+
+    def attach_numeric_entry(self) -> NumericEntry:
+        """
+        Edit this row through a :class:`NumericEntry`.
+
+        Typing then changes only the text: :attr:`value_changed` fires
+        once per committed value (Enter, Tab, focus loss, an arrow
+        step), and :meth:`get_value` returns the committed value.
+        """
+        if self.numeric_entry is None:
+            self._spin_button.disconnect(self._text_handler_id)
+            self.numeric_entry = NumericEntry(
+                self._spin_button, self._display_unit
+            )
+        return self.numeric_entry
 
     def get_value(self) -> float:
         """Return the current value (display units), text-aware."""
@@ -137,7 +160,10 @@ class SpinRow(Adw.ActionRow):
             return
         self._is_updating = True
         try:
-            self._spin_button.set_value(value)
+            if self.numeric_entry is not None:
+                self.numeric_entry.set_value(value)
+            else:
+                self._spin_button.set_value(value)
         finally:
             self._is_updating = False
 
@@ -172,19 +198,31 @@ class SpinRow(Adw.ActionRow):
     def set_width_chars(self, n: int) -> None:
         self._spin_button.set_width_chars(n)
 
+    def _display_unit(self) -> Unit | None:
+        """The unit a typed unit suffix converts into; none here."""
+        return None
+
     def _get_display_value(self) -> float:
         # A keyboard edit may not be reflected in get_value() immediately
         # (the historical Adw.SpinRow bug), so prefer the editable text and
         # clamp to the adjustment range.
         adj = self._spin_button.get_adjustment()
-        try:
-            v = float(self._spin_button.get_text())
-        except ValueError:
-            v = float(self._spin_button.get_value())
+        if self.numeric_entry is not None:
+            # Text being typed is not a value until it commits.
+            v = self.numeric_entry.value
+        else:
+            try:
+                v = float(self._spin_button.get_text())
+            except ValueError:
+                v = float(self._spin_button.get_value())
         return max(adj.get_lower(), min(v, adj.get_upper()))
 
     def _on_value_changed(self, _spin_button: Gtk.SpinButton) -> None:
         if self._is_updating:
+            return
+        if self.numeric_entry is not None:
+            # One value-changed per commit: nothing to deduplicate.
+            self._send_changed()
             return
         self._emit_changed()
 
@@ -203,6 +241,9 @@ class SpinRow(Adw.ActionRow):
         ):
             return
         self._last_emitted_value = current
+        self._send_changed()
+
+    def _send_changed(self) -> None:
         if self._debounce_ms > 0:
             if self._debounce_timer_id is not None:
                 GLib.source_remove(self._debounce_timer_id)

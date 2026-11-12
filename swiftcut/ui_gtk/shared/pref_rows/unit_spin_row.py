@@ -95,6 +95,10 @@ class UnitSpinRow(SpinRow):
         """The unit suffix after the field."""
         return self._unit_label
 
+    def _display_unit(self) -> Unit | None:
+        """The row's unit: a typed "2in" converts into it."""
+        return self._unit
+
     def _resolve_unit_name(self) -> str | None:
         """Return the name of the unit to display for this row.
 
@@ -150,7 +154,11 @@ class UnitSpinRow(SpinRow):
             if not self._unit:
                 logger.warning("UnitSpinRow: skipping set, no unit")
                 return
-            self._spin_button.set_value(self._unit.from_base(base_value))
+            display_value = self._unit.from_base(base_value)
+            if self.numeric_entry is not None:
+                self.numeric_entry.set_value(display_value)
+            else:
+                self._spin_button.set_value(display_value)
         finally:
             self._is_updating = False
 

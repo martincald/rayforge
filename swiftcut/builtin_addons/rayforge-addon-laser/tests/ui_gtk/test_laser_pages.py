@@ -32,6 +32,7 @@ from swiftcut.ui_gtk.doceditor.step_settings.rows import (
     HeadRow,
     TravelSpeedRow,
 )
+from swiftcut.ui_gtk.shared.pref_rows.base import SpinRow
 
 
 def _find(widget, cls):
@@ -301,3 +302,37 @@ def test_typing_power_moves_the_slider(editor, laser_machine, ui_context):
     power._spin.set_value(75.0)
 
     assert power._scale.get_value() == pytest.approx(75.0)
+
+
+def _descendants(widget):
+    child = widget.get_first_child()
+    while child is not None:
+        yield child
+        yield from _descendants(child)
+        child = child.get_next_sibling()
+
+
+@pytest.mark.ui
+def test_step_page_fields_commit_typed_values(
+    editor, laser_machine, ui_context
+):
+    """Every number on a step settings page commits on Enter, Tab or
+    focus loss; none reports keystrokes."""
+    contour = ContourStepSettingsPage(editor, _contour_step(ui_context))
+    pages = [
+        contour,
+        contour.laser_page(),
+        RasterSettingsPage(
+            editor, step_registry.get("EngraveStep").create(ui_context)
+        ),
+        MaterialTestGridSettingsPage(
+            editor,
+            step_registry.get("MaterialTestStep").create(ui_context),
+        ),
+    ]
+    for page in pages:
+        spin_rows = [w for w in _descendants(page) if isinstance(w, SpinRow)]
+        assert spin_rows, type(page).__name__
+        for row in spin_rows:
+            assert row.numeric_entry is not None, row.get_title()
+    assert _find(contour.laser_page(), PowerRow).numeric_entry is not None

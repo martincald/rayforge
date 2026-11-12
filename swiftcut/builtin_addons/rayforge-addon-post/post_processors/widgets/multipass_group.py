@@ -39,6 +39,7 @@ class MultiPassSettingsGroup(DebounceMixin, TransformerSettingsGroup):
         self.add(self.passes_row)
 
         # Connect signals with debouncing
+        self.passes_row.attach_numeric_entry()
         self.passes_row.value_changed.connect(
             lambda r: self._debounce(self._on_passes_changed, r),
         )

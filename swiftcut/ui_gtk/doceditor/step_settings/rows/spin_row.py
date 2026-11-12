@@ -54,17 +54,8 @@ class SpinRow(DebouncedMixin, StepRow):
         self._sync_dependencies()
 
     def build_widget(self):
-        if self.quantity in _UNIT_ROW_CLASSES:
-            cls = _UNIT_ROW_CLASSES[self.quantity]
-            return cls(
-                self._title,
-                self._subtitle,
-                lower=self._lower,
-                upper=self._upper,
-                step_increment=self._step_inc,
-                digits=self._digits,
-            )
-        return pref_rows.SpinRow(
+        cls = _UNIT_ROW_CLASSES.get(self.quantity or "", pref_rows.SpinRow)
+        row = cls(
             self._title,
             self._subtitle,
             lower=self._lower,
@@ -72,6 +63,8 @@ class SpinRow(DebouncedMixin, StepRow):
             step_increment=self._step_inc,
             digits=self._digits,
         )
+        row.attach_numeric_entry()
+        return row
 
     def _on_changed(self, *args):
         if self._syncing:

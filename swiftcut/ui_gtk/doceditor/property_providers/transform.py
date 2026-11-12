@@ -28,6 +28,10 @@ class TransformPropertyProvider(PropertyProvider):
     """Provides UI for common transformation properties (pos, size, angle)."""
 
     priority = 10
+    # Whether Width and Height keep their ratio. Off at start, then the
+    # last choice holds for the rest of the session, across selections
+    # and new providers; it is not saved.
+    fixed_ratio = False
 
     def can_handle(self, items: list[DocItem]) -> bool:
         return bool(items)
@@ -171,6 +175,7 @@ class TransformPropertyProvider(PropertyProvider):
             lower=-10000,
             upper=10000,
         )
+        self.x_row.attach_numeric_entry()
         self.x_row.value_changed.connect(self._on_x_changed)
 
         # X Reset Button
@@ -185,6 +190,7 @@ class TransformPropertyProvider(PropertyProvider):
             lower=-10000,
             upper=10000,
         )
+        self.y_row.attach_numeric_entry()
         self.y_row.value_changed.connect(self._on_y_changed)
 
         self.reset_y_button = self._create_reset_button(
@@ -197,7 +203,8 @@ class TransformPropertyProvider(PropertyProvider):
     def _create_size_rows(self):
         # Fixed Ratio Switch
         self.fixed_ratio_switch = Adw.SwitchRow(
-            title=_("Fixed Ratio"), active=True
+            title=_("Fixed Ratio"),
+            active=TransformPropertyProvider.fixed_ratio,
         )
         self.fixed_ratio_switch.connect(
             "notify::active", self._on_fixed_ratio_toggled
@@ -209,6 +216,7 @@ class TransformPropertyProvider(PropertyProvider):
             lower=1,
             upper=10000,
         )
+        self.width_row.attach_numeric_entry()
         self.width_row.value_changed.connect(self._on_width_changed)
 
         # Height Entry
@@ -217,6 +225,7 @@ class TransformPropertyProvider(PropertyProvider):
             lower=1,
             upper=10000,
         )
+        self.height_row.attach_numeric_entry()
         self.height_row.value_changed.connect(self._on_height_changed)
 
         # Reset Buttons
@@ -248,6 +257,7 @@ class TransformPropertyProvider(PropertyProvider):
             _("Clockwise is positive"),
             digits=2,
         )
+        self.angle_row.attach_numeric_entry()
         self.angle_row.value_changed.connect(self._on_angle_changed)
 
         # Shear Entry
@@ -258,6 +268,7 @@ class TransformPropertyProvider(PropertyProvider):
             upper=85,
             digits=2,
         )
+        self.shear_row.attach_numeric_entry()
         self.shear_row.value_changed.connect(self._on_shear_changed)
 
         # Their unit, beside the field as a length row's is. The units
@@ -545,6 +556,7 @@ class TransformPropertyProvider(PropertyProvider):
             logger.debug("_on_shear_changed finished.")
 
     def _on_fixed_ratio_toggled(self, switch_row, GParamSpec):
+        TransformPropertyProvider.fixed_ratio = switch_row.get_active()
         is_ratio_lockable = self.items and isinstance(
             self.items[0], (WorkPiece, StockItem, Group)
         )

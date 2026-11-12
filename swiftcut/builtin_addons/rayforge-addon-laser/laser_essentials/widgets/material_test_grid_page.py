@@ -173,6 +173,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             value_in_base=min(self.step.fixed_speed, machine_max_speed),
         )
         self._add(group, self.fixed_speed_row)
+        self.fixed_speed_row.attach_numeric_entry()
         self.fixed_speed_row.value_changed.connect(
             lambda r: self._debounce(self._on_fixed_speed_changed, r),
         )
@@ -192,6 +193,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             on_value_changed=lambda s: self._debounce(
                 self._on_fixed_power_changed, s
             ),
+            numeric_entry=True,
         )
         self._add(group, self.fixed_power_row)
 
@@ -205,6 +207,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             adjustment=self.min_power_adj,
             subtitle=_("For first column"),
             digits=1,
+            numeric_entry=True,
         )
         self.min_power_row = min_power_row
         self._add(group, self.min_power_row)
@@ -217,6 +220,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             adjustment=self.max_power_adj,
             subtitle=_("For last column"),
             digits=1,
+            numeric_entry=True,
         )
         self.max_power_row = max_power_row
         self._add(group, self.max_power_row)
@@ -253,9 +257,11 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         )
         self._add(group, self.speed_max_row)
 
+        self.speed_min_row.attach_numeric_entry()
         self.speed_min_row.value_changed.connect(
             lambda r: self._debounce(self._on_speed_min_changed, r)
         )
+        self.speed_max_row.attach_numeric_entry()
         self.speed_max_row.value_changed.connect(
             lambda r: self._debounce(self._on_speed_max_changed, r)
         )
@@ -282,9 +288,11 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         )
         self._add(group, self.passes_max_row)
 
+        self.passes_min_row.attach_numeric_entry()
         self.passes_min_row.value_changed.connect(
             lambda r: self._debounce(self._on_passes_min_changed, r),
         )
+        self.passes_max_row.attach_numeric_entry()
         self.passes_max_row.value_changed.connect(
             lambda r: self._debounce(self._on_passes_max_changed, r),
         )
@@ -313,9 +321,11 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         )
         self._add(group, self.offset_max_row)
 
+        self.offset_min_row.attach_numeric_entry()
         self.offset_min_row.value_changed.connect(
             lambda r: self._debounce(self._on_offset_min_changed, r),
         )
+        self.offset_max_row.attach_numeric_entry()
         self.offset_max_row.value_changed.connect(
             lambda r: self._debounce(self._on_offset_max_changed, r),
         )
@@ -334,6 +344,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             on_value_changed=lambda s: self._debounce(
                 self._on_label_power_changed, s
             ),
+            numeric_entry=True,
         )
         self._add(group, self.label_power_row)
 
@@ -346,6 +357,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             value_in_base=min(self.step.label_speed, machine_max_speed),
         )
         self._add(group, self.label_speed_row)
+        self.label_speed_row.attach_numeric_entry()
         self.label_speed_row.value_changed.connect(
             lambda r: self._debounce(self._on_label_speed_changed, r),
         )
@@ -381,9 +393,11 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
         )
         self._add(group, self.rows_row)
 
+        self.cols_row.attach_numeric_entry()
         self.cols_row.value_changed.connect(
             lambda r: self._debounce(self._on_grid_cols_changed, r)
         )
+        self.rows_row.attach_numeric_entry()
         self.rows_row.value_changed.connect(
             lambda r: self._debounce(self._on_grid_rows_changed, r)
         )
@@ -399,6 +413,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             value=self.step.shape_size,
         )
         self._add(group, self.shape_size_row)
+        self.shape_size_row.attach_numeric_entry()
         self.shape_size_row.value_changed.connect(
             lambda r: self._debounce(self._on_shape_size_changed, r)
         )
@@ -414,6 +429,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             value=self.step.spacing,
         )
         self._add(group, self.spacing_row)
+        self.spacing_row.attach_numeric_entry()
         self.spacing_row.value_changed.connect(
             lambda r: self._debounce(self._on_spacing_changed, r)
         )
@@ -435,6 +451,7 @@ class MaterialTestGridSettingsPage(LaserStepSettingsPage):
             ),
         )
         self._add(group, self.line_interval_row)
+        self.line_interval_row.attach_numeric_entry()
         self.line_interval_row.value_changed.connect(
             lambda r: self._debounce(self._on_line_interval_changed, r),
         )

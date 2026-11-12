@@ -35,6 +35,7 @@ class CropSettingsGroup(DebounceMixin, TransformerSettingsGroup):
             upper=100.0,
             value_in_base=transformer.offset,
         )
+        self.offset_row.attach_numeric_entry()
         self.offset_row.value_changed.connect(
             lambda r: self._debounce(self._on_offset_changed, r)
         )

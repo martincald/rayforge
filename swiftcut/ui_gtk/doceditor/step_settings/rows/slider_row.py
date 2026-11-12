@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from gi.repository import Adw, Gtk
 
 from swiftcut.ui_gtk.shared.gtk import install_scroll_guard
+from swiftcut.ui_gtk.shared.numeric_entry import NumericEntry
 from swiftcut.ui_gtk.shared.slider import create_slider
 
 from .step_row import DebouncedMixin, StepRow
@@ -70,6 +71,7 @@ class SliderRow(DebouncedMixin, StepRow):
         # and commits it - exactly as scrolling the (guarded)
         # slider would. See install_scroll_guard.
         install_scroll_guard(self._spin)
+        self.numeric_entry = NumericEntry(self._spin)
         self._scale = create_slider(
             adjustment=self._adj,
             digits=self._digits,

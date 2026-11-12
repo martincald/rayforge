@@ -71,6 +71,7 @@ class OverscanSettingsGroup(DebounceMixin, TransformerSettingsGroup):
 
         # Connect signals
         self.auto_row.connect("notify::active", self._on_auto_toggled)
+        distance_row.attach_numeric_entry()
         distance_row.value_changed.connect(
             lambda r: self._debounce(self._on_distance_changed, r),
         )

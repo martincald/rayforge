@@ -89,6 +89,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             subtitle=_("Brightness cutoff for black/white (0-255)"),
             digits=0,
             on_value_changed=lambda s: self._on_threshold_changed(s),
+            numeric_entry=True,
         )
         self._add(engrave_group, self.threshold_row)
 
@@ -157,6 +158,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
                 "Power for lightest areas, as a % of the step's main power"
             ),
             digits=1,
+            numeric_entry=True,
         )
         self._add(histogram_group, self.min_power_row)
 
@@ -173,6 +175,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
                 "Power for darkest areas, as a % of the step's main power"
             ),
             digits=1,
+            numeric_entry=True,
         )
         self._add(histogram_group, self.max_power_row)
 
@@ -184,6 +187,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             digits=0,
             value=step.num_power_levels,
         )
+        self.power_levels_row.attach_numeric_entry()
         self.power_levels_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_param_changed,
@@ -224,6 +228,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             "value-changed", self._on_max_power_scale_changed
         )
 
+        self.levels_row.attach_numeric_entry()
         self.levels_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_param_changed,
@@ -231,6 +236,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
                 r.get_int_value(),
             ),
         )
+        self.angle_incr_row.attach_numeric_entry()
         self.angle_incr_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_param_changed,
@@ -329,6 +335,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             ),
         )
         self._add(group, self.line_interval_row)
+        self.line_interval_row.attach_numeric_entry()
         self.line_interval_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_line_interval_changed,
@@ -350,6 +357,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             ),
         )
         self._add(group, self.sample_interval_row)
+        self.sample_interval_row.attach_numeric_entry()
         self.sample_interval_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_sample_interval_changed,
@@ -373,6 +381,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             ),
         )
         self._add(group, self.dot_width_correction_row)
+        self.dot_width_correction_row.attach_numeric_entry()
         self.dot_width_correction_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_dot_width_correction_changed,
@@ -390,6 +399,7 @@ class RasterSettingsPage(LaserStepSettingsPage):
             value_in_base=self.step.bidir_x_offset_mm,
         )
         self._add(group, self.bidir_x_offset_row)
+        self.bidir_x_offset_row.attach_numeric_entry()
         self.bidir_x_offset_row.value_changed.connect(
             lambda r: self._debounce(
                 self._on_bidir_x_offset_changed,

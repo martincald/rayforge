@@ -7,6 +7,7 @@ from gi.repository import Adw, GLib, Gtk
 from swiftcut.core.item import DocItem
 from swiftcut.core.varset import VarSet
 from swiftcut.core.workpiece import WorkPiece
+from swiftcut.shared.util.glib import in_discrete_edit
 from swiftcut.ui_gtk.doceditor.property_providers.base import (
     PropertyProvider,
 )
@@ -58,7 +59,9 @@ class SketchPropertyProvider(PropertyProvider):
     def create_widgets(self) -> list[Gtk.Widget]:
         """Creates the VarSetRowList for sketch parameters."""
         logger.debug("Creating sketch property widgets.")
-        self.varset_widget = VarSetRowList(show_reset=True)
+        self.varset_widget = VarSetRowList(
+            show_reset=True, numeric_entries=True
+        )
         self.varset_widget.data_changed.connect(self._on_params_changed)
 
         self._empty_row = Adw.ActionRow(
@@ -176,6 +179,11 @@ class SketchPropertyProvider(PropertyProvider):
         all_values = sender.get_values()
         self._pending_changes[key] = all_values.get(key)
         logger.debug(f"Pending changes: {self._pending_changes}")
+
+        if in_discrete_edit():
+            # A committed number is one edit: apply it now, as one step.
+            self._apply_debounced_changes()
+            return
 
         logger.debug("Scheduling debounced update.")
         self._debounce_timer_id = GLib.timeout_add(

@@ -70,9 +70,11 @@ class LeadInOutSettingsGroup(DebounceMixin, TransformerSettingsGroup):
             "notify::active",
             lambda w, _: self._update_sensitivity(),
         )
+        self.lead_in_row.attach_numeric_entry()
         self.lead_in_row.value_changed.connect(
             lambda r: self._debounce(self._on_lead_in_changed, r),
         )
+        self.lead_out_row.attach_numeric_entry()
         self.lead_out_row.value_changed.connect(
             lambda r: self._debounce(self._on_lead_out_changed, r),
         )

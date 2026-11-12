@@ -35,6 +35,7 @@ class MergeLinesSettingsGroup(DebounceMixin, TransformerSettingsGroup):
             upper=10.0,
             value_in_base=transformer.tolerance,
         )
+        self.tolerance_row.attach_numeric_entry()
         self.tolerance_row.value_changed.connect(
             lambda r: self._debounce(self._on_tolerance_changed, r)
         )

@@ -35,3 +35,11 @@ def test_multipass_group_offers_passes_only(ui_context):
     assert "Number of Passes" in titles
     assert not any("Z Step" in title for title in titles)
     assert transformer.to_dict()["z_step_down"] == 0.5
+
+
+@pytest.mark.ui
+def test_passes_commit_typed_values(ui_context):
+    group = MultiPassSettingsGroup(
+        "Multi-Pass", MultiPassTransformer(passes=3), _Page()
+    )
+    assert group.passes_row.numeric_entry is not None

@@ -43,6 +43,7 @@ class SmoothSettingsGroup(DebounceMixin, TransformerSettingsGroup):
             on_value_changed=lambda s: self._debounce(
                 self._on_amount_changed, s
             ),
+            numeric_entry=True,
         )
         self.add(amount_row)
 
@@ -56,6 +57,7 @@ class SmoothSettingsGroup(DebounceMixin, TransformerSettingsGroup):
         )
         self.add(corner_row)
 
+        corner_row.attach_numeric_entry()
         corner_row.value_changed.connect(
             lambda spin_row: self._debounce(
                 self._on_corner_angle_changed, spin_row

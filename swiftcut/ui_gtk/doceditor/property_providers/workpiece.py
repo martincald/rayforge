@@ -159,6 +159,7 @@ class TabsPropertyProvider(PropertyProvider):
             upper=100.0,
             value_in_base=1.0,
         )
+        self.tab_width_row.attach_numeric_entry()
         self.tab_width_row.value_changed.connect(self._on_tab_width_changed)
         self.reset_tab_width_button = icon_button(
             "undo-symbolic", _("Reset tab width to default (1.0)")

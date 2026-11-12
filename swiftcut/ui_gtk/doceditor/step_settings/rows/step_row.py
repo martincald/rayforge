@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from gi.repository import GLib
 
 from swiftcut.core.undo import ChangePropertyCommand
+from swiftcut.shared.util.glib import in_discrete_edit
 
 if TYPE_CHECKING:
     from swiftcut.doceditor.editor import DocEditor
@@ -126,6 +127,10 @@ class DebouncedMixin:
     def _debounced(self, callback, *args):
         if self._debounce_timer > 0:
             GLib.source_remove(self._debounce_timer)
+            self._debounce_timer = 0
+        if in_discrete_edit():
+            callback(*args)
+            return
         self._debounce_timer = GLib.timeout_add(
             300, self._fire_debounce, callback, args
         )
