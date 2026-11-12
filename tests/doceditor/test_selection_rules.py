@@ -12,6 +12,7 @@ from raygeo.geo import Geometry
 
 from swiftcut.core.doc import Doc
 from swiftcut.core.group import Group
+from swiftcut.core.layer import Layer
 from swiftcut.core.source_asset_segment import SourceAssetSegment
 from swiftcut.core.vectorization_spec import PassthroughSpec
 from swiftcut.core.workpiece import WorkPiece
@@ -98,7 +99,8 @@ class TestCandidates:
         loose = _piece(layer, (0, 0))
         group = layer.add_child(Group())
         grouped = _piece(group, (10, 0))
-        hidden = doc.layers[1]
+        hidden = Layer("Layer 2")
+        doc.add_layer(hidden)
         hidden.set_visible(False)
         _piece(hidden, (20, 0))
 
@@ -159,7 +161,8 @@ class TestSelectInside:
 
     def test_a_hidden_layers_shapes_are_never_picked(self, doc, layer):
         plate = _piece(layer, (0, 0), (100, 100))
-        hidden = doc.layers[1]
+        hidden = Layer("Layer 2")
+        doc.add_layer(hidden)
         hidden.set_visible(False)
         _piece(hidden, (10, 10))
 
@@ -238,7 +241,9 @@ class TestSelectAllOnLayer:
     def test_picks_the_layers_items_only(self, doc, layer):
         first = _piece(layer, (0, 0))
         group = _group(layer, [_piece(layer, (10, 0))])
-        _piece(doc.layers[1], (20, 0))
+        other = Layer("Layer 2")
+        doc.add_layer(other)
+        _piece(other, (20, 0))
 
         assert rules.select_all_on_layer(first, rules.candidates(doc)) == [
             first,
@@ -311,9 +316,9 @@ async def traced(doc_editor, task_mgr, test_machine_and_config):
     a document, and a plain piece of another layer, away from them.
     """
     doc = doc_editor.doc
-    assert len(doc.layers) >= 2
     added = await _import(doc_editor, task_mgr, TRACED, options=INDIVIDUAL)
     outline, dots = _split_outline(added)
+    doc.add_layer(Layer("Layer 2"))
     decoy = _piece(doc.layers[1], (500, 500))
     return Traced(doc, outline, dots, decoy)
 

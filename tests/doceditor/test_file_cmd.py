@@ -1770,6 +1770,26 @@ class TestProjectRoundTrip:
         assert len(file_cmd._editor.doc.layers) == 3
         assert file_cmd._editor.doc.layers[2].visible is False
 
+    def test_a_three_layer_project_saves_and_loads_unchanged(
+        self, file_cmd, tmp_path
+    ):
+        """Saved layers come back with names, colours and order."""
+        doc = file_cmd._editor.doc
+        for i in (2, 3):
+            doc.add_layer(Layer(name=f"Layer {i}"))
+        doc.layers[1].name = "Cut"
+        doc.layers[1].color = "#1a334d"
+        expected = [(layer.name, layer.color) for layer in doc.layers]
+        export_file = tmp_path / "three_layers.ryp"
+
+        assert file_cmd.save_project_to_path(export_file) is True
+        assert file_cmd.load_project_from_path(export_file) is True
+
+        loaded = file_cmd._editor.doc
+        assert [(layer.name, layer.color) for layer in loaded.layers] == (
+            expected
+        )
+
     def test_round_trip_workpieces(self, file_cmd, tmp_path):
         """Test round trip for project with workpieces."""
         import_file = (

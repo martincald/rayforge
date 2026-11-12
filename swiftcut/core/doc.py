@@ -54,11 +54,10 @@ class Doc(DocItem):
         self.assets: dict[str, IAsset] = {}
         self.asset_order: list[str] = []
 
-        # A new document starts with three empty workpiece layers
-        for i in range(3):
-            workpiece_layer = Layer(_("Layer {}").format(i + 1))
-            workpiece_layer.color = COLOR_PALETTE[i % len(COLOR_PALETTE)]
-            self.add_child(workpiece_layer)
+        # A new document starts with one empty workpiece layer
+        workpiece_layer = Layer(_("Layer {}").format(1))
+        workpiece_layer.color = COLOR_PALETTE[0]
+        self.add_child(workpiece_layer)
 
         # The new workpiece layer should be active by default
         self._active_layer_index: int = 0

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from raygeo.geo import Matrix
 
+from swiftcut.core.color import COLOR_PALETTE
 from swiftcut.core.doc import Doc
 from swiftcut.core.layer import Layer
 from swiftcut.core.source_asset import SourceAsset
@@ -24,11 +25,22 @@ def doc():
     return Doc()
 
 
+def _three_layer_doc():
+    """A document with three layers, each with its own colour."""
+    doc = Doc()
+    for i in (2, 3):
+        layer = Layer(f"Layer {i}")
+        layer.color = COLOR_PALETTE[i - 1]
+        doc.add_layer(layer)
+    return doc
+
+
 def test_doc_initialization(doc):
-    """Verify a new Doc starts with three Layers."""
-    assert len(doc.children) == 3
+    """Verify a new Doc starts with one Layer."""
+    assert len(doc.children) == 1
     assert isinstance(doc.children[0], Layer)
-    assert len(doc.layers) == 3
+    assert len(doc.layers) == 1
+    assert doc.layers[0].color == COLOR_PALETTE[0]
 
     # Check that the first layer is active
     assert doc.active_layer.name == "Layer 1"
@@ -523,7 +535,9 @@ def test_doc_roundtrip_serialization():
     original = Doc()
     original.uid = "test-doc-uid"
 
-    # Add a fourth layer
+    # Add the layers up to a fourth
+    for i in (2, 3):
+        original.add_layer(Layer(f"Layer {i}"))
     layer4 = Layer("Layer 4")
     original.add_layer(layer4)
     original.active_layer = layer4
@@ -626,10 +640,11 @@ def test_has_result_logic(doc):
         assert doc.has_result()
 
 
-def test_remove_layer_adjusts_active_index(doc):
+def test_remove_layer_adjusts_active_index():
     """
     Tests that removing a layer correctly adjusts the active layer index.
     """
+    doc = _three_layer_doc()
     layer1 = doc.layers[0]
     layer1.name = "Layer 1"
     layer2 = doc.layers[1]
@@ -647,7 +662,7 @@ def test_remove_layer_adjusts_active_index(doc):
     assert doc.active_layer is layer2  # Instance remains the same
 
     # Reset for Case 2
-    doc_case2 = Doc()
+    doc_case2 = _three_layer_doc()
     l1 = doc_case2.layers[0]
     l1.name = "L1"
     l2 = doc_case2.layers[1]
@@ -667,7 +682,7 @@ def test_remove_layer_adjusts_active_index(doc):
     active_layer_changed_handler.assert_called_once()
 
     # Reset for Case 3
-    doc_case3 = Doc()
+    doc_case3 = _three_layer_doc()
     ly1 = doc_case3.layers[0]
     ly1.name = "LY1"
     ly2 = doc_case3.layers[1]
@@ -685,6 +700,28 @@ def test_remove_layer_adjusts_active_index(doc):
     assert doc_case3._active_layer_index == 1  # Index is unaffected
     assert doc_case3.active_layer is ly2
     active_layer_changed_handler.assert_not_called()
+
+
+def test_a_saved_three_layer_document_loads_unchanged():
+    """A document saved with three layers keeps all three on load."""
+    original = _three_layer_doc()
+    original.layers[1].name = "Cut"
+    original.active_layer = original.layers[2]
+
+    restored = Doc.from_dict(json.loads(json.dumps(original.to_dict())))
+
+    assert [layer.name for layer in restored.layers] == [
+        "Layer 1",
+        "Cut",
+        "Layer 3",
+    ]
+    assert [layer.color for layer in restored.layers] == [
+        layer.color for layer in original.layers
+    ]
+    assert [layer.uid for layer in restored.layers] == [
+        layer.uid for layer in original.layers
+    ]
+    assert restored.active_layer is restored.layers[2]
 
 
 def test_remove_last_layer_is_noop(doc):

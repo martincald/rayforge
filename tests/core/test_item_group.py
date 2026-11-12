@@ -9,13 +9,16 @@ from swiftcut.core.item_group import (
     RemoveItemGroupCommand,
     UpdateItemGroupCommand,
 )
+from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 
 
 @pytest.fixture
 def doc():
-    """A document with a piece on each of its first two layers."""
+    """A three-layer document with a piece on each of its first two."""
     doc = Doc()
+    doc.add_layer(Layer("Layer 2"))
+    doc.add_layer(Layer("Layer 3"))
     doc.layers[0].add_workpiece(WorkPiece(name="outline"))
     doc.layers[1].add_workpiece(WorkPiece(name="artwork"))
     return doc

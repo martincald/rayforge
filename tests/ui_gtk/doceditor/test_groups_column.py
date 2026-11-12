@@ -10,8 +10,10 @@ node's menu renames, ungroups, selects or moves the whole group.
 
 import pytest
 
+from swiftcut.core.color import COLOR_PALETTE
 from swiftcut.core.doc import Doc
 from swiftcut.core.item_group import ItemGroup
+from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 from swiftcut.ui_gtk.doceditor.layers_tab import LayersTab
@@ -25,6 +27,10 @@ def tab(ui_context_initializer, ui_task_mgr):
     editor = DocEditor(
         task_manager=ui_task_mgr, context=ui_context_initializer
     )
+    for i in (2, 3):
+        layer = Layer(f"Layer {i}")
+        layer.color = COLOR_PALETTE[i - 1]
+        editor.doc.add_layer(layer)
     yield LayersTab(editor), editor
     editor.cleanup()
 
@@ -353,6 +359,7 @@ def test_a_new_document_brings_its_own_groups(tab):
     tab, _editor = tab
     column = tab.groups_column
     doc = Doc()
+    doc.add_layer(Layer("Layer 2"))
     a, b = WorkPiece(name="a"), WorkPiece(name="b")
     doc.layers[0].add_workpiece(a)
     doc.layers[1].add_workpiece(b)

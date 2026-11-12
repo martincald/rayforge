@@ -3,6 +3,7 @@ from raygeo.geo import Geometry
 
 from swiftcut.core.group import Group
 from swiftcut.core.item_group import ItemGroup
+from swiftcut.core.layer import Layer
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.doceditor.editor import DocEditor
 
@@ -17,6 +18,9 @@ def doc_editor(task_mgr, context_initializer):
 def _pieces(doc_editor: DocEditor, *layer_indices: int) -> list[WorkPiece]:
     """One piece on each of the given layers."""
     pieces = []
+    doc = doc_editor.doc
+    while len(doc.layers) <= max(layer_indices, default=0):
+        doc.add_layer(Layer(f"Layer {len(doc.layers) + 1}"))
     for i in layer_indices:
         wp = WorkPiece(name=f"on layer {i}")
         doc_editor.doc.layers[i].add_workpiece(wp)
@@ -164,6 +168,7 @@ def _container(layer, items) -> Group:
 async def test_ungroup_items_dissolves_the_groups_and_nothing_else(
     doc_editor: DocEditor,
 ):
+    doc_editor.doc.add_layer(Layer("Layer 2"))
     first, second = doc_editor.doc.layers[:2]
     a, b = _pieces(doc_editor, 0, 0)
     container = _container(first, [a, b])
