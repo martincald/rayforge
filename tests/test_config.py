@@ -279,3 +279,14 @@ def test_layout_and_import_gaps_default_clamp_and_survive_the_file():
     config.set_layout_gap_mm(-1.0)
     config.set_import_gap_mm(25.0)
     assert (config.layout_gap_mm, config.import_gap_mm) == (0.0, 20.0)
+
+
+def test_a_config_from_before_source_units_still_loads():
+    """
+    The import dialog's source units start on Auto every time: no
+    import DPI is kept, and an older config naming one still loads.
+    """
+    old = Config.from_dict({"import_dpi": 72.0}, lambda _id: None)
+
+    assert "import_dpi" not in old.to_dict()
+    assert not hasattr(old, "import_dpi")

@@ -96,8 +96,6 @@ class Config:
         # TOUR_COMPLETED. A tour with no entry has never ended.
         self.tours: dict[str, str] = {}
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
-        # Default DPI for unitless SVG imports
-        self.import_dpi: float = 96.0
         # The gap Auto Layout keeps between pieces, in mm; 0 packs them
         # flush, so shared edges are cut once.
         self.layout_gap_mm: float = 0.0
@@ -174,13 +172,6 @@ class Config:
         if self.window_geometry.get(monitor) == merged:
             return
         self.window_geometry = {**self.window_geometry, monitor: merged}
-        self.changed.send(self)
-
-    def set_import_dpi(self, dpi: float):
-        """Sets the default DPI for unitless SVG imports."""
-        if self.import_dpi == dpi:
-            return
-        self.import_dpi = dpi
         self.changed.send(self)
 
     def set_layout_gap_mm(self, gap: float):
@@ -282,7 +273,6 @@ class Config:
             "getting_started_seen": self.getting_started_seen,
             "tours": dict(self.tours),
             "ops_color_mode": self.ops_color_mode.value,
-            "import_dpi": self.import_dpi,
             "layout_gap_mm": self.layout_gap_mm,
             "import_gap_mm": self.import_gap_mm,
             "cache_budget_bytes": self.cache_budget_bytes,
@@ -367,8 +357,6 @@ class Config:
         except ValueError:
             config.ops_color_mode = OpsColorMode.LASER
 
-        # Load import DPI
-        config.import_dpi = data.get("import_dpi", 96.0)
         config.layout_gap_mm = data.get("layout_gap_mm", 0.0)
         config.import_gap_mm = data.get("import_gap_mm", 1.0)
 

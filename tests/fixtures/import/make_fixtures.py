@@ -14,6 +14,25 @@ in the shape of real exports (no real Illustrator or Fusion file yet):
   of separate LINE and ARC entities (rounded corners, entities out of
   order), CIRCLE holes, layer 0, millimetres.
 
+The source-units fixtures: each a 100 x 50 mm outline (283.46 x 141.73
+pt, 377.95 x 188.98 px at 96 per inch) filling its page.
+
+- illustrator_responsive.svg: Illustrator's Export As, Responsive: its
+  generator comment, data-name attributes, a viewBox in points and no
+  width or height.
+- illustrator_fixed.svg: the same with a unitless width and height.
+- illustrator_artboard.svg: the same outline on an A4 artboard (595.28
+  x 841.89 pt), 20 mm from its left and 30 mm from its top.
+- illustrator_save_as_px.svg: Illustrator's Save As SVG: its generator
+  comment, x="0px" y="0px", width and height in px, xml:space.
+- illustrator_hidden_layer.svg: a Save As SVG with Illustrator's
+  namespace (xmlns:i) and a hidden layer (display:none), and no
+  data-name: what visible_svg writes again tells nothing of
+  Illustrator.
+- inkscape_mm.svg: an Inkscape file in millimetres (sodipodi and
+  inkscape namespaces, width and height in mm, a viewBox in mm).
+- plain_px.svg: an SVG in px with no generator: 96 per inch.
+
 Run from the repository root to write them again::
 
     python tests/fixtures/import/make_fixtures.py
@@ -105,6 +124,128 @@ xlink:href="data:image/png;base64,{png}"/>
 """
 
 
+AI_GENERATOR = (
+    "<!-- Generator: Adobe Illustrator 28.0.0, SVG Export Plug-In . SVG "
+    "Version: 6.00 Build 0)  -->"
+)
+AI_STYLE = """  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #000;
+        stroke-miterlimit: 10;
+      }
+    </style>
+  </defs>"""
+AI_RECT = '<rect class="cls-1" width="283.46" height="141.73"/>'
+SAVE_AS_HEAD = (
+    '<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" '
+    'xmlns:xlink="http://www.w3.org/1999/xlink" {extra}x="0px" y="0px"\n'
+    '\t width="283.46px" height="141.73px" viewBox="0 0 283.46 141.73" '
+    'style="enable-background:new 0 0 283.46 141.73;" '
+    'xml:space="preserve">'
+)
+SAVE_AS_STYLE = """<style type="text/css">
+\t.st0{fill:none;stroke:#000000;stroke-miterlimit:10;}
+</style>"""
+
+
+def illustrator_export_svg(size: str = "") -> str:
+    """Illustrator's Export As: Responsive without size, else fixed."""
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+{AI_GENERATOR}
+<svg id="Layer_1" data-name="Layer 1" \
+xmlns="http://www.w3.org/2000/svg" {size}viewBox="0 0 283.46 141.73">
+{AI_STYLE}
+  {AI_RECT}
+</svg>
+"""
+
+
+def illustrator_artboard_svg() -> str:
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+{AI_GENERATOR}
+<svg id="Layer_1" data-name="Layer 1" \
+xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595.28 841.89">
+{AI_STYLE}
+  <rect class="cls-1" x="56.69" y="85.04" width="283.46" height="141.73"/>
+</svg>
+"""
+
+
+def illustrator_save_as_svg() -> str:
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+{AI_GENERATOR}
+{SAVE_AS_HEAD.format(extra="")}
+{SAVE_AS_STYLE}
+<rect class="st0" width="283.46" height="141.73"/>
+</svg>
+"""
+
+
+def illustrator_hidden_layer_svg() -> str:
+    head = SAVE_AS_HEAD.format(
+        extra='xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/" '
+    )
+    return f"""<?xml version="1.0" encoding="utf-8"?>
+{AI_GENERATOR}
+{head}
+{SAVE_AS_STYLE}
+<g id="Guides" style="display:none;">
+\t<rect x="20" y="20" width="100" height="50"/>
+</g>
+<g id="Cut">
+\t<rect class="st0" width="283.46" height="141.73"/>
+</g>
+</svg>
+"""
+
+
+def inkscape_mm_svg() -> str:
+    return """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="100mm"
+   height="50mm"
+   viewBox="0 0 100 50"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3.2 (091e20e, 2023-11-25)"
+   sodipodi:docname="inkscape_mm.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     inkscape:document-units="mm" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.1"
+       id="rect1"
+       width="100"
+       height="50"
+       x="0"
+       y="0" />
+  </g>
+</svg>
+"""
+
+
+def plain_px_svg() -> str:
+    return """<svg xmlns="http://www.w3.org/2000/svg" width="377.95px" \
+height="188.98px" viewBox="0 0 377.95 188.98">
+  <rect width="377.95" height="188.98" fill="none" stroke="black"/>
+</svg>
+"""
+
+
 def traced_dxf(path: Path) -> None:
     doc = ezdxf.new()
     doc.header["$INSUNITS"] = 4  # mm
@@ -173,6 +314,17 @@ def cad_dxf(path: Path) -> None:
 
 def main() -> None:
     (HERE / "illustrator_two_layers.svg").write_text(illustrator_svg())
+    (HERE / "illustrator_responsive.svg").write_text(illustrator_export_svg())
+    (HERE / "illustrator_fixed.svg").write_text(
+        illustrator_export_svg('width="283.46" height="141.73" ')
+    )
+    (HERE / "illustrator_artboard.svg").write_text(illustrator_artboard_svg())
+    (HERE / "illustrator_save_as_px.svg").write_text(illustrator_save_as_svg())
+    (HERE / "illustrator_hidden_layer.svg").write_text(
+        illustrator_hidden_layer_svg()
+    )
+    (HERE / "inkscape_mm.svg").write_text(inkscape_mm_svg())
+    (HERE / "plain_px.svg").write_text(plain_px_svg())
     traced_dxf(HERE / "illustrator_traced.dxf")
     cad_dxf(HERE / "cad_plate.dxf")
 

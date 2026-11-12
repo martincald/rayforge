@@ -132,11 +132,11 @@ class TestWorkPiece:
         assert wp.data is not None
         assert sample_svg_data in wp.source.original_data
 
-        # With padding, the position and size are slightly different from 0,0
-        # and 100,50
-        assert wp.pos[0] == pytest.approx(-1.0, abs=1e-4)
-        assert wp.pos[1] == pytest.approx(-1.0, abs=1e-4)
-        assert wp.size == pytest.approx((102.0, 52.0), abs=1e-4)
+        # The trim padding lies around the content: the position and
+        # size are the rect's, 0,0 and 100,50
+        assert wp.pos[0] == pytest.approx(0.0, abs=1e-4)
+        assert wp.pos[1] == pytest.approx(0.0, abs=1e-4)
+        assert wp.size == pytest.approx((100.0, 50.0), abs=1e-4)
 
         assert wp.angle == pytest.approx(0.0)
         # Importer sets size, so matrix is not identity
@@ -435,14 +435,14 @@ class TestWorkPiece:
     def test_sizing_and_aspect_ratio(self, workpiece_instance):
         wp = workpiece_instance
         assert wp.get_natural_aspect_ratio() == pytest.approx(
-            102.0 / 52.0, abs=1e-4
+            100.0 / 50.0, abs=1e-4
         )
         # get_default_size should return the SVG's natural size.
         assert wp.get_default_size(
             bounds_width=1000, bounds_height=1000
-        ) == pytest.approx((102.0, 52.0), abs=1e-4)
+        ) == pytest.approx((100.0, 50.0), abs=1e-4)
         # The importer sets the size to the natural size.
-        assert wp.size == pytest.approx((102.0, 52.0), abs=1e-4)
+        assert wp.size == pytest.approx((100.0, 50.0), abs=1e-4)
 
         wp.set_size(80, 20)
         assert wp.size == pytest.approx((80.0, 20.0))

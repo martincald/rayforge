@@ -24,7 +24,6 @@ from ..structures import (
 from .svg_trace import SvgTraceImporter
 from .svg_tree import build_svg_tree
 from .svg_vector import SvgVectorImporter
-from .svgutil import PPI
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ class SvgImporter(Importer):
         ImporterFeature.COLOR_LAYERS,
     }
 
-    def build_tree(self, ppi: float = PPI) -> ImportTree | None:
+    def build_tree(self, ppi: float | None = None) -> ImportTree | None:
         return build_svg_tree(self.raw_data, self.source_file, ppi)
 
     def scan(self) -> ImportManifest:

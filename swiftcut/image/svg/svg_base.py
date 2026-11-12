@@ -24,12 +24,12 @@ from ..structures import (
 from .renderer import SVG_RENDERER
 from .svg_tree import visible_svg
 from .svgutil import (
-    PPI,
     extract_color_manifest,
     extract_layer_manifest,
     get_natural_size,
     hex_color_to_rgb,
     is_unitless_svg,
+    units_per_inch,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,13 +47,19 @@ class SvgImporterBase(Importer):
     def __init__(self, data: bytes, source_file: Path | None = None):
         super().__init__(data, source_file)
         self.trimmed_data: bytes | None = None
+        self._ppi_cache: dict[float | None, float] = {}
 
     def _get_ppi(self) -> float:
-        if self._vectorization_spec and hasattr(
-            self._vectorization_spec, "ppi"
-        ):
-            return self._vectorization_spec.ppi
-        return PPI
+        """
+        The file's user units per inch (units_per_inch): the spec's ppi,
+        or for Auto (None, or no spec) the file's own, read once in its
+        raw bytes.
+        """
+        override = getattr(self._vectorization_spec, "ppi", None)
+        if override not in self._ppi_cache:
+            ppi = units_per_inch(self.raw_data, override)
+            self._ppi_cache[override] = ppi
+        return self._ppi_cache[override]
 
     def scan(self) -> ImportManifest:
         """Shared scan logic."""
@@ -68,7 +74,7 @@ class SvgImporterBase(Importer):
             except ET.ParseError as e:
                 raise ET.ParseError(f"XML Parse Error: {e}")
 
-            size_mm = get_natural_size(self.raw_data)
+            size_mm = get_natural_size(self.raw_data, self._get_ppi())
             # Only what shows is listed (a hidden layer is not).
             visible = visible_svg(self.raw_data)
             layer_data = extract_layer_manifest(visible)

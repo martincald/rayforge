@@ -291,12 +291,12 @@ class Importer(ABC):
         """
         raise NotImplementedError
 
-    def build_tree(self, ppi: float = 96.0) -> ImportTree | None:
+    def build_tree(self, ppi: float | None = None) -> ImportTree | None:
         """
         The file's structure (layers, groups, paths, placed images) as
         an ImportTree, in the native coordinates the importer's
         geometry is in; None for a format that has none. ppi sizes a
-        file without physical units.
+        file without physical units (None: the file's own).
         """
         return None
 

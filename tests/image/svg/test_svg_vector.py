@@ -89,16 +89,17 @@ def test_get_doc_items_alignment(vector_importer):
     item = payload.items[0]
     assert isinstance(item, WorkPiece)
 
-    # Natural size should match padded content bounds
-    assert item.natural_width_mm == pytest.approx(20.4)
-    assert item.natural_height_mm == pytest.approx(20.4)
+    # Natural size should match the content bounds (the trim padding
+    # is only around them)
+    assert item.natural_width_mm == pytest.approx(20.0)
+    assert item.natural_height_mm == pytest.approx(20.0)
 
-    # The workpiece is positioned at the top-left of the padded
-    # bounds (9.8, 9.8), Y-inverted relative to the 100mm page.
-    #   100 - (9.8 + 20.4) = 69.8
+    # The workpiece is positioned at the top-left of the content
+    # bounds (10, 10), Y-inverted relative to the 100mm page.
+    #   100 - (10 + 20) = 70
     wx, wy = item.matrix.transform_point((0, 0))
-    assert wx == pytest.approx(9.8, abs=1e-3)
-    assert wy == pytest.approx(69.8, abs=1e-3)
+    assert wx == pytest.approx(10.0, abs=1e-3)
+    assert wy == pytest.approx(70.0, abs=1e-3)
 
 
 def test_layer_separation_and_positioning():
@@ -147,11 +148,11 @@ def test_nested_transforms_applied():
 
     assert payload is not None
     item = payload.items[0]
-    # Content rect at (20,20). Padded bounds: 19.8, 19.8, 20.4, 20.4
-    # Y-inverted: 100 - (19.8+20.4) = 59.8
+    # Content rect at (20,20), 20 x 20.
+    # Y-inverted: 100 - (20+20) = 60
     wx, wy = item.matrix.transform_point((0, 0))
-    assert wx == pytest.approx(19.8)
-    assert wy == pytest.approx(59.8)
+    assert wx == pytest.approx(20.0)
+    assert wy == pytest.approx(60.0)
 
 
 def test_vectorize_handles_layerless_svg():

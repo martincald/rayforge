@@ -26,9 +26,9 @@ from ...image.base_importer import Importer, ImporterFeature
 from ...image.geo_renderer import geometry_to_cairo
 from ...image.structures import ImportManifest
 from ...image.svg.importer import SvgImporter
+from ...image.svg.svgutil import ILLUSTRATOR_PPI, PPI, units_per_inch
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
-from ..shared.pref_rows.base import SpinRow
 from ..shared.slider import create_slider
 
 if TYPE_CHECKING:
@@ -211,21 +211,20 @@ class ImportDialog(PatchedDialogWindow):
         )
         mode_group.add(self.use_vectors_switch)
 
-        config = get_context().config
-        self.dpi_row = SpinRow(
-            _("DPI"),
-            _("For unitless SVGs: Inkscape 96, Illustrator 72"),
-            lower=1.0,
-            upper=10000.0,
-            numeric=True,
-            value=config.import_dpi,
+        # The units per inch each item of the row stands for, which size
+        # a file without physical units; None is Auto, the file's own
+        # (units_per_inch).
+        self._units_choices: list[float | None] = [None, ILLUSTRATOR_PPI, PPI]
+        self.units_row = Adw.ComboRow(
+            title=_("Source units"), model=Gtk.StringList.new([])
         )
-        self.dpi_row.value_changed.connect(self._on_dpi_changed)
-        self.dpi_row.set_visible(False)
-        mode_group.add(self.dpi_row)
+        self.units_row.connect("notify::selected", self._on_units_changed)
+        self.units_row.set_visible(False)
+        mode_group.add(self.units_row)
 
         # Show this group if the importer supports both vector and trace,
-        # or if DPI is relevant (detected later from manifest)
+        # or if the source units are relevant (detected later from
+        # manifest)
         can_trace = ImporterFeature.BITMAP_TRACING in self.features
         can_vector = ImporterFeature.DIRECT_VECTOR in self.features
         self._mode_group = mode_group
@@ -510,11 +509,51 @@ class ImportDialog(PatchedDialogWindow):
         self.invert_switch.set_sensitive(not is_whole_image)
         self._schedule_preview_update()
 
-    def _on_dpi_changed(self, spin_row):
-        if self._in_update:
-            return
-        get_context().config.set_import_dpi(spin_row.get_value())
+    def _on_units_changed(self, row, *args):
         self._schedule_preview_update()
+
+    def _fill_units_row(self):
+        """
+        The "Source units" choices: Auto, naming what it reads in the
+        file, then each fixed number of units per inch.
+        """
+        auto = units_per_inch(self._file_bytes or b"")
+        if auto == ILLUSTRATOR_PPI:
+            auto_label = _("Auto ({ppi:g} per inch, Illustrator)")
+        else:
+            auto_label = _("Auto ({ppi:g} per inch)")
+        labels = [auto_label.format(ppi=auto)] + [
+            _("{ppi:g} per inch").format(ppi=ppi)
+            for ppi in self._units_choices[1:]
+        ]
+        in_update, self._in_update = self._in_update, True
+        try:
+            self.units_row.set_model(Gtk.StringList.new(labels))
+            self.units_row.set_selected(0)
+        finally:
+            self._in_update = in_update
+
+    def _chosen_ppi(self) -> float | None:
+        """The chosen source units per inch; None is Auto."""
+        index = self.units_row.get_selected()
+        if index < len(self._units_choices):
+            return self._units_choices[index]
+        return None
+
+    def _update_units_subtitle(self):
+        """
+        Shows the size in mm of what the preview says will be imported,
+        at the chosen source units.
+        """
+        result = self._preview_result
+        size = result.size_mm if result else None
+        self.units_row.set_subtitle(
+            _("{width:.1f} × {height:.1f} mm").format(
+                width=size[0], height=size[1]
+            )
+            if size
+            else ""
+        )
 
     def _load_initial_data(self):
         try:
@@ -562,8 +601,9 @@ class ImportDialog(PatchedDialogWindow):
                 finally:
                     self._in_update = False
                 self._populate_layers_ui()
+            self._fill_units_row()
             if self._manifest and self._manifest.is_unitless:
-                self.dpi_row.set_visible(True)
+                self.units_row.set_visible(True)
                 if not self._mode_visible:
                     self._mode_visible = True
                     self._mode_group.set_visible(True)
@@ -693,7 +733,7 @@ class ImportDialog(PatchedDialogWindow):
         """
         Constructs a VectorizationSpec from the current UI control values.
         """
-        ppi = self.dpi_row.get_value()
+        ppi = self._chosen_ppi()
         if (
             ImporterFeature.DIRECT_VECTOR in self.features
             and self.use_vectors_switch.get_active()
@@ -752,7 +792,7 @@ class ImportDialog(PatchedDialogWindow):
                     self.threshold_adjustment.set_value(spec.threshold)
                 self.invert_switch.set_active(spec.invert)
 
-            self.dpi_row.set_value(spec.ppi)
+            self._select_units(spec.ppi)
         finally:
             self._in_update = False
 
@@ -761,6 +801,18 @@ class ImportDialog(PatchedDialogWindow):
             self.import_whole_image_switch, None
         )
         self._schedule_preview_update()
+
+    def _select_units(self, ppi: float | None):
+        """
+        Selects the source units a spec was made with. Units per inch
+        that are not a choice (a spec from before the choices) become
+        one, so the file keeps its size.
+        """
+        if ppi not in self._units_choices:
+            self._units_choices.append(ppi)
+            model = self.units_row.get_model()
+            model.append(_("{ppi:g} per inch").format(ppi=ppi))
+        self.units_row.set_selected(self._units_choices.index(ppi))
 
     def _schedule_preview_update(self, *args):
         if self._in_update:
@@ -813,6 +865,7 @@ class ImportDialog(PatchedDialogWindow):
         self.preview_area.queue_draw()
         self.status_spinner.stop()
         self.import_button.set_sensitive(self._preview_result is not None)
+        self._update_units_subtitle()
 
         # Handle warnings/errors
         is_direct_vector = (

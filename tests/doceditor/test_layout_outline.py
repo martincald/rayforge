@@ -99,7 +99,7 @@ def test_an_open_line_beside_a_closed_outline_gives_the_frame(tmp_path):
     (polygon,) = item_world_polygons(workpiece)
 
     assert _bounds(polygon) == pytest.approx((x, y, x + w, y + h))
-    assert w > 40
+    assert (w, h) == pytest.approx((40, 20))
 
 
 def test_group_gives_the_outlines_of_its_workpieces():

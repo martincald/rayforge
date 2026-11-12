@@ -281,8 +281,7 @@ def prepare_import(
         data = filename.read_bytes()
     if wants_tree or (options.keep_images and b"<image" in (data or b"")):
         importer = importer_cls(data, source_file=filename)
-        ppi = spec.ppi if spec is not None else 96.0
-        prepared.tree = importer.build_tree(ppi)
+        prepared.tree = importer.build_tree(getattr(spec, "ppi", None))
     tree = prepared.tree
     if tree is not None:
         tree.unit_to_mm = parse_result.native_unit_to_mm

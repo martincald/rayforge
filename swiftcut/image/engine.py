@@ -255,7 +255,8 @@ class NormalizationEngine:
         - If create_new_layers: One WorkPiece per layer, sized to content
         - Otherwise: Single WorkPiece sized to union of all layer bounds
         - Respects active_layer_ids filter if specified
-        - Falls back to document_bounds if no layers or geometry
+        - Without layers: Single WorkPiece sized to the geometry, or to
+          document_bounds if there is no geometry
         """
         result = vec_result.source_parse_result
         spec = spec or PassthroughSpec()
@@ -314,14 +315,19 @@ class NormalizationEngine:
             ]
 
         if not target_layers:
-            # Fallback for empty files or no matching layers: use page bounds.
-            # But if page bounds are effectively zero-sized, return empty plan.
-            _bx, _by, bw, bh = result.document_bounds
+            # No layers (or none matching): the item is sized to the
+            # geometry, as a layer is to its content. Without geometry
+            # (or a line, with no area) it is the page; if the page is
+            # effectively zero-sized too, the plan is empty.
+            bounds = self._geometry_bounds(vec_result)
+            if bounds is None or bounds[2] <= 1e-6 or bounds[3] <= 1e-6:
+                bounds = result.document_bounds
+            _bx, _by, bw, bh = bounds
             if bw <= 1e-6 or bh <= 1e-6:
                 return []
             return [
                 self.calculate_layout_item(
-                    result.document_bounds,
+                    bounds,
                     result,
                     layer_id=None,
                     layer_name=None,
@@ -361,6 +367,18 @@ class NormalizationEngine:
                     union_rect, result, layer_id=None, layer_name=None
                 )
             ]
+
+    def _geometry_bounds(self, vec_result: VectorizationResult) -> Rect | None:
+        """
+        The box (x, y, width, height) around all of the vectorized
+        geometry in native coordinates; None when there is none.
+        """
+        rects = []
+        for geo in vec_result.geometries_by_layer.values():
+            if geo and not geo.is_empty():
+                min_x, min_y, max_x, max_y = geo.rect()
+                rects.append((min_x, min_y, max_x - min_x, max_y - min_y))
+        return self._calculate_union_rect(rects) if rects else None
 
     def _calculate_union_rect(self, rects: list[Rect]) -> Rect:
         if not rects:

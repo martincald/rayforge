@@ -49,6 +49,7 @@ from swiftcut.image.dxf.importer import DxfImporter
 from swiftcut.image.dxf.renderer import DXF_RENDERER
 from swiftcut.image.lightburn.importer import LightBurnImporter
 from swiftcut.image.svg.importer import SvgImporter
+from swiftcut.image.svg.renderer import SVG_RENDERER
 from swiftcut.shared.tasker import task_mgr
 from swiftcut.ui_gtk.doceditor import import_handler
 from swiftcut.ui_gtk.doceditor.import_dialog import ImportDialog
@@ -90,6 +91,19 @@ def _iterate_until_idle(timeout: float = 30.0):
         assert time.monotonic() < deadline, "tasks did not finish"
         _iterate(0.05)
     _iterate()
+
+
+def _wait_for_preview(dialog, timeout: float = 30.0):
+    """
+    Runs the main loop until the dialog shows its last preview: no
+    task is left and Import is sensitive. A preview shown can ask for
+    another (By source falling back to Pieces gives the layer rows
+    back), which turns Import off until that one is shown.
+    """
+    deadline = time.monotonic() + timeout
+    while task_mgr.has_tasks() or not dialog.import_button.get_sensitive():
+        assert time.monotonic() < deadline, "the preview did not settle"
+        _iterate(0.05)
 
 
 def _paths_dxf(path: Path) -> Path:
@@ -140,7 +154,7 @@ def open_dialog(ui_context_initializer, ui_task_mgr):
     )
     dialogs = []
 
-    def open_(path, importer, source_asset=None):
+    def open_(path, importer, source_asset=None, initial_spec=None):
         dialog = ImportDialog(
             parent=Gtk.Window(),
             editor=editor,
@@ -148,6 +162,7 @@ def open_dialog(ui_context_initializer, ui_task_mgr):
             mime_type=importer.mime_types[0],
             features=importer.features,
             source_asset=source_asset,
+            initial_spec=initial_spec,
         )
         responses = []
         dialog.response.connect(
@@ -592,11 +607,10 @@ def import_from_dialog(ui_context_initializer, ui_task_mgr):
                 parent, editor, path, importer.mime_types[0]
             )
         dialog = dialogs[-1]
-        _iterate_until_idle()
+        _wait_for_preview(dialog)
         if choose is not None:
             choose(dialog)
-            _iterate_until_idle()
-        assert dialog.import_button.get_sensitive()
+            _wait_for_preview(dialog)
         dialog.import_button.emit("clicked")
         _iterate_until_idle()
         return dialog
@@ -829,3 +843,138 @@ def test_an_image_that_will_be_skipped_is_said(
         assert banner.get_title() == (
             'Image "Photo" is rotated, skewed or flipped and was not imported.'
         )
+
+
+RESPONSIVE = FIXTURES / "illustrator_responsive.svg"
+ARTBOARD = FIXTURES / "illustrator_artboard.svg"
+PLAIN_PX = FIXTURES / "plain_px.svg"
+INKSCAPE_MM = FIXTURES / "inkscape_mm.svg"
+UNITS = ["Auto (72 per inch, Illustrator)", "72 per inch", "96 per inch"]
+
+
+def _units(dialog, label):
+    """Selects a source units choice and waits for the preview."""
+    dialog.units_row.set_selected(_choices(dialog.units_row).index(label))
+    _wait_for_preview(dialog)
+
+
+class TestSourceUnits:
+    """
+    "Source units", for a file without physical units: Auto (what the
+    file is read at, and why), 72 or 96 per inch, with the size of
+    what will be imported. Every dialog starts on Auto.
+    """
+
+    def test_an_illustrator_file_is_auto_at_72(self, open_dialog):
+        dialog, responses = open_dialog(RESPONSIVE, SvgImporter)
+        _wait_for_preview(dialog)
+
+        row = dialog.units_row
+        assert row.get_visible() and dialog._mode_group.get_visible()
+        assert row.get_title() == "Source units"
+        assert _choices(row) == UNITS
+        assert row.get_selected() == 0
+        assert row.get_subtitle() == "100.0 × 50.0 mm"
+        assert not any(
+            isinstance(widget, Gtk.SpinButton)
+            for widget in _descendants(dialog._mode_group)
+        )
+        dialog._on_import_clicked(None)
+        (response,) = responses
+        assert response["spec"].ppi is None
+
+    def test_96_per_inch_changes_the_size_and_the_spec(self, open_dialog):
+        dialog, responses = open_dialog(RESPONSIVE, SvgImporter)
+
+        _units(dialog, "96 per inch")
+
+        assert dialog.units_row.get_subtitle() == "75.0 × 37.5 mm"
+        frame = dialog._preview_result.parse_result.world_frame_of_reference
+        assert frame[2:] == pytest.approx((75, 37.5), abs=0.05)
+        dialog._on_import_clicked(None)
+        (response,) = responses
+        assert response["spec"].ppi == 96.0
+        dialog.use_vectors_switch.set_active(False)
+        spec = dialog._get_current_spec()
+        assert isinstance(spec, TraceSpec) and spec.ppi == 96.0
+
+    def test_each_dialog_starts_on_auto(self, open_dialog):
+        first, _ = open_dialog(RESPONSIVE, SvgImporter)
+        _units(first, "96 per inch")
+
+        second, _ = open_dialog(RESPONSIVE, SvgImporter)
+
+        assert second.units_row.get_selected() == 0
+        assert second._get_current_spec().ppi is None
+
+    def test_the_size_is_what_is_imported_not_the_page(self, open_dialog):
+        """An A4 artboard (210 x 297 mm) holding a 100 x 50 mm outline."""
+        dialog, _ = open_dialog(ARTBOARD, SvgImporter)
+        _wait_for_preview(dialog)
+
+        row = dialog.units_row
+        assert row.get_subtitle() == "100.0 × 50.0 mm"
+        _units(dialog, "96 per inch")
+        assert row.get_subtitle() == "75.0 × 37.5 mm"
+
+    def test_a_plain_file_is_auto_at_96(self, open_dialog):
+        dialog, _ = open_dialog(PLAIN_PX, SvgImporter)
+        _wait_for_preview(dialog)
+
+        row = dialog.units_row
+        assert _choices(row)[0] == "Auto (96 per inch)"
+        assert row.get_subtitle() == "100.0 × 50.0 mm"
+        _units(dialog, "72 per inch")
+        assert row.get_subtitle() == "133.3 × 66.7 mm"
+
+    def test_a_file_in_millimetres_is_not_asked(self, open_dialog):
+        dialog, _ = open_dialog(INKSCAPE_MM, SvgImporter)
+
+        assert not dialog.units_row.get_visible()
+
+    @pytest.mark.parametrize(
+        "ppi, label",
+        [
+            (None, UNITS[0]),
+            (72.0, "72 per inch"),
+            (96.0, "96 per inch"),
+            (150.0, "150 per inch"),
+        ],
+    )
+    def test_a_reimport_keeps_its_units(self, open_dialog, ppi, label):
+        source = SourceAsset(
+            source_file=RESPONSIVE,
+            original_data=RESPONSIVE.read_bytes(),
+            renderer=SVG_RENDERER,
+        )
+
+        dialog, responses = open_dialog(
+            RESPONSIVE, SvgImporter, source, PassthroughSpec(ppi=ppi)
+        )
+
+        row = dialog.units_row
+        assert _choices(row)[row.get_selected()] == label
+        dialog._on_import_clicked(None)
+        (response,) = responses
+        assert response["spec"].ppi == ppi
+
+    @pytest.mark.parametrize(
+        "vectors", [True, False], ids=["vectors", "traced"]
+    )
+    def test_an_illustrator_file_comes_in_at_its_size(
+        self, import_from_dialog, vectors
+    ):
+        """
+        By default (By source), and traced (Use Original Vectors off):
+        the same 100 x 50 mm.
+        """
+        editor, import_ = import_from_dialog
+        before = set(editor.doc.all_workpieces)
+
+        def trace(dialog):
+            dialog.use_vectors_switch.set_active(False)
+
+        import_(RESPONSIVE, SvgImporter, None if vectors else trace)
+
+        (wp,) = [w for w in editor.doc.all_workpieces if w not in before]
+        assert wp.size == pytest.approx((100, 50), abs=0.05)

@@ -42,7 +42,7 @@ from ..import_tree import (
     LayerNode,
     PathNode,
 )
-from .svgutil import PPI, SVG_NS, get_natural_size, layer_groups
+from .svgutil import SVG_NS, get_natural_size, layer_groups, units_per_inch
 
 logger = logging.getLogger(__name__)
 
@@ -69,15 +69,18 @@ _TEXT_PREVIEW = 40
 
 
 def build_svg_tree(
-    data: bytes, source_file: Path | None = None, ppi: float = PPI
+    data: bytes,
+    source_file: Path | None = None,
+    ppi: float | None = None,
 ) -> ImportTree:
     """
     The ImportTree of an SVG. A linked image is looked up next to
-    source_file; ppi sizes a file without physical units. What draws
-    nothing (visible_svg) is left out; what cannot be imported (text
-    not outlined, missing or unknown images) is skipped with a
-    warning in the tree's warnings.
+    source_file; ppi sizes a file without physical units (None: the
+    file's own, units_per_inch). What draws nothing (visible_svg) is
+    left out; what cannot be imported (text not outlined, missing or
+    unknown images) is skipped with a warning in the tree's warnings.
     """
+    ppi = units_per_inch(data, ppi)
     data = visible_svg(data)
     root = ET.fromstring(data)
     builder = _SvgTreeBuilder(root, source_file)

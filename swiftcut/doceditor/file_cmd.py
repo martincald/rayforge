@@ -132,6 +132,8 @@ class PreviewResult:
     of a file with structure also holds its ImportTree, the grouping
     "By source layers and groups" gets for it, whether it looks like
     traced artwork, and the tree's warnings (what will not be imported).
+    size_mm is the size of what will be imported (the box around its
+    content), in mm.
     """
 
     image_bytes: bytes
@@ -143,6 +145,7 @@ class PreviewResult:
     tree: ImportTree | None = None
     by_source_grouping: ImportGrouping | None = None
     traced_artwork: bool = False
+    size_mm: tuple[float, float] | None = None
 
 
 class ImportAction(Enum):
@@ -447,6 +450,9 @@ class FileCmd:
             preview_vips = preview_vips.flatten(background=background).invert()
 
         png_bytes = preview_vips.pngsave_buffer()
+        bbox = self._calculate_items_bbox(
+            self._get_positionable_content(payload.items)
+        )
 
         return PreviewResult(
             image_bytes=png_bytes,
@@ -454,6 +460,7 @@ class FileCmd:
             parse_result=parse_result,
             aspect_ratio=aspect_ratio,
             content_bounds=content_bounds,
+            size_mm=(bbox[2], bbox[3]) if bbox else None,
         )
 
     def _extract_first_workpiece(

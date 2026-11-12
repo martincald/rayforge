@@ -1,4 +1,5 @@
 import logging
+import re
 import warnings
 from typing import Any
 from xml.etree import ElementTree as ET
@@ -27,6 +28,19 @@ PPI: float = 96.0
 
 MM_PER_PX: float = 25.4 / PPI
 """Conversion factor for pixels to millimeters, based on 96 PPI."""
+
+ILLUSTRATOR_PPI: float = 72.0
+"""User units per inch of an Illustrator SVG: a user unit is a point."""
+
+# What Illustrator leaves in an SVG it writes, beside its generator
+# comment: its namespace (xmlns:i) and layer and group names
+# (data-name). Each starts with a literal, which keeps a search of a
+# large file fast.
+_ILLUSTRATOR_GENERATOR = b"Adobe Illustrator"
+_ILLUSTRATOR_ATTRIBUTES = (
+    re.compile(rb"xmlns:i\s*="),
+    re.compile(rb"data-name\s*="),
+)
 
 # Raygeo bucket key for shapes whose chosen color attribute is `none` or
 # unset. These shapes have no color but still contain real geometry.
@@ -80,6 +94,25 @@ except ValueError:
     pass  # Best effort registration
 
 
+def _page_lengths(root: ET.Element) -> tuple[float, str, float, str] | None:
+    """
+    An SVG's width and height, each a value and its unit; without
+    either, its viewBox's width and height in user units (no unit).
+    None when it has neither.
+    """
+    w_str = root.get("width")
+    h_str = root.get("height")
+    if w_str and h_str:
+        w_val, w_unit = parse_svg_length(w_str)
+        h_val, h_unit = parse_svg_length(h_str)
+        return float(w_val), w_unit, float(h_val), h_unit
+    vb_str = root.get("viewBox")
+    if w_str or h_str or not vb_str:
+        return None
+    _vb_x, _vb_y, vb_w, vb_h = map(float, vb_str.replace(",", " ").split())
+    return vb_w, "", vb_h, ""
+
+
 def _get_margins_from_data(
     data: bytes,
 ) -> Rect:
@@ -94,16 +127,12 @@ def _get_margins_from_data(
         root = ET.fromstring(data)
 
         # 1. Get original dimensions to determine aspect ratio.
-        w_str = root.get("width")
-        h_str = root.get("height")
-        if not w_str or not h_str:
+        lengths = _page_lengths(root)
+        if lengths is None:
             return 0.0, 0.0, 0.0, 0.0  # Cannot determine aspect ratio.
 
-        orig_w, _w_unit = parse_svg_length(w_str)
-        orig_h, _h_unit = parse_svg_length(h_str)
         # Normalise to numeric values (unit suffix is handled separately)
-        orig_w = float(orig_w)
-        orig_h = float(orig_h)
+        orig_w, _w_unit, orig_h, _h_unit = lengths
 
         if orig_w <= 0 or orig_h <= 0:
             return 0.0, 0.0, 0.0, 0.0
@@ -198,13 +227,11 @@ def trim_svg(data: bytes) -> bytes:
     try:
         root = ET.fromstring(data)
 
-        w_str = root.get("width")
-        h_str = root.get("height")
-        if not w_str or not h_str:
+        lengths = _page_lengths(root)
+        if lengths is None:
             return data  # Cannot proceed without dimensions
 
-        w_val, w_unit = parse_svg_length(w_str)
-        h_val, h_unit = parse_svg_length(h_str)
+        w_val, w_unit, h_val, h_unit = lengths
 
         vb_str = root.get("viewBox")
         if vb_str:
@@ -261,15 +288,50 @@ def is_unitless_svg(data: bytes) -> bool:
         return False
 
 
-def get_natural_size(
-    data: bytes, ppi: float = PPI
-) -> tuple[float, float] | None:
+def is_illustrator_svg(data: bytes) -> bool:
+    """
+    Whether Adobe Illustrator wrote the SVG: its generator comment, its
+    namespace (xmlns:i) or a data-name attribute is in the file. Read
+    the file's own bytes: an SVG written again through ElementTree has
+    lost its comments and unused namespace declarations.
+    """
+    return _has_illustrator_comment(data) or any(
+        pattern.search(data) for pattern in _ILLUSTRATOR_ATTRIBUTES
+    )
+
+
+def _has_illustrator_comment(data: bytes) -> bool:
+    """Whether "Adobe Illustrator" stands in a comment of the file."""
+    pos = data.find(_ILLUSTRATOR_GENERATOR)
+    while pos != -1:
+        start = data.rfind(b"<!--", 0, pos)
+        if start != -1 and data.find(b"-->", start, pos) == -1:
+            return True
+        pos = data.find(_ILLUSTRATOR_GENERATOR, pos + 1)
+    return False
+
+
+def units_per_inch(data: bytes, override: float | None = None) -> float:
+    """
+    The user units per inch of an SVG file, which size its px, unitless
+    and viewBox-only lengths: the override when one is given (not
+    None); else ILLUSTRATOR_PPI for a file Illustrator wrote (a user
+    unit is a point), else PPI. data is the file's own bytes (see
+    is_illustrator_svg).
+    """
+    if override is not None:
+        return override
+    return ILLUSTRATOR_PPI if is_illustrator_svg(data) else PPI
+
+
+def get_natural_size(data: bytes, ppi: float) -> tuple[float, float] | None:
     """
     Analyzes raw SVG data to extract its natural, untrimmed dimensions in mm.
 
     Args:
         data: The raw SVG data in bytes.
-        ppi: Pixels per inch used for converting unitless/px values to mm.
+        ppi: Pixels per inch used for converting unitless/px values to mm
+            (units_per_inch of the file).
 
     Returns:
         A tuple of (width_mm, height_mm), or None if dimensions cannot be

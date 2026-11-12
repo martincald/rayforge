@@ -531,6 +531,65 @@ async def test_by_source_keeps_the_ppi_of_a_unitless_file(
     assert piece.size == pytest.approx((50.8, 25.4))
 
 
+SOURCE_UNITS_ILLUSTRATOR = [
+    FIXTURES / "illustrator_responsive.svg",
+    FIXTURES / "illustrator_artboard.svg",
+    FIXTURES / "illustrator_fixed.svg",
+    FIXTURES / "illustrator_save_as_px.svg",
+    FIXTURES / "illustrator_hidden_layer.svg",
+]
+
+
+class TestSourceUnits:
+    """
+    The source-units fixtures, each a 100 x 50 mm outline, through the
+    real import path with the spec the dialog sends (ppi None, Auto):
+    By source (the dialog's default) and Single shape.
+    """
+
+    @staticmethod
+    async def _size(doc_editor, task_mgr, path, spec, options):
+        (piece,) = await _import(doc_editor, task_mgr, path, spec, options)
+        return piece.size
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("options", [BY_SOURCE, None], ids=["by", "one"])
+    @pytest.mark.parametrize(
+        "path", SOURCE_UNITS_ILLUSTRATOR, ids=lambda path: path.stem
+    )
+    async def test_an_illustrator_file_comes_in_at_its_size(
+        self, doc_editor, task_mgr, bed, path, options
+    ):
+        size = await self._size(
+            doc_editor, task_mgr, path, PassthroughSpec(), options
+        )
+
+        assert size == pytest.approx((100, 50), abs=0.05)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "name, ppi, expected",
+        [
+            ("inkscape_mm.svg", None, (100, 50)),
+            ("plain_px.svg", None, (100, 50)),
+            ("illustrator_responsive.svg", 96.0, (75, 37.5)),
+            ("plain_px.svg", 72.0, (400 / 3, 200 / 3)),
+        ],
+    )
+    async def test_other_files_and_overrides(
+        self, doc_editor, task_mgr, bed, name, ppi, expected
+    ):
+        size = await self._size(
+            doc_editor,
+            task_mgr,
+            FIXTURES / name,
+            PassthroughSpec(ppi=ppi),
+            BY_SOURCE,
+        )
+
+        assert size == pytest.approx(expected, abs=0.05)
+
+
 # Illustrator's export of a one-layer file: the layer's content straight
 # under the root, a named group ("Logo") beside a frame and an unnamed
 # group.

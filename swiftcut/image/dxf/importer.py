@@ -119,7 +119,7 @@ class DxfImporter(Importer):
             errors=self._errors,
         )
 
-    def build_tree(self, ppi: float = 96.0) -> ImportTree | None:
+    def build_tree(self, ppi: float | None = None) -> ImportTree | None:
         import ezdxf
 
         doc = self._dxf_doc

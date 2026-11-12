@@ -5,6 +5,7 @@ import pytest
 # Assuming the file structure allows this import
 from swiftcut.image.svg.svgutil import (
     MM_PER_PX,
+    PPI,
     extract_layer_manifest,
     get_natural_size,
     trim_svg,
@@ -59,14 +60,14 @@ def empty_svg_data() -> bytes:
 
 class TestGetNaturalSize:
     def test_get_size_with_mm(self, svg_mm_data: bytes):
-        size = get_natural_size(svg_mm_data)
+        size = get_natural_size(svg_mm_data, PPI)
         assert size is not None
         width, height = size
         assert width == pytest.approx(150.0)
         assert height == pytest.approx(75.5)
 
     def test_get_size_with_px(self, svg_px_data: bytes):
-        size = get_natural_size(svg_px_data)
+        size = get_natural_size(svg_px_data, PPI)
         assert size is not None
         width, height = size
         assert width == pytest.approx(200.0 * MM_PER_PX)
@@ -74,7 +75,7 @@ class TestGetNaturalSize:
 
     def test_get_size_with_unitless(self, svg_unitless_data: bytes):
         # Unitless should default to px
-        size = get_natural_size(svg_unitless_data)
+        size = get_natural_size(svg_unitless_data, PPI)
         assert size is not None
         width, height = size
         assert width == pytest.approx(200.0 * MM_PER_PX)
@@ -82,11 +83,11 @@ class TestGetNaturalSize:
 
     def test_get_size_empty_svg(self, empty_svg_data: bytes):
         # No width/height attributes
-        assert get_natural_size(empty_svg_data) is None
+        assert get_natural_size(empty_svg_data, PPI) is None
 
     def test_get_size_invalid_data(self):
-        assert get_natural_size(b"not valid xml") is None
-        assert get_natural_size(b"") is None
+        assert get_natural_size(b"not valid xml", PPI) is None
+        assert get_natural_size(b"", PPI) is None
 
 
 # --- Tests for trim_svg ---

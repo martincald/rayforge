@@ -2,11 +2,11 @@
 Auto Layout (Arrange > Auto Layout, Ctrl+Alt+A) on real imported
 workpieces: their true outlines end 1 mm apart with their frames
 inside the boundary, the benchmarks end at least as compact as the
-old layout left them (but the one in E3_GAP), every other workpiece is
-kept clear of and left where it is, and one undo puts everything
-back. It is worked out in a worker process, with progress; cancelled,
-or if the document changes meanwhile, it changes nothing. A group is
-one piece, its items on other layers too.
+old layout left them, every other workpiece is kept clear of and
+left where it is, and one undo puts everything back. It is worked
+out in a worker process, with progress; cancelled, or if the
+document changes meanwhile, it changes nothing. A group is one
+piece, its items on other layers too.
 """
 
 import asyncio
@@ -49,8 +49,6 @@ COMPACTNESS_BAR = {
     ("forty-40", "stock"): 1.346,
     ("forty-40", "bed"): 1.700,
 }
-#: The benchmark that still ends less compact than its bar.
-E3_GAP = {("forty-40", "stock")}
 
 
 @pytest.fixture
@@ -96,20 +94,7 @@ async def test_true_outlines_end_1mm_apart_inside_the_stock(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "name, boundary",
-    [
-        pytest.param(
-            *case,
-            marks=pytest.mark.xfail(
-                strict=True, reason="E3 gap, see docs/auto-layout-notes.md"
-            ),
-        )
-        if case in E3_GAP
-        else case
-        for case in COMPACTNESS_BAR
-    ],
-)
+@pytest.mark.parametrize("name, boundary", list(COMPACTNESS_BAR))
 async def test_benchmarks_end_within_the_compactness_bar(
     doc_editor, task_mgr, bed, tmp_path, name, boundary
 ):
