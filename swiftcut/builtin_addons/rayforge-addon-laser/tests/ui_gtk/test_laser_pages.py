@@ -175,8 +175,8 @@ def test_raster_depth_levels_have_no_z_step(editor, laser_machine, ui_context):
 
 @pytest.mark.ui
 def test_raster_page_engrave_row(editor, laser_machine, ui_context):
-    """Engrave: Fill / Outline / Both, default Both; a change is one
-    undoable step edit."""
+    """Engrave: As drawn / Fill / Outline / Both, default As drawn; a
+    change is one undoable step edit."""
     step_cls = step_registry.get("EngraveStep")
     assert step_cls is not None
     step = step_cls.create(ui_context)
@@ -185,16 +185,17 @@ def test_raster_page_engrave_row(editor, laser_machine, ui_context):
     assert row in page._rows
     model = row.get_model()
     assert [model.get_string(i) for i in range(model.get_n_items())] == [
+        "As drawn",
         "Fill",
         "Outline",
         "Both",
     ]
-    assert row.get_selected() == 2
+    assert row.get_selected() == 0
 
-    row.set_selected(1)
+    row.set_selected(2)
     assert step.engrave_mode == "OUTLINE"
     editor.doc.history_manager.undo()
-    assert step.engrave_mode == "BOTH"
+    assert step.engrave_mode == "AS_DRAWN"
 
 
 @pytest.mark.ui

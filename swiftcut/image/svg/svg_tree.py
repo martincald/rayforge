@@ -55,11 +55,30 @@ CONTAINERS = {"g", "a", "switch", "svg"}
 SHAPES = {"path", "rect", "circle", "ellipse", "line", "polyline", "polygon"}
 
 # Properties that pass from a parent to its children.
-INHERITED = ("fill", "stroke", "color", "visibility")
+INHERITED = (
+    "fill",
+    "fill-opacity",
+    "fill-rule",
+    "stroke",
+    "stroke-opacity",
+    "stroke-width",
+    "color",
+    "visibility",
+)
 
 # Elements drawn only where something refers to them: visible_svg
 # leaves what they hold as it is.
 DEFINITIONS = {"defs", "symbol", "clipPath", "mask", "pattern", "marker"}
+
+# The definitions visible_svg moves into <defs> wherever else they
+# are, by what it logs them as: outside <defs> raygeo reads their
+# shapes as the file's own.
+LIFTED = {
+    "clipPath": "clip",
+    "mask": "mask",
+    "pattern": "pattern",
+    "marker": "marker",
+}
 
 _CSS_RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
 _CSS_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -115,12 +134,14 @@ def visible_svg(data: bytes) -> bytes:
     """
     The SVG with what draws nothing taken out, for reading its
     geometry and structure: what is display:none or opacity 0, with
-    all it holds; a shape with neither fill nor stroke; a shape or
-    image not visible; and the <clipPath> and <mask> elements outside
-    <defs>, which move into it (they still clip and mask by id).
-    What lies in a definition (DEFINITIONS) and what an href or a
-    url(#id) points at stay as they are; what something points at
-    moves into <defs> when what holds it goes. Each element taken
+    all it holds; a shape with neither a fill nor a stroke that shows
+    (none, opacity 0, a stroke 0 wide); a shape or image not visible;
+    and the <clipPath>, <mask>, <pattern> and <marker> elements
+    outside <defs>, inside a definition too, which move into it (they
+    still clip, mask and paint by id). What lies in a definition
+    (DEFINITIONS) stays as it is. What an href or a url(#id) points
+    at stays where it is when it draws there, and moves into <defs>
+    when it does not, or when what holds it goes. Each element taken
     out is logged. Data that is not an SVG, or an SVG with nothing to
     take out, comes back unchanged.
     """
@@ -372,6 +393,12 @@ class _SvgTreeBuilder:
             world_transform=inner.world,
             geometry=geometry,
             closed=all(c.is_closed() for c in geometry.split_into_contours()),
+            filled=_has_fill(inner.props),
+            fill_rule=(
+                "evenodd"
+                if inner.props.get("fill-rule", "").strip() == "evenodd"
+                else "nonzero"
+            ),
         )
 
     @staticmethod
@@ -596,15 +623,20 @@ class _Pruner:
         """Takes out what parent holds that draws nothing."""
         for child in list(parent):
             tag = _local(child)
-            if tag in ("clipPath", "mask"):
-                self._move_to_defs(parent, child)
-                kind = "clip" if tag == "clipPath" else "mask"
-                _log_skipped(child, "", f"{kind} definition")
+            if tag in LIFTED:
+                self._lift(parent, child)
                 continue
-            if tag in DEFINITIONS or child.get("id") in self.referenced:
+            if tag in DEFINITIONS:
+                self._lift_inner(child)
                 continue
             props = _props(child, self.class_rules, inherited)
             why = self._why_invisible(child, tag, props)
+            if child.get("id") in self.referenced:
+                if why is not None:
+                    self._move_to_defs(parent, child)
+                    _log_skipped(child, *why)
+                self._lift_inner(child)
+                continue
             if why is None:
                 if tag in CONTAINERS:
                     self.prune(child, props)
@@ -613,6 +645,24 @@ class _Pruner:
             self.changed = True
             self._rescue(child)
             _log_skipped(child, *why)
+
+    def _lift(self, parent: ET.Element, element: ET.Element) -> None:
+        """Moves a LIFTED definition, and those it holds, into defs."""
+        self._move_to_defs(parent, element)
+        _log_skipped(element, "", f"{LIFTED[_local(element)]} definition")
+        self._lift_inner(element)
+
+    def _lift_inner(self, element: ET.Element) -> None:
+        """
+        Moves the LIFTED definitions inside element, other than those
+        a <defs> holds, into defs: an element left where it is may be
+        drawn (a symbol by <use>), and raygeo would read them with it.
+        """
+        for child in list(element):
+            if _local(child) in LIFTED and _local(element) != "defs":
+                self._lift(element, child)
+            else:
+                self._lift_inner(child)
 
     def _why_invisible(
         self, element: ET.Element, tag: str, props: dict[str, str]
@@ -627,13 +677,7 @@ class _Pruner:
         visibility = props.get("visibility", "").strip()
         if visibility in ("hidden", "collapse"):
             return "hidden", f"visibility:{visibility}"
-        paints = (
-            props.get("fill", "black").strip(),
-            props.get("stroke", "none").strip(),
-        )
-        if tag in SHAPES and all(
-            paint in ("none", "transparent") for paint in paints
-        ):
+        if tag in SHAPES and not (_has_fill(props) or _has_stroke(props)):
             if self._covers_viewbox(element):
                 return "invisible", "artboard background"
             return "invisible", "no fill or stroke"
@@ -661,6 +705,7 @@ class _Pruner:
         for child in list(element):
             if child.get("id") in self.referenced:
                 self._move_to_defs(element, child)
+                self._lift_inner(child)
             else:
                 self._rescue(child)
 
@@ -709,6 +754,36 @@ def _is_zero(opacity: str | None) -> bool:
         return float((opacity or "").strip().rstrip("%")) <= 0
     except ValueError:
         return False
+
+
+def _is_zero_length(length: str | None) -> bool:
+    """Whether a length ("0", "0px", "0%") is zero; unset is not."""
+    text = (length or "").strip()
+    if not text:
+        return False
+    try:
+        value, _unit = parse_svg_length(text)
+    except (ValueError, TypeError):
+        return False
+    return float(value) == 0
+
+
+def _has_fill(props: dict[str, str]) -> bool:
+    """Whether a shape's fill shows: a paint, not at opacity 0."""
+    paint = props.get("fill", "black").strip()
+    return paint not in ("none", "transparent") and not _is_zero(
+        props.get("fill-opacity")
+    )
+
+
+def _has_stroke(props: dict[str, str]) -> bool:
+    """Whether a shape's stroke shows: a paint, not 0 wide or opacity 0."""
+    paint = props.get("stroke", "none").strip()
+    return (
+        paint not in ("none", "transparent")
+        and not _is_zero(props.get("stroke-opacity"))
+        and not _is_zero_length(props.get("stroke-width"))
+    )
 
 
 def _log_skipped(element: ET.Element, kind: str, reason: str) -> None:

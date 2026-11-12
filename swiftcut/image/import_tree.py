@@ -36,10 +36,17 @@ class ImportNode:
 
 @dataclass
 class PathNode(ImportNode):
-    """One path, its geometry in document coordinates."""
+    """
+    One path, its geometry in document coordinates. filled says
+    whether the file draws it with a visible fill (None: the file
+    does not say, as a DXF does not); fill_rule is how that fill
+    treats overlapping contours, "nonzero" or "evenodd".
+    """
 
     geometry: Geometry = field(default_factory=Geometry)
     closed: bool = False
+    filled: bool | None = None
+    fill_rule: str = "nonzero"
 
 
 @dataclass

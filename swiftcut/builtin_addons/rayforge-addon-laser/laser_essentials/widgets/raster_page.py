@@ -53,9 +53,12 @@ class RasterSettingsPage(LaserStepSettingsPage):
         self.engrave_row = Adw.ComboRow(
             title=_("Engrave"),
             subtitle=_(
-                "Vector shapes: fill closed shapes, trace lines, or both"
+                "Vector shapes: as the file draws them, fill closed "
+                "shapes, trace lines, or both"
             ),
-            model=Gtk.StringList.new([_("Fill"), _("Outline"), _("Both")]),
+            model=Gtk.StringList.new(
+                [_("As drawn"), _("Fill"), _("Outline"), _("Both")]
+            ),
         )
         self.engrave_row.set_selected(ENGRAVE_MODES.index(step.engrave_mode))
         self.engrave_row.connect(

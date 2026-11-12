@@ -752,6 +752,15 @@ def test_a_mdf_pick_engraves_with_the_shipped_base_engrave(
     assert engrave.cut_speed == 12000
     assert engrave.power == pytest.approx(0.10)
     assert engrave.min_power == pytest.approx(0.10)
+    assert engrave.engrave_mode == "AS_DRAWN"
+
+
+def test_no_shipped_recipe_sets_the_engrave_mode(lab_recipes):
+    """Applying one keeps a step's Engrave mode (As drawn when new)."""
+    for recipe in lab_recipes.recipes.values():
+        assert "engrave_mode" not in recipe.settings, recipe.uid
+        for values in recipe.machine_settings.values():
+            assert "engrave_mode" not in values, recipe.uid
 
 
 def test_the_shipped_scan_applies_to_a_scan_step(

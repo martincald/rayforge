@@ -105,14 +105,21 @@ class TestEngraveStep:
         assert data == restored.to_dict()
         assert restored.dot_width_correction_mm == 0.05
 
-    def test_engrave_mode_defaults_to_both(self):
-        assert EngraveStep(name="Test").engrave_mode == "BOTH"
+    def test_engrave_mode_defaults_to_as_drawn(self):
+        assert EngraveStep(name="Test").engrave_mode == "AS_DRAWN"
+        (var,) = [
+            v
+            for v in EngraveStep.recipe_varset().vars
+            if v.key == "engrave_mode"
+        ]
+        assert var.default == "AS_DRAWN"
 
-    def test_engrave_mode_roundtrips(self):
+    @pytest.mark.parametrize("mode", ["OUTLINE", "AS_DRAWN"])
+    def test_engrave_mode_roundtrips(self, mode):
         step = EngraveStep(name="Test")
-        step.engrave_mode = "OUTLINE"
+        step.engrave_mode = mode
         restored = EngraveStep.from_dict(step.to_dict())
-        assert restored.engrave_mode == "OUTLINE"
+        assert restored.engrave_mode == mode
         assert "engrave_mode" not in restored.extra
 
     @pytest.mark.parametrize("saved", [None, "STROKE"])

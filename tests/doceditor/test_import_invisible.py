@@ -25,6 +25,7 @@ from swiftcut.image.svg.importer import SvgImporter
 from swiftcut.image.svg.svg_tree import visible_svg
 from swiftcut.image.svg.svgutil import SVG_NS
 from tests.doceditor.test_import_materializer import _contours, _import
+from tests.image.test_svg_tree import STRAY_SUSPECTS, _suspect_svg
 
 TESTS_DIR = Path(__file__).parent.parent
 SHWESHWE = TESTS_DIR / "fixtures" / "import" / "shweshwe.svg"
@@ -171,3 +172,27 @@ class TestInvisibleShapes:
         assert any(
             'rect "artboard" (artboard background)' in m for m in messages
         )
+
+
+class TestStrayLines:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("suspect", list(STRAY_SUSPECTS))
+    @pytest.mark.parametrize("name", list(GROUPINGS))
+    async def test_only_the_visible_square_comes_in(
+        self, doc_editor, task_mgr, bed, tmp_path, suspect, name
+    ):
+        """
+        Each cause of stray lines (tests/image/test_svg_tree.py), in
+        every grouping: the one 10 mm square, nothing else.
+        """
+        path = tmp_path / f"{suspect}.svg"
+        path.write_bytes(_suspect_svg(suspect))
+        options = GROUPINGS[name]
+
+        added = await _import(
+            doc_editor, task_mgr, path, PassthroughSpec(), options
+        )
+
+        _assert_shapes(added, path, options, 1)
+        x0, y0, x1, y1 = _world_box(added)
+        assert (x1 - x0, y1 - y0) == pytest.approx((10, 10), abs=0.01)

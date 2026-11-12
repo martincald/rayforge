@@ -12,6 +12,8 @@ from raygeo.svg import (
 )
 from raygeo.svg.color import ColorAttr
 
+from ...core.layer import Layer
+from ...core.path_fills import ContourIndex
 from ...core.vectorization_spec import (
     LayerSource,
     PassthroughSpec,
@@ -20,11 +22,13 @@ from ...core.vectorization_spec import (
 from ..base_importer import ImporterFeature
 from ..engine import NormalizationEngine
 from ..structures import (
+    ImportPayload,
     LayerGeometry,
     ParsingResult,
     VectorizationResult,
 )
 from .svg_base import SvgImporterBase
+from .svg_tree import build_svg_tree
 from .svgutil import NO_COLOR_KEY, extract_layer_manifest
 
 logger = logging.getLogger(__name__)
@@ -169,6 +173,40 @@ class SvgVectorImporter(SvgImporterBase):
             geometries_by_layer=geometries_by_layer,
             source_parse_result=parse_result,
         )
+
+    def _post_process_payload(self, payload: ImportPayload) -> ImportPayload:
+        """
+        Gives each workpiece how its source paths are filled
+        (path_fills), from the file's paths. A workpiece with a contour
+        that is none of them is left without (it engraves as Both).
+        """
+        assert self.trimmed_data is not None
+        index = ContourIndex(
+            [
+                (
+                    path.geometry.split_into_contours(),
+                    path.fill_rule if path.filled else None,
+                )
+                for path in build_svg_tree(self.trimmed_data).root.paths()
+            ]
+        )
+        for item in payload.items:
+            workpieces = (
+                item.all_workpieces if isinstance(item, Layer) else [item]
+            )
+            for wp in workpieces:
+                segment = getattr(wp, "source_segment", None)
+                if segment is None or segment.pristine_geometry is None:
+                    continue
+                segment.path_fills = index.path_fills(
+                    segment.pristine_geometry
+                )
+                if segment.path_fills is None:
+                    logger.info(
+                        f"SVG import: fills of {wp.name} not known, a "
+                        "contour is none of the file's paths"
+                    )
+        return payload
 
     def _layer_geometries_by_svg(self, svg_str: str) -> list[LayerGeometry]:
         """

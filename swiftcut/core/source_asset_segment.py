@@ -7,6 +7,7 @@ from typing import Any
 from raygeo.geo import Geometry, Matrix
 from raygeo.geo.types import Rect
 
+from .path_fills import PathFills
 from .vectorization_spec import VectorizationSpec
 
 # A type alias for a list of serializable modifier configurations.
@@ -34,6 +35,9 @@ class SourceAssetSegment:
     # --- Fields for non-destructive vector import ---
     pristine_geometry: Geometry | None = None
     normalization_matrix: Matrix | None = None
+    # How each source path of the workpiece's geometry is filled
+    # (core.path_fills); None when the file does not say.
+    path_fills: PathFills | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serializes the configuration to a dictionary."""
@@ -50,6 +54,9 @@ class SourceAssetSegment:
             else None,
             "normalization_matrix": self.normalization_matrix.to_list()
             if self.normalization_matrix
+            else None,
+            "path_fills": [list(run) for run in self.path_fills]
+            if self.path_fills is not None
             else None,
         }
 
@@ -73,6 +80,13 @@ class SourceAssetSegment:
             Matrix.from_list(norm_matrix_data) if norm_matrix_data else None
         )
 
+        path_fills_data = data.get("path_fills")
+        path_fills = (
+            [(int(count), rule) for count, rule in path_fills_data]
+            if path_fills_data is not None
+            else None
+        )
+
         return cls(
             source_asset_uid=data["source_asset_uid"],
             image_modifier_chain=data.get("image_modifier_chain", []),
@@ -85,6 +99,7 @@ class SourceAssetSegment:
             layer_id=data.get("layer_id"),
             pristine_geometry=pristine_geometry,
             normalization_matrix=normalization_matrix,
+            path_fills=path_fills,
         )
 
     def clone_with_geometry(
@@ -104,6 +119,7 @@ class SourceAssetSegment:
             self,
             pristine_geometry=new_y_down_geometry,
             normalization_matrix=Matrix.identity(),
+            path_fills=None,
         )
 
         # Manually deepcopy mutable fields to ensure independence

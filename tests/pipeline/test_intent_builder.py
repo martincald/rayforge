@@ -7,6 +7,7 @@ and the position-sensitive folding rule.
 """
 
 import math
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -35,9 +36,11 @@ from raygeo.pipeline.stage import StageSpec
 
 from swiftcut.core.doc import Doc
 from swiftcut.core.layer import Layer
+from swiftcut.core.source_asset_segment import SourceAssetSegment
 from swiftcut.core.step import Step
 from swiftcut.core.stock import StockItem
 from swiftcut.core.stock_asset import StockAsset
+from swiftcut.core.vectorization_spec import PassthroughSpec
 from swiftcut.core.workpiece import WorkPiece
 from swiftcut.image.ops_renderer import OPS_RENDERER
 from swiftcut.machine.models.dialect.grbl import GRBL_DIALECT
@@ -1254,6 +1257,41 @@ def test_raster_compute_token_changes_on_engrave_mode(
         step.engrave_mode = mode
         tokens.add(_raster_compute_token(machine, doc, wp, step))
     assert len(tokens) == 3
+
+
+def test_raster_compute_token_changes_with_the_segments_path_fills(
+    engrave_step_class, test_machine_and_config
+):
+    """
+    How the paths are filled lives on the source segment, which is
+    set before a workpiece enters the document and never changed in
+    place; a new segment (other fills) changes the geometry revision,
+    so the raster is recomputed.
+    """
+    machine, context = test_machine_and_config
+    step = engrave_step_class.create(context, name="engrave")
+    geo = Geometry()
+    geo.move_to(0, 0)
+    geo.line_to(1, 0)
+    geo.line_to(1, 1)
+    geo.close_path()
+    segment = SourceAssetSegment(
+        source_asset_uid="asset",
+        vectorization_spec=PassthroughSpec(),
+        pristine_geometry=geo,
+        normalization_matrix=Matrix.identity(),
+        path_fills=[(1, None)],
+    )
+    wp = WorkPiece(name="wp", source_segment=segment)
+    wp.set_size(20.0, 20.0)
+    doc = _make_doc(step, wp)
+
+    before = _raster_compute_token(machine, doc, wp, step)
+    assert _raster_compute_token(machine, doc, wp, step) == before
+    wp.source_segment = replace(segment, path_fills=[(1, "nonzero")])
+    after = _raster_compute_token(machine, doc, wp, step)
+
+    assert before != after
 
 
 def test_raster_compute_token_changes_on_spot_size(

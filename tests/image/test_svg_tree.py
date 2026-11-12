@@ -259,6 +259,242 @@ def test_style_attribute_beats_class_beats_attribute():
     ]
 
 
+def test_a_paths_fill_and_fill_rule_are_resolved_as_drawn():
+    """
+    Whether a path is drawn filled, and by which rule, through
+    inheritance, CSS classes and style; no fill, transparent or at
+    opacity 0 is unfilled.
+    """
+    rect = "x='0' y='0' width='1' height='1'"
+    data = _svg(
+        "<style>.eo{fill-rule:evenodd}.clear{fill-opacity:0}</style>"
+        "<defs><linearGradient id='g'/></defs>"
+        f"<rect id='default' {rect}/>"
+        f"<rect id='none' fill='none' stroke='#000' {rect}/>"
+        f"<g fill='none'><rect id='inherited-none' stroke='#000' {rect}/>"
+        f"<rect id='own-fill' fill='#f00' {rect}/></g>"
+        f"<rect id='transparent' fill='transparent' stroke='#000' {rect}/>"
+        f"<rect id='zero-opacity' fill='#f00' fill-opacity='0' "
+        f"stroke='#000' {rect}/>"
+        f"<g class='clear'><rect id='class-zero-opacity' stroke='#000' "
+        f"{rect}/></g>"
+        f"<rect id='gradient' fill='url(#g)' {rect}/>"
+        f"<g fill-rule='evenodd'><rect id='inherited-evenodd' {rect}/>"
+        f"<rect id='own-nonzero' fill-rule='nonzero' {rect}/></g>"
+        f"<rect id='class-evenodd' class='eo' {rect}/>"
+        f"<rect id='style-evenodd' class='eo' style='fill-rule:nonzero;"
+        f"fill-rule:evenodd' {rect}/>"
+    )
+
+    paths = build_svg_tree(data).root.paths()
+
+    assert {p.name: (p.filled, p.fill_rule) for p in paths} == {
+        "default": (True, "nonzero"),
+        "none": (False, "nonzero"),
+        "inherited-none": (False, "nonzero"),
+        "own-fill": (True, "nonzero"),
+        "transparent": (False, "nonzero"),
+        "zero-opacity": (False, "nonzero"),
+        "class-zero-opacity": (False, "nonzero"),
+        "gradient": (True, "nonzero"),
+        "inherited-evenodd": (True, "evenodd"),
+        "own-nonzero": (True, "nonzero"),
+        "class-evenodd": (True, "evenodd"),
+        "style-evenodd": (True, "evenodd"),
+    }
+
+
+def _imported_rects(data: bytes) -> list[tuple[float, ...]]:
+    """The box of each contour the importer reads (Single)."""
+    result = SvgImporter(data, Path("drawing.svg")).get_doc_items()
+    assert result is not None and result.payload is not None
+    geometries = [
+        wp.source_segment.pristine_geometry
+        for item in result.payload.items
+        for wp in getattr(item, "all_workpieces", [item])
+    ]
+    return [
+        tuple(pytest.approx(v) for v in contour.rect())
+        for geometry in geometries
+        for contour in geometry.split_into_contours()
+    ]
+
+
+# The causes of stray lines (shapes the importer reads that the SVG
+# does not show), each beside one visible square at 10..20.
+KEEP = "<rect id='keep' x='10' y='10' width='10' height='10'/>"
+LAYER = "inkscape:groupmode='layer'"
+STRAY_SUSPECTS = {
+    # A hidden or template sublayer: visibility hidden by its style or
+    # a class rule, inherited by what it holds; a shape in it that a
+    # clip refers to still draws nothing there.
+    "hidden-sublayers": (
+        "<style>.template{visibility:hidden}</style>"
+        f"<g id='L1' {LAYER} inkscape:label='Art'>{KEEP}"
+        "<g id='sub' style='visibility:hidden'>"
+        "<rect id='in-sub' x='50' y='50' width='9' height='9'/>"
+        "<g><rect id='deep' x='60' y='60' width='9' height='9'/></g>"
+        "<rect id='clip-shape' x='0' y='0' width='99' height='99'/>"
+        "</g><g id='tpl' class='template'>"
+        "<path id='in-template' d='M70 70 L90 90' stroke='#000'/></g>"
+        "</g><clipPath id='c'><use href='#clip-shape'/></clipPath>"
+        "<g clip-path='url(#c)'/>"
+    ),
+    # A guide path a textPath follows, drawn without paint.
+    "text-path-guide": (
+        f"{KEEP}<path id='guide' d='M30 70 L90 70' fill='none'/>"
+        "<text><textPath href='#guide'>Label</textPath></text>"
+    ),
+    # Definitions outside <defs>, and a clip inside a symbol: the
+    # square is the symbol's, placed by a <use>.
+    "definitions-outside-defs": (
+        "<g clip-path='url(#clip)'><use href='#sym' x='10' y='10'/></g>"
+        "<clipPath id='clip'><rect x='5' y='5' width='90' height='90'/>"
+        "</clipPath>"
+        "<mask id='mask'><rect x='6' y='6' width='88' height='88' "
+        "fill='white'/></mask>"
+        "<pattern id='pat' width='5' height='5'><rect x='60' y='60' "
+        "width='3' height='3'/></pattern>"
+        "<marker id='mark'><path d='M70 70 L80 80' stroke='#000'/>"
+        "</marker>"
+        "<defs><symbol id='sym'><clipPath id='inner'><rect x='0' y='0' "
+        "width='5' height='5'/></clipPath><rect id='keep' "
+        "clip-path='url(#inner)' x='0' y='0' width='10' height='10'/>"
+        "</symbol></defs>"
+    ),
+    # Inkscape's guides live in its namedview.
+    "guides": (
+        f"{KEEP}<sodipodi:namedview id='view'>"
+        "<sodipodi:guide id='g1' position='50,0' orientation='1,0'/>"
+        "<sodipodi:guide id='g2' position='0,50' orientation='0,1'/>"
+        "</sodipodi:namedview>"
+    ),
+    # Strokes that do not show, on shapes with no fill.
+    "invisible-strokes": (
+        f"{KEEP}<path id='zero-width' d='M30 30 L90 90' fill='none' "
+        "stroke='#000' stroke-width='0'/>"
+        "<path id='zero-opacity' d='M30 90 L90 30' fill='none' "
+        "stroke='#000' stroke-opacity='0'/>"
+        "<g stroke-width='0px'><path id='inherited-zero' d='M40 40 "
+        "L50 50' fill='none' stroke='#000'/></g>"
+        "<rect id='clear-fill' x='50' y='50' width='9' height='9' "
+        "fill='#f00' fill-opacity='0'/>"
+    ),
+}
+
+
+def _suspect_svg(name: str) -> bytes:
+    return _svg(
+        STRAY_SUSPECTS[name],
+        'width="100mm" height="100mm" viewBox="0 0 100 100" '
+        'xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" '
+        'xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/'
+        'sodipodi-0.dtd"',
+    )
+
+
+class TestStrayLines:
+    @pytest.mark.parametrize("name", list(STRAY_SUSPECTS))
+    def test_only_what_shows_is_imported(self, name):
+        data = _suspect_svg(name)
+
+        assert _imported_rects(data) == [(10, 10, 20, 20)]
+
+    @pytest.mark.parametrize("name", list(STRAY_SUSPECTS))
+    def test_only_what_shows_is_in_the_tree(self, name):
+        data = _suspect_svg(name)
+
+        assert [p.name for p in build_svg_tree(data).root.paths()] == ["keep"]
+
+    def test_what_is_taken_out_is_logged(self, caplog):
+        caplog.set_level(logging.INFO, logger=LOGGER)
+
+        visible_svg(_suspect_svg("invisible-strokes"))
+
+        assert [r.message for r in caplog.records] == [
+            f"SVG import: skipped invisible {what} (no fill or stroke)"
+            for what in (
+                'path "zero-width"',
+                'path "zero-opacity"',
+                'path "inherited-zero"',
+                'rect "clear-fill"',
+            )
+        ]
+
+    def test_a_hairline_is_kept(self):
+        data = _svg(
+            "<path d='M10 10 L90 90' fill='none' stroke='#000' "
+            "stroke-width='0.001'/>"
+        )
+
+        assert _imported_rects(data) == [(10, 10, 90, 90)]
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "M10 10 H20 V20 H10 Z M30 30 H40 V40 H30 Z",
+            "M10 10 h10 v10 h-10 z m20 20 h10 v10 h-10 z",
+            "M10 10 H20 M30 30 H40",
+        ],
+        ids=["closed", "relative-after-close", "after-open"],
+    )
+    def test_a_compound_paths_subpaths_stay_apart(self, path):
+        """
+        Two subpaths are two contours, the importer's and the tree's,
+        with nothing joining them.
+        """
+        data = _svg(f"<path d='{path}' fill='none' stroke='#000'/>")
+
+        (node,) = build_svg_tree(data).root.paths()
+        contours = node.geometry.split_into_contours()
+
+        assert [c.rect()[:2] for c in contours] == [(10, 10), (30, 30)]
+        assert [r[:2] for r in _imported_rects(data)] == [(10, 10), (30, 30)]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="raygeo drops a visible child of a visibility:hidden group "
+    "(NEEDS-OWNER)",
+)
+def test_a_visible_child_of_a_hidden_group_is_imported():
+    """
+    visibility is inherited, and a child may set it back: the SVG shows
+    the child; the tree has it, raygeo's import does not.
+    """
+    data = _svg(
+        f"{KEEP}<g visibility='hidden'><rect id='shown' "
+        "visibility='visible' x='50' y='50' width='10' height='10'/></g>"
+    )
+
+    assert [p.name for p in build_svg_tree(data).root.paths()] == [
+        "keep",
+        "shown",
+    ]
+    assert _imported_rects(data) == [(10, 10, 20, 20), (50, 50, 60, 60)]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="raygeo does not apply a symbol's viewBox to its <use> "
+    "(NEEDS-OWNER)",
+)
+def test_a_symbol_instance_fills_the_box_of_its_use():
+    """
+    Illustrator's symbols: a symbol with a viewBox centred on its
+    origin, placed by a <use> of the same size. The SVG shows the
+    square at 50..60; raygeo moves it by the use's x and y only.
+    """
+    data = _svg(
+        "<defs><symbol id='sym' viewBox='-5 -5 10 10'><rect x='-5' "
+        "y='-5' width='10' height='10'/></symbol></defs>"
+        "<use href='#sym' x='-5' y='-5' width='10' height='10' "
+        "transform='translate(55 55)'/>"
+    )
+
+    assert _imported_rects(data) == [(50, 50, 60, 60)]
+
+
 class TestImages:
     def test_a_linked_image_is_read_beside_the_svg(self, tmp_path):
         (tmp_path / "pics").mkdir()
@@ -424,8 +660,9 @@ class TestVisibleSvg:
     def test_what_an_href_points_at_is_kept(self):
         """
         A <use> may give what it shows its paint; what it shows is kept
-        even inside a hidden group (moved into defs, where it still
-        resolves), as is a clip a visible element uses.
+        even inside a hidden group, or where it draws nothing itself
+        (moved into defs, where it still resolves), as is a clip a
+        visible element uses.
         """
         data = _svg(
             "<g fill='none'><rect id='r' x='0' y='0' width='5' "
@@ -440,12 +677,16 @@ class TestVisibleSvg:
         out = visible_svg(data)
 
         assert "r" in _ids(out)
-        assert _defs_ids(out) == ["p", "c"]
+        assert _defs_ids(out) == ["r", "p", "c"]
         assert b'xlink:href="#p"' in out
         assert b"ns0:" not in out
-        assert len(list(build_svg_tree(out).root.paths())) == 4
+        assert len(list(build_svg_tree(out).root.paths())) == 3
 
     def test_definitions_are_left_as_they_are(self):
+        """
+        Nothing a definition holds is taken out; a pattern or a marker
+        outside <defs> moves into it whole.
+        """
         data = _svg(
             "<defs><rect id='in-defs' fill='none' x='0' y='0' width='1' "
             "height='1'/></defs><symbol id='s'><rect id='in-symbol' "
@@ -456,7 +697,18 @@ class TestVisibleSvg:
             "height='1'/></marker>"
         )
 
-        assert visible_svg(data) is data
+        out = visible_svg(data)
+
+        assert _ids(out) == [
+            "in-defs",
+            "pat",
+            "in-pattern",
+            "m",
+            "in-marker",
+            "s",
+            "in-symbol",
+        ]
+        assert _defs_ids(out) == ["in-defs", "pat", "m"]
 
     def test_clips_and_masks_outside_defs_move_into_defs(self, caplog):
         """
@@ -484,6 +736,34 @@ class TestVisibleSvg:
         image = SVG_RENDERER.render_base_image(out, 10, 10)
         assert image.getpoint(2, 5)[-1] == 255
         assert image.getpoint(7, 5)[-1] == 0
+
+    def test_patterns_and_markers_moved_into_defs_still_paint(self):
+        """
+        A pattern fill and a marker, both defined outside <defs>,
+        render the same from <defs>.
+        """
+        data = _svg(
+            "<g><pattern id='dots' width='10' height='10' "
+            "patternUnits='userSpaceOnUse'><rect x='0' y='0' width='5' "
+            "height='10' fill='#f00'/></pattern></g>"
+            "<marker id='tip' markerWidth='10' markerHeight='10' "
+            "markerUnits='userSpaceOnUse' refX='5' refY='5'>"
+            "<rect x='0' y='0' width='10' height='10' fill='#00f'/>"
+            "</marker>"
+            "<rect x='0' y='0' width='100' height='50' fill='url(#dots)'/>"
+            "<path d='M10 80 L80 80' stroke='#000' marker-end='url(#tip)'/>"
+        )
+
+        out = visible_svg(data)
+
+        assert _defs_ids(out) == ["dots", "tip"]
+        before = SVG_RENDERER.render_base_image(data, 100, 100)
+        after = SVG_RENDERER.render_base_image(out, 100, 100)
+        assert before.getpoint(2, 20) == after.getpoint(2, 20)
+        assert after.getpoint(2, 20)[0] == 255
+        assert before.getpoint(80, 80) == after.getpoint(80, 80)
+        assert after.getpoint(80, 80)[2] == 255
+        assert (before == after).min() == 255
 
     @pytest.mark.parametrize(
         "data",

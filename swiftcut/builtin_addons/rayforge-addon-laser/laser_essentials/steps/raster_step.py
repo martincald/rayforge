@@ -11,12 +11,14 @@ from typing import (
 import cairo
 import numpy as np
 from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.geo import Geometry
 from raygeo.ops.assembly import Assembler
 from raygeo.ops.assembly.raster import RasterSpec
 from raygeo.ops.part import Part
 from raygeo.ops.part.image_source import WholeImageSource
 
 from swiftcut.core.capability import MachineCapability
+from swiftcut.core.path_fills import PathFills, paths_of
 from swiftcut.core.step import legacy_producer_params
 from swiftcut.core.varset import (
     BoolVar,
@@ -39,8 +41,6 @@ from swiftcut.pipeline.transformer.registry import transformer_registry
 from .laser_step import LaserStep
 
 if TYPE_CHECKING:
-    from raygeo.geo import Geometry
-
     from swiftcut.context import RayforgeContext
     from swiftcut.core.workpiece import WorkPiece
     from swiftcut.machine.models.machine import Machine
@@ -52,9 +52,16 @@ if TYPE_CHECKING:
         ) -> float: ...
 
 
-# How vector shapes are engraved: fill closed shapes, trace every
+# How vector shapes are engraved: as the file draws them (filled
+# paths filled, the others traced), fill closed shapes, trace every
 # path, or both.
-ENGRAVE_MODES = ("FILL", "OUTLINE", "BOTH")
+ENGRAVE_MODES = ("AS_DRAWN", "FILL", "OUTLINE", "BOTH")
+
+# Cairo's fill rule for each SVG fill-rule.
+_FILL_RULES = {
+    "nonzero": cairo.FILL_RULE_WINDING,
+    "evenodd": cairo.FILL_RULE_EVEN_ODD,
+}
 
 # Narrowest line a vector outline is engraved with; the head's spot
 # size wins when it is wider.
@@ -76,11 +83,12 @@ class EngraveStep(LaserStep):
                     key="engrave_mode",
                     label=_("Engrave"),
                     choices=[
+                        (_("As drawn"), "AS_DRAWN"),
                         (_("Fill"), "FILL"),
                         (_("Outline"), "OUTLINE"),
                         (_("Both"), "BOTH"),
                     ],
-                    default="BOTH",
+                    default="AS_DRAWN",
                 ),
                 FloatVar(
                     key="scan_angle",
@@ -146,7 +154,7 @@ class EngraveStep(LaserStep):
         self.angle_increment = 0.0
         self.dither_algorithm = None
         self.bidir_x_offset_mm = 0.0
-        self.engrave_mode = "BOTH"
+        self.engrave_mode = "AS_DRAWN"
 
     def get_operation_mode_short(self):
         if not self.depth_mode:
@@ -561,6 +569,7 @@ def _build_raster_part(
             (px_per_mm_x, px_per_mm_y),
             step.engrave_mode,
             max(spot_x, spot_y, MIN_ENGRAVE_STROKE_MM),
+            getattr(workpiece.source_segment, "path_fills", None),
         )
         surface.flush()
     if surface is None:
@@ -622,6 +631,7 @@ def _paint_vector_ink(
     pixels_per_mm: tuple[float, float],
     engrave_mode: str,
     stroke_width_mm: float,
+    path_fills: PathFills | None = None,
 ) -> None:
     """Paint the workpiece's normalized (0-1, Y-up) boundaries onto
     its raster render in solid black, over what is already there.
@@ -629,6 +639,10 @@ def _paint_vector_ink(
     FILL and BOTH fill the closed contours even-odd, so a shape inside
     another is a hole. OUTLINE and BOTH stroke every path, open or
     closed, ``stroke_width_mm`` wide in both axes, antialiased.
+    AS_DRAWN paints the source paths as ``path_fills`` says the file
+    draws them: each filled path filled on its own, by its own fill
+    rule, the rest stroked (the paths without a fill, and the open
+    contours of filled ones). Without path fills it is BOTH.
 
     The image ends at the bounding box, so a stroke lying on it would
     keep only its inner half, which the scan's dot-width trim then
@@ -652,21 +666,56 @@ def _paint_vector_ink(
         geometry_to_cairo(geometry, ctx)
         ctx.restore()
 
-    if engrave_mode in ("FILL", "BOTH"):
+    fills, strokes = _ink(boundaries, engrave_mode, path_fills)
+    for contours, rule in fills:
         ctx.new_path()
-        for contour in boundaries.split_into_contours():
-            if contour.is_closed():
-                add_path(contour)
-        ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+        for contour in contours:
+            add_path(contour)
+        ctx.set_fill_rule(_FILL_RULES[rule])
         ctx.fill()
 
-    if engrave_mode in ("OUTLINE", "BOTH"):
+    if strokes is not None:
         ctx.new_path()
-        add_path(boundaries, stroke_width_mm / 2)
+        add_path(strokes, stroke_width_mm / 2)
         ctx.set_line_width(stroke_width_mm)
         ctx.set_line_cap(cairo.LINE_CAP_ROUND)
         ctx.set_line_join(cairo.LINE_JOIN_ROUND)
         ctx.stroke()
+
+
+def _ink(
+    boundaries: Geometry, engrave_mode: str, path_fills: PathFills | None
+) -> tuple[list[tuple[list[Geometry], str]], Geometry | None]:
+    """What an Engrave mode inks: the areas it fills, each as its
+    contours and fill rule, and what it strokes (None: nothing)."""
+    if engrave_mode == "AS_DRAWN":
+        paths = paths_of(boundaries, path_fills)
+        if paths is not None:
+            return _as_drawn(paths)
+        engrave_mode = "BOTH"
+    fills = []
+    if engrave_mode in ("FILL", "BOTH"):
+        closed = [c for c in boundaries.split_into_contours() if c.is_closed()]
+        fills.append((closed, "evenodd"))
+    strokes = boundaries if engrave_mode in ("OUTLINE", "BOTH") else None
+    return fills, strokes
+
+
+def _as_drawn(
+    paths: list[tuple[list[Geometry], str | None]],
+) -> tuple[list[tuple[list[Geometry], str]], Geometry | None]:
+    """AS_DRAWN's ink: each filled path an area of its own; the
+    paths without a fill, and the open contours of filled ones, as
+    strokes."""
+    fills = []
+    strokes = Geometry()
+    for contours, rule in paths:
+        if rule is not None:
+            fills.append((contours, rule))
+        for contour in contours:
+            if rule is None or not contour.is_closed():
+                strokes.extend(contour)
+    return fills, None if strokes.is_empty() else strokes
 
 
 MAX_RASTER_RENDER_PIXELS = 16 * 1024 * 1024

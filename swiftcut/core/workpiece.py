@@ -29,6 +29,7 @@ from ..context import get_context
 from .asset_registry import asset_type_registry
 from .geometry_provider import IGeometryProvider
 from .item import DocItem
+from .path_fills import ContourIndex, paths_of
 from .source_asset_segment import SourceAssetSegment
 from .tab import Tab
 from .vectorization_spec import TraceSpec
@@ -1408,7 +1409,9 @@ class WorkPiece(DocItem):
         current geometry.
 
         The new workpieces inherit the source segment but override their
-        geometry with the specific fragment.
+        geometry with the specific fragment. Each keeps how its source
+        paths are filled (path_fills), when this workpiece knows it and
+        every contour of the fragment is one of this workpiece's.
 
         Args:
             fragments: A list of Geometry objects. Each must be a subset of
@@ -1431,6 +1434,7 @@ class WorkPiece(DocItem):
 
         # Get current physical dimensions to filter noise.
         phys_w, phys_h = self.size
+        fills_index = self._path_fills_index()
 
         for frag_geo in fragments:
             # 1. Calculate bounding box of the fragment in the local 0-1 space.
@@ -1477,6 +1481,11 @@ class WorkPiece(DocItem):
                     pristine_geometry=None,  # Prevents massive array copy
                     normalization_matrix=mtx,
                     crop_window_px=self.source_segment.crop_window_px,
+                    path_fills=(
+                        fills_index.path_fills(frag_geo)
+                        if fills_index is not None
+                        else None
+                    ),
                 )
 
             new_wp = WorkPiece(self.name, new_segment)
@@ -1534,6 +1543,18 @@ class WorkPiece(DocItem):
             new_workpieces.append(new_wp)
 
         return new_workpieces
+
+    def _path_fills_index(self) -> ContourIndex | None:
+        """
+        The contours of this workpiece's source paths, by path, for
+        its split pieces' path fills; None when it has none.
+        """
+        segment = self.source_segment
+        boundaries = self.boundaries
+        if segment is None or boundaries is None:
+            return None
+        paths = paths_of(boundaries, segment.path_fills)
+        return ContourIndex(paths) if paths is not None else None
 
     def regenerate_from_geometry_provider(self) -> None:
         """
