@@ -5,6 +5,25 @@ All notable changes to Rayforge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.0
+
+### Added
+
+- drag steps between layers, Alt copies
+- Scan steps get their own dashed icon
+- filled SVG shapes engrave filled, hidden shapes stay out
+- layer names choose the step, recipe and order
+- a new document starts with one layer
+
+### Fixed
+
+- a step drag copies when the drop offers only a copy
+- property and step fields commit on Enter, Tab or focus loss
+- Illustrator SVGs import at their real size
+- an expression from a file can no longer run code
+- the wizard opens again
+- a Stop during a UDP upload ends the upload
+
 ## 0.1.0
 
 First versioned SwiftCut release.
