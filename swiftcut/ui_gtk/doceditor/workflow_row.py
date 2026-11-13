@@ -88,21 +88,18 @@ def find_step(doc: "Doc", uids: tuple[str, str]) -> "Step | None":
 
 def drop_copies(drop_target: Gtk.DropTarget) -> bool:
     """
-    Whether a step drop copies: Alt (Option on macOS) is held, or the
-    drop offers nothing but a copy, which is what macOS leaves of a
-    move-or-copy drag while Option is held. Never a copy the drop
-    does not offer.
+    Whether a step drop copies: the drop offers nothing but a copy.
+    The platform narrows a move-or-copy drag to a copy while its copy
+    key is held: Option on macOS, Ctrl on Windows and Linux. Drag
+    events carry no modifier state, so the keys are not read here, and
+    on Windows GDK makes an Alt drag a move.
     """
     drop = drop_target.get_current_drop()
-    actions = drop.get_actions() if drop is not None else _STEP_DRAG_ACTIONS
-    if actions == Gdk.DragAction.COPY:
-        return True
-    alt = drop_target.get_current_event_state() & Gdk.ModifierType.ALT_MASK
-    return bool(alt) and bool(actions & Gdk.DragAction.COPY)
+    return drop is not None and drop.get_actions() == Gdk.DragAction.COPY
 
 
 class WorkflowRow(Gtk.Box):
-    #: The step being dragged from any row, from prepare to drag-end.
+    #: The step being dragged from any row, from drag-begin to drag-end.
     dragged_step: "Step | None" = None
 
     def __init__(
@@ -121,6 +118,7 @@ class WorkflowRow(Gtk.Box):
         self._step_buttons: list = []
         self._btn_uids: dict = {}
         self._drop_indicator: Gtk.Box | None = None
+        self._prepared_step: Step | None = None
         self._context_popover: Gtk.PopoverMenu | None = None
         self._context_step = None
 
@@ -146,6 +144,7 @@ class WorkflowRow(Gtk.Box):
         self._drag_source = Gtk.DragSource()
         self._drag_source.set_actions(_STEP_DRAG_ACTIONS)
         self._drag_source.connect("prepare", self._on_drag_prepare)
+        self._drag_source.connect("drag-begin", self._on_drag_begin)
         self._drag_source.connect("drag-end", self._on_drag_end)
         self._drag_source.connect("drag-cancel", self._on_drag_cancel)
         self._drag_source.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
@@ -334,10 +333,15 @@ class WorkflowRow(Gtk.Box):
                     paintable, btn_alloc.width / 2, btn_alloc.height / 2
                 )
 
-        WorkflowRow.dragged_step = step
+        self._prepared_step = step
         return Gdk.ContentProvider.new_for_value(
             step_payload(workflow.uid, uid)
         )
+
+    def _on_drag_begin(self, source, drag):
+        # Only a drag that began gets a drag-end or a drag-cancel.
+        WorkflowRow.dragged_step = self._prepared_step
+        self._prepared_step = None
 
     def _on_drag_end(self, source, drag, delete_data):
         WorkflowRow.dragged_step = None

@@ -4,13 +4,13 @@ A step icon dragged along its own row and dropped in a gap between the
 icons takes that place in the layer's workflow, in one undo step named
 "Reorder steps". Dropped back where it was, nothing changes and the
 history stays as it was. The handlers run in GTK's order: prepare,
-motion, drop, drag-end, on a row with real allocations.
+drag-begin, motion, drop, drag-end, on a row with real allocations.
 
 Dropped on another layer's row, the step goes to the gap under the
-pointer; dropped elsewhere on that layer's card, it goes last. With
-Alt (Option) held, or when the drop offers only a copy, a copy goes
-there instead. A hidden layer takes no step, and the shapes, assets
-and layers dragged onto a card are not steps.
+pointer; dropped elsewhere on that layer's card, it goes last. When
+the drop offers only a copy (Option held on macOS, Ctrl on Windows and
+Linux), a copy goes there instead. A hidden layer takes no step, and
+the shapes, assets and layers dragged onto a card are not steps.
 """
 
 from types import SimpleNamespace
@@ -105,6 +105,7 @@ def _drag_in_row(row, monkeypatch, step, gap):
     y = 5.0
     gap_x = _gap_x(row, gap)
     assert row._on_drag_prepare(row._drag_source, _center_x(row, step), y)
+    row._on_drag_begin(row._drag_source, None)
     (value,) = values
     action = row._on_drop_motion(row._drop_target, gap_x, y)
     assert action == Gdk.DragAction.MOVE
@@ -164,18 +165,19 @@ def _no_step_drag():
     WorkflowRow.dragged_step = None
 
 
-def _target(alt=False, actions=None):
-    """A drop target in a drop that offers actions, Alt held or not."""
+def _target(copy=False, actions=None):
+    """
+    A drop target in a drop that offers a move or a copy, or only the
+    copy the platform leaves while its copy key is held.
+    """
     from gi.repository import Gdk
 
     if actions is None:
-        actions = Gdk.DragAction.MOVE | Gdk.DragAction.COPY
-    state = Gdk.ModifierType.ALT_MASK if alt else Gdk.ModifierType(0)
+        actions = Gdk.DragAction.COPY
+        if not copy:
+            actions |= Gdk.DragAction.MOVE
     drop = SimpleNamespace(get_actions=lambda: actions)
-    return SimpleNamespace(
-        get_current_drop=lambda: drop,
-        get_current_event_state=lambda: state,
-    )
+    return SimpleNamespace(get_current_drop=lambda: drop)
 
 
 @pytest.fixture
@@ -220,17 +222,17 @@ def _payload(step):
     return step_payload(step.parent.uid, step.uid)
 
 
-@pytest.mark.parametrize("alt", [False, True], ids=["move", "alt-copy"])
+@pytest.mark.parametrize("copy", [False, True], ids=["move", "copy"])
 def test_a_step_dropped_on_another_layers_row_goes_to_the_gap(
-    editor, steps, tab, calls, alt
+    editor, steps, tab, calls, copy
 ):
     second = editor.doc.layers[1]
     row = tab._columns[1].workflow_row
     gap_x = _gap_x(row, 1)
 
-    assert row._on_drop(_target(alt=alt), _payload(steps[0]), gap_x, 5)
+    assert row._on_drop(_target(copy=copy), _payload(steps[0]), gap_x, 5)
 
-    assert calls == [(steps[0], second, 1, alt)]
+    assert calls == [(steps[0], second, 1, copy)]
 
 
 def test_a_step_prepared_in_one_row_is_moved_by_another(
@@ -261,6 +263,8 @@ def test_a_step_prepared_in_one_row_is_moved_by_another(
     assert source._on_drag_prepare(
         source._drag_source, _center_x(source, steps[1]), 5
     )
+    assert WorkflowRow.dragged_step is None
+    source._on_drag_begin(source._drag_source, None)
     (value,) = values
     assert WorkflowRow.dragged_step is steps[1]
     gap_x = _gap_x(target, 2)
@@ -284,6 +288,7 @@ def test_a_cancelled_step_drag_is_no_drag(editor, steps, row):
     from swiftcut.ui_gtk.doceditor.workflow_row import WorkflowRow
 
     assert row._on_drag_prepare(row._drag_source, _center_x(row, steps[0]), 5)
+    row._on_drag_begin(row._drag_source, None)
     assert WorkflowRow.dragged_step is steps[0]
 
     assert row._on_drag_cancel(row._drag_source, None, None) is False
@@ -321,7 +326,7 @@ def test_a_row_takes_no_motion_but_a_step_drags(editor, steps, tab):
     assert row._drop_indicator is None
 
     WorkflowRow.dragged_step = steps[0]
-    assert row._on_drop_motion(_target(alt=True), 5, 5) != 0
+    assert row._on_drop_motion(_target(copy=True), 5, 5) != 0
     assert row._drop_indicator is not None
 
 
@@ -364,8 +369,8 @@ def test_a_step_on_its_own_card_moves_nowhere_and_copies_last(
     assert calls == []
 
     copy = Gdk.DragAction.COPY
-    assert column._on_drop_motion(_target(alt=True), 5, 5) == copy
-    assert column._on_drop(_target(alt=True), _payload(steps[0]), 5, 5)
+    assert column._on_drop_motion(_target(copy=True), 5, 5) == copy
+    assert column._on_drop(_target(copy=True), _payload(steps[0]), 5, 5)
     assert calls == [(steps[0], first, None, True)]
 
 
@@ -395,11 +400,11 @@ def test_a_hidden_layer_takes_no_step(editor, steps, tab, calls):
     WorkflowRow.dragged_step = steps[0]
     value = _payload(steps[0])
 
-    for alt in (False, True):
-        assert row._on_drop_motion(_target(alt=alt), 5, 5) == 0
-        assert row._on_drop(_target(alt=alt), value, 5, 5) is False
-        assert column._on_drop_motion(_target(alt=alt), 5, 5) == 0
-        assert column._on_drop(_target(alt=alt), value, 5, 5) is False
+    for copy in (False, True):
+        assert row._on_drop_motion(_target(copy=copy), 5, 5) == 0
+        assert row._on_drop(_target(copy=copy), value, 5, 5) is False
+        assert column._on_drop_motion(_target(copy=copy), 5, 5) == 0
+        assert column._on_drop(_target(copy=copy), value, 5, 5) is False
     assert "step-drop-target" not in column.card.get_css_classes()
     assert calls == []
 
@@ -409,15 +414,11 @@ def test_the_copy_decision():
 
     from swiftcut.ui_gtk.doceditor.workflow_row import drop_copies
 
-    move, copy = Gdk.DragAction.MOVE, Gdk.DragAction.COPY
-    assert drop_copies(_target(alt=True))
-    assert drop_copies(_target(actions=copy))
+    move = Gdk.DragAction.MOVE
+    assert drop_copies(_target(copy=True))
     assert not drop_copies(_target())
-    assert not drop_copies(_target(alt=True, actions=move))
-    no_drop = SimpleNamespace(
-        get_current_drop=lambda: None,
-        get_current_event_state=lambda: Gdk.ModifierType(0),
-    )
+    assert not drop_copies(_target(actions=move))
+    no_drop = SimpleNamespace(get_current_drop=lambda: None)
     assert not drop_copies(no_drop)
 
 
