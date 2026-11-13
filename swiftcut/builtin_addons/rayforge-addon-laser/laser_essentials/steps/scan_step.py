@@ -11,7 +11,7 @@ class ScanStep(ContourStep):
     """
 
     TYPELABEL = _("Scan")
-    ICON = "step-contour-symbolic"
+    ICON = "step-scan-symbolic"
     # 30000 mm/min is 500 mm/s.
     TYPICAL_CUT_SPEED = 30000
 
