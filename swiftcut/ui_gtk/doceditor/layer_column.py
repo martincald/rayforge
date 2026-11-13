@@ -28,7 +28,12 @@ from . import import_handler
 from .group_row import GroupRow
 from .layer_settings_dialog import LayerSettingsDialog
 from .material_picker import MaterialPicker
-from .workflow_row import WorkflowRow
+from .workflow_row import (
+    WorkflowRow,
+    drop_copies,
+    find_step,
+    parse_step_payload,
+)
 from .workpiece_row import WorkpieceRow
 
 if TYPE_CHECKING:
@@ -57,6 +62,10 @@ css = stylesheet("""
 }
 .layer-column.active-layer-column .layer-column-header {
     background-color: alpha(@accent_bg_color, 0.1);
+}
+.layer-card.step-drop-target {
+    border-color: @accent_bg_color;
+    box-shadow: inset 0 0 0 $stroke @accent_bg_color;
 }
 .layer-material-row {
     min-height: $compact_row;
@@ -468,6 +477,9 @@ class LayerColumn(Gtk.Box):
         self._rebuild_workpiece_list()
 
     def _on_layer_structure_changed(self, sender, **kwargs):
+        # A step dropped on the card's operations row lands here
+        # without the card hearing of the drop.
+        self._mark_step_target(False)
         self.workflow_row.refresh()
         self._rebuild_workpiece_list()
 
@@ -652,6 +664,11 @@ class LayerColumn(Gtk.Box):
             logger.debug("Drop: rejected, empty value")
             return False
 
+        step_uids = parse_step_payload(value)
+        if step_uids is not None:
+            self._mark_step_target(False)
+            return self._handle_step_drop(drop_target, step_uids)
+
         asset_uids = self._parse_asset_uids(value)
         if asset_uids is not None:
             self._remove_drop_markers()
@@ -685,6 +702,32 @@ class LayerColumn(Gtk.Box):
             self, items=items_to_move, target_layer=self.layer
         )
         return True
+
+    def _handle_step_drop(self, drop_target, step_uids) -> bool:
+        step = find_step(self.doc, step_uids)
+        copy = drop_copies(drop_target)
+        if step is None or not self._takes_step(step, copy):
+            return False
+        moved = self.editor.layer.move_step_to_layer(
+            step, self.layer, copy=copy
+        )
+        return moved is not None
+
+    def _takes_step(self, step, copy: bool) -> bool:
+        """
+        Whether a step dropped on the card lands on this layer: one
+        that is visible, and not a plain move onto the step's own.
+        """
+        workflow = self.layer.workflow
+        if workflow is None or not self.layer.visible:
+            return False
+        return copy or step.parent is not workflow
+
+    def _mark_step_target(self, marked: bool):
+        if marked:
+            self.card.add_css_class("step-drop-target")
+        else:
+            self.card.remove_css_class("step-drop-target")
 
     def _handle_reorder_drop(self, items, drop_index):
         current_items = list(self.layer.get_content_items())
@@ -787,6 +830,10 @@ class LayerColumn(Gtk.Box):
         if LayerColumn.dragging:
             return 0
 
+        step = WorkflowRow.dragged_step
+        if step is not None:
+            return self._on_step_drag_motion(drop_target, step)
+
         drop = drop_target.get_drop()
         if drop and drop.get_actions() & Gdk.DragAction.COPY:
             self._remove_drop_markers()
@@ -833,9 +880,19 @@ class LayerColumn(Gtk.Box):
 
         return Gdk.DragAction.MOVE
 
+    def _on_step_drag_motion(self, drop_target, step):
+        self._remove_drop_markers()
+        copy = drop_copies(drop_target)
+        if not self._takes_step(step, copy):
+            self._mark_step_target(False)
+            return 0
+        self._mark_step_target(True)
+        return Gdk.DragAction.COPY if copy else Gdk.DragAction.MOVE
+
     def _on_drop_leave(self, drop_target):
         logger.debug("Leave(%s)", self.layer.name)
         self._remove_drop_markers()
+        self._mark_step_target(False)
 
     def _find_row_at(self, x, y):
         picked = self.listbox.pick(x, y, Gtk.PickFlags.DEFAULT)

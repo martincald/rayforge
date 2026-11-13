@@ -19,7 +19,9 @@ from ..shared.popover_menu import PopoverMenu
 from .step_settings.dialog import StepSettingsDialog
 
 if TYPE_CHECKING:
+    from ...core.doc import Doc
     from ...core.layer import Layer
+    from ...core.step import Step
     from ...core.workflow import Workflow
     from ...doceditor.editor import DocEditor
 
@@ -53,9 +55,56 @@ css = stylesheet("""
 """)
 
 _FALLBACK_ICON = "laser-path-symbolic"
+_STEP_PAYLOAD_PREFIX = "step:"
+_STEP_DRAG_ACTIONS = Gdk.DragAction.MOVE | Gdk.DragAction.COPY
+
+
+def step_payload(workflow_uid: str, step_uid: str) -> str:
+    """The drag payload of a step: its workflow's uid and its own."""
+    return f"{_STEP_PAYLOAD_PREFIX}{workflow_uid}:{step_uid}"
+
+
+def parse_step_payload(value) -> tuple[str, str] | None:
+    """The (workflow uid, step uid) of a step payload, else None."""
+    if not isinstance(value, str) or not value.startswith(
+        _STEP_PAYLOAD_PREFIX
+    ):
+        return None
+    uids = value[len(_STEP_PAYLOAD_PREFIX) :].split(":")
+    if len(uids) != 2 or not all(uids):
+        return None
+    return uids[0], uids[1]
+
+
+def find_step(doc: "Doc", uids: tuple[str, str]) -> "Step | None":
+    """The step a parsed payload names in doc, else None."""
+    workflow_uid, step_uid = uids
+    for layer in doc.layers:
+        workflow = layer.workflow
+        if workflow is not None and workflow.uid == workflow_uid:
+            return next((s for s in workflow.steps if s.uid == step_uid), None)
+    return None
+
+
+def drop_copies(drop_target: Gtk.DropTarget) -> bool:
+    """
+    Whether a step drop copies: Alt (Option on macOS) is held, or the
+    drop offers nothing but a copy, which is what macOS leaves of a
+    move-or-copy drag while Option is held. Never a copy the drop
+    does not offer.
+    """
+    drop = drop_target.get_current_drop()
+    actions = drop.get_actions() if drop is not None else _STEP_DRAG_ACTIONS
+    if actions == Gdk.DragAction.COPY:
+        return True
+    alt = drop_target.get_current_event_state() & Gdk.ModifierType.ALT_MASK
+    return bool(alt) and bool(actions & Gdk.DragAction.COPY)
 
 
 class WorkflowRow(Gtk.Box):
+    #: The step being dragged from any row, from prepare to drag-end.
+    dragged_step: "Step | None" = None
+
     def __init__(
         self,
         editor: "DocEditor",
@@ -69,8 +118,6 @@ class WorkflowRow(Gtk.Box):
         self.editor = editor
         self.layer = layer
         self._workflow: Workflow | None = None
-        self._drag_source_uid: str | None = None
-        self._potential_drop_index: int = -1
         self._step_buttons: list = []
         self._btn_uids: dict = {}
         self._drop_indicator: Gtk.Box | None = None
@@ -97,14 +144,15 @@ class WorkflowRow(Gtk.Box):
 
     def _setup_drag_source(self):
         self._drag_source = Gtk.DragSource()
-        self._drag_source.set_actions(Gdk.DragAction.MOVE)
+        self._drag_source.set_actions(_STEP_DRAG_ACTIONS)
         self._drag_source.connect("prepare", self._on_drag_prepare)
         self._drag_source.connect("drag-end", self._on_drag_end)
+        self._drag_source.connect("drag-cancel", self._on_drag_cancel)
         self._drag_source.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         self.add_controller(self._drag_source)
 
     def _setup_drop_target(self):
-        self._drop_target = Gtk.DropTarget.new(str, Gdk.DragAction.MOVE)
+        self._drop_target = Gtk.DropTarget.new(str, _STEP_DRAG_ACTIONS)
         self._drop_target.connect("drop", self._on_drop)
         self._drop_target.connect("motion", self._on_drop_motion)
         self._drop_target.connect("leave", self._on_drop_leave)
@@ -194,8 +242,7 @@ class WorkflowRow(Gtk.Box):
         button.add_css_class(class_name)
 
     def _rebuild(self):
-        self._drag_source_uid = None
-        self._potential_drop_index = -1
+        self._drop_indicator = None
         self._step_buttons = []
         self._btn_uids = {}
 
@@ -269,7 +316,11 @@ class WorkflowRow(Gtk.Box):
 
     def _on_drag_prepare(self, source, x, y):
         uid = self._step_uid_at(x)
-        if not uid:
+        workflow = self._workflow
+        if not uid or not workflow:
+            return None
+        step = next((s for s in workflow.steps if s.uid == uid), None)
+        if step is None:
             return None
 
         btn = self._btn_at(x)
@@ -283,31 +334,42 @@ class WorkflowRow(Gtk.Box):
                     paintable, btn_alloc.width / 2, btn_alloc.height / 2
                 )
 
-        self._drag_source_uid = uid
-        self._potential_drop_index = -1
-        return Gdk.ContentProvider.new_for_value(uid)
+        WorkflowRow.dragged_step = step
+        return Gdk.ContentProvider.new_for_value(
+            step_payload(workflow.uid, uid)
+        )
 
     def _on_drag_end(self, source, drag, delete_data):
-        if delete_data and self._potential_drop_index != -1:
-            self._commit_reorder()
-        self._drag_source_uid = None
-        self._potential_drop_index = -1
+        WorkflowRow.dragged_step = None
         self._remove_drop_indicator()
 
+    def _on_drag_cancel(self, source, drag, reason):
+        WorkflowRow.dragged_step = None
+        self._remove_drop_indicator()
+        return False
+
     def _on_drop(self, drop_target, value, x, y):
-        if not self._drag_source_uid:
+        index = self._step_index_at(x)
+        copy = drop_copies(drop_target)
+        self._remove_drop_indicator()
+        uids = parse_step_payload(value)
+        step = find_step(self.editor.doc, uids) if uids else None
+        if step is None or not self.layer.visible:
             return False
-        return self._potential_drop_index != -1
+        moved = self.editor.layer.move_step_to_layer(
+            step, self.layer, index, copy=copy
+        )
+        return moved is not None
 
     def _on_drop_motion(self, drop_target, x, y):
-        if not self._drag_source_uid:
+        if WorkflowRow.dragged_step is None or not self.layer.visible:
+            self._remove_drop_indicator()
             return Gdk.DragAction(0)
-        self._potential_drop_index = self._step_index_at(x)
-        self._show_drop_indicator(self._potential_drop_index)
-        return Gdk.DragAction.MOVE
+        self._show_drop_indicator(self._step_index_at(x))
+        copy = drop_copies(drop_target)
+        return Gdk.DragAction.COPY if copy else Gdk.DragAction.MOVE
 
     def _on_drop_leave(self, drop_target):
-        self._potential_drop_index = -1
         self._remove_drop_indicator()
 
     def _show_drop_indicator(self, index: int):
@@ -336,36 +398,6 @@ class WorkflowRow(Gtk.Box):
         if self._drop_indicator:
             self.remove(self._drop_indicator)
             self._drop_indicator = None
-
-    def _commit_reorder(self):
-        workflow = self._workflow
-        if not workflow or not workflow.doc:
-            return
-        steps = list(workflow.steps)
-        source_index = None
-        for i, s in enumerate(steps):
-            if s.uid == self._drag_source_uid:
-                source_index = i
-                break
-        if source_index is None:
-            return
-        target_index = self._potential_drop_index
-        if source_index == target_index:
-            return
-        new_order = list(steps)
-        moved = new_order.pop(source_index)
-        insert_at = target_index
-        if source_index < target_index:
-            insert_at -= 1
-        new_order.insert(insert_at, moved)
-        command = ReorderListCommand(
-            target_obj=workflow,
-            list_property_name="steps",
-            new_list=new_order,
-            setter_method_name="set_steps",
-            name=_("Reorder steps"),
-        )
-        workflow.doc.history_manager.execute(command)
 
     def _make_step_clicked_handler(self, step):
         def handler(button):

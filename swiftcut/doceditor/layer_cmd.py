@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from gettext import gettext as _
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ..core.color import pick_unused_color
 from ..core.group import Group
@@ -16,6 +16,8 @@ from ..core.undo.list_cmd import ReorderListCommand
 from ..core.workpiece import WorkPiece
 
 if TYPE_CHECKING:
+    from ..core.step import Step
+    from ..core.workflow import Workflow
     from ..ui_gtk.canvas2d.surface import WorkSurface
     from .editor import DocEditor
 
@@ -360,6 +362,84 @@ class LayerCmd:
                     layer_items, target_layer, source_layer
                 )
                 t.execute(cmd)
+
+    def move_step_to_layer(
+        self,
+        step: Step,
+        target_layer: Layer,
+        index: int | None = None,
+        copy: bool = False,
+    ) -> Step | None:
+        """
+        Moves a step into the target layer's workflow, in one undoable
+        step: the same step, with its uid and settings. With copy a
+        duplicate with a new uid goes there and the step stays where
+        it is, also when the target is its own workflow. A move within
+        its own workflow is a reorder, and none when the step would
+        land where it is.
+
+        Args:
+            step: The step to move or copy.
+            target_layer: The layer whose workflow takes it.
+            index: The gap in the target's steps, 0 to their number;
+                None appends. Out of range is clamped.
+            copy: Inserts a duplicate instead of moving the step.
+
+        Returns:
+            The step now in the target workflow, or None when the
+            target layer is hidden or has no workflow.
+        """
+        target = target_layer.workflow
+        if target is None or not target_layer.visible:
+            return None
+        steps = list(target.steps)
+        gap = len(steps) if index is None else max(0, min(index, len(steps)))
+        history = self._editor.history_manager
+        if copy:
+            new_step = cast("Step", step.duplicate())
+            steps.insert(gap, new_step)
+            history.execute(
+                self._set_steps_command(
+                    target,
+                    steps,
+                    _("Copy step '{name}'").format(name=step.name),
+                )
+            )
+            return new_step
+        source = cast("Workflow", step.parent)
+        if source is target:
+            return self._reorder_step(target, step, gap)
+        steps.insert(gap, step)
+        remaining = [s for s in source.steps if s is not step]
+        name = _("Move step '{name}'").format(name=step.name)
+        with history.transaction(name) as t:
+            t.execute(self._set_steps_command(source, remaining))
+            t.execute(self._set_steps_command(target, steps))
+        return step
+
+    def _reorder_step(self, workflow: Workflow, step: Step, gap: int) -> Step:
+        """Moves a step to a gap in its own workflow's steps."""
+        steps = list(workflow.steps)
+        current = steps.index(step)
+        steps.remove(step)
+        steps.insert(gap - 1 if gap > current else gap, step)
+        if steps != workflow.steps:
+            self._editor.history_manager.execute(
+                self._set_steps_command(workflow, steps, _("Reorder steps"))
+            )
+        return step
+
+    @staticmethod
+    def _set_steps_command(
+        workflow: Workflow, steps: list[Step], name: str | None = None
+    ) -> ReorderListCommand:
+        return ReorderListCommand(
+            target_obj=workflow,
+            list_property_name="steps",
+            new_list=steps,
+            setter_method_name="set_steps",
+            name=name,
+        )
 
     def reorder_content_items(self, layer: Layer, new_order: list[DocItem]):
         """Reorders content items within a layer with an undoable command."""
