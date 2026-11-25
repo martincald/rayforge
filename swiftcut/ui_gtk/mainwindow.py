@@ -77,6 +77,7 @@ from .layout import (
 )
 from .machine.job_history_dialog import JobHistoryWindow
 from .machine.job_history_recorder import JobHistoryRecorder
+from .machine.reconnect_banner import ReconnectBanner
 from .machine.settings_dialog import MachineSettingsDialog
 from .machine.start_position_dialog import request_start
 from .machine.testcut_dialog import TestCutDialog
@@ -295,6 +296,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._status_message_label.set_visible(False)
         self._status_overlay.add_overlay(self._status_message_label)
 
+        # Under the header bar while the laser's connection is retried.
+        self.reconnect_banner = ReconnectBanner()
+        vbox.append(self.reconnect_banner.banner)
         vbox.append(self._status_overlay)
 
         # Create a stack for switching between main view and addon pages
@@ -1606,6 +1610,7 @@ class MainWindow(Adw.ApplicationWindow):
                 )
 
         self._current_machine = config.machine
+        self.reconnect_banner.set_machine(self._current_machine)
 
         # Connect to the new active machine's signals
         if self._current_machine:

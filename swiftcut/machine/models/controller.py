@@ -69,6 +69,10 @@ class MachineController:
         self._driver_settings: (
             tuple[str | None, dict[str, Any], dict[str, Any]] | None
         ) = None
+        # The driver last asked to connect. Its connection loop keeps
+        # retrying by itself until disconnect(), release() or
+        # shutdown() forgets it, so connecting it again is a no-op.
+        self._connecting_driver: Driver | None = None
 
         # Track the last driver configuration to detect changes
         self._last_driver_name = self.machine.driver_name
@@ -101,20 +105,45 @@ class MachineController:
                 key=(self.machine.id, "rebuild-driver-on-init"),
             )
 
+    @property
+    def connect_requested(self) -> bool:
+        """
+        Whether the live driver was asked to connect and nothing has
+        disconnected, released or shut it down since: its connection
+        loop runs, retrying while the device is away.
+        """
+        return self._connecting_driver is self.driver
+
     async def connect(self):
-        """Public method to connect the driver."""
+        """
+        Public method to connect the driver. A driver already asked to
+        connect is left to its own connection loop.
+        """
         if self._released:
             logger.info(
                 f"Machine '{self.machine.name}' is not active; not "
                 "connecting"
             )
             return
-        if self.driver is not None:
-            await self.driver.connect()
+        if self.connect_requested:
+            logger.debug(
+                f"Machine '{self.machine.name}' driver is already "
+                "connecting; not connecting it again"
+            )
+            return
+        driver = self.driver
+        self._connecting_driver = driver
+        try:
+            await driver.connect()
+        except BaseException:
+            if self._connecting_driver is driver:
+                self._connecting_driver = None
+            raise
 
     async def disconnect(self):
         """Public method to disconnect the driver."""
         task_mgr.cancel_task((self.machine.id, "driver-connect"))
+        self._connecting_driver = None
         if self.driver is not None:
             await self.driver.cleanup()
             task_mgr.add_coroutine(
@@ -135,6 +164,7 @@ class MachineController:
         # machine active again build and connect a fresh driver.
         self._released = True
         self._driver_settings = None
+        self._connecting_driver = None
         # Cancelled before taking the lock: a rebuild in flight holds it.
         for task in (
             "driver-connect",
@@ -159,6 +189,7 @@ class MachineController:
         task_mgr.cancel_task((self.machine.id, "driver-connect"))
         task_mgr.cancel_task((self.machine.id, "rebuild-driver"))
         task_mgr.cancel_task((self.machine.id, "rebuild-driver-on-change"))
+        self._connecting_driver = None
         if self.driver is not None:
             await self.driver.cleanup()
         self._disconnect_driver_signals()
@@ -311,7 +342,7 @@ class MachineController:
                     f"Machine '{self.machine.name}' (id:{self.machine.id}) "
                     f"connecting after driver rebuild"
                 )
-                await self.driver.connect()
+                await self.connect()
 
     def _reset_status(self):
         """Resets status to a disconnected/unknown state and signals it."""
@@ -345,7 +376,19 @@ class MachineController:
         status: TransportStatus,
         message: str | None = None,
     ):
-        """Proxies the connection status signal from the active driver."""
+        """
+        Proxies the connection status signal from the active driver.
+
+        A transport says CONNECTED as soon as its port or socket opens,
+        before the controller has answered. Until the driver itself is
+        connected that is still CONNECTING, so nothing that needs a
+        connection (jog, Start, the scales, the WCS sync) starts on it;
+        the driver says CONNECTED again once its handshake answered.
+        """
+        if status == TransportStatus.CONNECTED and not getattr(
+            driver, "is_connected", True
+        ):
+            status = TransportStatus.CONNECTING
         if self.machine.connection_status != status:
             self.machine.set_connection_status(status)
             self._scheduler(

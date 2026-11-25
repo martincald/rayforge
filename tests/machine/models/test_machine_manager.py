@@ -24,6 +24,7 @@ from swiftcut.machine.models.default_profile import (
 )
 from swiftcut.machine.models.machine import Machine
 from swiftcut.machine.models.manager import MachineManager
+from swiftcut.machine.transport import TransportStatus
 from swiftcut.shared.tasker.manager import TaskManager
 
 
@@ -683,3 +684,131 @@ async def test_a_switch_swaps_per_machine_settings_and_keeps_shared_ones(
         config_module.USER_RECIPES_DIR,
     ):
         assert config_module.MACHINE_DIR not in shared_dir.parents
+
+
+async def _launch(context, task_mgr, monkeypatch, auto_connect=True):
+    """
+    Launches with ilab-614 active, in the app's order: its controller
+    (which asks for the on-init rebuild), then the initial connect.
+    The Ruida connect is faked as a device that is away: it records
+    the driver it was called on and leaves it retrying, never
+    CONNECTED.
+    """
+    connects = []
+    manager, ilab_614, ilab_626 = _udp_pair(context, monkeypatch, [])
+
+    async def retrying(driver):
+        connects.append(driver)
+        for status in (TransportStatus.ERROR, TransportStatus.SLEEPING):
+            driver.connection_status_changed.send(driver, status=status)
+
+    monkeypatch.setattr(RuidaDriver, "_connect_implementation", retrying)
+    for machine in (ilab_614, ilab_626):
+        machine.auto_connect = auto_connect
+    context.config.set_machine(ilab_614)
+    manager.get_controller(ilab_614.id)
+    manager.initialize_connections()
+    await _settle(task_mgr)
+    return manager, ilab_614, ilab_626, connects
+
+
+async def _shutdown(manager):
+    for controller in list(manager.controllers.values()):
+        await controller.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_launch_connects_a_retrying_driver_once(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    """
+    With the device away the driver never reaches CONNECTED. The
+    on-init rebuild connects it; the initial connect finds that driver
+    already retrying and does not connect it a second time.
+    """
+    manager, ilab_614, _ilab_626, connects = await _launch(
+        lite_context, task_mgr, monkeypatch
+    )
+
+    assert ilab_614.connection_status == TransportStatus.SLEEPING
+    assert connects == [manager.controllers[ilab_614.id].driver]
+    await _shutdown(manager)
+
+
+@pytest.mark.asyncio
+async def test_a_disconnect_then_connect_connects_again(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    manager, ilab_614, _ilab_626, connects = await _launch(
+        lite_context, task_mgr, monkeypatch, auto_connect=False
+    )
+    await ilab_614.connect()
+    await ilab_614.connect()
+    first = manager.controllers[ilab_614.id].driver
+    assert connects == [first]
+
+    await ilab_614.disconnect()
+    await _settle(task_mgr)
+    await ilab_614.connect()
+
+    second = manager.controllers[ilab_614.id].driver
+    assert second is not first
+    assert connects == [first, second]
+    await _shutdown(manager)
+
+
+@pytest.mark.asyncio
+async def test_a_switch_after_launch_connects_the_new_machine(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    manager, ilab_614, ilab_626, connects = await _launch(
+        lite_context, task_mgr, monkeypatch
+    )
+    launched = manager.controllers[ilab_614.id].driver
+
+    assert manager.set_active_machine(ilab_626) is True
+    await _settle(task_mgr)
+    assert manager.set_active_machine(ilab_614) is True
+    await _settle(task_mgr)
+
+    assert connects == [
+        launched,
+        manager.controllers[ilab_626.id].driver,
+        manager.controllers[ilab_614.id].driver,
+    ]
+    assert connects[2] is not launched
+    await _shutdown(manager)
+
+
+@pytest.mark.asyncio
+async def test_a_settings_change_after_launch_connects_the_new_driver(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    manager, ilab_614, _ilab_626, connects = await _launch(
+        lite_context, task_mgr, monkeypatch
+    )
+    launched = manager.controllers[ilab_614.id].driver
+
+    ilab_614.set_driver_args({**ilab_614.driver_args, "host": "192.0.2.2"})
+    await _settle(task_mgr)
+
+    rebuilt = manager.controllers[ilab_614.id].driver
+    assert rebuilt.host == "192.0.2.2"
+    assert connects == [launched, rebuilt]
+    await _shutdown(manager)
+
+
+@pytest.mark.asyncio
+async def test_without_auto_connect_launch_and_edits_never_connect(
+    lite_context, task_mgr: TaskManager, monkeypatch
+):
+    manager, ilab_614, _ilab_626, connects = await _launch(
+        lite_context, task_mgr, monkeypatch, auto_connect=False
+    )
+
+    ilab_614.set_driver_args({**ilab_614.driver_args, "host": "192.0.2.2"})
+    await _settle(task_mgr)
+
+    assert manager.controllers[ilab_614.id].driver.host == "192.0.2.2"
+    assert connects == []
+    await _shutdown(manager)

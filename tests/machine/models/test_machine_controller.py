@@ -9,11 +9,13 @@ This module tests the MachineController which handles:
 The MachineController is the logic layer that owns and manages the driver.
 """
 
+import asyncio
 import logging
 from unittest.mock import call, patch
 
 import pytest
 
+from swiftcut.machine.driver.driver import ResourceBusyError
 from swiftcut.machine.driver.ruida.ruida_driver import RuidaDriver
 from swiftcut.machine.models.controller import MachineController
 from swiftcut.machine.models.machine import Machine
@@ -251,3 +253,118 @@ class TestRelease:
         await controller.rebuild_driver()
 
         assert connects == ["192.168.1.100", "192.168.1.101"]
+
+
+class TestConnectOnce:
+    """
+    A driver's connection loop retries by itself, so the controller
+    asks each driver to connect once, until a disconnect, release or
+    shutdown forgets it.
+    """
+
+    @pytest.mark.asyncio
+    async def test_connect_requested_follows_the_live_driver(
+        self, lite_context, task_mgr, monkeypatch
+    ):
+        connects = []
+
+        async def fake_connect(driver):
+            connects.append(driver)
+
+        monkeypatch.setattr(
+            RuidaDriver, "_connect_implementation", fake_connect
+        )
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        assert not controller.connect_requested
+
+        await controller.connect()
+        await controller.connect()
+        assert controller.connect_requested
+        assert connects == [controller.driver]
+
+        await controller.disconnect()
+        assert not controller.connect_requested
+        await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+        assert not controller.connect_requested
+
+        await controller.connect()
+        assert controller.connect_requested
+        machine.driver_args = {"host": "192.168.1.101"}
+        await controller.rebuild_driver()
+        assert not controller.connect_requested
+
+        await controller.connect()
+        await controller.release()
+        assert not controller.connect_requested
+        assert len(connects) == 3
+        await controller.shutdown()
+
+    @pytest.mark.asyncio
+    async def test_a_refused_connect_can_be_asked_again(
+        self, lite_context, monkeypatch
+    ):
+        connects = []
+
+        async def busy_once(driver):
+            connects.append(driver)
+            if len(connects) == 1:
+                raise ResourceBusyError("udp://192.168.1.100", "ilab-626")
+
+        monkeypatch.setattr(RuidaDriver, "_connect_implementation", busy_once)
+        _machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+
+        with pytest.raises(ResourceBusyError):
+            await controller.connect()
+        assert not controller.connect_requested
+        await controller.connect()
+
+        assert controller.connect_requested
+        assert connects == [controller.driver, controller.driver]
+        await controller.shutdown()
+
+
+class TestConnectedMeansTheControllerAnswered:
+    """
+    A transport says CONNECTED once its port or socket opens, before
+    the controller has answered. The machine is connected only once
+    the driver is: until then jog, Start and both scales stay off.
+    """
+
+    @pytest.mark.asyncio
+    async def test_an_open_port_with_a_silent_controller_is_connecting(
+        self, lite_context
+    ):
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+        assert isinstance(driver, RuidaDriver)
+        assert not driver.is_connected
+
+        driver._on_status_changed(None, TransportStatus.CONNECTING)
+        driver._on_status_changed(None, TransportStatus.CONNECTED)
+
+        assert machine.connection_status == TransportStatus.CONNECTING
+        assert not machine.is_connected()
+        await controller.shutdown()
+        await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
+
+    @pytest.mark.asyncio
+    async def test_the_handshake_answered_connects_the_machine(
+        self, lite_context
+    ):
+        machine, controller = _ruida_controller(lite_context)
+        await controller.rebuild_driver()
+        driver = controller.driver
+        driver._on_status_changed(None, TransportStatus.CONNECTING)
+        driver._on_status_changed(None, TransportStatus.CONNECTED)
+
+        # What the connection loop does once the controller answered.
+        driver._is_connected = True
+        driver._update_connection_status(TransportStatus.CONNECTED, "")
+
+        assert machine.connection_status == TransportStatus.CONNECTED
+        assert machine.is_connected()
+        await controller.shutdown()
+        await asyncio.to_thread(task_mgr.wait_until_settled, 5000)
