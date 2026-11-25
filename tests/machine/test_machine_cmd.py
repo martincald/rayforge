@@ -366,6 +366,118 @@ class TestBedOverrunWarning:
         assert (extent[0], extent[2]) == (-5.0, 25.0)
 
 
+# The ilab-614 (1400 x 900 mm) and ilab-626 (900 x 900 mm) beds.
+BEDS = [(1400.0, 900.0), (900.0, 900.0)]
+
+
+class TestBedEdgeTolerance:
+    """
+    Half a millimeter past a bed edge is still on the bed.
+
+    The 614 reports its parked head at X = 1400.049 mm on its 1400 mm
+    bed, so a job started from there used to be flagged as running
+    off it.
+    """
+
+    def _warned(self, machine_cmd, machine, bed, head, size, corner):
+        machine.set_axis_extents(*bed)
+        machine.set_origin(Origin.TOP_LEFT)
+        machine.set_start_corner(corner)
+        _head_at(machine, *head)
+        seen: list[str] = []
+
+        def receiver(sender, message="", **kwargs):
+            seen.append(message)
+
+        machine_cmd._editor.notification_requested.connect(receiver)
+        try:
+            machine_cmd._warn_if_job_overruns_bed(
+                _job(width=size, height=size), machine
+            )
+        finally:
+            machine_cmd._editor.notification_requested.disconnect(receiver)
+        return bool(seen)
+
+    def _at(self, axis, edge_value):
+        """A head position: edge_value on axis, well inside on the other."""
+        return (edge_value, 10.0) if axis == "x" else (10.0, edge_value)
+
+    @pytest.mark.parametrize("bed", BEDS)
+    @pytest.mark.parametrize("axis", ["x", "y"])
+    def test_a_job_0_05_mm_past_the_far_edge_does_not_warn(
+        self, machine_cmd, machine, bed, axis
+    ):
+        """The 614 case: anchor 1372.05 + 28 mm on the 1400 mm bed."""
+        edge = bed[0] if axis == "x" else bed[1]
+        head = self._at(axis, edge - 28.0 + 0.05)
+
+        assert not self._warned(
+            machine_cmd, machine, bed, head, 28.0, StartCorner.TOP_RIGHT
+        )
+
+    @pytest.mark.parametrize("bed", BEDS)
+    @pytest.mark.parametrize("axis", ["x", "y"])
+    def test_a_job_1_mm_past_the_far_edge_warns(
+        self, machine_cmd, machine, bed, axis
+    ):
+        """Anchor 1373 + 28 mm on the 1400 mm bed."""
+        edge = bed[0] if axis == "x" else bed[1]
+        head = self._at(axis, edge - 28.0 + 1.0)
+
+        assert self._warned(
+            machine_cmd, machine, bed, head, 28.0, StartCorner.TOP_RIGHT
+        )
+
+    @pytest.mark.parametrize("bed", BEDS)
+    @pytest.mark.parametrize("axis", ["x", "y"])
+    def test_a_head_0_049_mm_past_the_edge_is_on_the_edge(
+        self, machine_cmd, machine, bed, axis
+    ):
+        """
+        A 0.48 mm job from a head at 1400.049 mm ends at 1400.48 mm
+        once the head counts as 1400, inside the tolerance; taken
+        where it was reported, it would end at 1400.529 mm.
+        """
+        edge = bed[0] if axis == "x" else bed[1]
+        head = self._at(axis, edge + 0.049)
+
+        assert not self._warned(
+            machine_cmd, machine, bed, head, 0.48, StartCorner.TOP_RIGHT
+        )
+
+    @pytest.mark.parametrize("bed", BEDS)
+    def test_the_614_parked_head_with_its_corner_move_does_not_warn(
+        self, machine_cmd, machine, bed
+    ):
+        """
+        The logged Start: the head parked at X = edge + 0.049 mm, a
+        top-left start moving it 28 mm toward -X first.
+        """
+        machine.set_origin(Origin.TOP_LEFT)
+        assert machine.panel.start_corner_offset(
+            StartCorner.TOP_LEFT, 28.0, 28.0
+        ) == (-28.0, 0.0)
+        head = (bed[0] + 0.049, 10.52)
+
+        assert not self._warned(
+            machine_cmd, machine, bed, head, 28.0, StartCorner.TOP_LEFT
+        )
+
+    def test_a_head_beyond_the_tolerance_is_taken_as_reported(
+        self, machine_cmd, machine
+    ):
+        head = (1400.6, 10.0)
+
+        assert self._warned(
+            machine_cmd,
+            machine,
+            (1400.0, 900.0),
+            head,
+            0.48,
+            StartCorner.TOP_RIGHT,
+        )
+
+
 class TestCancelJob:
     """One cancel at a time, however many Stop presses."""
 

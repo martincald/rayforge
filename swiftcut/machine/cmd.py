@@ -36,10 +36,27 @@ logger = logging.getLogger(__name__)
 # Crawford Start runs: the driver's own jog settle tolerance.
 PREMOVE_TOLERANCE_MM = 0.5
 
+# How far past a bed edge a job, or the head it starts from, still
+# counts as on the bed. The 614 reports its parked head at
+# X = 1400.049 mm on its 1400 mm bed.
+BED_EDGE_TOLERANCE_MM = 0.5
+
 # The test cut: a square this size, by default this far outside the
 # job's start-corner X edge.
 TEST_CUT_SIZE_MM = 10.0
 TEST_CUT_GAP_MM = 15.0
+
+
+def _onto_bed(value: float, size: float) -> float:
+    """
+    A coordinate on a bed axis of the given size, pulled onto the bed
+    when it lies within BED_EDGE_TOLERANCE_MM outside it.
+    """
+    if -BED_EDGE_TOLERANCE_MM <= value < 0.0:
+        return 0.0
+    if size < value <= size + BED_EDGE_TOLERANCE_MM:
+        return size
+    return value
 
 
 class MachineCmd:
@@ -129,6 +146,10 @@ class MachineCmd:
         that point, so a rectangle that fits the bed on its own can
         still run off either edge. An unknown head position is taken
         as the bed origin, which leaves only the job's size to check.
+
+        Both the anchor and the job may lie up to BED_EDGE_TOLERANCE_MM
+        past an edge: an anchor that close outside is taken as on the
+        edge, and a job that ends that close past it still fits.
         """
         bed_w, bed_h = machine.axis_extents
         if bed_w <= 0 or bed_h <= 0:
@@ -141,11 +162,14 @@ class MachineCmd:
             return
 
         anchor_x, anchor_y = self._job_anchor(ops, machine) or (0.0, 0.0)
+        anchor_x = _onto_bed(anchor_x, bed_w)
+        anchor_y = _onto_bed(anchor_y, bed_h)
+        tolerance = BED_EDGE_TOLERANCE_MM
         if (
-            anchor_x + min_x - origin_x >= 0
-            and anchor_y + min_y - origin_y >= 0
-            and anchor_x + max_x - origin_x <= bed_w
-            and anchor_y + max_y - origin_y <= bed_h
+            anchor_x + min_x - origin_x >= -tolerance
+            and anchor_y + min_y - origin_y >= -tolerance
+            and anchor_x + max_x - origin_x <= bed_w + tolerance
+            and anchor_y + max_y - origin_y <= bed_h + tolerance
         ):
             return
 
