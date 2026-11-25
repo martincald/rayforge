@@ -23,6 +23,7 @@ from swiftcut.ui_gtk.shared.patched_dialog_window import (
     PatchedDialogWindow,
 )
 from swiftcut.ui_gtk.shared.pref_rows import LengthSpinRow
+from swiftcut.ui_gtk.shared.toast import show_toast
 
 from .pick_surface import PickSurface
 
@@ -811,8 +812,7 @@ class PrintAndCutWizard(PatchedDialogWindow):
             [(self._item, old_matrix, new_matrix)]
         )
 
-        toast = Adw.Toast(title=_("Alignment applied"))
-        self.toast_overlay.add_toast(toast)
+        show_toast(self.toast_overlay, _("Alignment applied"))
         self.close()
 
     def close(self):

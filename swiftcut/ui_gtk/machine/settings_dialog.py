@@ -7,6 +7,7 @@ from ...machine.models.machine import Machine
 from ..icons import get_icon
 from ..layout import SPACE_CONTROL, SPACE_GROUP
 from ..shared.patched_dialog_window import PatchedDialogWindow
+from ..shared.toast import show_toast
 from .advanced_preferences_page import AdvancedPreferencesPage
 from .device_settings_page import DeviceSettingsPage
 from .general_preferences_page import GeneralPreferencesPage
@@ -185,4 +186,4 @@ class MachineSettingsDialog(PatchedDialogWindow):
         """
         Handler to show the toast when requested by the child page.
         """
-        self.toast_overlay.add_toast(Adw.Toast(title=message, timeout=5))
+        show_toast(self.toast_overlay, message, timeout=5)

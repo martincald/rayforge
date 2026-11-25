@@ -942,19 +942,22 @@ class ImportDialog(PatchedDialogWindow):
         self.status_spinner.start()
         self.import_button.set_sensitive(False)
 
-        # Dispatch task to TaskManager using FileCmd
+        # Dispatch task to TaskManager using FileCmd. The spec is read
+        # here: the task runs on the task thread, and the widgets it
+        # comes from may only be read on this one.
         self.editor.task_manager.add_coroutine(
-            self._update_preview_task, key="import-preview"
+            self._update_preview_task,
+            self._get_current_spec(),
+            key="import-preview",
         )
 
-    async def _update_preview_task(self, ctx):
+    async def _update_preview_task(self, ctx, spec: VectorizationSpec):
         """
         Async task that calls the backend to generate the preview.
         """
         if not self._file_bytes:
             return
 
-        spec = self._get_current_spec()
         ctx.set_message(_("Generating preview..."))
 
         result = await self.editor.file.generate_preview(

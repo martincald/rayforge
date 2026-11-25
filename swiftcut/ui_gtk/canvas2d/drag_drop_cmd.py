@@ -12,7 +12,7 @@ from gettext import gettext as _
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 from raygeo.geo import Matrix
 
 from ...context import get_context
@@ -27,6 +27,7 @@ from ...image import ImporterFeature
 from ...image.registry import importer_registry
 from ..doceditor import import_handler
 from ..layout import stylesheet
+from ..shared.toast import show_toast
 
 if TYPE_CHECKING:
     from ...ui_gtk.mainwindow import MainWindow
@@ -491,8 +492,9 @@ class DragDropCmd:
             GLib.timeout_add_seconds(5, self._cleanup_temp_file, temp_path)
 
             # Show success notification
-            self.main_window.toast_overlay.add_toast(
-                Adw.Toast.new(_("Image imported from clipboard"))
+            show_toast(
+                self.main_window.toast_overlay,
+                _("Image imported from clipboard"),
             )
 
         except Exception:
@@ -526,7 +528,8 @@ class DragDropCmd:
         Returns:
             False (to not repeat GLib.idle_add)
         """
-        self.main_window.toast_overlay.add_toast(
-            Adw.Toast.new(_("Failed to import image from clipboard"))
+        show_toast(
+            self.main_window.toast_overlay,
+            _("Failed to import image from clipboard"),
         )
         return False

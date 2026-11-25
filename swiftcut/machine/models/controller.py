@@ -554,7 +554,9 @@ class MachineController:
             raise ValueError("Machine has no laser heads configured.")
 
         await self.driver.set_power(head, percent)
-        self.laser_power_changed.send(self, head=head, percent=percent)
+        self._scheduler(
+            self.laser_power_changed.send, self, head=head, percent=percent
+        )
 
     async def set_focus_power(
         self, head: Optional["Laser"] = None, percent: float = 0.0
@@ -579,7 +581,9 @@ class MachineController:
             raise ValueError("Machine has no laser heads configured.")
 
         await self.driver.set_focus_power(head, percent)
-        self.laser_power_changed.send(self, head=head, percent=percent)
+        self._scheduler(
+            self.laser_power_changed.send, self, head=head, percent=percent
+        )
 
     async def set_work_origin(
         self, x: float, y: float, z: float, wcs_slot: str | None = None

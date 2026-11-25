@@ -1,7 +1,9 @@
 # flake8: noqa: E402
+import asyncio
 import copy
 import logging
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -11,6 +13,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 import yaml
+from raygeo.ops import Ops
 
 # Platform-Specific Setup
 if sys.platform.startswith("linux"):
@@ -1379,3 +1382,123 @@ def test_a_wide_project_opened_on_ilab_626_is_flagged(
     [loaded] = editor.doc.all_workpieces
     assert loaded.matrix == wide_matrix
     assert win.surface.get_selected_workpieces() == [loaded]
+
+
+# Toasts asked for from the task thread.
+
+BED_WARNINGS = 200
+
+
+@pytest.mark.ui
+def test_bed_warnings_from_the_task_thread_toast_on_the_main_thread(
+    app_and_window,
+):
+    """
+    A job's bed overrun warning is sent from the task thread, as a
+    Start sends it. Every toast it shows is built and added to the
+    overlay on the GTK main thread.
+    """
+    _app, win = app_and_window
+    machine = get_context().config.machine
+    bed_w, bed_h = machine.axis_extents
+    assert bed_w > 0 and bed_h > 0
+    ops = Ops()
+    ops.move_to(0, 0, 0)
+    ops.line_to(3 * bed_w, 3 * bed_h, 0)
+    built, added, senders = [], [], []
+    build = Adw.Toast.new
+    overlay = win.toast_overlay
+    add = overlay.add_toast
+
+    def recording_build(message):
+        built.append(threading.current_thread())
+        return build(message)
+
+    def recording_add(toast):
+        added.append(threading.current_thread())
+        # Off the main thread this is the crash itself: record only.
+        if threading.current_thread() is threading.main_thread():
+            add(toast)
+
+    async def warn():
+        senders.append(threading.current_thread())
+        for _ in range(BED_WARNINGS):
+            win.machine_cmd._warn_if_job_overruns_bed(ops, machine)
+
+    with (
+        patch.object(Adw.Toast, "new", side_effect=recording_build),
+        patch.object(overlay, "add_toast", side_effect=recording_add),
+    ):
+        sent = asyncio.run_coroutine_threadsafe(warn(), task_mgr.loop)
+        _wait_for(
+            lambda: sent.done() and len(added) >= BED_WARNINGS,
+            timeout_sec=30.0,
+        )
+        sent.result()
+        # Let the shown toast be allocated and drawn.
+        process_events_for_duration(0.5)
+
+    main = threading.main_thread()
+    assert senders and senders[0] is not main
+    assert len(built) == len(added) == BED_WARNINGS
+    assert sum(t is not main for t in added) == 0
+    assert sum(t is not main for t in built) == 0
+
+    win._on_surface_transform_end(None)
+    process_events_for_duration(0.3)
+    assert win._active_toasts == []
+
+
+@pytest.mark.ui
+def test_bed_warnings_from_the_task_thread_raise_no_gtk_criticals():
+    """
+    The same warnings in a process that aborts on any Gtk-CRITICAL,
+    as the crash began with one: the toasts are shown without one.
+    """
+    root = Path(__file__).resolve().parents[2]
+    test = (
+        f"{Path(__file__).resolve()}::"
+        "test_bed_warnings_from_the_task_thread_toast_on_the_main_thread"
+    )
+    env = dict(os.environ, G_DEBUG="fatal-criticals", PYTHONPATH=str(root))
+    result = subprocess.run(
+        [
+            sys.executable,
+            *("-m", "pytest", "-q", "-p", "no:cacheprovider", "-m", "ui"),
+            test,
+        ],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.ui
+def test_a_machine_job_ends_on_the_main_thread(app_and_window):
+    """
+    Frame runs its job on the task thread. What follows it updates
+    actions and widgets, so it runs on the GTK main thread.
+    """
+    _app, win = app_and_window
+    updated_on = []
+    update = win._update_actions_and_ui
+
+    def recording_update():
+        updated_on.append(threading.current_thread())
+        if threading.current_thread() is threading.main_thread():
+            update()
+
+    async def job():
+        return None
+
+    with patch.object(
+        win, "_update_actions_and_ui", side_effect=recording_update
+    ):
+        win._run_machine_job(job())
+        _wait_for(lambda: updated_on)
+
+    assert updated_on == [threading.main_thread()]

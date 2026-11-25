@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import multiprocessing
+import threading
 import uuid
 from enum import Enum
 from gettext import gettext as _
@@ -1228,10 +1229,14 @@ class Machine:
         """
         Add hours to the machine's total hours and all counters.
 
+        They are added on the main thread, through the scheduler: a job
+        adds its hours from the task thread, and machine_hours
+        listeners update the UI.
+
         Args:
             hours: Hours to add (can be fractional).
         """
-        self.machine_hours.add_hours(hours)
+        self._scheduler(self.machine_hours.add_hours, hours)
 
     def get_machine_hours(self) -> MachineHours:
         """Get the machine hours tracker."""
@@ -1382,10 +1387,17 @@ class Machine:
         (e.g. WCS dropdown), use switch_active_wcs() on the controller
         instead, which also sends the G-code command to the device and
         confirms the switch.
+
+        Listeners are told on the main thread: at once when called
+        there, through the scheduler when called from a driver's or
+        the controller's task thread.
         """
         if wcs != self.active_wcs:
             self.active_wcs = wcs
-            self.changed.send(self)
+            if threading.current_thread() is threading.main_thread():
+                self.changed.send(self)
+            else:
+                self._scheduler(self.changed.send, self)
 
     async def switch_active_wcs(self, wcs: str):
         """

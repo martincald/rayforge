@@ -11,6 +11,7 @@ imports only.
 import base64
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -1098,3 +1099,29 @@ class TestSourceUnits:
 
         (wp,) = [w for w in editor.doc.all_workpieces if w not in before]
         assert wp.size == pytest.approx((100, 50), abs=0.05)
+
+
+class TestThePreviewReadsTheDialogOnTheMainThread:
+    def test_the_spec_is_read_from_the_widgets_on_the_main_thread(
+        self, open_dialog, tmp_path
+    ):
+        """
+        The preview runs as a task, but the switches and rows it is
+        made from are GTK widgets: they are read before it is queued.
+        """
+        dialog, _responses = open_dialog(
+            _two_rects_svg(tmp_path / "rects.svg"), SvgImporter
+        )
+        read_on = []
+        read = dialog._get_current_spec
+
+        def recording_read():
+            read_on.append(threading.current_thread())
+            return read()
+
+        dialog._get_current_spec = recording_read
+        dialog._schedule_preview_update()
+        _wait_for_preview(dialog)
+
+        assert read_on
+        assert all(t is threading.main_thread() for t in read_on)

@@ -88,6 +88,7 @@ from .shared.gtk import get_active_monitor
 from .shared.progress_bar import ProgressBar
 from .shared.sanity_check_dialog import SanityCheckDialog
 from .shared.time_estimate_overlay import TimeEstimateOverlay
+from .shared.toast import show_toast
 from .shared.visibility_overlay import VisibilityOverlay
 from .theme import install as install_theme
 from .toolbar import MainToolbar
@@ -1370,30 +1371,21 @@ class MainWindow(Adw.ApplicationWindow):
         If 'action_label' and 'action_callback' are provided, a button
         will be added to the toast that triggers the callback.
         """
-        toast = Adw.Toast.new(message)
-        # Adw.Toast defaults use-markup to True, and these messages
-        # interpolate filenames and raw exception text. A project called
-        # "Cut & Engrave.ryp" produces markup Pango cannot parse, and
-        # the toast renders empty. No sender passes markup.
-        toast.set_use_markup(False)
-        if persistent:
-            toast.set_timeout(0)  # 0 = persistent
-            toast.set_priority(Adw.ToastPriority.HIGH)
+        show_toast(
+            self.toast_overlay,
+            message,
+            timeout=0 if persistent else None,  # 0 = persistent
+            priority=Adw.ToastPriority.HIGH if persistent else None,
+            button_label=action_label,
+            on_button=action_callback,
+            on_shown=self._track_toast,
+        )
 
-        if action_label and action_callback:
-            toast.set_button_label(action_label)
-            # Connecting directly to 'button-clicked' is the simplest way
-            # to handle a callback without defining a GAction.
-            toast.connect("button-clicked", lambda t: action_callback())
-
-        self._add_toast(toast)
-
-    def _add_toast(self, toast: Adw.Toast):
-        """Helper to add a toast to the overlay and track it."""
+    def _track_toast(self, toast: Adw.Toast):
+        """Tracks a toast as the overlay shows it, until dismissed."""
         self._active_toasts.append(toast)
         # Connect to dismissed signal to clean up our reference
         toast.connect("dismissed", self._on_toast_dismissed)
-        self.toast_overlay.add_toast(toast)
 
     def _on_toast_dismissed(self, toast):
         """Removes the toast from the tracking list when dismissed."""
@@ -1989,9 +1981,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_dialog_notification(self, sender, message: str = ""):
         """Shows a toast when requested by a child dialog."""
-        toast = Adw.Toast.new(message)
-        toast.set_use_markup(False)
-        self._add_toast(toast)
+        show_toast(self.toast_overlay, message, on_shown=self._track_toast)
 
     def on_quit_action(self, action, parameter):
         self.close()
@@ -2222,8 +2212,14 @@ class MainWindow(Adw.ApplicationWindow):
         its completion or failure.
         """
         fut = asyncio.run_coroutine_threadsafe(job_coroutine, task_mgr.loop)
-        # Add a callback to handle the result (or exception) of the task
-        fut.add_done_callback(self._on_job_future_done)
+        # Handle the result (or exception) of the task on the main
+        # thread: the done callback runs on the task thread, and the
+        # handler updates actions and widgets.
+        fut.add_done_callback(
+            lambda f: task_mgr.schedule_on_main_thread(
+                self._on_job_future_done, f
+            )
+        )
 
     def on_frame_clicked(self, action, param):
         config = get_context().config
